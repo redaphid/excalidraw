@@ -41,17 +41,24 @@ export const exportToCanvas = ({
   getDimensions,
   exportPadding,
   exportingFrame,
+  restoreElements = true,
 }: ExportOpts & {
   exportPadding?: number;
+  /**
+   * False when the elements come straight from a scene, which has already
+   * restored them. Restoring copies every element, and drawn from copies,
+   * every freedraw stroke misses its cached outline and is traced again.
+   */
+  restoreElements?: boolean;
 }) => {
   const { elements: restoredElements, appState: restoredAppState } = restore(
-    { elements, appState },
+    { elements: restoreElements ? elements : [], appState },
     null,
     null,
   );
   const { exportBackground, viewBackgroundColor } = restoredAppState;
   return _exportToCanvas(
-    restoredElements,
+    restoreElements ? restoredElements : elements,
     { ...restoredAppState, offsetTop: 0, offsetLeft: 0, width: 0, height: 0 },
     files || {},
     { exportBackground, exportPadding, viewBackgroundColor, exportingFrame },
