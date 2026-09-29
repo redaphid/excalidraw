@@ -695,6 +695,25 @@ export const renderSelectionElement = (
   context.restore();
 };
 
+/** Above this zoom, text draws directly instead of from a cached bitmap. */
+export const DIRECT_TEXT_ZOOM = 1;
+
+/**
+ * Whether an element skips its cached bitmap and draws straight onto the
+ * canvas, as the exporter does. The bitmaps are rebuilt whenever the zoom
+ * changes and grow with it (one handwritten word is megabytes zoomed in),
+ * and zoomed out over a full board they are thousands of new canvases.
+ * Freedraw and text draw the same either way. Rough fills and labelled
+ * arrows do not (the bitmap crops hatching to the shape, and clears the gap
+ * behind an arrow's label), so they keep their bitmaps.
+ */
+export const shouldDrawDirectly = (
+  element: NonDeletedExcalidrawElement,
+  appState: StaticCanvasAppState,
+) =>
+  element.type === "freedraw" ||
+  (element.type === "text" && appState.zoom.value > DIRECT_TEXT_ZOOM);
+
 export const renderElement = (
   element: NonDeletedExcalidrawElement,
   elementsMap: RenderableElementsMap,
@@ -762,7 +781,9 @@ export const renderElement = (
       // rely on existing shapes
       ShapeCache.generateElementShape(element, null);
 
-      if (renderConfig.isExporting) {
+      // Freedraw always draws directly: a filled path is cheaper to draw
+      // than its bitmap is to copy, and nothing is rebuilt on zoom.
+      if (renderConfig.isExporting || shouldDrawDirectly(element, appState)) {
         const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
         const cx = (x1 + x2) / 2 + appState.scrollX;
         const cy = (y1 + y2) / 2 + appState.scrollY;
@@ -809,7 +830,7 @@ export const renderElement = (
       // beforehand because math helpers (such as getElementAbsoluteCoords)
       // rely on existing shapes
       ShapeCache.generateElementShape(element, renderConfig);
-      if (renderConfig.isExporting) {
+      if (renderConfig.isExporting || shouldDrawDirectly(element, appState)) {
         const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
         const cx = (x1 + x2) / 2 + appState.scrollX;
         const cy = (y1 + y2) / 2 + appState.scrollY;
