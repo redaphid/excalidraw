@@ -46,8 +46,6 @@ import {
   MIME_TYPES,
   THEME,
 } from "../constants";
-import type { StrokeOptions } from "perfect-freehand";
-import { getStroke } from "perfect-freehand";
 import {
   getBoundTextElement,
   getContainerCoords,
@@ -64,6 +62,7 @@ import { isRightAngleRads } from "@excalidraw/math";
 import { getCornerRadius } from "../shapes";
 import { getUncroppedImageElement } from "../element/cropElement";
 import { getLineHeightInPx } from "../element/textMeasurements";
+import { getStroke, type StrokeOptions } from "./perfectFreehand";
 
 // using a stronger invert (100% vs our regular 93%) and saturate
 // as a temp hack to make images in dark theme look closer to original
