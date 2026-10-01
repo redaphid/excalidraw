@@ -1,5 +1,6 @@
 import {
   getAuthoringScale,
+  getFreedrawAuthoringView,
   getFreedrawStrokeDiameter,
 } from "@excalidraw/element";
 
@@ -34,7 +35,8 @@ export const PenSizeSlider = ({
 }) => {
   const position = sliderFromPenSize(value);
   const authoringToScreen = useAppStateValue(
-    (state) => getAuthoringScale(state) * state.zoom.value,
+    (state) =>
+      getAuthoringScale(getFreedrawAuthoringView(state)) * state.zoom.value,
   );
   const diameter = Math.min(
     getFreedrawStrokeDiameter(value, variability) * authoringToScreen,

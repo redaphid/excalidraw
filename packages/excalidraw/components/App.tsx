@@ -154,6 +154,7 @@ import {
   getRoundnessForShape,
   getAuthoringScale,
   getAuthoringScaleField,
+  getFreedrawAuthoringView,
   getElementDetailScale,
   getCornerRadius,
   isPathALoop,
@@ -881,6 +882,10 @@ class App extends React.Component<AppProps, AppState> {
       objectsSnapModeEnabled,
       gridModeEnabled: gridModeEnabled ?? defaultAppState.gridModeEnabled,
       authoringUnits: props.authoringUnits ?? defaultAppState.authoringUnits,
+      freedrawAuthoringUnits:
+        props.freedrawAuthoringUnits ??
+        props.authoringUnits ??
+        defaultAppState.freedrawAuthoringUnits,
       name,
       width: this.ownerWindow.innerWidth,
       height: this.ownerWindow.innerHeight,
@@ -4282,7 +4287,12 @@ class App extends React.Component<AppProps, AppState> {
     state: AppState,
   ): Partial<AppState> | null {
     const authoringUnits = props.authoringUnits ?? "scene";
-    return state.authoringUnits === authoringUnits ? null : { authoringUnits };
+    const freedrawAuthoringUnits =
+      props.freedrawAuthoringUnits ?? authoringUnits;
+    return state.authoringUnits === authoringUnits &&
+      state.freedrawAuthoringUnits === freedrawAuthoringUnits
+      ? null
+      : { authoringUnits, freedrawAuthoringUnits };
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
@@ -9389,17 +9399,19 @@ class App extends React.Component<AppProps, AppState> {
     elementType: ExcalidrawElement["type"],
   ): Pick<ExcalidrawElement, "strokeWidth" | "authoringScale"> {
     const { freedrawStrokeWidth } = this.props;
-    const width =
-      elementType === "freedraw" && freedrawStrokeWidth !== undefined
-        ? freedrawStrokeWidth
-        : elementType === "freedraw"
-        ? this.state.currentItemFreedrawStrokeWidth
-        : getStrokeWidthByKey(
-            elementType,
-            this.state.currentItemStrokeWidthKey,
-          );
+    if (elementType === "freedraw") {
+      const view = getFreedrawAuthoringView(this.state);
+      return {
+        strokeWidth:
+          (freedrawStrokeWidth ?? this.state.currentItemFreedrawStrokeWidth) *
+          getAuthoringScale(view),
+        ...getAuthoringScaleField(view),
+      };
+    }
     return {
-      strokeWidth: width * getAuthoringScale(this.state),
+      strokeWidth:
+        getStrokeWidthByKey(elementType, this.state.currentItemStrokeWidthKey) *
+        getAuthoringScale(this.state),
       ...getAuthoringScaleField(this.state),
     };
   }

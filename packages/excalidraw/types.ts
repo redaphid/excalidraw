@@ -451,10 +451,12 @@ export interface AppState {
   currentItemBackgroundColor: string;
   currentItemFillStyle: ExcalidrawElement["fillStyle"];
   currentItemStrokeWidthKey: StrokeWidthKey;
-  /** in `authoringUnits` */
+  /** in `freedrawAuthoringUnits` */
   currentItemFreedrawStrokeWidth: number;
   /** mirrors the `authoringUnits` prop; see `getAuthoringScale` */
   authoringUnits: AuthoringUnits;
+  /** mirrors the `freedrawAuthoringUnits` prop, else `authoringUnits` */
+  freedrawAuthoringUnits: AuthoringUnits;
   currentItemStrokeStyle: ExcalidrawElement["strokeStyle"];
   currentItemRoughness: number;
   currentItemStrokeVariability: StrokeVariability;
@@ -900,7 +902,13 @@ export interface ExcalidrawProps {
    */
   authoringUnits?: AuthoringUnits;
   /**
-   * The freedraw tool's stroke width, in `authoringUnits`, in place of the
+   * `authoringUnits` for the freedraw tool's stroke width alone, so a board
+   * can size pen strokes in screen pixels while its shapes and text keep
+   * scene sizes. Defaults to `authoringUnits`.
+   */
+  freedrawAuthoringUnits?: AuthoringUnits;
+  /**
+   * The freedraw tool's stroke width, in `freedrawAuthoringUnits`, in place of the
    * named widths, which are hidden while the tool is out.
    */
   freedrawStrokeWidth?: number;

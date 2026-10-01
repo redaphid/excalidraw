@@ -36,6 +36,7 @@ export const getDefaultAppState = (): Omit<
     currentItemFontFamily: DEFAULT_FONT_FAMILY,
     currentItemFontSize: DEFAULT_FONT_SIZE,
     authoringUnits: "scene",
+    freedrawAuthoringUnits: "scene",
     currentItemOpacity: DEFAULT_ELEMENT_PROPS.opacity,
     currentItemRoughness: DEFAULT_ELEMENT_PROPS.roughness,
     currentItemStrokeVariability: "constant",
@@ -175,6 +176,7 @@ const APP_STATE_STORAGE_CONF = (<
   currentItemFontFamily: { browser: true, export: false, server: false },
   currentItemFontSize: { browser: true, export: false, server: false },
   authoringUnits: { browser: false, export: false, server: false },
+  freedrawAuthoringUnits: { browser: false, export: false, server: false },
   currentItemRoundness: {
     browser: true,
     export: false,

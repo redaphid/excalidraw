@@ -65,6 +65,7 @@ exports[`exportToSvg > with default arguments 1`] = `
     "outline": true,
   },
   "frameToHighlight": null,
+  "freedrawAuthoringUnits": "scene",
   "gridModeEnabled": false,
   "gridSize": 20,
   "gridStep": 5,

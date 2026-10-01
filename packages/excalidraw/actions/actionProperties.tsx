@@ -63,6 +63,7 @@ import {
   isFreeDrawElement,
   getRoundnessForShape,
   getAuthoringScale,
+  getFreedrawAuthoringView,
 } from "@excalidraw/element";
 
 import {
@@ -796,7 +797,8 @@ export const actionChangeFreedrawStrokeWidth = register<number>({
       elements: changeProperty(elements, appState, (el) =>
         isFreeDrawElement(el)
           ? newElementWith(el, {
-              strokeWidth: value * getAuthoringScale(appState),
+              strokeWidth:
+                value * getAuthoringScale(getFreedrawAuthoringView(appState)),
             })
           : el,
       ),
@@ -805,7 +807,9 @@ export const actionChangeFreedrawStrokeWidth = register<number>({
     };
   },
   PanelComponent: ({ elements, appState, updateData, app }) => {
-    const scale = useAppStateValue(getAuthoringScale);
+    const scale = useAppStateValue((state) =>
+      getAuthoringScale(getFreedrawAuthoringView(state)),
+    );
     const width = getFormValue<number | null>(
       elements,
       app,

@@ -13,6 +13,14 @@ export const DEFAULT_AUTHORING_VIEW: AuthoringView = {
   authoringUnits: "scene",
 };
 
+/** the view the freedraw tool's stroke width is authored in */
+export const getFreedrawAuthoringView = (
+  state: Pick<AppState, "zoom" | "freedrawAuthoringUnits">,
+): AuthoringView => ({
+  zoom: state.zoom,
+  authoringUnits: state.freedrawAuthoringUnits,
+});
+
 /**
  * Scene units per authoring unit: what a named stroke width, a font size, a
  * default element size or a tool tolerance is multiplied by to size it in the

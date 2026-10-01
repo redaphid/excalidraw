@@ -20,6 +20,11 @@ at 100x is an ordinary element whose numbers happen to be small, plus
 `"authoringScale": 0.01`. Scene authoring, and screen authoring at 1x, write no
 `authoringScale`, so their elements are upstream's.
 
+`freedrawAuthoringUnits` sets the units of the pen's width alone and defaults
+to `authoringUnits`. `freedrawAuthoringUnits="screen"` on a scene-unit board
+draws every new stroke at the pen-size slider's width on screen, while shapes,
+text and tolerances keep their scene sizes.
+
 ## The data shape
 
 Two numbers carry the whole feature.
@@ -222,6 +227,8 @@ size and scaled back down. Fonts of a pixel or more are untouched.
   bitmap.
 - `packages/excalidraw/tests/freedrawStrokeWidth.test.tsx`: the pen width prop
   in both units.
+- `packages/excalidraw/tests/freedrawAuthoringUnits.test.tsx`: the pen in
+  screen units on a scene-unit board, and the reverse.
 - `packages/element/tests/paintExtent.test.ts`: a thick stroke whose ink, not
   its centre line, crosses a frame or the viewport edge is exported with the
   frame and counted as visible.
