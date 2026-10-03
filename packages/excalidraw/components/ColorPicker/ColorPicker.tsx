@@ -133,7 +133,11 @@ const ColorPickerPopupContent = ({
       style={{ maxWidth: "13rem" }}
       // Improve focus handling for text editing scenarios
       preventAutoFocusOnTouch={!!appState.editingTextElement}
-      onDoubleTap={() => updateData({ openPopup: null })}
+      onDoubleTap={() => {
+        // deferred: the tap's own color change commits a full pre-commit
+        // appState spread that would otherwise clobber the close
+        setTimeout(() => updateData({ openPopup: null }), 0);
+      }}
       onFocusOutside={(event) => {
         const target = event.target;
         // focus moving into the top-picks context menu — let the menu keep
