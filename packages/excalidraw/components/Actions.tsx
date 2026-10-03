@@ -281,6 +281,7 @@ const CombinedShapeProperties = ({
             container={container}
             style={{ maxWidth: "13rem" }}
             onClose={() => {}}
+            onDoubleTap={() => setAppState({ openPopup: null })}
           >
             <div className="selected-shape-actions">
               {predicates.fill && renderAction("changeFillStyle")}
@@ -395,6 +396,7 @@ const CombinedArrowProperties = ({
             className="properties-content"
             style={{ maxWidth: "13rem" }}
             onClose={() => {}}
+            onDoubleTap={() => setAppState({ openPopup: null })}
           >
             {renderAction("changeArrowProperties")}
           </PropertiesPopover>
@@ -471,6 +473,7 @@ const CombinedTextProperties = ({
             style={{ maxWidth: "13rem" }}
             // Improve focus handling for text editing scenarios
             preventAutoFocusOnTouch={!!appState.editingTextElement}
+            onDoubleTap={() => setAppState({ openPopup: null })}
             onClose={() => {
               // Refocus text editor when popover closes with caret restoration
               if (appState.editingTextElement) {

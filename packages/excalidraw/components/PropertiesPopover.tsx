@@ -18,7 +18,15 @@ interface PropertiesPopoverProps {
   onFocusOutside?: Popover.PopoverContentProps["onFocusOutside"];
   onPointerDownOutside?: Popover.PopoverContentProps["onPointerDownOutside"];
   preventAutoFocusOnTouch?: boolean;
+  /** when provided, double-tapping (touch/pen) the same swatch or option
+   * inside the popover calls this — meant to close it so the user can get
+   * straight back to drawing */
+  onDoubleTap?: () => void;
 }
+
+const DOUBLE_TAP_MAX_MS = 350;
+// label taps synthesize a second click on their input right away — not a tap
+const DOUBLE_TAP_MIN_MS = 40;
 
 export const PropertiesPopover = React.forwardRef<
   HTMLDivElement,
@@ -36,10 +44,15 @@ export const PropertiesPopover = React.forwardRef<
       onPointerLeave,
       onPointerDownOutside,
       preventAutoFocusOnTouch = false,
+      onDoubleTap,
     },
     ref,
   ) => {
     const editorInterface = useEditorInterface();
+    const lastTap = React.useRef<{ target: Element; time: number } | null>(
+      null,
+    );
+    const lastPointerIsTouch = React.useRef(false);
     const isMobilePortrait =
       editorInterface.formFactor === "phone" && !editorInterface.isLandscape;
 
@@ -60,6 +73,44 @@ export const PropertiesPopover = React.forwardRef<
               editorInterface.formFactor === "phone" ? "0.5rem" : undefined,
           }}
           onPointerLeave={onPointerLeave}
+          onPointerDownCapture={(event) => {
+            lastPointerIsTouch.current = event.pointerType !== "mouse";
+          }}
+          onClickCapture={
+            onDoubleTap
+              ? (event) => {
+                  const target =
+                    event.target instanceof Element
+                      ? event.target.closest("button, label")
+                      : null;
+                  if (!target || !lastPointerIsTouch.current) {
+                    lastTap.current = null;
+                    return;
+                  }
+                  const now = Date.now();
+                  const prev = lastTap.current;
+                  const elapsed = prev ? now - prev.time : Infinity;
+                  if (
+                    prev &&
+                    prev.target === target &&
+                    elapsed >= DOUBLE_TAP_MIN_MS &&
+                    elapsed <= DOUBLE_TAP_MAX_MS
+                  ) {
+                    lastTap.current = null;
+                    onDoubleTap();
+                    return;
+                  }
+                  // ignore the synthetic input click that follows a label tap
+                  if (
+                    !prev ||
+                    prev.target !== target ||
+                    elapsed > DOUBLE_TAP_MIN_MS
+                  ) {
+                    lastTap.current = { target, time: now };
+                  }
+                }
+              : undefined
+          }
           onKeyDown={onKeyDown}
           onFocusOutside={onFocusOutside}
           onPointerDownOutside={onPointerDownOutside}
