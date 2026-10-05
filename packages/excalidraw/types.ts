@@ -639,7 +639,7 @@ export type PointerCoords = Readonly<{
 export type Gesture = {
   pointers: Map<number, PointerCoords>;
   lastCenter: { x: number; y: number } | null;
-  initialDistance: number | null;
+  lastDistance: number | null;
   initialScale: number | null;
 };
 

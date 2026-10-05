@@ -602,7 +602,7 @@ let lastPointerUp: (() => void) | null = null;
 const gesture: Gesture = {
   pointers: new Map(),
   lastCenter: null,
-  initialDistance: null,
+  lastDistance: null,
   initialScale: null,
 };
 
@@ -3420,7 +3420,7 @@ class App extends React.Component<AppProps, AppState> {
 
     gesture.pointers.clear();
     gesture.lastCenter = null;
-    gesture.initialDistance = null;
+    gesture.lastDistance = null;
     gesture.initialScale = null;
 
     clearTimeout(tappedTwiceTimer);
@@ -8279,10 +8279,7 @@ class App extends React.Component<AppProps, AppState> {
 
     if (gesture.pointers.size === 2) {
       gesture.lastCenter = getCenter(gesture.pointers);
-      gesture.initialScale = this.state.zoom.value;
-      gesture.initialDistance = getDistance(
-        Array.from(gesture.pointers.values()),
-      );
+      gesture.lastDistance = getDistance(Array.from(gesture.pointers.values()));
     }
   }
 
@@ -8300,38 +8297,28 @@ class App extends React.Component<AppProps, AppState> {
       });
     }
 
-    const initialScale = gesture.initialScale;
-    if (
-      gesture.pointers.size === 2 &&
-      gesture.lastCenter &&
-      initialScale &&
-      gesture.initialDistance
-    ) {
-      const lastCenter = gesture.lastCenter;
+    const { lastCenter, lastDistance } = gesture;
+    if (gesture.pointers.size === 2 && lastCenter && lastDistance) {
       const center = getCenter(gesture.pointers);
-      gesture.lastCenter = center;
-
       const distance = getDistance(Array.from(gesture.pointers.values()));
+      if (!distance) {
+        return;
+      }
+      gesture.lastCenter = center;
+      gesture.lastDistance = distance;
+
       const scaleFactor =
         this.state.activeTool.type === "freedraw" && this.state.penMode
           ? 1
-          : distance / gesture.initialDistance;
+          : distance / lastDistance;
 
-      const nextZoom = scaleFactor
-        ? getNormalizedZoom(initialScale * scaleFactor)
-        : this.state.zoom.value;
-
-      // Zoom about where the fingers were, which the board point under
-      // them has not left, then pan by how far they moved. Computed from
-      // the state the move applies to, so moves batched together compose.
-      // `viewport.translate` rubberband-clamps the pan against the lock.
       this.viewport.translate(
         (state) => {
           const zoomed = getViewportForZoomWithScrollConstraints(
             {
               viewportX: lastCenter.x,
               viewportY: lastCenter.y,
-              nextZoom,
+              nextZoom: getNormalizedZoom(state.zoom.value * scaleFactor),
             },
             state,
           );
@@ -8350,10 +8337,7 @@ class App extends React.Component<AppProps, AppState> {
         this.resetShouldCacheIgnoreZoomDebounced();
       }
     } else {
-      gesture.lastCenter =
-        gesture.initialDistance =
-        gesture.initialScale =
-          null;
+      gesture.lastCenter = gesture.lastDistance = null;
     }
   };
 
