@@ -5,8 +5,6 @@
 
 import {
   arrayToMap,
-  MAX_ZOOM,
-  MIN_ZOOM,
   viewportCoordsToSceneCoords,
   ZOOM_STEP,
 } from "@excalidraw/common";
@@ -147,17 +145,12 @@ const constrainScrollAxis = (
   return clamp(scroll, min - overscroll, max + overscroll);
 };
 
-/** Clamps a zoom to the range the active lock (`scrollConstraints`) allows. */
 const constrainZoom = (
   zoom: number,
   scrollConstraints: AppState["scrollConstraints"],
 ): NormalizedZoomValue =>
   getNormalizedZoom(
-    clamp(
-      zoom,
-      scrollConstraints?.lockZoom ? scrollConstraints.zoom : MIN_ZOOM,
-      MAX_ZOOM,
-    ),
+    scrollConstraints?.lockZoom ? Math.max(zoom, scrollConstraints.zoom) : zoom,
   );
 
 /**
@@ -250,8 +243,7 @@ const getViewportForZoom = (
  * Resolves a focal-point zoom against the active scroll constraints while
  * preserving the current rubberband displacement in screen pixels. This lets
  * zoom and scroll-constraint snap-back compose without either visually
- * cancelling the other. The zoom is clamped to what the lock allows before
- * the focal scroll is computed, so the focal point stays put at the limit.
+ * cancelling the other.
  */
 export const getViewportForZoomWithScrollConstraints = (
   opts: ZoomOptions,
@@ -263,10 +255,15 @@ export const getViewportForZoomWithScrollConstraints = (
   const overscrollY =
     (state.scrollY - restingViewport.scrollY) * state.zoom.value;
 
-  const nextZoom = constrainZoom(opts.nextZoom, state.scrollConstraints);
   const zoomedViewport = constrainScrollState({
     ...state,
-    ...getViewportForZoom({ ...opts, nextZoom }, state),
+    ...getViewportForZoom(
+      {
+        ...opts,
+        nextZoom: constrainZoom(opts.nextZoom, state.scrollConstraints),
+      },
+      state,
+    ),
   });
 
   if (!state.scrollConstraints?.lockScroll || (!overscrollX && !overscrollY)) {
