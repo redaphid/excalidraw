@@ -138,3 +138,38 @@ execSync(
   )} -C ${staging} package`,
 );
 fs.rmSync(staging, { recursive: true, force: true });
+
+// The sibling tarballs point their own @excalidraw dependencies at this
+// release's tarball URLs, so each also installs from its URL alone.
+const releaseUrl = (packageName) =>
+  `https://github.com/redaphid/excalidraw/releases/download/v${version}/${tarballName(
+    packageName,
+  )}`;
+for (const packageName of siblings) {
+  const staging = fs.mkdtempSync(path.join(os.tmpdir(), "excalidraw-pack-"));
+  execSync(`tar -xzf ${tarballName(packageName)} -C ${staging}`, {
+    cwd: OUT_DIR,
+  });
+  const sibling = JSON.parse(
+    fs.readFileSync(path.join(staging, "package/package.json"), "utf-8"),
+  );
+  const dependencies = { ...sibling.dependencies };
+  for (const name of Object.keys(dependencies)) {
+    if (!name.startsWith("@excalidraw/")) {
+      continue;
+    }
+    dependencies[name] = releaseUrl(name.replace("@excalidraw/", ""));
+  }
+  fs.writeFileSync(
+    path.join(staging, "package/package.json"),
+    `${JSON.stringify({ ...sibling, dependencies }, null, 2)}\n`,
+    "utf-8",
+  );
+  execSync(
+    `tar -czf ${path.resolve(
+      OUT_DIR,
+      tarballName(packageName),
+    )} -C ${staging} package`,
+  );
+  fs.rmSync(staging, { recursive: true, force: true });
+}
