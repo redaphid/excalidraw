@@ -47,12 +47,13 @@ const screenDistance = (scene: Point, screen: Point) => {
   return Math.hypot(x - screen.x, y - screen.y);
 };
 
-const waitForAnimationToStop = (key: string) =>
+const waitForAnimationToStop = (key: string, maxFrames = 200) =>
   React.act(
     () =>
       new Promise<void>((resolve) => {
+        let remaining = maxFrames;
         const check = () =>
-          AnimationController.running(key)
+          AnimationController.running(key) && --remaining > 0
             ? requestAnimationFrame(check)
             : resolve();
         requestAnimationFrame(check);
@@ -122,6 +123,8 @@ describe("a two-finger gesture", () => {
   });
 
   afterEach(() => {
+    finger1.up();
+    finger2.up();
     restoreOriginalGetBoundingClientRect();
   });
 
@@ -241,43 +244,53 @@ describe("a two-finger gesture", () => {
     });
   });
 
-  describe("when a locked transition moves the view while the fingers are down", () => {
+  describe("when a locked transition changes the zoom while the fingers are down", () => {
     let anchor: Point;
+    let transitionZoom: number;
 
     beforeEach(async () => {
       const rectangle = API.createElement({
         type: "rectangle",
         x: 0,
         y: 0,
-        width: 100,
-        height: 50,
+        width: 400,
+        height: 200,
       });
       API.setElements([rectangle]);
-      finger1.downAt(100, 60);
-      finger2.downAt(140, 60);
+      finger1.downAt(60, 40);
+      finger2.downAt(100, 40);
       window.EXCALIDRAW_THROTTLE_RENDER = true;
       React.act(() => {
         h.app.viewport.setViewport({
           target: rectangle,
-          fit: "scale-down",
+          fit: "contain",
           animation: { duration: 10 },
-          lock: { scroll: true },
+          lock: { zoom: true },
         });
       });
-      finger1.moveTo(96, 60);
-      finger2.moveTo(144, 60);
+      finger1.moveTo(60, 44);
+      finger2.moveTo(108, 44);
       await waitForAnimationToStop(SCROLL_TO_CONTENT_ANIMATION_KEY);
-      anchor = sceneUnder({ x: 120, y: 60 });
-      finger1.moveTo(92, 60);
-      finger2.moveTo(148, 60);
+      transitionZoom = h.state.zoom.value;
+      anchor = sceneUnder({ x: 84, y: 44 });
+      finger1.moveTo(54, 48);
+      finger2.moveTo(114, 48);
     });
 
     afterEach(() => {
       window.EXCALIDRAW_THROTTLE_RENDER = undefined;
     });
 
-    it("carries on from where the transition left the view", () => {
-      expect(screenDistance(anchor, { x: 120, y: 60 })).toBeLessThan(0.5);
+    it("lets the transition install its lock", () => {
+      expect(h.state.scrollConstraints?.lockZoom).toBe(true);
+    });
+
+    it("zooms from the zoom the transition left", () => {
+      expect(h.state.zoom.value).toBeCloseTo((transitionZoom * 60) / 48, 5);
+    });
+
+    it("keeps the board point under the fingers under their centre", () => {
+      expect(screenDistance(anchor, { x: 84, y: 48 })).toBeLessThan(0.5);
     });
   });
 
@@ -358,6 +371,42 @@ describe("a two-finger gesture", () => {
 
     it("follows the fingers back from the edge of the give at once", () => {
       expect(h.state.scrollY).toBeCloseTo(200);
+    });
+  });
+
+  describe("when the fingers pinch past a zoom lock's floor and spread back", () => {
+    beforeEach(() => {
+      const rectangle = API.createElement({
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 50,
+      });
+      API.setElements([rectangle]);
+      React.act(() => {
+        h.app.viewport.setViewport({
+          target: rectangle,
+          fit: "contain",
+          animation: false,
+          lock: { zoom: true },
+        });
+      });
+      React.act(() => {
+        h.setState({ zoom: { value: getNormalizedZoom(4) } });
+      });
+      finger1.downAt(40, 40);
+      finger2.downAt(120, 40);
+      for (let step = 1; step <= 10; step++) {
+        finger1.moveTo(40 + 3 * step, 40);
+        finger2.moveTo(120 - 3 * step, 40);
+      }
+      finger1.moveTo(65, 40);
+      finger2.moveTo(95, 40);
+    });
+
+    it("zooms out from the floor as soon as the fingers spread", () => {
+      expect(h.state.zoom.value).toBeCloseTo(3, 5);
     });
   });
 });
