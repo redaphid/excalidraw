@@ -5,6 +5,8 @@ import {
   sceneCoordsToViewportCoords,
   viewportCoordsToSceneCoords,
 } from "../index";
+import { SCROLL_TO_CONTENT_ANIMATION_KEY } from "../components/App.viewport";
+import { AnimationController } from "../renderer/animation";
 import { getNormalizedZoom } from "../scene";
 
 import { API } from "./helpers/api";
@@ -44,6 +46,18 @@ const screenDistance = (scene: Point, screen: Point) => {
   );
   return Math.hypot(x - screen.x, y - screen.y);
 };
+
+const waitForAnimationToStop = (key: string) =>
+  React.act(
+    () =>
+      new Promise<void>((resolve) => {
+        const check = () =>
+          AnimationController.running(key)
+            ? requestAnimationFrame(check)
+            : resolve();
+        requestAnimationFrame(check);
+      }),
+  );
 
 const ratioOfPinchAt = (zoom: number, from: number, to: number) => {
   React.act(() => {
@@ -201,6 +215,149 @@ describe("a two-finger gesture", () => {
 
     it("stops at the floor", () => {
       expect(h.state.zoom.value).toBe(h.state.scrollConstraints?.zoom);
+    });
+  });
+
+  describe("when the view moves after the second finger lands", () => {
+    let anchor: Point;
+
+    beforeEach(() => {
+      finger1.downAt(100, 60);
+      finger2.downAt(140, 60);
+      React.act(() => {
+        h.setState({ scrollX: h.state.scrollX + 50 });
+      });
+      anchor = sceneUnder({ x: 120, y: 60 });
+      for (let step = 1; step <= 10; step++) {
+        finger1.moveTo(100 - 4 * step, 60);
+        finger2.moveTo(140 + 4 * step, 60);
+      }
+      finger1.up();
+      finger2.up();
+    });
+
+    it("keeps that move, with the board point under the fingers under their centre", () => {
+      expect(screenDistance(anchor, { x: 120, y: 60 })).toBeLessThan(0.5);
+    });
+  });
+
+  describe("when a locked transition moves the view while the fingers are down", () => {
+    let anchor: Point;
+
+    beforeEach(async () => {
+      const rectangle = API.createElement({
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 50,
+      });
+      API.setElements([rectangle]);
+      finger1.downAt(100, 60);
+      finger2.downAt(140, 60);
+      window.EXCALIDRAW_THROTTLE_RENDER = true;
+      React.act(() => {
+        h.app.viewport.setViewport({
+          target: rectangle,
+          fit: "scale-down",
+          animation: { duration: 10 },
+          lock: { scroll: true },
+        });
+      });
+      finger1.moveTo(96, 60);
+      finger2.moveTo(144, 60);
+      await waitForAnimationToStop(SCROLL_TO_CONTENT_ANIMATION_KEY);
+      anchor = sceneUnder({ x: 120, y: 60 });
+      finger1.moveTo(92, 60);
+      finger2.moveTo(148, 60);
+    });
+
+    afterEach(() => {
+      window.EXCALIDRAW_THROTTLE_RENDER = undefined;
+    });
+
+    it("carries on from where the transition left the view", () => {
+      expect(screenDistance(anchor, { x: 120, y: 60 })).toBeLessThan(0.5);
+    });
+  });
+
+  describe("when the fingers spread near the edge of a scroll lock", () => {
+    beforeEach(() => {
+      React.act(() => {
+        h.app.viewport.setViewport({
+          target: [0, 0, 1000, 1000],
+          fit: "scale-down",
+          animation: false,
+          lock: { scroll: true, overscroll: 50 },
+        });
+      });
+      finger1.downAt(25, 60);
+      finger2.downAt(35, 60);
+      for (let step = 1; step <= 10; step++) {
+        finger1.moveTo(25 - step / 2, 60);
+        finger2.moveTo(35 + step / 2, 60);
+      }
+    });
+
+    it("hard-clamps the zoom at the lock's edge instead of rubberbanding it", () => {
+      expect(h.state.scrollX).toBeCloseTo(0);
+    });
+  });
+
+  describe("when the view moves between two moves in one React batch", () => {
+    let anchor: Point;
+
+    beforeEach(() => {
+      finger1.downAt(100, 60);
+      finger2.downAt(140, 60);
+      for (let step = 1; step <= 5; step++) {
+        finger1.moveTo(100 - 4 * step, 60);
+        finger2.moveTo(140 + 4 * step, 60);
+      }
+      const before = sceneUnder({ x: 120, y: 60 });
+      anchor = { x: before.x - 50, y: before.y };
+      React.act(() => {
+        h.setState({ scrollX: h.state.scrollX + 50 });
+        finger1.moveTo(76, 60);
+        finger2.moveTo(164, 60);
+      });
+      for (let step = 7; step <= 10; step++) {
+        finger1.moveTo(100 - 4 * step, 60);
+        finger2.moveTo(140 + 4 * step, 60);
+      }
+      finger1.up();
+      finger2.up();
+    });
+
+    it("keeps that move, with the board point under the fingers under their centre", () => {
+      expect(screenDistance(anchor, { x: 120, y: 60 })).toBeLessThan(0.5);
+    });
+  });
+
+  describe("when the fingers pan past a scroll lock's give and turn back", () => {
+    beforeEach(() => {
+      React.act(() => {
+        h.app.viewport.setViewport({
+          target: [0, 0, 1000, 1000],
+          fit: "scale-down",
+          animation: false,
+          lock: { scroll: true, overscroll: 50 },
+        });
+      });
+      finger1.downAt(100, 30);
+      finger2.downAt(140, 30);
+      for (let step = 1; step <= 20; step++) {
+        finger1.moveTo(100, 30 + 10 * step);
+        finger2.moveTo(140, 30 + 10 * step);
+      }
+      for (let step = 1; step <= 3; step++) {
+        finger1.moveTo(100, 230 - 10 * step);
+        finger2.moveTo(140, 230 - 10 * step);
+      }
+    });
+
+    it("follows the fingers back from the edge of the give at once", () => {
+      expect(h.state.scrollY).toBeCloseTo(200);
     });
   });
 });
