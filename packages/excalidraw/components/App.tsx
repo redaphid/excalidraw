@@ -8307,9 +8307,8 @@ class App extends React.Component<AppProps, AppState> {
       initialScale &&
       gesture.initialDistance
     ) {
+      const lastCenter = gesture.lastCenter;
       const center = getCenter(gesture.pointers);
-      const deltaX = center.x - gesture.lastCenter.x;
-      const deltaY = center.y - gesture.lastCenter.y;
       gesture.lastCenter = center;
 
       const distance = getDistance(Array.from(gesture.pointers.values()));
@@ -8322,35 +8321,31 @@ class App extends React.Component<AppProps, AppState> {
         ? getNormalizedZoom(initialScale * scaleFactor)
         : this.state.zoom.value;
 
-      this.setState((state) => {
-        // Preserve any existing screen-space overscroll through the zoom,
-        // then apply this frame's pan delta on top. `viewport.translate`
-        // rubberband-clamps the combined result against the scroll lock.
-        const zoomedViewport = getViewportForZoomWithScrollConstraints(
-          {
-            viewportX: center.x,
-            viewportY: center.y,
-            nextZoom,
-          },
-          state,
-        );
-        const zoomValue = zoomedViewport.zoom.value;
-
-        this.viewport.translate(
-          {
-            zoom: zoomedViewport.zoom,
-            // 2x multiplier is just a magic number that makes this work correctly
-            // on touchscreen devices (note: if we get report that panning is slower/faster
-            // than actual movement, consider swapping with devicePixelRatio)
-            scrollX: zoomedViewport.scrollX + (2 * deltaX) / zoomValue,
-            scrollY: zoomedViewport.scrollY + (2 * deltaY) / zoomValue,
+      // Zoom about where the fingers were, which the board point under
+      // them has not left, then pan by how far they moved. Computed from
+      // the state the move applies to, so moves batched together compose.
+      // `viewport.translate` rubberband-clamps the pan against the lock.
+      this.viewport.translate(
+        (state) => {
+          const zoomed = getViewportForZoomWithScrollConstraints(
+            {
+              viewportX: lastCenter.x,
+              viewportY: lastCenter.y,
+              nextZoom,
+            },
+            state,
+          );
+          return {
+            ...zoomed,
+            scrollX:
+              zoomed.scrollX + (center.x - lastCenter.x) / zoomed.zoom.value,
+            scrollY:
+              zoomed.scrollY + (center.y - lastCenter.y) / zoomed.zoom.value,
             shouldCacheIgnoreZoom: true,
-          },
-          { zoomPreConstrained: true },
-        );
-
-        return null;
-      });
+          };
+        },
+        { zoomPreConstrained: true },
+      );
       if (!this.viewport.isLockedTransitionPending) {
         this.resetShouldCacheIgnoreZoomDebounced();
       }
