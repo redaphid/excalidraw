@@ -147,6 +147,19 @@ const constrainScrollAxis = (
   return clamp(scroll, min - overscroll, max + overscroll);
 };
 
+/** Clamps a zoom to the range the active lock (`scrollConstraints`) allows. */
+const constrainZoom = (
+  zoom: number,
+  scrollConstraints: AppState["scrollConstraints"],
+): NormalizedZoomValue =>
+  getNormalizedZoom(
+    clamp(
+      zoom,
+      scrollConstraints?.lockZoom ? scrollConstraints.zoom : MIN_ZOOM,
+      MAX_ZOOM,
+    ),
+  );
+
 /**
  * Clamps a proposed scroll/zoom against the active lock (`scrollConstraints`).
  * Returns the input scroll/zoom unchanged when there is no lock.
@@ -166,12 +179,7 @@ export const constrainScrollState = (
     return { scrollX: state.scrollX, scrollY: state.scrollY, zoom: state.zoom };
   }
 
-  const minZoom = scrollConstraints.lockZoom
-    ? scrollConstraints.zoom
-    : MIN_ZOOM;
-  const zoomValue = getNormalizedZoom(
-    clamp(state.zoom.value, minZoom, MAX_ZOOM),
-  );
+  const zoomValue = constrainZoom(state.zoom.value, scrollConstraints);
 
   if (!scrollConstraints.lockScroll) {
     return {
@@ -242,7 +250,8 @@ const getViewportForZoom = (
  * Resolves a focal-point zoom against the active scroll constraints while
  * preserving the current rubberband displacement in screen pixels. This lets
  * zoom and scroll-constraint snap-back compose without either visually
- * cancelling the other.
+ * cancelling the other. The zoom is clamped to what the lock allows before
+ * the focal scroll is computed, so the focal point stays put at the limit.
  */
 export const getViewportForZoomWithScrollConstraints = (
   opts: ZoomOptions,
@@ -254,9 +263,10 @@ export const getViewportForZoomWithScrollConstraints = (
   const overscrollY =
     (state.scrollY - restingViewport.scrollY) * state.zoom.value;
 
+  const nextZoom = constrainZoom(opts.nextZoom, state.scrollConstraints);
   const zoomedViewport = constrainScrollState({
     ...state,
-    ...getViewportForZoom(opts, state),
+    ...getViewportForZoom({ ...opts, nextZoom }, state),
   });
 
   if (!state.scrollConstraints?.lockScroll || (!overscrollX && !overscrollY)) {
