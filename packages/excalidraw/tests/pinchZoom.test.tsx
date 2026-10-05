@@ -7,6 +7,7 @@ import {
 } from "../index";
 import { getNormalizedZoom } from "../scene";
 
+import { API } from "./helpers/api";
 import { Pointer } from "./helpers/ui";
 import {
   mockBoundingClientRect,
@@ -28,15 +29,15 @@ const pinch = (from: number, to: number) => {
   finger2.up();
 };
 
-type ScreenPoint = { x: number; y: number };
+type Point = { x: number; y: number };
 
-const sceneUnder = (screen: ScreenPoint) =>
+const sceneUnder = (screen: Point) =>
   viewportCoordsToSceneCoords(
     { clientX: screen.x, clientY: screen.y },
     h.state,
   );
 
-const screenDistance = (scene: ScreenPoint, screen: ScreenPoint) => {
+const screenDistance = (scene: Point, screen: Point) => {
   const { x, y } = sceneCoordsToViewportCoords(
     { sceneX: scene.x, sceneY: scene.y },
     h.state,
@@ -111,7 +112,7 @@ describe("a two-finger gesture", () => {
   });
 
   describe("when the fingers spread while their centre travels", () => {
-    let anchor: ScreenPoint;
+    let anchor: Point;
 
     beforeEach(() => {
       finger1.downAt(70, 60);
@@ -135,7 +136,7 @@ describe("a two-finger gesture", () => {
   });
 
   describe("when both fingers' moves land in one React batch", () => {
-    let anchor: ScreenPoint;
+    let anchor: Point;
 
     beforeEach(() => {
       finger1.downAt(100, 60);
@@ -157,6 +158,49 @@ describe("a two-finger gesture", () => {
 
     it("zooms by the ratio of the spread", () => {
       expect(h.state.zoom.value).toBeCloseTo(3, 5);
+    });
+  });
+
+  describe("when the fingers pinch in past a zoom lock's floor", () => {
+    let anchor: Point;
+
+    beforeEach(() => {
+      const rectangle = API.createElement({
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 50,
+      });
+      API.setElements([rectangle]);
+      React.act(() => {
+        h.app.viewport.setViewport({
+          target: rectangle,
+          fit: "contain",
+          animation: false,
+          lock: { zoom: true },
+        });
+      });
+      React.act(() => {
+        h.setState({ zoom: { value: getNormalizedZoom(4) } });
+      });
+      finger1.downAt(40, 40);
+      finger2.downAt(120, 40);
+      anchor = sceneUnder({ x: 80, y: 40 });
+      for (let step = 1; step <= 10; step++) {
+        finger1.moveTo(40 + 3 * step, 40);
+        finger2.moveTo(120 - 3 * step, 40);
+      }
+      finger1.up();
+      finger2.up();
+    });
+
+    it("keeps the board point that was under the fingers under their centre", () => {
+      expect(screenDistance(anchor, { x: 80, y: 40 })).toBeLessThan(0.5);
+    });
+
+    it("stops at the floor", () => {
+      expect(h.state.zoom.value).toBe(h.state.scrollConstraints?.zoom);
     });
   });
 });
