@@ -82,87 +82,70 @@ for (const packageName of PACKAGES) {
   );
 }
 
-// These versions are never published to npm, so a consumer cannot resolve
-// the sibling packages. The excalidraw tarball carries them as bundled
-// dependencies instead, which package managers install without resolving.
-const staging = fs.mkdtempSync(path.join(os.tmpdir(), "excalidraw-pack-"));
-execSync(`tar -xzf ${tarballName("excalidraw")} -C ${staging}`, {
-  cwd: OUT_DIR,
-});
-const siblings = PACKAGES.filter((packageName) => packageName !== "excalidraw");
-const excalidraw = JSON.parse(
-  fs.readFileSync(path.join(staging, "package/package.json"), "utf-8"),
-);
-const dependencies = { ...excalidraw.dependencies };
-for (const packageName of siblings) {
-  const target = path.join(
-    staging,
-    "package/node_modules/@excalidraw",
-    packageName,
+const siblingsOf = (packageName) => {
+  const direct = Object.keys(readPackageJson(packageName).dependencies ?? {})
+    .map((name) => name.replace("@excalidraw/", ""))
+    .filter((name) => PACKAGES.includes(name));
+  return PACKAGES.filter(
+    (sibling) =>
+      direct.includes(sibling) ||
+      direct.some((name) => siblingsOf(name).includes(sibling)),
   );
-  fs.mkdirSync(target, { recursive: true });
-  execSync(
-    `tar -xzf ${tarballName(packageName)} --strip-components=1 -C ${target}`,
-    { cwd: OUT_DIR },
-  );
-  const sibling = JSON.parse(
-    fs.readFileSync(path.join(target, "package.json"), "utf-8"),
-  );
-  for (const [name, specifier] of Object.entries(sibling.dependencies ?? {})) {
-    if (name.startsWith("@excalidraw/")) {
-      continue;
-    }
-    dependencies[name] = specifier;
-  }
-  dependencies[`@excalidraw/${packageName}`] = version;
-}
-fs.writeFileSync(
-  path.join(staging, "package/package.json"),
-  `${JSON.stringify(
-    {
-      ...excalidraw,
-      dependencies,
-      bundleDependencies: siblings.map(
-        (packageName) => `@excalidraw/${packageName}`,
-      ),
-    },
-    null,
-    2,
-  )}\n`,
-  "utf-8",
-);
-execSync(
-  `tar -czf ${path.resolve(
-    OUT_DIR,
-    tarballName("excalidraw"),
-  )} -C ${staging} package`,
-);
-fs.rmSync(staging, { recursive: true, force: true });
+};
 
-// The sibling tarballs point their own @excalidraw dependencies at this
-// release's tarball URLs, so each also installs from its URL alone.
-const releaseUrl = (packageName) =>
-  `https://github.com/redaphid/excalidraw/releases/download/v${version}/${tarballName(
-    packageName,
-  )}`;
-for (const packageName of siblings) {
+// These versions are never published to npm, so a consumer cannot resolve
+// the sibling packages. Each tarball carries its siblings as bundled
+// dependencies instead, which package managers install without resolving.
+const bundleSiblings = (packageName) => {
+  const siblings = siblingsOf(packageName);
+  if (siblings.length === 0) {
+    return;
+  }
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), "excalidraw-pack-"));
   execSync(`tar -xzf ${tarballName(packageName)} -C ${staging}`, {
     cwd: OUT_DIR,
   });
-  const sibling = JSON.parse(
+  const pkg = JSON.parse(
     fs.readFileSync(path.join(staging, "package/package.json"), "utf-8"),
   );
-  const dependencies = { ...sibling.dependencies };
-  for (const name of Object.keys(dependencies)) {
-    if (!name.startsWith("@excalidraw/")) {
-      continue;
+  const dependencies = { ...pkg.dependencies };
+  for (const siblingName of siblings) {
+    const target = path.join(
+      staging,
+      "package/node_modules/@excalidraw",
+      siblingName,
+    );
+    fs.mkdirSync(target, { recursive: true });
+    execSync(
+      `tar -xzf ${tarballName(siblingName)} --strip-components=1 -C ${target}`,
+      { cwd: OUT_DIR },
+    );
+    const sibling = JSON.parse(
+      fs.readFileSync(path.join(target, "package.json"), "utf-8"),
+    );
+    for (const [name, specifier] of Object.entries(
+      sibling.dependencies ?? {},
+    )) {
+      if (name.startsWith("@excalidraw/")) {
+        continue;
+      }
+      dependencies[name] = specifier;
     }
-    dependencies[name] = releaseUrl(name.replace("@excalidraw/", ""));
+    dependencies[`@excalidraw/${siblingName}`] = version;
   }
   fs.writeFileSync(
     path.join(staging, "package/package.json"),
-    `${JSON.stringify({ ...sibling, dependencies }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        ...pkg,
+        dependencies,
+        bundleDependencies: siblings.map(
+          (siblingName) => `@excalidraw/${siblingName}`,
+        ),
+      },
+      null,
+      2,
+    )}\n`,
     "utf-8",
   );
   execSync(
@@ -172,4 +155,10 @@ for (const packageName of siblings) {
     )} -C ${staging} package`,
   );
   fs.rmSync(staging, { recursive: true, force: true });
+};
+
+// Dependents go first, so each bundles its siblings' tarballs before those
+// are rewritten with bundles of their own.
+for (const packageName of [...PACKAGES].reverse()) {
+  bundleSiblings(packageName);
 }
