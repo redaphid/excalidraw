@@ -75,35 +75,51 @@ for (const packageName of PACKAGES) {
 
 fs.rmSync(OUT_DIR, { recursive: true, force: true });
 fs.mkdirSync(OUT_DIR);
+const packed = fs.mkdtempSync(path.join(os.tmpdir(), "excalidraw-packed-"));
 for (const packageName of PACKAGES) {
   execSync(
-    `yarn pack --filename ${path.resolve(OUT_DIR, tarballName(packageName))}`,
+    `yarn pack --filename ${path.resolve(packed, tarballName(packageName))}`,
     { cwd: path.resolve(PACKAGES_DIR, packageName), stdio: "inherit" },
   );
 }
 
-const siblingsOf = (packageName) => {
-  const direct = Object.keys(readPackageJson(packageName).dependencies ?? {})
+const internalDependencies = (packageName) =>
+  Object.keys(readPackageJson(packageName).dependencies ?? {})
     .map((name) => name.replace("@excalidraw/", ""))
     .filter((name) => PACKAGES.includes(name));
+
+// common and math import each other, so the closure visits each package once.
+const siblingsOf = (packageName) => {
+  const closure = new Set();
+  const visit = (name) => {
+    if (closure.has(name)) {
+      return;
+    }
+    closure.add(name);
+    internalDependencies(name).forEach(visit);
+  };
+  visit(packageName);
   return PACKAGES.filter(
-    (sibling) =>
-      direct.includes(sibling) ||
-      direct.some((name) => siblingsOf(name).includes(sibling)),
+    (sibling) => sibling !== packageName && closure.has(sibling),
   );
 };
 
 // These versions are never published to npm, so a consumer cannot resolve
 // the sibling packages. Each tarball carries its siblings as bundled
 // dependencies instead, which package managers install without resolving.
+// Bundles copy the packed tarballs, so no bundled copy nests another.
 const bundleSiblings = (packageName) => {
   const siblings = siblingsOf(packageName);
   if (siblings.length === 0) {
+    fs.copyFileSync(
+      path.resolve(packed, tarballName(packageName)),
+      path.resolve(OUT_DIR, tarballName(packageName)),
+    );
     return;
   }
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), "excalidraw-pack-"));
   execSync(`tar -xzf ${tarballName(packageName)} -C ${staging}`, {
-    cwd: OUT_DIR,
+    cwd: packed,
   });
   const pkg = JSON.parse(
     fs.readFileSync(path.join(staging, "package/package.json"), "utf-8"),
@@ -118,7 +134,7 @@ const bundleSiblings = (packageName) => {
     fs.mkdirSync(target, { recursive: true });
     execSync(
       `tar -xzf ${tarballName(siblingName)} --strip-components=1 -C ${target}`,
-      { cwd: OUT_DIR },
+      { cwd: packed },
     );
     const sibling = JSON.parse(
       fs.readFileSync(path.join(target, "package.json"), "utf-8"),
@@ -157,8 +173,7 @@ const bundleSiblings = (packageName) => {
   fs.rmSync(staging, { recursive: true, force: true });
 };
 
-// Dependents go first, so each bundles its siblings' tarballs before those
-// are rewritten with bundles of their own.
-for (const packageName of [...PACKAGES].reverse()) {
+for (const packageName of PACKAGES) {
   bundleSiblings(packageName);
 }
+fs.rmSync(packed, { recursive: true, force: true });
