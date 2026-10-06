@@ -48,6 +48,7 @@ import {
   THEME,
   TOUCH_CTX_MENU_TIMEOUT,
   YOUTUBE_STATES,
+  ZOOM_SETTLE_TIMEOUT,
   POINTER_EVENTS,
   TOOL_TYPE,
   DEFAULT_COLLISION_THRESHOLD,
@@ -4853,6 +4854,11 @@ class App extends React.Component<AppProps, AppState> {
 
     const wasMultiTouchGesture = gesture.pointers.size >= 2;
     gesture.pointers.delete(event.pointerId);
+
+    // a lifted finger ends the pinch: redraw crisp now, not after a pause
+    if (wasMultiTouchGesture && gesture.pointers.size < 2) {
+      this.resetShouldCacheIgnoreZoomDebounced.flush();
+    }
 
     // the multi-touch viewport gesture just disengaged: release the
     // rubberband that was withheld while it was active
@@ -12977,7 +12983,7 @@ class App extends React.Component<AppProps, AppState> {
     if (!this.unmounted) {
       this.setState({ shouldCacheIgnoreZoom: false });
     }
-  }, 300);
+  }, ZOOM_SETTLE_TIMEOUT);
 
   private updateDOMRect = (cb?: () => void) => {
     if (this.excalidrawContainerRef?.current) {

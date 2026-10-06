@@ -20,6 +20,11 @@ const pinch = (from: number, to: number) => {
   finger2.downAt(100 + from / 2, 100);
   finger1.moveTo(100 - to / 2, 100);
   finger2.moveTo(100 + to / 2, 100);
+  return { finger1, finger2 };
+};
+
+const pinchAndLift = (from: number, to: number) => {
+  const { finger1, finger2 } = pinch(from, to);
   finger1.up();
   finger2.up();
 };
@@ -28,7 +33,7 @@ const ratioOfPinchAt = (zoom: number, from: number, to: number) => {
   React.act(() => {
     h.setState({ zoom: { value: getNormalizedZoom(zoom) } });
   });
-  pinch(from, to);
+  pinchAndLift(from, to);
   return h.state.zoom.value / zoom;
 };
 
@@ -72,6 +77,16 @@ describe("one pinch of the same finger travel", () => {
         "5.000",
         "5.000",
       ]);
+    });
+  });
+
+  describe("when a finger lifts", () => {
+    it("redraws crisp right away", () => {
+      const { finger1 } = pinch(30, 150);
+      expect(h.state.shouldCacheIgnoreZoom).toBe(true);
+
+      finger1.up();
+      expect(h.state.shouldCacheIgnoreZoom).toBe(false);
     });
   });
 });
