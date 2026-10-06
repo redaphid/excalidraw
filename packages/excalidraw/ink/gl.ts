@@ -102,9 +102,19 @@ const compile = (gl: WebGL2RenderingContext, type: number, source: string) => {
 
 const link = (gl: WebGL2RenderingContext) => {
   const program = gl.createProgram();
-  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX));
-  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT));
+  const shaders = [
+    compile(gl, gl.VERTEX_SHADER, VERTEX),
+    compile(gl, gl.FRAGMENT_SHADER, FRAGMENT),
+  ];
+  for (const shader of shaders) {
+    gl.attachShader(program, shader);
+  }
   gl.linkProgram(program);
+  // A linked program keeps its own copy; the shaders are only flagged until
+  // it lets go of them.
+  for (const shader of shaders) {
+    gl.deleteShader(shader);
+  }
   if (gl.getProgramParameter(program, gl.LINK_STATUS)) {
     return program;
   }
@@ -126,8 +136,8 @@ export const createInkRenderer = (
     // compositor's next frame: the heart of pen latency on Windows.
     desynchronized,
   });
-  // A canvas hands back the context it gave before, which may have been
-  // lost since: a GPU reset, or too many contexts on the page.
+  // A GPU reset, or too many contexts on the page, can hand out a context
+  // that is lost from the start.
   if (!gl || gl.isContextLost()) {
     return null;
   }
@@ -306,15 +316,10 @@ export const createInkRenderer = (
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
     },
-    // Frees what this renderer made, but keeps the context: the canvas would
-    // hand a lost one to the next renderer attached to it (React's strict
-    // mode attaches twice).
     dispose() {
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
-      gl.deleteVertexArray(vao);
-      gl.deleteBuffer(buffer);
-      gl.deleteProgram(program);
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
     },
   };
 };

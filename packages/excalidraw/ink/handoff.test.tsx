@@ -11,7 +11,6 @@ import { getNormalizedZoom } from "../scene";
 import { API } from "../tests/helpers/api";
 import { UI } from "../tests/helpers/ui";
 import {
-  FakeWebGL2,
   installWebGL2,
   sendPointer,
   sendStroke,
@@ -19,7 +18,7 @@ import {
 } from "../tests/helpers/webgl";
 import { act, render } from "../tests/test-utils";
 
-import type { DrawnDab, InkFrame } from "../tests/helpers/webgl";
+import type { DrawnDab, FakeGPU, InkFrame } from "../tests/helpers/webgl";
 
 // What the ink layer draws while the pen is down, against the stroke the
 // editor draws in its place once it lifts: the hand-off must not jump.
@@ -29,7 +28,7 @@ const { h } = window;
 type Point = readonly [number, number];
 type Sample = { x: number; y: number; pressure: number };
 
-let gl: FakeWebGL2;
+let gpu: FakeGPU;
 
 const setup = async (strokeWidth: number, zoom = 1) => {
   await render(
@@ -64,7 +63,7 @@ const committed = () =>
   )!;
 
 /** The ink's last frame before the lift: its settled dabs, then the tip. */
-const lastFrame = (): InkFrame => gl.frames.at(-1)!;
+const lastFrame = (): InkFrame => gpu.gl.frames.at(-1)!;
 
 const wave = (scale: number): Sample[] =>
   Array.from({ length: 60 }, (_, i) => ({
@@ -192,8 +191,7 @@ const handOffJump = () => {
 };
 
 beforeEach(() => {
-  gl = new FakeWebGL2();
-  installWebGL2(gl);
+  gpu = installWebGL2();
 });
 
 afterEach(async () => {

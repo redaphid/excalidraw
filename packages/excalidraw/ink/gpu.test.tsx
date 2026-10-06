@@ -11,12 +11,14 @@ import {
 } from "../tests/helpers/webgl";
 import { act, render } from "../tests/test-utils";
 
+import type { FakeGPU } from "../tests/helpers/webgl";
+
 // How the ink layer treats the browser's GPU and pen APIs, seen through the
 // editor.
 
 const { h } = window;
 
-let gl: FakeWebGL2;
+let gpu: FakeGPU;
 
 const draw = () => {
   API.setAppState({ currentItemStrokeVariability: "variable" });
@@ -31,8 +33,7 @@ const draw = () => {
 };
 
 beforeEach(() => {
-  gl = new FakeWebGL2();
-  installWebGL2(gl);
+  gpu = installWebGL2();
 });
 
 afterEach(async () => {
@@ -51,22 +52,60 @@ describe("the ink layer's GPU", () => {
       draw();
     });
 
-    it("should keep the canvas's context alive for the second attach", () => {
-      expect(gl.calls).not.toContain("loseContext");
+    it("should give each attach a canvas of its own", () => {
+      expect(gpu.canvases).toHaveLength(2);
     });
 
-    it("should run the layer", () => {
+    it("should release the first canvas's context", () => {
+      expect(gpu.contexts[0].calls).toContain("loseContext");
+    });
+
+    it("should take the first canvas out of the page", () => {
+      expect(gpu.canvases[0].isConnected).toBe(false);
+    });
+
+    it("should run the layer on the second", () => {
       expect(h.app.api.getInkStatus()?.gpu).toBe(true);
     });
 
     it("should draw strokes on it", () => {
-      expect(gl.frames.length).toBeGreaterThan(0);
+      expect(gpu.contexts[1].frames.length).toBeGreaterThan(0);
+    });
+
+    it("should free each shader once its program is linked", () => {
+      expect(
+        gpu.contexts.map(
+          (gl) => gl.calls.filter((c) => c === "deleteShader").length,
+        ),
+      ).toEqual([2, 2]);
+    });
+  });
+
+  describe("when the host turns the layer off", () => {
+    beforeEach(async () => {
+      const { rerender } = await render(
+        <Excalidraw freedrawRenderer="webgl" />,
+      );
+      rerender(<Excalidraw freedrawRenderer="canvas" />);
+    });
+
+    it("should release the context, rather than leave it for the garbage collector", () => {
+      expect(gpu.gl.calls).toContain("loseContext");
+    });
+
+    it("should take its canvas out of the page", () => {
+      expect(gpu.canvases.every((c) => !c.isConnected)).toBe(true);
+    });
+
+    it("should run no ink layer", () => {
+      expect(h.app.api.getInkStatus()).toBeNull();
     });
   });
 
   describe("when the canvas hands back a context that was lost", () => {
     beforeEach(async () => {
-      gl.lost = true;
+      uninstallWebGL2();
+      installWebGL2(() => Object.assign(new FakeWebGL2(), { lost: true }));
       await render(<Excalidraw freedrawRenderer="webgl" />);
       draw();
     });
@@ -82,7 +121,10 @@ describe("the ink layer's GPU", () => {
 
   describe("when WebGL runs in software, without a GPU", () => {
     beforeEach(async () => {
-      gl.renderer = "Google SwiftShader";
+      uninstallWebGL2();
+      installWebGL2(() =>
+        Object.assign(new FakeWebGL2(), { renderer: "Google SwiftShader" }),
+      );
       await render(<Excalidraw freedrawRenderer="webgl" />);
     });
 

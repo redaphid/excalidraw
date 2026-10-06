@@ -113,17 +113,49 @@ export class FakeWebGL2 {
 // is wrapped here rather than spied on.
 const getContext = HTMLCanvasElement.prototype.getContext;
 
-/** Hands `gl` to every canvas asking for WebGL2, until `uninstallWebGL2`. */
-export const installWebGL2 = (gl: FakeWebGL2 | null) => {
+/** The WebGL2 contexts handed out, one per canvas, in the order asked for. */
+export type FakeGPU = {
+  contexts: FakeWebGL2[];
+  canvases: HTMLCanvasElement[];
+  /** the context of the canvas asked last: the live ink layer's */
+  readonly gl: FakeWebGL2;
+};
+
+/**
+ * Hands each canvas asking for WebGL2 a context of its own, made by `make`
+ * (null: no WebGL2), until `uninstallWebGL2`.
+ */
+export const installWebGL2 = (
+  make: (() => FakeWebGL2) | null = () => new FakeWebGL2(),
+): FakeGPU => {
+  const owned = new Map<HTMLCanvasElement, FakeWebGL2>();
+  const gpu: FakeGPU = {
+    contexts: [],
+    canvases: [],
+    get gl() {
+      return gpu.contexts[gpu.contexts.length - 1];
+    },
+  };
   HTMLCanvasElement.prototype.getContext = function (
     this: HTMLCanvasElement,
     type: string,
     options?: unknown,
   ) {
-    if (type === "webgl2") {
-      return gl?.context ?? null;
+    if (type !== "webgl2") {
+      return getContext.call(this, type as "2d", options);
     }
-    return getContext.call(this, type as "2d", options);
+    if (!make) {
+      return null;
+    }
+    const known = owned.get(this);
+    if (known) {
+      return known.context;
+    }
+    const gl = make();
+    owned.set(this, gl);
+    gpu.contexts.push(gl);
+    gpu.canvases.push(this);
+    return gl.context;
   } as HTMLCanvasElement["getContext"];
   vi.stubGlobal(
     "ResizeObserver",
@@ -132,6 +164,7 @@ export const installWebGL2 = (gl: FakeWebGL2 | null) => {
       disconnect() {}
     },
   );
+  return gpu;
 };
 
 export const uninstallWebGL2 = () => {

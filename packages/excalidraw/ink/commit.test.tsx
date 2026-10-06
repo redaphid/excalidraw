@@ -5,7 +5,6 @@ import { getNormalizedZoom } from "../scene";
 import { API } from "../tests/helpers/api";
 import { UI } from "../tests/helpers/ui";
 import {
-  FakeWebGL2,
   installWebGL2,
   sendStroke,
   uninstallWebGL2,
@@ -22,7 +21,7 @@ const committed = () =>
   )!;
 
 beforeEach(() => {
-  installWebGL2(new FakeWebGL2());
+  installWebGL2();
 });
 
 afterEach(async () => {
