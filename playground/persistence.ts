@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import {
   getNonDeletedElements,
   isInitializedImageElement,
@@ -45,8 +47,10 @@ export const saveScene = (
 
 const BOOKMARKS_KEY = "excalidraw-playground-bookmarks";
 
-export const loadBookmarks = (storage: Storage): string[] =>
-  JSON.parse(storage.getItem(BOOKMARKS_KEY) ?? "[]");
+const Bookmarks = z.array(z.string());
+
+export const loadBookmarks = (storage: Storage) =>
+  Bookmarks.parse(JSON.parse(storage.getItem(BOOKMARKS_KEY) ?? "[]"));
 
 export const toggleBookmark = (
   storage: Storage,

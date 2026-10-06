@@ -109,6 +109,23 @@ describe("playground persistence", () => {
     });
   });
 
+  describe("when the saved bookmarks are not a list of frame ids", () => {
+    let error: unknown;
+
+    beforeEach(() => {
+      localStorage.setItem("excalidraw-playground-bookmarks", "[7]");
+      try {
+        loadBookmarks(localStorage);
+      } catch (thrown) {
+        error = thrown;
+      }
+    });
+
+    it("throws", () => {
+      expect(error).toBeInstanceOf(Error);
+    });
+  });
+
   describe("when a frame is starred twice", () => {
     let bookmarks: string[];
 
