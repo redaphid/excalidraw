@@ -11,6 +11,7 @@ import type {
   StaticCanvasAppState,
 } from "@excalidraw/excalidraw/types";
 
+import type { Bounds } from "@excalidraw/common";
 import type { ReadonlySetLike } from "@excalidraw/common/utility-types";
 
 import { getElementsWithinSelection, getSelectedElements } from "./selection";
@@ -21,6 +22,7 @@ import {
   getCommonBounds,
   getElementAbsoluteCoords,
   doBoundsIntersect,
+  getBoundsFromPoints,
   getElementBounds,
   getElementPaintBounds,
   boundsContainBounds,
@@ -78,17 +80,36 @@ export function isElementIntersectingFrame(
   frame: ExcalidrawFrameLikeElement,
   elementsMap: ElementsMap,
 ) {
-  const frameLineSegments = getElementLineSegments(frame, elementsMap);
-
   const elementLineSegments = getElementLineSegments(element, elementsMap);
+  if (elementLineSegments.length === 0) {
+    return false;
+  }
 
-  const intersecting = frameLineSegments.some((frameLineSegment) =>
+  // boxed from the segments, not getElementBounds: a diamond's or a tiny
+  // rectangle's segments reach past its bounds
+  const [x1, y1, x2, y2] = getBoundsFromPoints(elementLineSegments.flat());
+  // grown so rounding in segmentsIntersectAt cannot find a crossing outside it
+  const pad =
+    Math.max(Math.abs(x1), Math.abs(y1), Math.abs(x2), Math.abs(y2)) * 1e-9;
+  const elementBox: Bounds = [x1 - pad, y1 - pad, x2 + pad, y2 + pad];
+
+  const nearFrameLineSegments = getElementLineSegments(
+    frame,
+    elementsMap,
+  ).filter(([[ax, ay], [bx, by]]) =>
+    doBoundsIntersect(elementBox, [
+      Math.min(ax, bx),
+      Math.min(ay, by),
+      Math.max(ax, bx),
+      Math.max(ay, by),
+    ]),
+  );
+
+  return nearFrameLineSegments.some((frameLineSegment) =>
     elementLineSegments.some((elementLineSegment) =>
       segmentsIntersectAt(frameLineSegment, elementLineSegment),
     ),
   );
-
-  return intersecting;
 }
 
 export const getElementsCompletelyInFrame = (
