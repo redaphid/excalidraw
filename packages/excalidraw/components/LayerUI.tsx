@@ -611,7 +611,6 @@ const LayerUI = ({
           }
         />
       )}
-      {appProps.frameNavigation && <FrameBreadcrumb />}
       {editorInterface.formFactor === "phone" && (
         <MobileMenu
           app={app}
@@ -667,7 +666,8 @@ const LayerUI = ({
             />
             {(appState.toast ||
               (scrollBackToContentUIEnabled && appState.scrolledOutside) ||
-              appProps.viewportStatusFrame?.label) && (
+              appProps.viewportStatusFrame?.label ||
+              appProps.frameNavigation) && (
               <div className="floating-status-stack">
                 {appState.toast && (
                   <Toast
@@ -698,6 +698,7 @@ const LayerUI = ({
                     border={appProps.viewportStatusFrame.border}
                   />
                 )}
+                {appProps.frameNavigation && <FrameBreadcrumb />}
               </div>
             )}
           </div>

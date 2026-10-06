@@ -10,6 +10,7 @@ import { SCROLLBAR_WIDTH, SCROLLBAR_MARGIN } from "../scene/scrollbars";
 import { ExitViewModeButton, MobileShapeActions } from "./Actions";
 import { MobileToolbar } from "./MobileToolbar";
 import { FixedSideContainer } from "./FixedSideContainer";
+import { FrameBreadcrumb } from "./FrameBreadcrumb";
 
 import { Island } from "./Island";
 
@@ -146,6 +147,8 @@ export const MobileMenu = ({
       </button>
     ) : null;
 
+  const breadcrumb = app.props.frameNavigation ? <FrameBreadcrumb /> : null;
+
   const viewportStatusLabel = app.props.viewportStatusFrame?.label;
   const viewportStatusBadge = viewportStatusLabel ? (
     <ViewportStatusBadge
@@ -171,9 +174,10 @@ export const MobileMenu = ({
           }}
           data-viewport-ui="bottom"
         >
-          {scrollBackToContentButton && (
+          {(scrollBackToContentButton || breadcrumb) && (
             <div className="floating-status-stack">
               {scrollBackToContentButton}
+              {breadcrumb}
             </div>
           )}
 
@@ -192,9 +196,13 @@ export const MobileMenu = ({
         </div>
       )}
 
-      {!shouldRenderDefaultBottomBar && scrollBackToContentButton && (
-        <div className="floating-status-stack">{scrollBackToContentButton}</div>
-      )}
+      {!shouldRenderDefaultBottomBar &&
+        (scrollBackToContentButton || breadcrumb) && (
+          <div className="floating-status-stack">
+            {scrollBackToContentButton}
+            {breadcrumb}
+          </div>
+        )}
 
       {viewportStatusBadge && (
         <div className="viewport-status-frame__badge-row">
