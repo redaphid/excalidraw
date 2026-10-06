@@ -372,6 +372,10 @@ const initializeScene = async (opts: {
   return { scene: null, isExternalScene: false };
 };
 
+/** `?freedraw=webgl` draws freedraw strokes on the GPU ink layer. */
+const webglInk =
+  new URLSearchParams(window.location.search).get("freedraw") === "webgl";
+
 const ExcalidrawWrapper = () => {
   const excalidrawAPI = useExcalidrawAPI();
 
@@ -953,6 +957,8 @@ const ExcalidrawWrapper = () => {
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
         onPointerUpdate={collabAPI?.onPointerUpdate}
+        freedrawRenderer={webglInk ? "webgl" : "canvas"}
+        penBarrelSelects={webglInk}
         UIOptions={{
           canvasActions: {
             toggleTheme: true,
