@@ -6,6 +6,7 @@ import type { LocalPoint, Radians } from "@excalidraw/math";
 import type { StaticCanvasAppState } from "@excalidraw/excalidraw/types";
 
 import { shouldApplyFrameClip } from "../src/frame";
+import { mutateElement } from "../src/mutateElement";
 import {
   newArrowElement,
   newElement,
@@ -152,5 +153,13 @@ describe("clipping an element to its frame (0..100 on both axes)", () => {
 
   it("does not clip an arrow outside the frame", () => {
     expect(clips(arrow(120, 20, 60, 40), frameAt())).toBe(false);
+  });
+
+  it("decides again after the frame moves onto an element it missed", () => {
+    const frame = frameAt();
+    const rectangle = shape("rectangle", 130, 20, 40, 30);
+    clips(rectangle, frame);
+    mutateElement(frame, arrayToMap([frame]), { x: 50 });
+    expect(clips(rectangle, frame)).toBe(true);
   });
 });
