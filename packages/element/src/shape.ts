@@ -1303,7 +1303,7 @@ const CONSTANT_WIDTH_FREEDRAW = {
 } as const;
 
 const getFreedrawStreamline = (
-  element: Pick<ExcalidrawFreeDrawElement, "strokeOptions">,
+  element: Partial<Pick<ExcalidrawFreeDrawElement, "strokeOptions">>,
 ) => element.strokeOptions?.streamline ?? DEFAULT_STROKE_STREAMLINE;
 
 /**
@@ -1311,10 +1311,8 @@ const getFreedrawStreamline = (
  * stroke is drawn with, while it is drawn and once it is done.
  */
 export const getVariableWidthFreedrawStrokeOptions = (
-  element: Pick<
-    ExcalidrawFreeDrawElement,
-    "strokeWidth" | "simulatePressure" | "strokeOptions"
-  >,
+  element: Pick<ExcalidrawFreeDrawElement, "strokeWidth" | "simulatePressure"> &
+    Partial<Pick<ExcalidrawFreeDrawElement, "strokeOptions">>,
 ) => ({
   simulatePressure: element.simulatePressure,
   size: element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR,

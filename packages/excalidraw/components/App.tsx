@@ -27,8 +27,6 @@ import {
   KEYS,
   APP_NAME,
   CURSOR_TYPE,
-  DEFAULT_STROKE_STREAMLINE,
-  DEFAULT_STROKE_STREAMLINE_PRECISE,
   DEFAULT_TRANSFORM_HANDLE_SPACING,
   DRAGGING_THRESHOLD,
   ELEMENT_SHIFT_TRANSLATE_AMOUNT,
@@ -118,7 +116,6 @@ import {
   LinearElementEditor,
   newElementWith,
   newFrameElement,
-  newFreeDrawElement,
   newEmbeddableElement,
   newMagicFrameElement,
   newStickyNoteElement,
@@ -401,6 +398,7 @@ import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isOverScrollBars } from "../scene/scrollbars";
 import { LassoTrail } from "../lasso";
 import { EraserTrail } from "../eraser";
+import { newFreedrawAt } from "../ink/element";
 import { FRAME_NAME_HEIGHT, frameNameOpacities } from "../frameNameVisibility";
 import { getShortcutKey } from "../shortcut";
 
@@ -8972,42 +8970,7 @@ class App extends React.Component<AppProps, AppState> {
       null,
     );
 
-    const topLayerFrame = this.getTopLayerFrameAtSceneCoords({
-      x: gridX,
-      y: gridY,
-    });
-
-    const simulatePressure = event.pressure === 0.5;
-
-    const strokeVariability = this.state.currentItemStrokeVariability;
-
-    const element = newFreeDrawElement({
-      type: elementType,
-      x: gridX,
-      y: gridY,
-      strokeColor: this.state.currentItemStrokeColor,
-      backgroundColor: this.state.currentItemBackgroundColor,
-      fillStyle: this.state.currentItemFillStyle,
-      ...this.getCurrentItemScale("freedraw"),
-      strokeStyle: this.state.currentItemStrokeStyle,
-      roughness: this.state.currentItemRoughness,
-      opacity: this.state.currentItemOpacity,
-      roundness: null,
-      simulatePressure,
-      strokeOptions: {
-        variability: strokeVariability,
-        streamline:
-          event.pointerType !== "mouse"
-            ? DEFAULT_STROKE_STREAMLINE_PRECISE
-            : DEFAULT_STROKE_STREAMLINE,
-      },
-      locked: false,
-      frameId: topLayerFrame ? topLayerFrame.id : null,
-      points: [pointFrom<LocalPoint>(0, 0)],
-      // pressures are only consumed when rendering a real-pressure stroke, so
-      // skip persisting them while pressure is being simulated
-      pressures: simulatePressure ? [] : [event.pressure],
-    });
+    const element = newFreedrawAt(this, { x: gridX, y: gridY }, event);
 
     this.insertNewElement(element);
 
