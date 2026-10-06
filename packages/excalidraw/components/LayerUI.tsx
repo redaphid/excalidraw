@@ -48,6 +48,7 @@ import { useAppProps, useEditorInterface, useStylesPanelMode } from "./App";
 import { OverwriteConfirmDialog } from "./OverwriteConfirm/OverwriteConfirm";
 import { sidebarRightIcon } from "./icons";
 import { DefaultSidebar } from "./DefaultSidebar";
+import { FrameBreadcrumb } from "./FrameBreadcrumb";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
 import { Stats } from "./Stats";
 import ElementLinkDialog from "./ElementLinkDialog";
@@ -610,6 +611,7 @@ const LayerUI = ({
           }
         />
       )}
+      {appProps.frameNavigation && <FrameBreadcrumb />}
       {editorInterface.formFactor === "phone" && (
         <MobileMenu
           app={app}

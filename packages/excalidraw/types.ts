@@ -1253,6 +1253,8 @@ export type AppClassProperties = {
   getName: App["getName"];
   dismissLinearEditor: App["dismissLinearEditor"];
   flowchart: App["flowchart"];
+  frameNavigation: App["frameNavigation"];
+  toggleSidebar: App["toggleSidebar"];
   drawShape: App["drawShape"];
   arrowText: App["arrowText"];
   textTool: App["textTool"];
