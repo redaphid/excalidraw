@@ -126,7 +126,9 @@ export const createInkRenderer = (
     // compositor's next frame: the heart of pen latency on Windows.
     desynchronized,
   });
-  if (!gl) {
+  // A canvas hands back the context it gave before, which may have been
+  // lost since: a GPU reset, or too many contexts on the page.
+  if (!gl || gl.isContextLost()) {
     return null;
   }
   const info = gl.getExtension("WEBGL_debug_renderer_info");
@@ -304,10 +306,15 @@ export const createInkRenderer = (
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
     },
+    // Frees what this renderer made, but keeps the context: the canvas would
+    // hand a lost one to the next renderer attached to it (React's strict
+    // mode attaches twice).
     dispose() {
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      gl.deleteVertexArray(vao);
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
     },
   };
 };
