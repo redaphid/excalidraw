@@ -3957,6 +3957,7 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.scene.onUpdate(this.triggerRender);
+    this.scene.onUpdate(() => this.frameNavigation.sceneUpdated.trigger());
     this.addEventListeners();
 
     if (this.props.autoFocus && this.excalidrawContainerRef.current) {

@@ -1074,7 +1074,12 @@ export interface ExcalidrawProps {
    * `M`, or `toggleSidebar({ name: "default", tab: FRAMES_SIDEBAR_TAB })`),
    * a breadcrumb of the frame the view is in, arrow keys that step between
    * frames while nothing is selected, and ⌥1–9 for the first nine
-   * bookmarks. Pass a stable object; leave it out to turn all of it off.
+   * bookmarks. Leave it out to turn all of it off.
+   *
+   * The object may be inlined: it is compared by its bookmarks and by the
+   * identity of `onBookmarkChange`, like any other callback prop. The keys
+   * reach the editor only while focus is inside it, unless
+   * `handleKeyboardGlobally` is set.
    */
   frameNavigation?: FrameNavigation;
   /**

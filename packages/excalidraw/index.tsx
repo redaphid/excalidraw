@@ -285,6 +285,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     interaction: prevInteraction,
     ui: prevUI,
     activeTool: prevActiveTool,
+    frameNavigation: prevFrameNavigation,
     ...prev
   } = prevProps;
   const {
@@ -294,6 +295,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     interaction: nextInteraction,
     ui: nextUI,
     activeTool: nextActiveTool,
+    frameNavigation: nextFrameNavigation,
     ...next
   } = nextProps;
 
@@ -348,6 +350,23 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
         !!nextUI.enabled?.scrollBackToContent);
 
   if (!isUISame) {
+    return false;
+  }
+
+  // compare `frameNavigation` by its bookmarks and callback so that hosts
+  // inlining the object don't bust the memo every render
+  const prevBookmarks = prevFrameNavigation?.bookmarks ?? [];
+  const nextBookmarks = nextFrameNavigation?.bookmarks ?? [];
+  const isFrameNavigationSame =
+    prevFrameNavigation === nextFrameNavigation ||
+    (!!prevFrameNavigation &&
+      !!nextFrameNavigation &&
+      prevFrameNavigation.onBookmarkChange ===
+        nextFrameNavigation.onBookmarkChange &&
+      prevBookmarks.length === nextBookmarks.length &&
+      prevBookmarks.every((id, i) => id === nextBookmarks[i]));
+
+  if (!isFrameNavigationSame) {
     return false;
   }
 

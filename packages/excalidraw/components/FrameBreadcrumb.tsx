@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 
 import { framePath } from "../frameNavigation";
-import { useAppStateValue } from "../hooks/useAppStateValue";
+import { useCurrentFrameId, useFrameModel } from "../hooks/useFrameModel";
 import { t } from "../i18n";
 
 import { useApp } from "./App";
@@ -12,13 +12,12 @@ import "./FrameBreadcrumb.scss";
  * there on click. */
 export const FrameBreadcrumb = () => {
   const app = useApp();
-  const current = useAppStateValue((state) =>
-    app.frameNavigation.currentId(state),
-  );
+  const model = useFrameModel(app);
+  const current = useCurrentFrameId(app);
   if (!current) {
     return null;
   }
-  const path = framePath(app.frameNavigation.model(), current);
+  const path = framePath(model, current);
   return (
     <nav
       className="frame-breadcrumb"

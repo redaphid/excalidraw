@@ -5,9 +5,12 @@ import { KEYS, THEME } from "@excalidraw/common";
 import { elementsOverlappingBBox } from "@excalidraw/element";
 import { exportToCanvas } from "@excalidraw/utils/export";
 
-import { useAppStateValue } from "../hooks/useAppStateValue";
+import { useCurrentFrameId, useFrameModel } from "../hooks/useFrameModel";
+import { getShortcutKey } from "../shortcut";
 import { useUIAppState } from "../context/ui-appState";
 import { t } from "../i18n";
+
+import { liveBookmarks } from "../frameNavigation";
 
 import { useApp, useAppProps, useEditorInterface } from "./App";
 
@@ -19,58 +22,87 @@ import type { AppClassProperties } from "../types";
 const THUMBNAIL_PX = 96;
 const THUMBNAIL_DEBOUNCE_MS = 500;
 
-/** Frame thumbnails, redrawn once the scene settles, and only for the frames
- * whose contents changed. */
+/**
+ * Frame thumbnails, redrawn once the scene has been still for a moment, and
+ * only for the frames whose contents changed. A pass commits its images and
+ * what it drew together, so an abandoned pass leaves nothing half-recorded.
+ */
 const useThumbnails = (app: AppClassProperties, dark: boolean) => {
   const [urls, setUrls] = useState<ReadonlyMap<string, string>>(new Map());
-  const drawn = useRef(new Map<string, string>());
-  const nonce = app.scene.getSceneNonce();
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = setTimeout(async () => {
+    const drawn = new Map<string, string>();
+    let alive = true;
+    let busy = false;
+    let again = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const draw = async () => {
+      if (busy) {
+        again = true;
+        return;
+      }
+      busy = true;
       const elements = app.scene.getNonDeletedElements();
       const appState = {
         ...app.state,
         exportBackground: true,
         exportWithDarkMode: dark,
       };
-      const next = new Map<string, string>();
-      for (const frame of app.scene.getNonDeletedFramesLikes()) {
-        const key = `${dark}:${elementsOverlappingBBox({
-          elements,
-          bounds: frame,
-          type: "overlap",
-        })
-          .map((e) => `${e.id}:${e.version}`)
-          .join()}`;
-        if (drawn.current.get(frame.id) === key) {
-          continue;
+      const images = new Map<string, string>();
+      const keys = new Map<string, string>();
+      try {
+        for (const frame of app.scene.getNonDeletedFramesLikes()) {
+          const key = elementsOverlappingBBox({
+            elements,
+            bounds: frame,
+            type: "overlap",
+          })
+            .map((e) => `${e.id}:${e.version}`)
+            .join();
+          if (drawn.get(frame.id) === key) {
+            continue;
+          }
+          const canvas = await exportToCanvas({
+            elements,
+            appState,
+            files: app.files,
+            exportingFrame: frame,
+            exportPadding: 0,
+            maxWidthOrHeight: THUMBNAIL_PX,
+            restoreElements: false,
+          });
+          images.set(frame.id, canvas.toDataURL());
+          keys.set(frame.id, key);
         }
-        const canvas = await exportToCanvas({
-          elements,
-          appState,
-          files: app.files,
-          exportingFrame: frame,
-          exportPadding: 0,
-          maxWidthOrHeight: THUMBNAIL_PX,
-          restoreElements: false,
-        });
-        if (cancelled) {
-          return;
-        }
-        next.set(frame.id, canvas.toDataURL());
-        drawn.current.set(frame.id, key);
+      } finally {
+        busy = false;
       }
-      if (next.size) {
-        setUrls((prev) => new Map([...prev, ...next]));
+      if (!alive) {
+        return;
       }
-    }, THUMBNAIL_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
+      keys.forEach((key, id) => drawn.set(id, key));
+      if (images.size) {
+        setUrls((prev) => new Map([...prev, ...images]));
+      }
+      if (again) {
+        again = false;
+        schedule();
+      }
     };
-  }, [app, nonce, dark]);
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(draw, THUMBNAIL_DEBOUNCE_MS);
+    };
+
+    schedule();
+    const unsubscribe = app.frameNavigation.sceneUpdated.on(schedule);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [app, dark]);
 
   return urls;
 };
@@ -184,10 +216,19 @@ export const FramesMenu = () => {
   const { theme } = useUIAppState();
   const editorInterface = useEditorInterface();
   const list = useRef<HTMLDivElement>(null);
-  const current = useAppStateValue((state) =>
-    app.frameNavigation.currentId(state),
-  );
+  const current = useCurrentFrameId(app);
   const thumbnails = useThumbnails(app, theme === THEME.DARK);
+
+  // a closed drawer takes the focused row with it; hand focus back to the
+  // editor so the frame keys keep working
+  useEffect(
+    () => () => {
+      if (app.ownerDocument.activeElement === app.ownerDocument.body) {
+        app.focusContainer();
+      }
+    },
+    [app],
+  );
 
   useEffect(() => {
     list.current
@@ -195,8 +236,8 @@ export const FramesMenu = () => {
       ?.scrollIntoView?.({ block: "nearest" });
   }, [current]);
 
-  const model = app.frameNavigation.model();
-  const bookmarks = app.frameNavigation.bookmarks();
+  const model = useFrameModel(app);
+  const bookmarks = liveBookmarks(model, frameNavigation?.bookmarks ?? []);
   const onBookmarkChange = frameNavigation?.onBookmarkChange;
 
   const go = (id: string, fromPointer: boolean) => {
@@ -231,7 +272,7 @@ export const FramesMenu = () => {
             <Row
               key={frame.id}
               frame={frame}
-              hint={i < 9 ? `⌥${i + 1}` : undefined}
+              hint={i < 9 ? getShortcutKey(`Alt+${i + 1}`) : undefined}
               {...row}
             />
           ))}
@@ -260,7 +301,11 @@ export const FramesMenu = () => {
           {...row}
         />
       </section>
-      <footer className="frames-menu__hint">{t("frameNavigation.hint")}</footer>
+      <footer className="frames-menu__hint">
+        {t("frameNavigation.hint", {
+          bookmarks: getShortcutKey("Alt+1…9"),
+        })}
+      </footer>
     </div>
   );
 };

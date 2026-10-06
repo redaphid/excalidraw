@@ -226,7 +226,9 @@
     "bookmark": "Bookmark {{name}}",
     "removeBookmark": "Remove bookmark {{name}}",
     "breadcrumb": "Current frame",
-    "hint": "↵ into · Esc out · ⌥1–9 bookmarks · M close"
+    "hint": "↵ into · Esc out · {{bookmarks}} bookmarks · M close",
+    "stepHelp": "Step between frames",
+    "bookmarkHelp": "Fly to a bookmarked frame"
   },
   "search": {
     "title": "Find on canvas",

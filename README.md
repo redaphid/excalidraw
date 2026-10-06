@@ -107,8 +107,9 @@ Opt-in; without the prop the editor behaves as upstream. With it:
 
 - **Frames drawer.** A Frames tab in the default sidebar (`M`, or `toggleSidebar({ name: "default", tab: FRAMES_SIDEBAR_TAB })`) lists the host's live bookmarks, then every frame as a tree with a thumbnail. A frame nests under the smallest frame around it, siblings in reading order. A click flies there; Enter goes into a frame's first child, Escape out to its parent.
 - **Breadcrumb.** The bottom status stack shows the frames from the outermost down to the one the view is in.
-- **Keys.** With nothing selected, the arrow keys glide to the frame an arrow links in that direction, else the nearest one that way. ⌥1-9 fly to the first nine bookmarks.
-- **Bookmarks stay with the host.** `bookmarks` is a list of frame ids; the drawer shows stars only when `onBookmarkChange(frameId, bookmarked)` is passed. Pass a memoised object, since a new one re-renders the editor.
+- **Keys.** With nothing selected, the arrow keys glide to the frame an arrow links in that direction, else the nearest one that way. Alt+1-9 (⌥ on a Mac) fly to the first nine bookmarks. The help dialog and the command palette list them.
+- **Bookmarks stay with the host.** `bookmarks` is a list of frame ids; the drawer shows stars only when `onBookmarkChange(frameId, bookmarked)` is passed. The object can be inlined: the editor compares it by its bookmarks and by the callback's identity, so keep the callback stable as with any other callback prop.
+- **Focus.** The keys reach the editor only while focus is inside it, as all of Excalidraw's shortcuts do, unless the host sets `handleKeyboardGlobally`. Closing the drawer hands focus back to the editor.
 
 The model is `packages/excalidraw/frameNavigation.ts`; the playground keeps its bookmarks in localStorage.
 

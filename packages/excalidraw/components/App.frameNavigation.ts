@@ -1,4 +1,9 @@
-import { DEFAULT_SIDEBAR, FRAMES_SIDEBAR_TAB } from "@excalidraw/common";
+import {
+  DEFAULT_SIDEBAR,
+  Emitter,
+  FRAMES_SIDEBAR_TAB,
+} from "@excalidraw/common";
+import { isArrowElement, isFrameLikeElement } from "@excalidraw/element";
 
 import {
   currentFrame,
@@ -9,18 +14,22 @@ import {
   viewBounds,
 } from "../frameNavigation";
 
-import type { FrameModel } from "../frameNavigation";
+import type { Direction, FrameModel } from "../frameNavigation";
 import type { AnimationOptions } from "../viewport";
 import type { AppState, ViewportOffsetsOptions } from "../types";
 import type App from "./App";
 
 /** a step to a neighbouring frame glides; a jump from the drawer flies */
-export const FRAME_STEP: AnimationOptions = { path: "direct", duration: 900 };
-export const FRAME_JUMP: AnimationOptions = { path: "flight", duration: 1600 };
+const STEP: AnimationOptions = { path: "direct", duration: 900 };
+const JUMP: AnimationOptions = { path: "flight", duration: 1600 };
 
 /** frames fit beside the top bar and the sidebar, ignoring the styles panel
  * that comes and goes with the tool */
 const FIT: ViewportOffsetsOptions = { left: 24 };
+
+/** view keys remembered: the state observer asks for the current and the
+ * previous state's frame on every update */
+const SEEN_LIMIT = 8;
 
 /**
  * Frame navigation for `props.frameNavigation`: the scene's frame model,
@@ -28,8 +37,15 @@ const FIT: ViewportOffsetsOptions = { left: 24 };
  * frames. The drawer (a default sidebar tab) and the breadcrumb read it.
  */
 export class AppFrameNavigation {
-  private built: { nonce: number | undefined; model: FrameModel } | null = null;
-  private seen: { key: string; id: string | null } | null = null;
+  private built: {
+    nonce: number | undefined;
+    signature: string;
+    model: FrameModel;
+  } | null = null;
+  private seen = new Map<string, string | null>();
+  /** relays the scene's updates to the drawer and the breadcrumb, which
+   * outlive the scene's own subscriptions on unmount */
+  readonly sceneUpdated = new Emitter();
   /** a step in flight: the next arrow steps on from where it lands */
   private heading: { id: string; until: number } | null = null;
 
@@ -39,14 +55,29 @@ export class AppFrameNavigation {
     return !!this.app.props.frameNavigation;
   }
 
+  /** rebuilt only when a frame or an arrow between frames changes, not on
+   * every scene update */
   model = () => {
     const nonce = this.app.scene.getSceneNonce();
     const built = this.built;
     if (built && built.nonce === nonce) {
       return built.model;
     }
-    const model = frameModel(this.app.scene.getNonDeletedElements());
-    this.built = { nonce, model };
+    const elements = this.app.scene.getNonDeletedElements();
+    const signature = elements
+      .filter(
+        (e) =>
+          isFrameLikeElement(e) ||
+          (isArrowElement(e) && e.startBinding && e.endBinding),
+      )
+      .map((e) => `${e.id}:${e.version}`)
+      .join();
+    if (built && built.signature === signature) {
+      this.built = { ...built, nonce };
+      return built.model;
+    }
+    const model = frameModel(elements);
+    this.built = { nonce, signature, model };
     return model;
   };
 
@@ -61,8 +92,9 @@ export class AppFrameNavigation {
     state.openSidebar.tab === FRAMES_SIDEBAR_TAB;
 
   /** the id of the frame the view is in, recomputed only when the view,
-   * the scene or the sidebar changes */
+   * the frames or the sidebar change */
   currentId = (state: AppState = this.app.state) => {
+    const model = this.model();
     const { scrollX, scrollY, zoom, width, height, openSidebar } = state;
     const key = [
       scrollX,
@@ -70,24 +102,28 @@ export class AppFrameNavigation {
       zoom.value,
       width,
       height,
-      this.app.scene.getSceneNonce(),
+      this.built?.signature,
       openSidebar?.name,
       openSidebar?.tab,
       state.defaultSidebarDockedPreference,
     ].join();
-    if (this.seen?.key !== key) {
-      this.seen = { key, id: this.current(state)?.id ?? null };
+    const seen = this.seen.get(key);
+    if (seen !== undefined) {
+      return seen;
     }
-    return this.seen.id;
+    if (this.seen.size >= SEEN_LIMIT) {
+      const [oldest] = this.seen.keys();
+      this.seen.delete(oldest);
+    }
+    const id = this.current(model, state)?.id ?? null;
+    this.seen.set(key, id);
+    return id;
   };
 
-  private current = (state: AppState) =>
-    currentFrame(
-      this.model(),
-      viewBounds(state, this.app.viewport.getOffsets(FIT)),
-    );
+  private current = (model: FrameModel, state: AppState) =>
+    currentFrame(model, viewBounds(state, this.app.viewport.getOffsets(FIT)));
 
-  goTo = (id: string, animation: AnimationOptions = FRAME_JUMP) => {
+  goTo = (id: string, animation: AnimationOptions = JUMP) => {
     const frame = this.model().byId.get(id);
     if (!frame) {
       return;
@@ -100,6 +136,7 @@ export class AppFrameNavigation {
     });
   };
 
+  /** opens the drawer only when there are frames to list */
   toggleDrawer = () => {
     this.app.toggleSidebar({
       name: DEFAULT_SIDEBAR.name,
@@ -108,7 +145,7 @@ export class AppFrameNavigation {
     });
   };
 
-  private step = (direction: Parameters<typeof nextFrame>[1]["direction"]) => {
+  private step = (direction: Direction) => {
     const model = this.model();
     const heading = this.heading;
     const flying =
@@ -116,17 +153,17 @@ export class AppFrameNavigation {
         ? model.byId.get(heading.id)
         : null;
     const to = nextFrame(model, {
-      current: flying ?? this.current(this.app.state),
+      current: flying ?? this.current(model, this.app.state),
       view: viewBounds(this.app.state, this.app.viewport.getOffsets(FIT)),
       direction,
     });
     if (!to) {
       return;
     }
-    this.goTo(to.id, FRAME_STEP);
+    this.goTo(to.id, STEP);
     this.heading = {
       id: to.id,
-      until: performance.now() + (FRAME_STEP.duration ?? 0),
+      until: performance.now() + (STEP.duration ?? 0),
     };
   };
 
@@ -142,9 +179,6 @@ export class AppFrameNavigation {
     }
     event.preventDefault();
     switch (key.kind) {
-      case "drawer":
-        this.toggleDrawer();
-        return true;
       case "bookmark": {
         const to = this.bookmarks()[key.index];
         if (to) {

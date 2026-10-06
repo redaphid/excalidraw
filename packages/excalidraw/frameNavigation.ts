@@ -5,18 +5,15 @@
  * scene bounds, so the drawer, the breadcrumb and the keys share one model.
  */
 
-type Binding = { elementId: string } | null;
+import {
+  getFrameLikeTitle,
+  isArrowElement,
+  isFrameLikeElement,
+} from "@excalidraw/element";
 
-export type Bounds = { x: number; y: number; width: number; height: number };
+import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
-export type FrameSource = Bounds & {
-  id: string;
-  type: string;
-  isDeleted: boolean;
-  name?: string | null;
-  startBinding?: Binding;
-  endBinding?: Binding;
-};
+type Bounds = { x: number; y: number; width: number; height: number };
 
 export type Frame = Bounds & { id: string; name: string };
 export type FrameNode = { frame: Frame; children: FrameNode[] };
@@ -34,9 +31,8 @@ export type FrameModel = {
   links: ReadonlyMap<string, ReadonlySet<string>>;
 };
 
-export type FrameKey =
+type FrameKey =
   | { kind: "step"; direction: Direction }
-  | { kind: "drawer" }
   | { kind: "bookmark"; index: number };
 
 const ARROWS: Record<string, Direction> = {
@@ -53,7 +49,6 @@ const UNIT: Record<Direction, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
 };
 
-export const DRAWER_KEY = "m";
 const BOOKMARK_CODE = /^Digit([1-9])$/;
 
 const COVERS_VIEW = 0.15;
@@ -65,7 +60,8 @@ const NEAREST_MIN_ALIGNMENT = Math.SQRT1_2;
 /**
  * What a key press means for frame navigation. Arrows step between frames
  * only while nothing is selected, so they still nudge a selection; ⌥1-9
- * reads the physical digit, since macOS turns ⌥2 into "™".
+ * reads the physical digit, since macOS turns ⌥2 into "™". `M`, which
+ * toggles the drawer, is `actionToggleFramesMenu`.
  */
 export const frameKey = (
   key: {
@@ -84,9 +80,6 @@ export const frameKey = (
   const digit = BOOKMARK_CODE.exec(key.code)?.[1];
   if (key.altKey) {
     return digit ? { kind: "bookmark", index: Number(digit) - 1 } : null;
-  }
-  if (key.key === DRAWER_KEY) {
-    return { kind: "drawer" };
   }
   const direction = ARROWS[key.key];
   if (!direction || context.selecting) {
@@ -117,14 +110,19 @@ const contains = (outer: Bounds, inner: Bounds) =>
 
 const readingOrder = (a: Frame, b: Frame) => a.y - b.y || a.x - b.x;
 
-const isFrame = (e: FrameSource) =>
-  !e.isDeleted && (e.type === "frame" || e.type === "magicframe");
+const smallest = (frames: readonly Frame[]) =>
+  frames.reduce<Frame | null>(
+    (p, f) => (p && area(p) <= area(f) ? p : f),
+    null,
+  );
 
-export const frameModel = (elements: readonly FrameSource[]): FrameModel => {
-  const frames = elements.filter(isFrame).map(
-    (f, i): Frame => ({
+export const frameModel = (
+  elements: readonly NonDeletedExcalidrawElement[],
+): FrameModel => {
+  const frames = elements.filter(isFrameLikeElement).map(
+    (f): Frame => ({
       id: f.id,
-      name: f.name ?? `Frame ${i + 1}`,
+      name: getFrameLikeTitle(f),
       x: f.x,
       y: f.y,
       width: f.width,
@@ -132,20 +130,22 @@ export const frameModel = (elements: readonly FrameSource[]): FrameModel => {
     }),
   );
   const byId = new Map(frames.map((f) => [f.id, f]));
-  const parents = new Map(
-    frames.map((frame) => [
-      frame.id,
-      frames
-        .filter((f) => contains(f, frame))
-        .reduce<Frame | null>(
-          (p, f) => (p && area(p) <= area(f) ? p : f),
-          null,
-        ),
-    ]),
-  );
+
+  // largest first, so a frame's containers are placed before it; descend
+  // only into frames that hold it rather than testing every pair
+  const parents = new Map<string, Frame | null>();
+  const children = new Map<Frame | null, Frame[]>([[null, []]]);
+  const holders = (level: readonly Frame[], frame: Frame): Frame[] =>
+    level
+      .filter((f) => contains(f, frame))
+      .flatMap((f) => [f, ...holders(children.get(f) ?? [], frame)]);
+  for (const frame of [...frames].sort((a, b) => area(b) - area(a))) {
+    const parent = smallest(holders(children.get(null)!, frame));
+    parents.set(frame.id, parent);
+    children.set(parent, [...(children.get(parent) ?? []), frame]);
+  }
   const under = (parent: Frame | null): FrameNode[] =>
-    frames
-      .filter((f) => parents.get(f.id) === parent)
+    [...(children.get(parent) ?? [])]
       .sort(readingOrder)
       .map((frame) => ({ frame, children: under(frame) }));
 
@@ -153,12 +153,9 @@ export const frameModel = (elements: readonly FrameSource[]): FrameModel => {
   const link = (a: string, b: string) =>
     links.set(a, (links.get(a) ?? new Set()).add(b));
   for (const e of elements) {
-    const from = e.startBinding?.elementId;
-    const to = e.endBinding?.elementId;
-    if (e.isDeleted || e.type !== "arrow" || !from || !to || from === to) {
-      continue;
-    }
-    if (!byId.has(from) || !byId.has(to)) {
+    const from = isArrowElement(e) ? e.startBinding?.elementId : undefined;
+    const to = isArrowElement(e) ? e.endBinding?.elementId : undefined;
+    if (!from || !to || from === to || !byId.has(from) || !byId.has(to)) {
       continue;
     }
     link(from, to);
