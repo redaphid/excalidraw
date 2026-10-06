@@ -1,4 +1,4 @@
-import { viewportCoordsToSceneCoords } from "@excalidraw/common";
+import { invariant, viewportCoordsToSceneCoords } from "@excalidraw/common";
 import { CaptureUpdateAction, newElementWith } from "@excalidraw/element";
 
 import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
@@ -75,13 +75,11 @@ const resolver = (doc: Document) => {
   const probe = doc.createElement("canvas").getContext("2d", {
     willReadFrequently: true,
   });
+  invariant(probe, "ink: no 2D canvas to resolve colours with");
   return (css: string): Rgba => {
     const known = cache.get(css);
     if (known) {
       return known;
-    }
-    if (!probe) {
-      return [0, 0, 0, 1];
     }
     probe.clearRect(0, 0, 1, 1);
     probe.fillStyle = css;
@@ -91,6 +89,27 @@ const resolver = (doc: Document) => {
     cache.set(css, rgba);
     return rgba;
   };
+};
+
+/** Chromium's delegated ink, when this browser has it. */
+const delegatedInk = (nav: Navigator): DelegatedInk | undefined => {
+  const ink: unknown = Reflect.get(nav, "ink");
+  return isDelegatedInk(ink) ? ink : undefined;
+};
+
+const isDelegatedInk = (ink: unknown): ink is DelegatedInk =>
+  typeof ink === "object" &&
+  ink !== null &&
+  typeof Reflect.get(ink, "requestPresenter") === "function";
+
+/** User-Agent Client Hints' platform, where the browser offers them. */
+const platformOf = (nav: Navigator): string | undefined => {
+  const data: unknown = Reflect.get(nav, "userAgentData");
+  const platform: unknown =
+    typeof data === "object" && data !== null
+      ? Reflect.get(data, "platform")
+      : undefined;
+  return typeof platform === "string" ? platform : undefined;
 };
 
 const samplesOf = (e: PointerEvent) => {
@@ -121,12 +140,10 @@ type Drawing = {
 /** Null when this browser has no WebGL2, which leaves freedraw to the editor. */
 export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
   const win = app.ownerWindow;
-  const nav = win.navigator as Navigator & {
-    ink?: DelegatedInk;
-    userAgentData?: { platform: string };
-  };
+  const nav = win.navigator;
+  const platform = platformOf(nav);
   const renderer = createInkRenderer(canvas, {
-    desynchronized: desynchronizes(nav),
+    desynchronized: desynchronizes(platform),
   });
   if (!renderer) {
     return null;
@@ -146,15 +163,14 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
   let detached = false;
   // Elsewhere a presenter exists but draws nothing, and holding one would
   // switch off the predicted tail.
-  const delegated = trailWorks(nav.userAgentData ?? nav) ? nav.ink : undefined;
-  delegated
-    ?.requestPresenter({ presentationArea: canvas })
-    .then((p) => {
-      if (!detached) {
-        presenter = p;
-      }
-    })
-    .catch(() => {});
+  const delegated = trailWorks(platform, nav.userAgent)
+    ? delegatedInk(nav)
+    : undefined;
+  delegated?.requestPresenter({ presentationArea: canvas }).then((p) => {
+    if (!detached) {
+      presenter = p;
+    }
+  });
   let active: Drawing | null = null;
   /** Fingers of a pinch that began on a finger stroke, until they lift. */
   const hidden = new Set<number>();
@@ -377,25 +393,23 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
     finish(active, { ...toScene(e), pressure: e.pressure });
   };
 
-  const capture = { capture: true };
-  const listeners = [
-    ["pointerdown", onDown],
-    ["pointermove", onMove],
-    ["pointerup", onUp],
-    ["pointercancel", onUp],
-  ] as [string, EventListener][];
-  for (const [type, fn] of listeners) {
-    win.addEventListener(type, fn, capture);
-  }
+  const listening = new AbortController();
+  const capture = { capture: true, signal: listening.signal };
+  win.addEventListener("pointerdown", onDown, capture);
+  win.addEventListener("pointermove", onMove, capture);
+  win.addEventListener("pointerup", onUp, capture);
+  win.addEventListener("pointercancel", onUp, capture);
 
   return {
     detach() {
+      // A stroke collaborators have seen is taken back from them.
+      if (active) {
+        drop(active);
+      }
       detached = true;
       resized.disconnect();
       presenter = null;
-      for (const [type, fn] of listeners) {
-        win.removeEventListener(type, fn, capture);
-      }
+      listening.abort();
       renderer.dispose();
     },
     status: () => ({

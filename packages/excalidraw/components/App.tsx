@@ -8093,11 +8093,7 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState,
       );
     } else if (this.state.activeTool.type === "freedraw") {
-      this.handleFreeDrawElementOnPointerDown(
-        event,
-        this.state.activeTool.type,
-        pointerDownState,
-      );
+      this.handleFreeDrawElementOnPointerDown(event, pointerDownState);
     } else if (this.state.activeTool.type === "custom") {
       this.cursor.applyForTool();
     } else if (
@@ -8976,7 +8972,6 @@ class App extends React.Component<AppProps, AppState> {
 
   private handleFreeDrawElementOnPointerDown = (
     event: React.PointerEvent<HTMLElement>,
-    elementType: ExcalidrawFreeDrawElement["type"],
     pointerDownState: PointerDownState,
   ) => {
     // Begin a mark capture. This does not have to update state yet.

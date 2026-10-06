@@ -70,17 +70,16 @@ export const streamlineFor = (pointerType: string) =>
 
 /**
  * Chromium offers the delegated ink trail everywhere, but only Windows draws
- * it; elsewhere a presenter accepts every call and draws nothing.
+ * it; elsewhere a presenter accepts every call and draws nothing. Without
+ * client hints, the user agent string says.
  */
-export const trailWorks = (nav: { platform?: string; userAgent?: string }) =>
-  nav.platform
-    ? nav.platform === "Windows"
-    : /Windows/.test(nav.userAgent ?? "");
+export const trailWorks = (platform: string | undefined, userAgent: string) =>
+  platform ? platform === "Windows" : /Windows/.test(userAgent);
 
 /**
  * Chromium on Android shows a desynchronized canvas without its alpha, so the
- * whole scene goes black under a stroke. Without userAgentData (other
- * engines, or any page that is not a secure context) the platform is unknown.
+ * whole scene goes black under a stroke. Without client hints (other engines,
+ * or any page that is not a secure context) the platform is unknown.
  */
-export const desynchronizes = (nav: { userAgentData?: { platform: string } }) =>
-  !!nav.userAgentData && nav.userAgentData.platform !== "Android";
+export const desynchronizes = (platform: string | undefined) =>
+  platform !== undefined && platform !== "Android";

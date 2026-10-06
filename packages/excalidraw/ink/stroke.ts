@@ -29,18 +29,6 @@ type Pen = Input & {
 /** The outline's floor, as the vendored perfect-freehand clamps it. */
 const MIN_RADIUS = 1e-9;
 
-/** A dab's radius at `pressure`, as perfect-freehand sizes the outline there. */
-const radiusFor = (strokeWidth: number, pressure: number) => {
-  const { size, thinning, easing } = getVariableWidthFreedrawStrokeOptions({
-    strokeWidth,
-    simulatePressure: false,
-  });
-  return Math.max(
-    MIN_RADIUS,
-    getStrokeRadius(size, thinning, pressure, easing),
-  );
-};
-
 export type Stroke = {
   /** Records a raw sample and returns the dab it settles into, if any. */
   add(sample: Sample): Dab | null;
@@ -50,12 +38,16 @@ export type Stroke = {
 };
 
 export const createStroke = (pen: Pen): Stroke => {
-  const { size, streamline } = getVariableWidthFreedrawStrokeOptions({
-    strokeWidth: pen.strokeWidth,
-    simulatePressure: pen.simulatePressure,
-    strokeOptions: { variability: "variable", streamline: pen.streamline },
-  });
-  const radius = (pressure: number) => radiusFor(pen.strokeWidth, pressure);
+  // Read once: the radius runs for every dab, tip and predicted sample.
+  const { size, thinning, easing, streamline } =
+    getVariableWidthFreedrawStrokeOptions({
+      strokeWidth: pen.strokeWidth,
+      simulatePressure: pen.simulatePressure,
+      strokeOptions: { variability: "variable", streamline: pen.streamline },
+    });
+  /** A dab's radius at `pressure`, as perfect-freehand sizes the outline. */
+  const radius = (pressure: number) =>
+    Math.max(MIN_RADIUS, getStrokeRadius(size, thinning, pressure, easing));
   // A simulated stroke reports no pressure, as the element stores none.
   const input = (s: Sample) =>
     pen.simulatePressure ? [s.x, s.y] : [s.x, s.y, s.pressure];

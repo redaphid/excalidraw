@@ -911,7 +911,10 @@ export interface ExcalidrawProps {
    * default) re-renders the editor on every move. `"webgl"` draws it once a
    * frame on a GPU layer and adds the finished element on release, as one
    * undoable step; without WebGL2 it falls back to `"canvas"`. Only
-   * variable-width strokes go to the GPU.
+   * variable-width strokes go to the GPU. The layer's window listener is
+   * added when the editor mounts and stops a pen's or a mouse's events while
+   * it draws, so host listeners added later never see them (a finger's
+   * still reach them, for `cameraLayer`).
    */
   freedrawRenderer?: "canvas" | "webgl";
   /**
@@ -927,7 +930,10 @@ export interface ExcalidrawProps {
    * drawn, and a second finger hands both fingers to the host (the editor
    * stops their events at the window, so a later window listener still
    * gets them): the stroke is dropped if it is younger than 300ms, else
-   * kept.
+   * kept. The functions are called at each press and should read the
+   * layer's live state (a ref, say); a new object with new functions does
+   * not re-render the editor, and the first one passed is kept until
+   * something else does.
    */
   cameraLayer?: { ready(): boolean; moving(): boolean };
   /**

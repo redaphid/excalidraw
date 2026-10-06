@@ -4,7 +4,6 @@ import { Excalidraw } from "../index";
 import { API } from "../tests/helpers/api";
 import { Keyboard, UI } from "../tests/helpers/ui";
 import {
-  FakeWebGL2,
   installWebGL2,
   sendPointer,
   sendStroke,
@@ -12,12 +11,12 @@ import {
 } from "../tests/helpers/webgl";
 import { act, render } from "../tests/test-utils";
 
-import type { PointerInit } from "../tests/helpers/webgl";
+import type { FakeGPU, PointerInit } from "../tests/helpers/webgl";
 import type { ExcalidrawProps } from "../types";
 
 const { h } = window;
 
-let gl: FakeWebGL2;
+let gpu: FakeGPU;
 let now = 0;
 /** Ends the window listeners a test adds, as the camera layer would add them. */
 let listening = new AbortController();
@@ -56,7 +55,7 @@ const freedraws = () =>
     (e): e is ExcalidrawFreeDrawElement => e.type === "freedraw",
   );
 
-const inked = () => gl.frames.length > 0;
+const inked = () => gpu.contexts.some((gl) => gl.frames.length > 0);
 
 const setup = async (props: Partial<ExcalidrawProps> = {}) => {
   await render(
@@ -67,8 +66,7 @@ const setup = async (props: Partial<ExcalidrawProps> = {}) => {
 };
 
 beforeEach(() => {
-  gl = new FakeWebGL2();
-  installWebGL2(gl);
+  gpu = installWebGL2();
   now = 1_000;
   vi.spyOn(window.performance, "now").mockImplementation(() => now);
   listening = new AbortController();
@@ -252,6 +250,7 @@ describe("the webgl freedraw renderer", () => {
 
   describe("when the browser has no WebGL2", () => {
     beforeEach(async () => {
+      uninstallWebGL2();
       installWebGL2(null);
       await setup();
       stroke({ pointerType: "pen" });
@@ -334,6 +333,37 @@ describe("the webgl freedraw renderer", () => {
 
     it("should stack the stroke above everything already there", () => {
       expect(h.elements.at(-1)?.id).toBe(freedraws()[0].id);
+    });
+  });
+
+  describe("when the host turns the layer off mid-stroke", () => {
+    let progress: ExcalidrawFreeDrawElement[];
+
+    beforeEach(async () => {
+      progress = [];
+      const props = {
+        handleKeyboardGlobally: true,
+        onFreedrawProgress: (e: ExcalidrawFreeDrawElement) => progress.push(e),
+      };
+      const { rerender } = await render(
+        <Excalidraw freedrawRenderer="webgl" {...props} />,
+      );
+      API.setAppState({ currentItemStrokeVariability: "variable" });
+      UI.clickTool("freedraw");
+      sendPointer("pointerdown", 100, 100, { pointerType: "pen" });
+      for (let i = 1; i <= 4; i++) {
+        now += 30;
+        sendPointer("pointermove", 100 + i * 20, 100, { pointerType: "pen" });
+      }
+      rerender(<Excalidraw freedrawRenderer="canvas" {...props} />);
+    });
+
+    it("should take the stroke back from collaborators", () => {
+      expect(progress.at(-1)?.isDeleted).toBe(true);
+    });
+
+    it("should commit nothing", () => {
+      expect(freedraws()).toHaveLength(0);
     });
   });
 
@@ -454,6 +484,24 @@ describe("the webgl freedraw renderer", () => {
       it("should leave the finger to navigate", () => {
         expect(inked()).toBe(false);
       });
+    });
+  });
+
+  describe("when the host renders with a new camera layer object each time", () => {
+    let renders: number;
+
+    beforeEach(async () => {
+      const camera = () => ({ ready: () => true, moving: () => false });
+      const { rerender } = await render(
+        <Excalidraw freedrawRenderer="webgl" cameraLayer={camera()} />,
+      );
+      const render_ = vi.spyOn(h.app, "render");
+      rerender(<Excalidraw freedrawRenderer="webgl" cameraLayer={camera()} />);
+      renders = render_.mock.calls.length;
+    });
+
+    it("should not re-render the editor", () => {
+      expect(renders).toBe(0);
     });
   });
 
