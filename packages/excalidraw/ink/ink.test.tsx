@@ -3,35 +3,21 @@ import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 import { Excalidraw } from "../index";
 import { API } from "../tests/helpers/api";
 import { Keyboard, UI } from "../tests/helpers/ui";
-import { act, GlobalTestState, render } from "../tests/test-utils";
+import {
+  FakeWebGL2,
+  installWebGL2,
+  sendPointer,
+  sendStroke,
+  uninstallWebGL2,
+} from "../tests/helpers/webgl";
+import { act, render } from "../tests/test-utils";
 
+import type { PointerInit } from "../tests/helpers/webgl";
 import type { ExcalidrawProps } from "../types";
-import type { InkRenderer } from "./gl";
 
 const { h } = window;
 
-const gpu = vi.hoisted(() => ({
-  renderer: null as InkRenderer | null,
-  begun: 0,
-}));
-
-vi.mock("./gl", () => ({
-  createInkRenderer: () => gpu.renderer,
-}));
-
-const fakeRenderer = (): InkRenderer => ({
-  ready: () => true,
-  software: false,
-  fit: () => {},
-  begin: () => {
-    gpu.begun++;
-  },
-  push: () => {},
-  draw: () => {},
-  clear: () => {},
-  dispose: () => {},
-});
-
+let gl: FakeWebGL2;
 let now = 0;
 /** Ends the window listeners a test adds, as the camera layer would add them. */
 let listening = new AbortController();
@@ -49,51 +35,28 @@ const listenLater = () => {
   return heard;
 };
 
-type Init = {
-  pointerType: "pen" | "mouse" | "touch";
-  pointerId?: number;
-  pressure?: number;
-  isPrimary?: boolean;
-  button?: number;
-  buttons?: number;
-};
-
-/** A pointer event as a browser sends it, at `now` and at client (x, y). */
-const send = (type: string, x: number, y: number, init: Init) => {
-  const event = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperties(event, {
-    clientX: { value: x },
-    clientY: { value: y },
-    pointerType: { value: init.pointerType },
-    pointerId: { value: init.pointerId ?? 1 },
-    pressure: {
-      value: init.pressure ?? (init.pointerType === "pen" ? 0.6 : 0.5),
-    },
-    isPrimary: { value: init.isPrimary ?? true },
-    button: { value: init.button ?? (type === "pointermove" ? -1 : 0) },
-    buttons: { value: init.buttons ?? (type === "pointerup" ? 0 : 1) },
-    timeStamp: { value: now },
-  });
-  act(() => {
-    GlobalTestState.interactiveCanvas.dispatchEvent(event);
-  });
-  return event;
-};
-
-/** Draws a stroke from (x, y) to the right, `steps` moves of 20px, `ms` apart. */
-const stroke = (init: Init, { x = 100, y = 100, steps = 4, ms = 30 } = {}) => {
-  send("pointerdown", x, y, init);
+/** `steps` moves of 20px to the right, `ms` apart, then a lift. */
+const stroke = (
+  init: PointerInit,
+  { x = 100, y = 100, steps = 4, ms = 30 } = {},
+) => {
+  sendPointer("pointerdown", x, y, { ...init, timeStamp: now });
   for (let i = 1; i <= steps; i++) {
     now += ms;
-    send("pointermove", x + i * 20, y + (i % 2) * 10, init);
+    sendPointer("pointermove", x + i * 20, y + (i % 2) * 10, {
+      ...init,
+      timeStamp: now,
+    });
   }
-  send("pointerup", x + steps * 20 + 5, y, init);
+  sendPointer("pointerup", x + steps * 20 + 5, y, { ...init, timeStamp: now });
 };
 
 const freedraws = () =>
   h.elements.filter(
     (e): e is ExcalidrawFreeDrawElement => e.type === "freedraw",
   );
+
+const inked = () => gl.frames.length > 0;
 
 const setup = async (props: Partial<ExcalidrawProps> = {}) => {
   await render(
@@ -104,16 +67,9 @@ const setup = async (props: Partial<ExcalidrawProps> = {}) => {
 };
 
 beforeEach(() => {
-  gpu.renderer = fakeRenderer();
-  gpu.begun = 0;
+  gl = new FakeWebGL2();
+  installWebGL2(gl);
   now = 1_000;
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      disconnect() {}
-    },
-  );
   vi.spyOn(window.performance, "now").mockImplementation(() => now);
   listening = new AbortController();
 });
@@ -121,7 +77,7 @@ beforeEach(() => {
 afterEach(async () => {
   listening.abort();
   await act(async () => {});
-  vi.unstubAllGlobals();
+  uninstallWebGL2();
   vi.restoreAllMocks();
 });
 
@@ -139,7 +95,7 @@ describe("the webgl freedraw renderer", () => {
     });
 
     it("should draw it on the GPU", () => {
-      expect(gpu.begun).toBe(1);
+      expect(inked()).toBe(true);
     });
 
     it("should keep the stroke from the editor while it is drawn", () => {
@@ -168,6 +124,10 @@ describe("the webgl freedraw renderer", () => {
 
     it("should leave no stroke in progress", () => {
       expect(h.state.newElement).toBeNull();
+    });
+
+    it("should switch the editor to pen mode", () => {
+      expect(h.state.penMode).toBe(true);
     });
 
     describe("when the keeper undoes", () => {
@@ -206,25 +166,93 @@ describe("the webgl freedraw renderer", () => {
     });
   });
 
-  describe("when the freedraw mode is set to constant width", () => {
-    beforeEach(async () => {
-      await setup();
-      API.setAppState({ currentItemStrokeVariability: "constant" });
-      stroke({ pointerType: "pen" });
+  describe("when the press is one the editor keeps", () => {
+    const cases: [string, () => void][] = [
+      [
+        "the freedraw mode is set to constant width",
+        () => API.setAppState({ currentItemStrokeVariability: "constant" }),
+      ],
+      [
+        "the editor is in view mode",
+        () => API.setAppState({ viewModeEnabled: true }),
+      ],
+      ["the rectangle tool is out", () => UI.clickTool("rectangle")],
+    ];
+
+    for (const [when, arrange] of cases) {
+      describe(`when ${when}`, () => {
+        beforeEach(async () => {
+          await setup();
+          arrange();
+          stroke({ pointerType: "pen" });
+        });
+
+        it("should leave the press to the editor", () => {
+          expect(inked()).toBe(false);
+        });
+      });
+    }
+
+    describe("when the pen is flipped to its eraser", () => {
+      let tool: string;
+
+      beforeEach(async () => {
+        await setup();
+        sendPointer("pointerdown", 100, 100, {
+          pointerType: "pen",
+          button: 5,
+          buttons: 32,
+        });
+        tool = h.state.activeTool.type;
+        sendPointer("pointerup", 100, 100, { pointerType: "pen", button: 5 });
+      });
+
+      it("should leave it to the editor, which erases with it", () => {
+        expect(tool).toBe("eraser");
+      });
     });
 
-    it("should leave the stroke to the editor", () => {
-      expect(gpu.begun).toBe(0);
+    describe("when the space bar is held to pan", () => {
+      beforeEach(async () => {
+        await setup();
+        Keyboard.keyDown(" ");
+        stroke({ pointerType: "pen" });
+        Keyboard.keyUp(" ");
+      });
+
+      it("should let the editor pan", () => {
+        expect(inked()).toBe(false);
+      });
     });
 
-    it("should still draw it", () => {
-      expect(freedraws()[0].strokeOptions.variability).toBe("constant");
+    describe("when a mouse presses while a pen stroke is going", () => {
+      let pointerDowns: number;
+
+      beforeEach(async () => {
+        await setup();
+        pointerDowns = 0;
+        h.app.onPointerDownEmitter.on(() => pointerDowns++);
+        sendPointer("pointerdown", 100, 100, { pointerType: "pen" });
+        sendPointer("pointerdown", 300, 300, {
+          pointerType: "mouse",
+          pointerId: 9,
+        });
+        sendPointer("pointerup", 300, 300, {
+          pointerType: "mouse",
+          pointerId: 9,
+        });
+        sendPointer("pointerup", 140, 100, { pointerType: "pen" });
+      });
+
+      it("should leave the mouse to the editor rather than start a second", () => {
+        expect(pointerDowns).toBe(1);
+      });
     });
   });
 
   describe("when the browser has no WebGL2", () => {
     beforeEach(async () => {
-      gpu.renderer = null;
+      installWebGL2(null);
       await setup();
       stroke({ pointerType: "pen" });
     });
@@ -254,9 +282,9 @@ describe("the webgl freedraw renderer", () => {
 
     beforeEach(async () => {
       await setup();
-      send("pointerdown", 100, 100, { pointerType: "pen" });
+      sendPointer("pointerdown", 100, 100, { pointerType: "pen" });
       mid = h.app.api.getInkStatus()?.inking;
-      send("pointerup", 140, 100, { pointerType: "pen" });
+      sendPointer("pointerup", 140, 100, { pointerType: "pen" });
       after = h.app.api.getInkStatus()?.inking;
     });
 
@@ -275,6 +303,9 @@ describe("the webgl freedraw renderer", () => {
     beforeEach(async () => {
       progress = [];
       await setup({ onFreedrawProgress: (e) => progress.push(e) });
+      API.setElements([
+        API.createElement({ type: "rectangle", x: 400, y: 400 }),
+      ]);
       stroke({ pointerType: "pen" }, { steps: 6, ms: 30 });
     });
 
@@ -294,11 +325,15 @@ describe("the webgl freedraw renderer", () => {
       );
     });
 
-    it("should report each with a stable place in the stacking order", () => {
+    it("should report the place in the stacking order it is committed at", () => {
       expect(progress.map((e) => e.index)).toEqual([
         freedraws()[0].index,
         freedraws()[0].index,
       ]);
+    });
+
+    it("should stack the stroke above everything already there", () => {
+      expect(h.elements.at(-1)?.id).toBe(freedraws()[0].id);
     });
   });
 
@@ -310,7 +345,7 @@ describe("the webgl freedraw renderer", () => {
       });
 
       it("should leave the finger to the editor, which pinches by itself", () => {
-        expect(gpu.begun).toBe(0);
+        expect(inked()).toBe(false);
       });
     });
 
@@ -333,11 +368,11 @@ describe("the webgl freedraw renderer", () => {
         });
         pointerDowns = 0;
         h.app.onPointerDownEmitter.on(() => pointerDowns++);
-        send("pointerdown", 100, 100, finger);
+        sendPointer("pointerdown", 100, 100, { ...finger, timeStamp: now });
       });
 
       it("should draw the finger's stroke", () => {
-        expect(gpu.begun).toBe(1);
+        expect(inked()).toBe(true);
       });
 
       describe("when a second finger lands 120ms in, to pinch", () => {
@@ -347,12 +382,15 @@ describe("the webgl freedraw renderer", () => {
           later = listenLater();
           for (let i = 1; i <= 4; i++) {
             now += 30;
-            send("pointermove", 100 + i * 5, 100, finger);
+            sendPointer("pointermove", 100 + i * 5, 100, {
+              ...finger,
+              timeStamp: now,
+            });
           }
-          send("pointerdown", 300, 300, second);
-          send("pointermove", 320, 320, second);
-          send("pointerup", 320, 320, second);
-          send("pointerup", 130, 100, finger);
+          sendPointer("pointerdown", 300, 300, { ...second, timeStamp: now });
+          sendPointer("pointermove", 320, 320, second);
+          sendPointer("pointerup", 320, 320, second);
+          sendPointer("pointerup", 130, 100, finger);
         });
 
         it("should drop the stroke", () => {
@@ -372,13 +410,13 @@ describe("the webgl freedraw renderer", () => {
         });
       });
 
-      describe("when a second finger lands 900ms in", () => {
+      describe("when a second finger lands just as the pinch window closes", () => {
         beforeEach(() => {
-          now += 900;
-          send("pointermove", 160, 100, finger);
-          send("pointerdown", 300, 300, second);
-          send("pointerup", 300, 300, second);
-          send("pointerup", 160, 100, finger);
+          now += 300;
+          sendPointer("pointermove", 160, 100, { ...finger, timeStamp: now });
+          sendPointer("pointerdown", 300, 300, { ...second, timeStamp: now });
+          sendPointer("pointerup", 300, 300, second);
+          sendPointer("pointerup", 160, 100, finger);
         });
 
         it("should keep the stroke, which was drawn on purpose", () => {
@@ -394,24 +432,46 @@ describe("the webgl freedraw renderer", () => {
     describe("when the host's camera layer is mid-gesture", () => {
       beforeEach(async () => {
         await setup({ cameraLayer: { ready: () => true, moving: () => true } });
-        send("pointerdown", 100, 100, { pointerType: "pen" });
+        sendPointer("pointerdown", 100, 100, { pointerType: "pen" });
+        sendPointer("pointerup", 100, 100, { pointerType: "pen" });
       });
 
       it("should not start a stroke that would land in the wrong place", () => {
-        expect(gpu.begun).toBe(0);
+        expect(inked()).toBe(false);
+      });
+    });
+
+    describe("when pen mode is on", () => {
+      beforeEach(async () => {
+        await setup({
+          cameraLayer: { ready: () => true, moving: () => false },
+        });
+        API.setAppState({ penMode: true, penDetected: true });
+        sendPointer("pointerdown", 100, 100, { pointerType: "touch" });
+        sendPointer("pointerup", 100, 100, { pointerType: "touch" });
+      });
+
+      it("should leave the finger to navigate", () => {
+        expect(inked()).toBe(false);
       });
     });
   });
 
-  describe("when pen mode is on and a finger draws", () => {
+  describe("when a pen taps without moving", () => {
     beforeEach(async () => {
-      await setup({ cameraLayer: { ready: () => true, moving: () => false } });
-      API.setAppState({ penMode: true, penDetected: true });
-      send("pointerdown", 100, 100, { pointerType: "touch" });
+      await setup();
+      sendStroke([[200, 200]], { pointerType: "pen", pressure: 0.7 });
     });
 
-    it("should leave the finger to navigate", () => {
-      expect(gpu.begun).toBe(0);
+    it("should nudge a second point off the first so the dot renders", () => {
+      expect(freedraws()[0].points).toEqual([
+        [0, 0],
+        [0.0001, 0.0001],
+      ]);
+    });
+
+    it("should give the nudge the tap's pressure", () => {
+      expect(freedraws()[0].pressures).toEqual([0.7, 0.7]);
     });
   });
 });

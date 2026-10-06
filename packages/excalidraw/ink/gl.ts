@@ -61,7 +61,7 @@ export type View = {
   dpr: number;
 };
 
-export type InkRenderer = {
+type InkRenderer = {
   ready(): boolean;
   /** The browser has no GPU to give WebGL, so every pixel costs CPU. */
   software: boolean;

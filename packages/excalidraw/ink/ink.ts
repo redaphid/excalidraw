@@ -232,9 +232,7 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
         renderer.push(dab);
       }
     }
-    const element = freedrawThrough(a.element, a.stroke.samples(), {
-      zoom: app.state.zoom.value,
-    });
+    const element = freedrawThrough(a.element, a.stroke.samples());
     app.updateScene({
       elements: [...app.scene.getElementsIncludingDeleted(), element],
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,

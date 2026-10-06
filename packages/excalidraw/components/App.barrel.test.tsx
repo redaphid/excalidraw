@@ -5,8 +5,6 @@ import { API } from "../tests/helpers/api";
 import { UI } from "../tests/helpers/ui";
 import { act, fireEvent, GlobalTestState, render } from "../tests/test-utils";
 
-import { isBarrel } from "./App.barrel";
-
 const { h } = window;
 
 type Press = { button?: number; buttons?: number };
@@ -48,24 +46,6 @@ const selected = () =>
   Object.keys(h.state.selectedElementIds).filter(
     (id) => h.state.selectedElementIds[id],
   );
-
-describe("isBarrel", () => {
-  it("is the pen touching down with its side button held", () => {
-    expect(isBarrel({ pointerType: "pen", button: 2, buttons: 3 })).toBe(true);
-  });
-
-  it("is not the pen's eraser end", () => {
-    expect(isBarrel({ pointerType: "pen", button: 5, buttons: 32 })).toBe(
-      false,
-    );
-  });
-
-  it("is not a mouse's right-click, which keeps its context menu", () => {
-    expect(isBarrel({ pointerType: "mouse", button: 2, buttons: 2 })).toBe(
-      false,
-    );
-  });
-});
 
 describe("penBarrelSelects", () => {
   let boathouse: ExcalidrawElement;
@@ -131,6 +111,36 @@ describe("penBarrelSelects", () => {
         it("should give the freedraw tool back", () => {
           expect(h.state.activeTool.type).toBe("freedraw");
         });
+      });
+    });
+
+    describe("when the pen is flipped to its eraser end", () => {
+      let tool: string;
+
+      beforeEach(() => {
+        pen("pointerDown", 600, 600, { button: 5, buttons: 32 });
+        tool = h.state.activeTool.type;
+        pen("pointerUp", 600, 600, { button: 5, buttons: 0 });
+      });
+
+      it("should erase, not select", () => {
+        expect(tool).toBe("eraser");
+      });
+    });
+
+    describe("when a mouse right-clicks", () => {
+      beforeEach(() => {
+        act(() => {
+          fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+            clientX: 600,
+            clientY: 600,
+            button: 2,
+          });
+        });
+      });
+
+      it("should keep its context menu", () => {
+        expect(h.state.contextMenu).not.toBeNull();
       });
     });
 

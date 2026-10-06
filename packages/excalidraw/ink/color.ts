@@ -4,7 +4,7 @@ export type Rgba = [number, number, number, number];
 
 const HEX = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
-export const parseHex = (css: string): Rgba | null => {
+const parseHex = (css: string): Rgba | null => {
   const m = HEX.exec(css.trim());
   if (!m?.[1]) {
     return null;
@@ -22,7 +22,7 @@ export const parseHex = (css: string): Rgba | null => {
  * `applyDarkModeFilter`, which is how it draws every element and the board's
  * background there.
  */
-export const paintedColor = (
+const paintedColor = (
   css: string,
   dark: boolean,
   resolve: (css: string) => Rgba,
@@ -31,7 +31,7 @@ export const paintedColor = (
   return parseHex(painted) ?? resolve(painted);
 };
 
-export type InkColorOptions = {
+type InkColorOptions = {
   dark: boolean;
   /** Excalidraw's 0–100 element opacity. */
   opacity: number;

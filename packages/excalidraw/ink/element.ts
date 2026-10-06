@@ -1,9 +1,5 @@
 import { getSizeFromPoints } from "@excalidraw/common";
-import {
-  isPathALoop,
-  newElementWith,
-  newFreeDrawElement,
-} from "@excalidraw/element";
+import { newElementWith, newFreeDrawElement } from "@excalidraw/element";
 import { generateKeyBetween } from "@excalidraw/fractional-indexing";
 import { pointFrom } from "@excalidraw/math";
 
@@ -18,12 +14,11 @@ import type {
 import { simulatesPressure, streamlineFor } from "./gate";
 
 import type App from "../components/App";
-import type { AppState } from "../types";
 import type { Sample } from "./stroke";
 
 export type Freedraw = NonDeleted<ExcalidrawFreeDrawElement>;
 
-export type FreedrawHost = Pick<
+type FreedrawHost = Pick<
   App,
   "state" | "getCurrentItemScale" | "getTopLayerFrameAtSceneCoords"
 >;
@@ -69,13 +64,13 @@ export const newFreedrawAt = (
 const NUDGE = 0.0001;
 
 /**
- * `element` drawn through every sample so far. A finished stroke is closed
- * where it ends near its start, as the editor's finalize closes its own.
+ * `element` drawn through every sample so far. Unlike the editor's finalize,
+ * it never snaps an end near the start onto it: a stroke shorter than the
+ * snapping distance would jump at the hand-off, a tick collapsing to a dot.
  */
 export const freedrawThrough = (
   element: Freedraw,
   samples: readonly Sample[],
-  finished?: { zoom: AppState["zoom"]["value"] },
 ): Freedraw => {
   const points = samples.map((s) =>
     pointFrom<LocalPoint>(s.x - element.x, s.y - element.y),
@@ -85,9 +80,6 @@ export const freedrawThrough = (
   if (points.length === 1 && last) {
     points.push(pointFrom<LocalPoint>(NUDGE, NUDGE));
     pressures.push(last.pressure);
-  }
-  if (finished && isPathALoop(points, finished.zoom)) {
-    points[points.length - 1] = points[0];
   }
   return newElementWith(element, {
     points,

@@ -3,7 +3,7 @@ import {
   DEFAULT_STROKE_STREAMLINE_PRECISE,
 } from "@excalidraw/common";
 
-export type Press = {
+type Press = {
   pointerType: string;
   button: number;
   buttons: number;
@@ -12,7 +12,7 @@ export type Press = {
   onCanvas: boolean;
 };
 
-export type Editor = {
+type Editor = {
   activeTool: { type: string };
   /** Off in view mode, or while the host has turned interaction off. */
   interactive: boolean;
@@ -44,7 +44,7 @@ export const takesStroke = (p: Press, e: Editor) =>
     (p.pointerType === "touch" && !e.penMode && e.pinchable));
 
 /** A finger stroke younger than this when another finger lands began a pinch. */
-export const PINCH_WINDOW_MS = 300;
+const PINCH_WINDOW_MS = 300;
 
 /**
  * Whether a finger stroke is dropped when a second finger lands `strokeAgeMs`

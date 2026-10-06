@@ -12,7 +12,7 @@ const BARREL_BUTTONS = 2;
 const MENU_MS = 600;
 
 /** The pen's side button, held as it touches down (not the eraser end). */
-export const isBarrel = (p: {
+const isBarrel = (p: {
   pointerType: string;
   button: number;
   buttons: number;

@@ -14,13 +14,13 @@ export type Sample = { x: number; y: number; pressure: number };
 export type Dab = { x: number; y: number; r: number };
 
 /** How the pointer is read: the freedraw element's own options. */
-export type Input = {
+type Input = {
   simulatePressure: boolean;
   /** perfect-freehand's streamline: how far the line lags behind the pointer. */
   streamline: number;
 };
 
-export type Pen = Input & {
+type Pen = Input & {
   strokeWidth: number;
   /** Raw samples nearer than this to the last one are dropped, in scene units. */
   minStep?: number;
@@ -30,7 +30,7 @@ export type Pen = Input & {
 const MIN_RADIUS = 1e-9;
 
 /** A dab's radius at `pressure`, as perfect-freehand sizes the outline there. */
-export const radiusFor = (strokeWidth: number, pressure: number) => {
+const radiusFor = (strokeWidth: number, pressure: number) => {
   const { size, thinning, easing } = getVariableWidthFreedrawStrokeOptions({
     strokeWidth,
     simulatePressure: false,
