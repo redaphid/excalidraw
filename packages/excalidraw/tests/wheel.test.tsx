@@ -157,6 +157,22 @@ describe("wheel navigation", () => {
     }
   });
 
+  it("redraws crisp inside the settle timer, before the next frame", () => {
+    vi.useFakeTimers();
+    try {
+      API.updateScene({
+        appState: {
+          zoom: { value: getNormalizedZoom(2) },
+          shouldCacheIgnoreZoom: true,
+        },
+      });
+      vi.advanceTimersByTime(100);
+      expect(h.state.shouldCacheIgnoreZoom).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does nothing on a zoom tick at the zoom limit", () => {
     API.setAppState({ zoom: { value: getNormalizedZoom(MIN_ZOOM) } });
     const start = getViewport();

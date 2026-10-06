@@ -12986,9 +12986,13 @@ class App extends React.Component<AppProps, AppState> {
     });
   };
 
+  // flushed, so the crisp frame is drawn by the time a host's onChange sees
+  // the flag clear
   public resetShouldCacheIgnoreZoomDebounced = debounce(() => {
     if (!this.unmounted) {
-      this.setState({ shouldCacheIgnoreZoom: false });
+      flushSync(() => {
+        this.setState({ shouldCacheIgnoreZoom: false });
+      });
     }
   }, ZOOM_SETTLE_TIMEOUT);
 
