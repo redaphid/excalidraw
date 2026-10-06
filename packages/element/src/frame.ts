@@ -24,7 +24,6 @@ import {
   getCommonBounds,
   getElementAbsoluteCoords,
   doBoundsIntersect,
-  getBoundsFromPoints,
   getElementBounds,
   getElementPaintBounds,
   boundsContainBounds,
@@ -109,7 +108,13 @@ export function isElementIntersectingFrame(
 
   // boxed from the segments, not getElementBounds: a diamond's or a tiny
   // rectangle's segments reach past its bounds
-  const [x1, y1, x2, y2] = getBoundsFromPoints(elementLineSegments.flat());
+  let [x1, y1, x2, y2] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const [[ax, ay], [bx, by]] of elementLineSegments) {
+    x1 = Math.min(x1, ax, bx);
+    y1 = Math.min(y1, ay, by);
+    x2 = Math.max(x2, ax, bx);
+    y2 = Math.max(y2, ay, by);
+  }
   // grown so rounding in segmentsIntersectAt cannot find a crossing outside it
   const pad =
     Math.max(Math.abs(x1), Math.abs(y1), Math.abs(x2), Math.abs(y2)) * 1e-9;
