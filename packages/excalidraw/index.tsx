@@ -81,6 +81,10 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     isCollaborating = false,
     authoringUnits,
     freedrawStrokeWidth,
+    freedrawRenderer,
+    onFreedrawProgress,
+    cameraLayer,
+    penBarrelSelects,
     onPointerUpdate,
     renderTopLeftUI,
     renderTopRightUI,
@@ -225,6 +229,10 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           isCollaborating={isCollaborating}
           authoringUnits={authoringUnits}
           freedrawStrokeWidth={freedrawStrokeWidth}
+          freedrawRenderer={freedrawRenderer}
+          onFreedrawProgress={onFreedrawProgress}
+          cameraLayer={cameraLayer}
+          penBarrelSelects={penBarrelSelects}
           onPointerUpdate={onPointerUpdate}
           renderTopLeftUI={renderTopLeftUI}
           renderTopRightUI={renderTopRightUI}

@@ -4,6 +4,7 @@
 :root {
   --zIndex-canvas: 1;
   --zIndex-interactiveCanvas: 2;
+  --zIndex-ink: 3;
   --zIndex-svgLayer: 3;
   --zIndex-wysiwyg: 3;
   --zIndex-canvasButtons: 3;
@@ -116,6 +117,19 @@ body.excalidraw-cursor-resize * {
 
     &.interactive {
       z-index: var(--zIndex-interactiveCanvas);
+    }
+
+    // the GPU ink layer (`freedrawRenderer="webgl"`): over the canvases (and
+    // a host layer stacked at the interactive canvas's level), under the UI,
+    // and never in the way of a press
+    &.excalidraw__ink {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      image-rendering: auto;
+      z-index: var(--zIndex-ink);
     }
 
     // Remove the main canvas from document flow to avoid resizeObserver

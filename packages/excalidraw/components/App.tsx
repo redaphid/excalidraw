@@ -399,6 +399,7 @@ import { isOverScrollBars } from "../scene/scrollbars";
 import { LassoTrail } from "../lasso";
 import { EraserTrail } from "../eraser";
 import { newFreedrawAt } from "../ink/element";
+import { InkLayer } from "../ink/InkLayer";
 import { FRAME_NAME_HEIGHT, frameNameOpacities } from "../frameNameVisibility";
 import { getShortcutKey } from "../shortcut";
 
@@ -489,6 +490,7 @@ import type {
   NullableGridSize,
   UIConfig,
 } from "../types";
+import type { Ink } from "../ink/ink";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Action, ActionResult } from "../actions/types";
 
@@ -708,6 +710,8 @@ class App extends React.Component<AppProps, AppState> {
     isGestureActive: () => gesture.pointers.size >= 2 || this.pan.isActive(),
   });
   public wheel: AppWheel = new AppWheel(this);
+  /** the GPU ink layer, while `freedrawRenderer="webgl"` has one running */
+  public ink: Ink | null = null;
 
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
@@ -835,6 +839,7 @@ class App extends React.Component<AppProps, AppState> {
       onUserFollow: (cb) => this.onUserFollowEmitter.on(cb),
       onStateChange: this.onStateChange,
       onEvent: this.onEvent,
+      getInkStatus: () => this.ink?.status() ?? null,
     };
     return api;
   }
@@ -2827,6 +2832,9 @@ class App extends React.Component<AppProps, AppState> {
                             onPointerDown={this.handleCanvasPointerDown}
                             onDoubleClick={this.handleCanvasDoubleClick}
                           />
+                          {this.props.freedrawRenderer === "webgl" && (
+                            <InkLayer app={this} />
+                          )}
                           {this.props.viewportStatusFrame?.border &&
                             this.editorInterface.formFactor === "phone" && (
                               <ViewportStatusBorder
