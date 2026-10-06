@@ -22,6 +22,19 @@ const isBarrel = (p: {
   (p.buttons & BARREL_BUTTONS) !== 0 &&
   (p.buttons & ERASER_BUTTONS) === 0;
 
+/** `event`, read as a main-button press. */
+const asMainButton = <E extends { button: number; buttons: number }>(
+  event: E,
+) =>
+  new Proxy(event, {
+    get: (target, key) =>
+      key === "button"
+        ? POINTER_BUTTON.MAIN
+        : key === "buttons"
+        ? 1
+        : Reflect.get(target, key),
+  });
+
 /**
  * The pen's barrel button selects (`penBarrelSelects`). Held as the pen
  * touches down with the freedraw tool out, it borrows the selection tool,
@@ -65,21 +78,20 @@ export class AppBarrel {
     this.held = true;
     this.menuUntil = Number.POSITIVE_INFINITY;
     const win = app.ownerWindow;
-    win.addEventListener(
-      EVENT.POINTER_UP,
-      () => {
-        this.held = false;
-        this.menuUntil = win.performance.now() + MENU_MS;
-        win.setTimeout(this.settle, 0);
-      },
-      { capture: true, once: true },
-    );
-    this.dependencies.replay(
-      Object.create(event, {
-        button: { value: POINTER_BUTTON.MAIN },
-        buttons: { value: 1 },
-      }),
-    );
+    const released = new AbortController();
+    const release = (e: PointerEvent) => {
+      if (e.pointerId !== event.pointerId) {
+        return;
+      }
+      released.abort();
+      this.held = false;
+      this.menuUntil = win.performance.now() + MENU_MS;
+      win.setTimeout(this.settle, 0);
+    };
+    const capture = { capture: true, signal: released.signal };
+    win.addEventListener(EVENT.POINTER_UP, release, capture);
+    win.addEventListener(EVENT.POINTER_CANCEL, release, capture);
+    this.dependencies.replay(asMainButton(event));
     return true;
   };
 

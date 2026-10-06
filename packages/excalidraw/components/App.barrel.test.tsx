@@ -114,6 +114,69 @@ describe("penBarrelSelects", () => {
       });
     });
 
+    describe("when the browser cancels a barrel press", () => {
+      beforeEach(async () => {
+        pen("pointerDown", 600, 600, BARREL);
+        pen("pointerCancel", 600, 600, { button: 2, buttons: 0 });
+        await settled();
+        vi.spyOn(window.performance, "now").mockReturnValue(
+          window.performance.now() + 1_000,
+        );
+        act(() => {
+          fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+            clientX: 600,
+            clientY: 600,
+            button: 2,
+          });
+        });
+      });
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it("should give the freedraw tool back", () => {
+        expect(h.state.activeTool.type).toBe("freedraw");
+      });
+
+      it("should let a later right-click open the menu", () => {
+        expect(h.state.contextMenu).not.toBeNull();
+      });
+    });
+
+    describe("when another pointer lifts while the barrel is held", () => {
+      beforeEach(() => {
+        pen("pointerDown", 600, 600, BARREL);
+        act(() => {
+          fireEvent.pointerUp(GlobalTestState.interactiveCanvas, {
+            clientX: 10,
+            clientY: 10,
+            pointerType: "mouse",
+            pointerId: 9,
+          });
+        });
+        vi.spyOn(window.performance, "now").mockReturnValue(
+          window.performance.now() + 1_000,
+        );
+        act(() => {
+          fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+            clientX: 600,
+            clientY: 600,
+            button: 2,
+          });
+        });
+        pen("pointerUp", 600, 600, { button: 2, buttons: 0 });
+      });
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it("should still swallow the barrel's right-click", () => {
+        expect(h.state.contextMenu).toBeNull();
+      });
+    });
+
     describe("when the pen is flipped to its eraser end", () => {
       let tool: string;
 
