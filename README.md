@@ -4,12 +4,13 @@ This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [dr
 
 **[Try it](https://redaphid.github.io/excalidraw/)**: the fork's editor on a static page, with `authoringUnits="screen"`. The drawing stays in your browser's localStorage: there is no collaboration, sharing, AI or analytics, and the only requests are for the page's own scripts, styles and fonts. It redeploys on every push to `master` ([`playground/`](playground), [`playground.yml`](.github/workflows/playground.yml)); `yarn build:playground` builds it locally.
 
-The fork changes four things:
+The fork changes five things:
 
 - **Deep zoom.** The editor zooms from 0.1x to 1,000,000x, and the wheel and trackpad zoom by the same ratio per tick at any depth.
 - **Rendering at depth.** Freehand strokes and text stay sharp at any zoom, including during animated camera moves, and zooming does not stall on rebuilding per-element bitmaps.
 - **Zoom-relative authoring.** An opt-in mode where new work is sized in screen pixels, so a pen stroke or a rectangle made at 10,000x looks the same on screen as one made at 1x.
 - **Pen size.** A continuous pen-size slider replaces the three freehand presets, and the presets that remain are thinner.
+- **Frame navigation.** An opt-in frames drawer, breadcrumb, arrow-key stepping between frames and bookmark keys.
 
 For everything else, see [upstream's README](https://github.com/excalidraw/excalidraw/blob/master/README.md) (or [the copy at the fork point](https://github.com/excalidraw/excalidraw/blob/5a406e51875157bece389b9bc92d41ff241d5f3d/README.md)).
 
@@ -95,6 +96,21 @@ The full design, with every zoom-dependent size and the alternatives that were r
 - Text whose font is far under a pixel, which Chrome measures and draws as nothing, is measured and drawn at a readable size and scaled back down ([`33c0e91c`](https://github.com/redaphid/excalidraw/commit/33c0e91c)).
 - An element's cache bitmap padding scales with its details, so a shape drawn at depth no longer allocates a bitmap many times its on-screen size ([`d12a81bf`](https://github.com/redaphid/excalidraw/commit/d12a81bf)).
 - Viewport culling and frame export test where a stroke paints, not its centre line, so a thick stroke crossing an edge is not dropped ([`ffcd1e95`](https://github.com/redaphid/excalidraw/commit/ffcd1e95)).
+
+### Frame navigation: `frameNavigation`
+
+```tsx
+<Excalidraw frameNavigation={{ bookmarks, onBookmarkChange }} />
+```
+
+Opt-in; without the prop the editor behaves as upstream. With it:
+
+- **Frames drawer.** A Frames tab in the default sidebar (`M`, or `toggleSidebar({ name: "default", tab: FRAMES_SIDEBAR_TAB })`) lists the host's live bookmarks, then every frame as a tree with a thumbnail. A frame nests under the smallest frame around it, siblings in reading order. A click flies there; Enter goes into a frame's first child, Escape out to its parent.
+- **Breadcrumb.** The bottom status stack shows the frames from the outermost down to the one the view is in.
+- **Keys.** With nothing selected, the arrow keys glide to the frame an arrow links in that direction, else the nearest one that way. ⌥1-9 fly to the first nine bookmarks.
+- **Bookmarks stay with the host.** `bookmarks` is a list of frame ids; the drawer shows stars only when `onBookmarkChange(frameId, bookmarked)` is passed. Pass a memoised object, since a new one re-renders the editor.
+
+The model is `packages/excalidraw/frameNavigation.ts`; the playground keeps its bookmarks in localStorage.
 
 ### Export
 
