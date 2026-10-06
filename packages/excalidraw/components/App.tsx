@@ -425,6 +425,7 @@ import { AppCursor } from "./App.cursor";
 import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
 import { AppFlowchart } from "./App.flowchart";
+import { AppBarrel } from "./App.barrel";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -695,6 +696,12 @@ class App extends React.Component<AppProps, AppState> {
   public pan: AppPan = new AppPan(this, {
     getPointerCount: () => gesture.pointers.size,
     isDraggingScrollBar: () => isDraggingScrollBar,
+  });
+  public barrel: AppBarrel = new AppBarrel(this, {
+    getPointerCount: () => gesture.pointers.size,
+    // once the tool switch has applied
+    replay: (event) =>
+      this.setState({}, () => this.handleCanvasPointerDown(event)),
   });
   public textTool: AppTextTool = new AppTextTool(this);
   public clipboard: AppClipboard = new AppClipboard(this, {
@@ -4424,6 +4431,7 @@ class App extends React.Component<AppProps, AppState> {
 
     this.handleInteractionStateChange(prevProps, prevState);
     this.handleForcedToolChange(prevProps, prevState);
+    this.barrel.settle();
 
     this.appStateObserver.flush(prevState);
 
@@ -7836,7 +7844,7 @@ class App extends React.Component<AppProps, AppState> {
     // we must exit before we set `cursorButton` state and `savePointer`
     // else it will send pointer state & laser pointer events in collab when
     // panning
-    if (this.pan.start(event)) {
+    if (this.barrel.start(event) || this.pan.start(event)) {
       return;
     }
 
@@ -12337,7 +12345,10 @@ class App extends React.Component<AppProps, AppState> {
     // when it comes with the press (macOS and Linux fire it on mousedown,
     // and the session opens the menu on release if no drag follows), nor
     // when it follows a release that was a drag
-    if (this.pan.consumesContextMenuEvent()) {
+    if (
+      this.pan.consumesContextMenuEvent() ||
+      this.barrel.consumesContextMenuEvent()
+    ) {
       return;
     }
     this.openContextMenu({
