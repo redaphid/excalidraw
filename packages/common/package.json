@@ -1,6 +1,6 @@
 {
   "name": "@excalidraw/common",
-  "version": "0.19.0-draw.18",
+  "version": "0.19.0-draw.19",
   "type": "module",
   "types": "./dist/types/common/src/index.d.ts",
   "main": "./dist/prod/index.js",
@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "tinycolor2": "1.6.0",
-    "@excalidraw/math": "0.19.0-draw.18"
+    "@excalidraw/math": "0.19.0-draw.19"
   },
   "devDependencies": {
     "@types/tinycolor2": "1.4.6"
