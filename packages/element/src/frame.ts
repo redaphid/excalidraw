@@ -5,6 +5,8 @@ import {
   segmentsIntersectAt,
 } from "@excalidraw/math";
 
+import type { GlobalPoint, LineSegment } from "@excalidraw/math";
+
 import type {
   AppClassProperties,
   AppState,
@@ -75,6 +77,26 @@ export const bindElementsToFramesAfterDuplication = (
   }
 };
 
+// a frame's segments are the same for every element tested against it, and
+// mutateElement bumps the version whenever the frame's geometry changes
+const frameLineSegmentsCache = new WeakMap<
+  ExcalidrawFrameLikeElement,
+  { version: number; segments: LineSegment<GlobalPoint>[] }
+>();
+
+const getFrameLineSegments = (
+  frame: ExcalidrawFrameLikeElement,
+  elementsMap: ElementsMap,
+) => {
+  const cached = frameLineSegmentsCache.get(frame);
+  if (cached?.version === frame.version) {
+    return cached.segments;
+  }
+  const segments = getElementLineSegments(frame, elementsMap);
+  frameLineSegmentsCache.set(frame, { version: frame.version, segments });
+  return segments;
+};
+
 export function isElementIntersectingFrame(
   element: ExcalidrawElement,
   frame: ExcalidrawFrameLikeElement,
@@ -93,16 +115,14 @@ export function isElementIntersectingFrame(
     Math.max(Math.abs(x1), Math.abs(y1), Math.abs(x2), Math.abs(y2)) * 1e-9;
   const elementBox: Bounds = [x1 - pad, y1 - pad, x2 + pad, y2 + pad];
 
-  const nearFrameLineSegments = getElementLineSegments(
-    frame,
-    elementsMap,
-  ).filter(([[ax, ay], [bx, by]]) =>
-    doBoundsIntersect(elementBox, [
-      Math.min(ax, bx),
-      Math.min(ay, by),
-      Math.max(ax, bx),
-      Math.max(ay, by),
-    ]),
+  const nearFrameLineSegments = getFrameLineSegments(frame, elementsMap).filter(
+    ([[ax, ay], [bx, by]]) =>
+      doBoundsIntersect(elementBox, [
+        Math.min(ax, bx),
+        Math.min(ay, by),
+        Math.max(ax, bx),
+        Math.max(ay, by),
+      ]),
   );
 
   return nearFrameLineSegments.some((frameLineSegment) =>
