@@ -17,7 +17,7 @@ import {
   settle,
   showView,
 } from "../tests/helpers/frames";
-import { Keyboard } from "../tests/helpers/ui";
+import { Keyboard, Pointer, UI } from "../tests/helpers/ui";
 import { act, fireEvent, render } from "../tests/test-utils";
 
 import App from "./App";
@@ -27,6 +27,7 @@ import type { MockInstance } from "vitest";
 import type { FrameNavigation } from "../types";
 
 const { h } = window;
+const mouse = new Pointer("mouse");
 
 type Box = { x: number; y: number; width: number; height: number };
 
@@ -605,6 +606,50 @@ describe("the drawer key", () => {
   });
 });
 
+describe("frames changed after mount", () => {
+  const valley = { x: 0, y: 0, width: 400, height: 300 };
+
+  describe("when an arrow is bound between two frames after mount", () => {
+    beforeEach(async () => {
+      await mount([
+        frame("frame-valley-of-the-sun", 0, 0),
+        frame("frame-off-axis", 500, 3000),
+      ]);
+      showView(valley);
+      API.setElements([
+        ...h.elements,
+        arrowBetween(
+          "arrow-sun-to-off-axis",
+          "frame-valley-of-the-sun",
+          "frame-off-axis",
+        ),
+      ]);
+      await press(KEYS.ARROW_RIGHT);
+    });
+
+    it("should follow the new link", () => {
+      expect(here()).toBe("frame-off-axis");
+    });
+  });
+
+  describe("when a collaborator's rename wins a tie at the same version", () => {
+    beforeEach(async () => {
+      await mount([frame("frame-valley-of-the-sun", 0, 0)]);
+      showView(valley);
+      const [mine] = h.app.scene.getNonDeletedFramesLikes();
+      API.updateScene({
+        elements: [
+          { ...mine, name: "The Lair", versionNonce: mine.versionNonce + 1 },
+        ],
+      });
+    });
+
+    it("should show their name", () => {
+      expect(here()).toBe("The Lair");
+    });
+  });
+});
+
 describe("cost", () => {
   const board = [
     frame("frame-valley-of-the-sun", 0, 0),
@@ -637,6 +682,43 @@ describe("cost", () => {
 
     it("should rebuild the frame model", () => {
       expect(h.app.frameNavigation.model()).not.toBe(before);
+    });
+  });
+
+  describe("when a rectangle joined to another by a bound arrow is dragged", () => {
+    let rebuilds: number;
+
+    beforeEach(async () => {
+      await mount(board);
+      const thunderwrench = UI.createElement("rectangle", {
+        x: 0,
+        y: 400,
+        width: 100,
+        height: 100,
+      });
+      UI.createElement("rectangle", {
+        x: 400,
+        y: 400,
+        width: 100,
+        height: 100,
+      });
+      UI.createElement("arrow", { x: 50, y: 450, width: 400, height: 0 });
+      mouse.reset();
+      mouse.clickOn(thunderwrench);
+      rebuilds = 0;
+      let last = h.app.frameNavigation.model();
+      mouse.downAt(50, 450);
+      for (let i = 1; i <= 5; i++) {
+        mouse.moveTo(50 + i * 10, 450);
+        const model = h.app.frameNavigation.model();
+        rebuilds += model === last ? 0 : 1;
+        last = model;
+      }
+      mouse.up();
+    });
+
+    it("should keep the frame model", () => {
+      expect(rebuilds).toBe(0);
     });
   });
 

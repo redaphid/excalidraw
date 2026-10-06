@@ -64,13 +64,18 @@ export class AppFrameNavigation {
       return built.model;
     }
     const elements = this.app.scene.getNonDeletedElements();
+    const frames = new Set(
+      elements.filter(isFrameLikeElement).map((frame) => frame.id),
+    );
     const signature = elements
       .filter(
         (e) =>
-          isFrameLikeElement(e) ||
-          (isArrowElement(e) && e.startBinding && e.endBinding),
+          frames.has(e.id) ||
+          (isArrowElement(e) &&
+            frames.has(e.startBinding?.elementId ?? "") &&
+            frames.has(e.endBinding?.elementId ?? "")),
       )
-      .map((e) => `${e.id}:${e.version}`)
+      .map((e) => `${e.id}:${e.version}:${e.versionNonce}`)
       .join();
     if (built && built.signature === signature) {
       this.built = { ...built, nonce };
