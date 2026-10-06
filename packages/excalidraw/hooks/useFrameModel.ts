@@ -8,13 +8,13 @@ import type { AppClassProperties } from "../types";
  * update that moves no frame and no arrow between frames keeps it. */
 export const useFrameModel = (app: AppClassProperties) => {
   const [model, setModel] = useState(app.frameNavigation.model);
-  useEffect(
-    () =>
-      app.frameNavigation.sceneUpdated.on(() =>
-        setModel(app.frameNavigation.model()),
-      ),
-    [app],
-  );
+  useEffect(() => {
+    const refresh = () => setModel(app.frameNavigation.model());
+    const unsubscribe = app.frameNavigation.sceneUpdated.on(refresh);
+    // the scene may have changed between the render and this subscription
+    refresh();
+    return unsubscribe;
+  }, [app]);
   return model;
 };
 

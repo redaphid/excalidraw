@@ -269,6 +269,38 @@ describe("FramesMenu", () => {
   });
 });
 
+describe("a frame id with a quote in it", () => {
+  beforeEach(async () => {
+    await render(
+      <Excalidraw
+        frameNavigation={{}}
+        initialData={{
+          appState: {
+            openSidebar: {
+              name: DEFAULT_SIDEBAR.name,
+              tab: FRAMES_SIDEBAR_TAB,
+            },
+          },
+        }}
+      />,
+    );
+    fakeClock();
+    API.setElements([
+      frame('frame-the-"lair"', 0, 0, 1000, 800),
+      frame("frame-rusty-conquistador", 100, 100),
+    ]);
+    showView({ x: 0, y: 0, width: 1000, height: 800 });
+    fireEvent.keyDown(row("frame-rusty-conquistador"), { key: KEYS.ESCAPE });
+    await settle();
+  });
+
+  it("should still take focus out to it", () => {
+    expect(document.activeElement?.getAttribute("data-frame")).toBe(
+      'frame-the-"lair"',
+    );
+  });
+});
+
 describe("FrameBreadcrumb", () => {
   beforeEach(async () => {
     await render(<Excalidraw frameNavigation={{}} />);

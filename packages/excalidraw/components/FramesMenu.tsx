@@ -22,16 +22,22 @@ import type { AppClassProperties } from "../types";
 const THUMBNAIL_PX = 96;
 const THUMBNAIL_DEBOUNCE_MS = 500;
 
+type Thumbnail = { key: string; url: string };
+
 /**
  * Frame thumbnails, redrawn once the scene has been still for a moment, and
- * only for the frames whose contents changed. A pass commits its images and
- * what it drew together, so an abandoned pass leaves nothing half-recorded.
+ * only for the frames whose contents changed. What was drawn and what is
+ * shown are one map, so a pass that is abandoned or fails leaves no frame
+ * recorded as drawn without its image.
  */
 const useThumbnails = (app: AppClassProperties, dark: boolean) => {
-  const [urls, setUrls] = useState<ReadonlyMap<string, string>>(new Map());
+  const [thumbnails, setThumbnails] = useState<ReadonlyMap<string, Thumbnail>>(
+    new Map(),
+  );
+  const shown = useRef(thumbnails);
+  shown.current = thumbnails;
 
   useEffect(() => {
-    const drawn = new Map<string, string>();
     let alive = true;
     let busy = false;
     let again = false;
@@ -49,18 +55,17 @@ const useThumbnails = (app: AppClassProperties, dark: boolean) => {
         exportBackground: true,
         exportWithDarkMode: dark,
       };
-      const images = new Map<string, string>();
-      const keys = new Map<string, string>();
+      const drawn = new Map<string, Thumbnail>();
       try {
         for (const frame of app.scene.getNonDeletedFramesLikes()) {
-          const key = elementsOverlappingBBox({
+          const key = `${dark}:${elementsOverlappingBBox({
             elements,
             bounds: frame,
             type: "overlap",
           })
-            .map((e) => `${e.id}:${e.version}`)
-            .join();
-          if (drawn.get(frame.id) === key) {
+            .map((e) => `${e.id}:${e.version}:${e.versionNonce}`)
+            .join()}`;
+          if (shown.current.get(frame.id)?.key === key) {
             continue;
           }
           const canvas = await exportToCanvas({
@@ -72,8 +77,7 @@ const useThumbnails = (app: AppClassProperties, dark: boolean) => {
             maxWidthOrHeight: THUMBNAIL_PX,
             restoreElements: false,
           });
-          images.set(frame.id, canvas.toDataURL());
-          keys.set(frame.id, key);
+          drawn.set(frame.id, { key, url: canvas.toDataURL() });
         }
       } finally {
         busy = false;
@@ -81,9 +85,8 @@ const useThumbnails = (app: AppClassProperties, dark: boolean) => {
       if (!alive) {
         return;
       }
-      keys.forEach((key, id) => drawn.set(id, key));
-      if (images.size) {
-        setUrls((prev) => new Map([...prev, ...images]));
+      if (drawn.size) {
+        setThumbnails((prev) => new Map([...prev, ...drawn]));
       }
       if (again) {
         again = false;
@@ -104,13 +107,13 @@ const useThumbnails = (app: AppClassProperties, dark: boolean) => {
     };
   }, [app, dark]);
 
-  return urls;
+  return thumbnails;
 };
 
 type RowProps = {
   current: string | null;
   bookmarked: ReadonlySet<string> | null;
-  thumbnails: ReadonlyMap<string, string>;
+  thumbnails: ReadonlyMap<string, Thumbnail>;
   onGo(id: string, fromPointer: boolean): void;
   onStar(id: string, starred: boolean): void;
 };
@@ -119,6 +122,7 @@ const Row = ({
   frame,
   hint,
   onKeyDown,
+  buttonRef,
   current,
   bookmarked,
   thumbnails,
@@ -128,6 +132,7 @@ const Row = ({
   frame: Frame;
   hint?: string;
   onKeyDown?(event: React.KeyboardEvent<HTMLButtonElement>): void;
+  buttonRef?(node: HTMLButtonElement | null): void;
 }) => {
   const starred = bookmarked?.has(frame.id) ?? false;
   return (
@@ -136,13 +141,14 @@ const Row = ({
         type="button"
         className="frames-menu__go"
         data-frame={frame.id}
+        ref={buttonRef}
         aria-current={frame.id === current ? "location" : undefined}
         onClick={(event) => onGo(frame.id, event.detail > 0)}
         onKeyDown={onKeyDown}
       >
         <span className="frames-menu__thumb">
           {thumbnails.has(frame.id) && (
-            <img src={thumbnails.get(frame.id)} alt="" />
+            <img src={thumbnails.get(frame.id)?.url} alt="" />
           )}
         </span>
         <span className="frames-menu__name">{frame.name}</span>
@@ -172,17 +178,23 @@ const Tree = ({
   nodes,
   parent,
   onLeave,
+  rows,
   ...row
 }: RowProps & {
   nodes: readonly FrameNode[];
   parent: string | null;
   onLeave(to: string | null): void;
+  /** the tree's row buttons by frame id, for moving focus and scrolling */
+  rows: Map<string, HTMLButtonElement>;
 }) => (
   <ul>
     {nodes.map(({ frame, children }) => (
       <li key={frame.id}>
         <Row
           frame={frame}
+          buttonRef={(node) =>
+            node ? rows.set(frame.id, node) : rows.delete(frame.id)
+          }
           onKeyDown={(event) => {
             if (event.key === KEYS.ENTER && children[0]) {
               event.preventDefault();
@@ -198,7 +210,13 @@ const Tree = ({
           {...row}
         />
         {children.length > 0 && (
-          <Tree nodes={children} parent={frame.id} onLeave={onLeave} {...row} />
+          <Tree
+            nodes={children}
+            parent={frame.id}
+            onLeave={onLeave}
+            rows={rows}
+            {...row}
+          />
         )}
       </li>
     ))}
@@ -215,7 +233,7 @@ export const FramesMenu = () => {
   const { frameNavigation } = useAppProps();
   const { theme } = useUIAppState();
   const editorInterface = useEditorInterface();
-  const list = useRef<HTMLDivElement>(null);
+  const rows = useRef(new Map<string, HTMLButtonElement>());
   const current = useCurrentFrameId(app);
   const thumbnails = useThumbnails(app, theme === THEME.DARK);
 
@@ -231,9 +249,9 @@ export const FramesMenu = () => {
   );
 
   useEffect(() => {
-    list.current
-      ?.querySelector(`.frames-menu__tree [data-frame="${current}"]`)
-      ?.scrollIntoView?.({ block: "nearest" });
+    if (current) {
+      rows.current.get(current)?.scrollIntoView?.({ block: "nearest" });
+    }
   }, [current]);
 
   const model = useFrameModel(app);
@@ -261,7 +279,7 @@ export const FramesMenu = () => {
   };
 
   return (
-    <div className="frames-menu" ref={list}>
+    <div className="frames-menu">
       {bookmarks.length > 0 && (
         <section
           className="frames-menu__bookmarks"
@@ -292,12 +310,9 @@ export const FramesMenu = () => {
               return;
             }
             app.frameNavigation.goTo(to);
-            list.current
-              ?.querySelector<HTMLButtonElement>(
-                `.frames-menu__tree [data-frame="${to}"]`,
-              )
-              ?.focus();
+            rows.current.get(to)?.focus();
           }}
+          rows={rows.current}
           {...row}
         />
       </section>
