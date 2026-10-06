@@ -1,6 +1,8 @@
 # redaphid/excalidraw
 
-This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [draw](https://draw.hypnodroid.com), a pen-first whiteboard that zooms far past upstream's 30x. It is upstream `master` at [`5a406e518`](https://github.com/excalidraw/excalidraw/commit/5a406e51875157bece389b9bc92d41ff241d5f3d) plus the commits on the `draw` branch. It is not an upstream release and is not published to npm. Releases are tarballs attached to this repo's GitHub releases.
+This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [draw](https://draw.hypnodroid.com), a pen-first whiteboard that zooms far past upstream's 30x. It is upstream `master` at [`5a406e518`](https://github.com/excalidraw/excalidraw/commit/5a406e51875157bece389b9bc92d41ff241d5f3d) plus the fork's commits on this repo's `master`. It is not an upstream release and is not published to npm. Releases are tarballs attached to this repo's GitHub releases.
+
+**[Try it](https://redaphid.github.io/excalidraw/)**: the fork's editor on a static page, with `authoringUnits="screen"`. The drawing stays in your browser's localStorage: there is no collaboration, sharing, AI or analytics, and the only requests are for the page's own scripts, styles and fonts. It redeploys on every push to `master` ([`playground/`](playground), [`playground.yml`](.github/workflows/playground.yml)); `yarn build:playground` builds it locally.
 
 The fork changes four things:
 
@@ -19,7 +21,7 @@ For everything else, see [upstream's README](https://github.com/excalidraw/excal
 
 ## Install
 
-Each release attaches one tarball per package. From `0.19.0-draw.7` on, the `@excalidraw/excalidraw` tarball bundles `@excalidraw/common`, `element`, `math` and `fractional-indexing`, so it installs from its URL alone, with no package-manager overrides ([`eb9bcc33`](https://github.com/redaphid/excalidraw/commit/eb9bcc33)). The GIFs above were recorded from a page that installs `0.19.0-draw.10` with pnpm this way:
+Each release attaches one tarball per package. From `0.19.0-draw.7` on, the `@excalidraw/excalidraw` tarball bundles `@excalidraw/common`, `element`, `math` and `fractional-indexing`, so it installs from its URL alone, with no package-manager overrides ([`eb9bcc33`](https://github.com/redaphid/excalidraw/commit/eb9bcc33)). From `0.19.0-draw.17` on, the `math` and `element` tarballs bundle their `@excalidraw/*` siblings the same way (`math` bundles `common`; `element` bundles `common`, `math` and `fractional-indexing`), so every tarball installs from its URL alone, including under pnpm's `blockExoticSubdeps`. From `0.19.0-draw.18` on, `common` bundles `math` too, since it imports it, so the standalone `common` tarball also loads in Node. The GIFs above were recorded from a page that installs `0.19.0-draw.10` with pnpm this way:
 
 ```json
 "@excalidraw/excalidraw": "https://github.com/redaphid/excalidraw/releases/download/v0.19.0-draw.N/excalidraw-excalidraw-0.19.0-draw.N.tgz"
@@ -117,12 +119,12 @@ This sets the five packages (`common`, `fractional-indexing`, `math`, `element`,
 
 ## Keeping up with upstream
 
-`draw` is the fork's branch, and `master` is kept fast-forwarded to it. To take upstream changes, merge them in with a merge commit. Never rebase the fork onto upstream: the release tags and the consumers pinned to them point at these commits.
+`master` is the fork's branch: changes and releases land there. To take upstream changes, merge them in with a merge commit. Never rebase the fork onto upstream: the release tags and the consumers pinned to them point at these commits.
 
 ```sh
 git remote add upstream git@github.com:excalidraw/excalidraw.git   # once
 git fetch upstream
-git switch draw
+git switch master
 git merge upstream/master
 ```
 
