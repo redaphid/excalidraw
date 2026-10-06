@@ -8,6 +8,10 @@
  *   cap only for a pen of size 4.25 (Excalidraw's thinnest at 1x) or
  *   larger; the distance scales down with a smaller pen, so a stroke
  *   shorter than 3 units keeps its body.
+ * - `getStrokePoints` takes its points one at a time through
+ *   `streamStrokePoints`, and the simulated pressure step is
+ *   `getSimulatedPressure`, so a live stroke can be smoothed as it is drawn
+ *   by the same code that outlines it afterwards.
  *
  * MIT License
  *
@@ -252,7 +256,7 @@ function prj(A: number[], B: number[], c: number) {
  * @param easing
  * @internal
  */
-function getStrokeRadius(
+export function getStrokeRadius(
   size: number,
   thinning: number,
   pressure: number,
@@ -275,19 +279,124 @@ function getStrokeRadius(
  * @param options.end Cap, taper and easing for the end of the line.
  * @param options.last Whether to handle the points as a completed stroke.
  */
+/**
+ * The incremental core of `getStrokePoints`: starts a stroke at `first` and
+ * smooths each later point into a `StrokePoint` as it arrives.
+ */
+export function streamStrokePoints(
+  first: number[],
+  options = {} as Pick<StrokeOptions, "size" | "streamline">,
+) {
+  const { streamline = 0.5, size = 16 } = options;
+
+  // Find the interpolation level between points.
+  const t = 0.15 + (1 - streamline) * 0.85;
+
+  // The strokePoints array will hold the points for the stroke.
+  // Start it out with the first point, which needs no adjustment.
+  const strokePoints: StrokePoint[] = [
+    {
+      point: [first[0], first[1]],
+      pressure: first[2] >= 0 ? first[2] : 0.25,
+      vector: [1, 1],
+      distance: 0,
+      runningLength: 0,
+    },
+  ];
+
+  // A flag to see whether we've already reached out minimum length
+  let hasReachedMinimumLength = false;
+
+  // We use the runningLength to keep track of the total distance
+  let runningLength = 0;
+
+  // We're set this to the latest point, so we can use it to calculate
+  // the distance and vector of the next point.
+  let prev = strokePoints[0];
+
+  /**
+   * Adds a point; returns the StrokePoint it made, or null when it is
+   * skipped. `last` is the stroke's final point, `exact` keeps it unsmoothed.
+   */
+  const add = (
+    pt: number[],
+    { last = false, exact = false } = {},
+  ): StrokePoint | null => {
+    const point = exact
+      ? // If we're at the last point, and `options.last` is true,
+        // then add the actual input point.
+        pt.slice(0, 2)
+      : // Otherwise, using the t calculated from the streamline
+        // option, interpolate a new point between the previous
+        // point the current point.
+        lrp(prev.point, pt, t);
+
+    // If the new point is the same as the previous point, skip ahead.
+    if (isEqual(prev.point, point)) {
+      return null;
+    }
+
+    // How far is the new point from the previous point?
+    const distance = dist(point, prev.point);
+
+    // Add this distance to the total "running length" of the line.
+    runningLength += distance;
+
+    // At the start of the line, we wait until the new point is a
+    // certain distance away from the original point, to avoid noise
+    if (!last && !hasReachedMinimumLength) {
+      if (runningLength < size) {
+        return null;
+      }
+      hasReachedMinimumLength = true;
+      // TODO: Backfill the missing points so that tapering works correctly.
+    }
+    // Create a new strokepoint (it will be the new "previous" one).
+    prev = {
+      // The adjusted point
+      point,
+      // The input pressure (or .5 if not specified)
+      pressure: pt[2] >= 0 ? pt[2] : 0.5,
+      // The vector from the current point to the previous point
+      vector: uni(sub(prev.point, point)),
+      // The distance between the current point and the previous point
+      distance,
+      // The total distance so far
+      runningLength,
+    };
+
+    // Push it to the strokePoints array.
+    strokePoints.push(prev);
+    return prev;
+  };
+
+  return { strokePoints, add };
+}
+
+/**
+ * ## getStrokePoints
+ * @description Get an array of points as objects with an adjusted point, pressure, vector, distance, and runningLength.
+ * @param points An array of points (as `[x, y, pressure]` or `{x, y, pressure}`). Pressure is optional in both cases.
+ * @param options (optional) An object with options.
+ * @param options.size	The base size (diameter) of the stroke.
+ * @param options.thinning The effect of pressure on the stroke's size.
+ * @param options.smoothing	How much to soften the stroke's edges.
+ * @param options.easing	An easing function to apply to each point's pressure.
+ * @param options.simulatePressure Whether to simulate pressure based on velocity.
+ * @param options.start Cap, taper and easing for the start of the line.
+ * @param options.end Cap, taper and easing for the end of the line.
+ * @param options.last Whether to handle the points as a completed stroke.
+ */
 export function getStrokePoints<
   T extends number[],
   K extends { x: number; y: number; pressure?: number },
 >(points: (T | K)[], options = {} as StrokeOptions): StrokePoint[] {
-  const { streamline = 0.5, size = 16, last: isComplete = false } = options;
+  const { last: isComplete = false } = options;
 
   // If we don't have any points, return an empty array.
   if (points.length === 0) {
     return [];
   }
-
-  // Find the interpolation level between points.
-  const t = 0.15 + (1 - streamline) * 0.85;
 
   // Whatever the input is, make sure that the points are in number[][].
   let pts = Array.isArray(points[0])
@@ -311,78 +420,13 @@ export function getStrokePoints<
     pts = [...pts, [...add(pts[0], [1, 1]), ...pts[0].slice(2)]];
   }
 
-  // The strokePoints array will hold the points for the stroke.
-  // Start it out with the first point, which needs no adjustment.
-  const strokePoints: StrokePoint[] = [
-    {
-      point: [pts[0][0], pts[0][1]],
-      pressure: pts[0][2] >= 0 ? pts[0][2] : 0.25,
-      vector: [1, 1],
-      distance: 0,
-      runningLength: 0,
-    },
-  ];
-
-  // A flag to see whether we've already reached out minimum length
-  let hasReachedMinimumLength = false;
-
-  // We use the runningLength to keep track of the total distance
-  let runningLength = 0;
-
-  // We're set this to the latest point, so we can use it to calculate
-  // the distance and vector of the next point.
-  let prev = strokePoints[0];
+  const { strokePoints, add: addPoint } = streamStrokePoints(pts[0], options);
 
   const max = pts.length - 1;
 
   // Iterate through all of the points, creating StrokePoints.
   for (let i = 1; i < pts.length; i++) {
-    const point =
-      isComplete && i === max
-        ? // If we're at the last point, and `options.last` is true,
-          // then add the actual input point.
-          pts[i].slice(0, 2)
-        : // Otherwise, using the t calculated from the streamline
-          // option, interpolate a new point between the previous
-          // point the current point.
-          lrp(prev.point, pts[i], t);
-
-    // If the new point is the same as the previous point, skip ahead.
-    if (isEqual(prev.point, point)) {
-      continue;
-    }
-
-    // How far is the new point from the previous point?
-    const distance = dist(point, prev.point);
-
-    // Add this distance to the total "running length" of the line.
-    runningLength += distance;
-
-    // At the start of the line, we wait until the new point is a
-    // certain distance away from the original point, to avoid noise
-    if (i < max && !hasReachedMinimumLength) {
-      if (runningLength < size) {
-        continue;
-      }
-      hasReachedMinimumLength = true;
-      // TODO: Backfill the missing points so that tapering works correctly.
-    }
-    // Create a new strokepoint (it will be the new "previous" one).
-    prev = {
-      // The adjusted point
-      point,
-      // The input pressure (or .5 if not specified)
-      pressure: pts[i][2] >= 0 ? pts[i][2] : 0.5,
-      // The vector from the current point to the previous point
-      vector: uni(sub(prev.point, point)),
-      // The distance between the current point and the previous point
-      distance,
-      // The total distance so far
-      runningLength,
-    };
-
-    // Push it to the strokePoints array.
-    strokePoints.push(prev);
+    addPoint(pts[i], { last: i === max, exact: isComplete && i === max });
   }
 
   // Set the vector of the first point to be the same as the second point.
@@ -398,6 +442,26 @@ const RATE_OF_PRESSURE_CHANGE = 0.275;
 
 // Browser strokes seem to be off if PI is regular, a tiny offset seems to fix it
 const FIXED_PI = PI + 0.0001;
+
+/**
+ * The pressure a point is drawn with when pressure is simulated: it eases
+ * from `prevPressure` towards thin as the pen moves `distance` faster.
+ */
+export function getSimulatedPressure(
+  prevPressure: number,
+  distance: number,
+  size: number,
+) {
+  // Speed of change - how fast should the the pressure changing?
+  const sp = min(1, distance / size);
+  // Rate of change - how much of a change is there?
+  const rp = min(1, 1 - sp);
+  // Accelerate the pressure
+  return min(
+    1,
+    prevPressure + (rp - prevPressure) * (sp * RATE_OF_PRESSURE_CHANGE),
+  );
+}
 
 /**
  * ## getStrokeOutlinePoints
@@ -470,12 +534,7 @@ export function getStrokeOutlinePoints(
     let pressure = curr.pressure;
 
     if (simulatePressure) {
-      // Speed of change - how fast should the the pressure changing?
-      const sp = min(1, curr.distance / size);
-      // Rate of change - how much of a change is there?
-      const rp = min(1, 1 - sp);
-      // Accelerate the pressure
-      pressure = min(1, acc + (rp - acc) * (sp * RATE_OF_PRESSURE_CHANGE));
+      pressure = getSimulatedPressure(acc, curr.distance, size);
     }
 
     return (acc + pressure) / 2;
@@ -541,12 +600,7 @@ export function getStrokeOutlinePoints(
         // If we're simulating pressure, then do so based on the distance
         // between the current point and the previous point, and the size
         // of the stroke. Otherwise, use the input pressure.
-        const sp = min(1, distance / size);
-        const rp = min(1, 1 - sp);
-        pressure = min(
-          1,
-          prevPressure + (rp - prevPressure) * (sp * RATE_OF_PRESSURE_CHANGE),
-        );
+        pressure = getSimulatedPressure(prevPressure, distance, size);
       }
 
       radius = getStrokeRadius(size, thinning, pressure, easing);
