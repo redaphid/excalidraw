@@ -116,6 +116,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     showDeprecatedFonts,
     renderScrollbars,
     viewportStatusFrame,
+    frameNavigation,
     currentUserControls,
     imageOptions,
   } = props;
@@ -260,6 +261,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           showDeprecatedFonts={showDeprecatedFonts}
           renderScrollbars={renderScrollbars}
           viewportStatusFrame={viewportStatusFrame}
+          frameNavigation={frameNavigation}
           currentUserControls={currentUserControls}
           imageOptions={normalizedImageOptions}
         >
@@ -453,6 +455,7 @@ export {
   viewportCoordsToSceneCoords,
   getFormFactor,
   throttleRAF,
+  FRAMES_SIDEBAR_TAB,
 } from "@excalidraw/common";
 
 export {
@@ -497,6 +500,7 @@ export type {
 
 export type {
   ViewportStatusFrame,
+  FrameNavigation,
   ElementRenderOverride,
   ElementRenderOverrides,
 } from "./types";

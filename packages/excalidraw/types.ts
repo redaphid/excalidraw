@@ -1070,6 +1070,14 @@ export interface ExcalidrawProps {
   renderScrollbars?: boolean;
   viewportStatusFrame?: ViewportStatusFrame | null;
   /**
+   * Turns on frame navigation: a Frames tab in the default sidebar (also
+   * `M`, or `toggleSidebar({ name: "default", tab: FRAMES_SIDEBAR_TAB })`),
+   * a breadcrumb of the frame the view is in, arrow keys that step between
+   * frames while nothing is selected, and ⌥1–9 for the first nine
+   * bookmarks. Pass a stable object; leave it out to turn all of it off.
+   */
+  frameNavigation?: FrameNavigation;
+  /**
    * Rendered inside the UserList "who's here" dropdown (desktop) and inline
    * in the mobile menu's collaborators section, below a divider. Accepts a
    * render function — called with `isMobile` so hosts can render different
@@ -1177,6 +1185,13 @@ export type UIOptions = Partial<{
   /** @deprecated does nothing. Will be removed in 0.15 */
   welcomeScreen?: boolean;
 }>;
+
+export type FrameNavigation = {
+  /** bookmarked frame ids, in order; the host keeps them */
+  bookmarks?: readonly string[];
+  /** a star or unstar in the drawer; without it the drawer shows no stars */
+  onBookmarkChange?: (frameId: string, bookmarked: boolean) => void;
+};
 
 export type AppProps = Merge<
   ExcalidrawProps,
