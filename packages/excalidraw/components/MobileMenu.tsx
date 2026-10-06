@@ -14,6 +14,7 @@ import { FixedSideContainer } from "./FixedSideContainer";
 import { Island } from "./Island";
 
 import { PenModeButton } from "./PenModeButton";
+import { Toast } from "./Toast";
 import { ViewportStatusBadge } from "./ViewportStatusFrame/ViewportStatusFrame";
 
 import type { ActionManager } from "../actions/manager";
@@ -146,6 +147,17 @@ export const MobileMenu = ({
       </button>
     ) : null;
 
+  const floatingStatus = appState.toast ? (
+    <Toast
+      message={appState.toast.message}
+      onClose={() => setAppState({ toast: null })}
+      duration={appState.toast.duration}
+      closable={appState.toast.closable}
+    />
+  ) : (
+    scrollBackToContentButton
+  );
+
   const viewportStatusLabel = app.props.viewportStatusFrame?.label;
   const viewportStatusBadge = viewportStatusLabel ? (
     <ViewportStatusBadge
@@ -171,10 +183,8 @@ export const MobileMenu = ({
           }}
           data-viewport-ui="bottom"
         >
-          {scrollBackToContentButton && (
-            <div className="floating-status-stack">
-              {scrollBackToContentButton}
-            </div>
+          {floatingStatus && (
+            <div className="floating-status-stack">{floatingStatus}</div>
           )}
 
           <MobileShapeActions
@@ -192,8 +202,8 @@ export const MobileMenu = ({
         </div>
       )}
 
-      {!shouldRenderDefaultBottomBar && scrollBackToContentButton && (
-        <div className="floating-status-stack">{scrollBackToContentButton}</div>
+      {!shouldRenderDefaultBottomBar && floatingStatus && (
+        <div className="floating-status-stack">{floatingStatus}</div>
       )}
 
       {viewportStatusBadge && (

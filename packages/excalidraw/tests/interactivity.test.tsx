@@ -768,6 +768,20 @@ describe("ui={{ enabled: ... }}", () => {
     expect(queryContainer(".scroll-back-to-content")).not.toBe(null);
     expect(queryContainer(".mobile-toolbar")).toBe(null);
   });
+
+  it("shows toasts on mobile", async () => {
+    await render(<Excalidraw UIOptions={{ getFormFactor: () => "phone" }} />);
+    fireEvent.resize(window);
+    await waitFor(() => expect(h.app.editorInterface.formFactor).toBe("phone"));
+
+    act(() => {
+      h.app.setToast({ message: "Sent to the Rusty Conquistador" });
+    });
+
+    expect(queryContainer(".Toast")?.textContent).toContain(
+      "Sent to the Rusty Conquistador",
+    );
+  });
 });
 
 describe("ui={false} with host UI", () => {
