@@ -1,5 +1,5 @@
 {
-  "$schema": "./schema.json",
+  "$schema": "./tokens.schema.json",
   "name": "Terminal",
   "mode": "dark",
   "description": "Green phosphor on black: monospace everything, square corners, a dim glow on UI text and nothing else lit. Element greens display at #6fc76f, the brightest dark mode allows.",

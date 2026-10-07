@@ -21,6 +21,7 @@
     "./*": {
       "types": "./dist/types/excalidraw/*.d.ts"
     },
+    "./themes/*": "./themes/*",
     "./index.css": {
       "development": "./dist/dev/index.css",
       "production": "./dist/prod/index.css"
@@ -33,7 +34,8 @@
     }
   },
   "files": [
-    "dist/*"
+    "dist/*",
+    "themes/*"
   ],
   "publishConfig": {
     "access": "public"

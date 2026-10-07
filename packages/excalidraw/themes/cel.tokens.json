@@ -1,5 +1,5 @@
 {
-  "$schema": "./schema.json",
+  "$schema": "./tokens.schema.json",
   "name": "Cel",
   "mode": "light",
   "description": "Flat cel illustration on warm grey board: one even slate outline around every shape, rounded forms, muted apricot, sage and slate-blue fills, no shading.",
