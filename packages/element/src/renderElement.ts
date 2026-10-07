@@ -1325,11 +1325,15 @@ const drawElement = (
         );
         context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
-        context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
-        context.strokeStyle = applyDarkModeFilter(
-          FRAME_STYLE.strokeColor,
-          appState.theme === THEME.DARK,
-        );
+        context.lineWidth =
+          (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth) /
+          appState.zoom.value;
+        context.strokeStyle =
+          renderConfig.canvasTheme?.frameColor ??
+          applyDarkModeFilter(
+            FRAME_STYLE.strokeColor,
+            appState.theme === THEME.DARK,
+          );
 
         // TODO change later to only affect AI frames
         if (isMagicFrameElement(element)) {

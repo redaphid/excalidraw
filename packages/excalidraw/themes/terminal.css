@@ -1,0 +1,130 @@
+/* Terminal. mode: dark */
+/*
+ * Green phosphor on black: monospace everything, square corners, a dim
+ * glow on UI text and nothing else lit. Element greens display at #6fc76f,
+ * the brightest dark mode allows.
+ *
+ * Generated from theme tokens; edit the tokens, not this file.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #050a06;
+  --canvas-grid-color: rgba(93, 255, 138, 0.05);
+  --canvas-grid-bold-color: rgba(93, 255, 138, 0.14);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #07120a;
+  --canvas-frame-color: rgba(57, 255, 106, 0.45);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #23943f;
+  --color-selection: #5dff8a;
+
+  --element-stroke-color: #006700;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Cascadia";
+  --element-font-size: 16;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.35;
+  --color-picks-stroke: #006700 #fa4e4e #003d65 #006700 #7a2800;
+  --color-picks-background: transparent #95dca6 #abcfd7 #95dca6 #abcfd7;
+  --color-palette-stroke: #bfedca #72cd88 #24ac46 #008700 #006700,
+    #ffeae6 #ffc4c0 #ff9d9c #fb7372 #fa4e4e,
+    #cee6ea #8fbdc9 #5293a8 #0e6585 #003d65,
+    #bfedca #72cd88 #24ac46 #008700 #006700,
+    #ede3cf #d0b48f #b48752 #96550d #7a2800,
+    #efe8f7 #d1bee2 #b896cf #9a6aba #7f41a8,
+    #ccede4 #8bcabd #4ca997 #05846c #006246;
+  --color-palette-background: transparent,
+    #fff1ec #ffcfcc #ffa9a8 #fc7b7a #fa4e4e,
+    #dbeff1 #abcfd7 #649fb2 #1a6d8b #003d65,
+    #cff4d8 #95dca6 #3bb65a #008e09 #006700,
+    #f2ebdb #d8c2a2 #be9565 #9c5e1a #7a2800,
+    #f2eff9 #dacae8 #bfa2d5 #9f72bf #7f41a8,
+    #d7f3eb #9fd5c9 #5eb3a3 #128b74 #006246;
+
+  --ui-font: "Cascadia", system-ui, sans-serif;
+  --text-primary-color: #39ff6a;
+  --color-on-surface: #39ff6a;
+  --icon-fill-color: #39ff6a;
+  --popup-text-color: #39ff6a;
+  --keybinding-color: #23943f;
+  --color-gray-60: #23943f;
+  --input-label-color: #23943f;
+
+  --island-bg-color: #07120a;
+  --island-bg-color-alt: #07120a;
+  --popup-bg-color: #07120a;
+  --sidebar-bg-color: #07120a;
+  --default-bg-color: #07120a;
+  --popup-secondary-bg-color: #0a2010;
+  --input-bg-color: #050c07;
+  --input-border-color: #0f3819;
+  --input-hover-bg-color: #0a2010;
+
+  --color-surface-lowest: #050c07;
+  --color-surface-low: #0a2010;
+  --color-surface-mid: #0a2010;
+  --color-surface-high: #0a2010;
+  --color-surface-primary-container: #215930;
+  --color-on-primary-container: #39ff6a;
+
+  --color-primary: #5dff8a;
+  --color-primary-darker: #5dff8a;
+  --color-primary-darkest: #5dff8a;
+  --color-primary-hover: #5dff8a;
+  --color-primary-light: #215930;
+  --color-primary-light-darker: #215930;
+  --color-brand-hover: #5dff8a;
+  --color-brand-active: #5dff8a;
+  --select-highlight-color: #5dff8a;
+  --focus-highlight-color: #5dff8a;
+
+  --button-hover-bg: #0a2010;
+  --button-active-bg: #215930;
+  --button-active-border: #5dff8a;
+  --button-gray-1: #0a2010;
+  --button-gray-2: #0a2010;
+  --button-gray-3: #215930;
+  --default-border-color: #0f3819;
+  --dialog-border-color: #0f3819;
+  --sidebar-border-color: #0f3819;
+  --color-border-outline: #23943f;
+  --color-border-outline-variant: #0f3819;
+
+  --border-radius-md: 0px;
+  --border-radius-lg: 0px;
+  --shadow-island: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --shadow-island-stronger: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --modal-shadow: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --sidebar-shadow: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --library-dropdown-shadow: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --overlay-bg-color: rgba(5, 10, 6, 0.72);
+  --color-slider-track: #0f3819;
+  --color-slider-thumb: #5dff8a;
+}
+
+:scope .HintViewer {
+  --color-gray-40: #22913d;
+}
+
+:scope .HelpDialog__key {
+  color: #39ff6a;
+}
+
+:scope [data-radix-popper-content-wrapper] .Island {
+  background: #07120a;
+}
+
+:scope {
+  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);
+}
+
+:scope .frame-breadcrumb {
+  border-radius: 0;
+}

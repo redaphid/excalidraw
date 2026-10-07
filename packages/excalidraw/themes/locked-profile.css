@@ -1,0 +1,125 @@
+/* Locked Profile. mode: light */
+/*
+ * The quietest plate: graphite on cool white, no grid at all, hairline
+ * ink, one bronze accent for anything live. Panels are almost not there.
+ */
+:scope,
+:scope.theme--dark {
+  --element-freedraw-taper: 3;
+  --element-freedraw-thinning: 0.15;
+  --canvas-background: #fbfbf9;
+  --canvas-grid-color: rgba(17, 20, 24, 0);
+  --canvas-grid-bold-color: rgba(17, 20, 24, 0);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #fbfbf9;
+  --canvas-frame-color: rgba(17, 20, 24, 0.35);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #7a7770;
+  --color-selection: #a3743a;
+  --element-stroke-color: #111418;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: bar;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 15;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.18;
+  --color-picks-stroke: #111418 #3a3f45 #6b7178 #24292f #a3743a;
+  --color-picks-background: transparent #f0f0ee #e6e6e3 #ececea #f1ece4;
+  --color-palette-stroke: #c9c7c3 #9d9d9a #717272 #414345 #15181c,
+    #d6d5d2 #b8b9b9 #9b9da0 #7a7f84 #5c636b,
+    #e3d8c9 #d3c0a6 #c4a783 #b38c5d #a3743a,
+    #decec8 #caaaa4 #b58680 #9f5f59 #8a3b35,
+    #d2d5d4 #afb9be #8c9da8 #667e90 #43627a,
+    #d6d9d1 #b8c2b8 #9bab9e #7a9182 #5c7a69,
+    #cdccc8 #a6a5a4 #7e7f80 #535559 #2b2f35,
+    #dfdcd6 #cbc8c1 #b8b4ad #a29e96 #8e8a82;
+  --color-palette-background: transparent,
+    #dfddd8 #c7c7c4 #adaeae #8e9193 #6f7378,
+    #e8dfd2 #dcccb6 #cfb797 #c09d71 #b0844c,
+    #e6d9d3 #d8bfb8 #c8a19a #b67e76 #a35a52,
+    #dddfde #c3ccd0 #a7b7c1 #849eaf #62859d,
+    #e0e1d9 #cad1c6 #b2bfb1 #94a998 #77937f,
+    #e9e6df #dfdbd3 #d4cfc6 #c6c0b6 #b9b2a6,
+    #dad8d4 #bcbbb9 #9a9b9c #727579 #4a4f56,
+    #ebe4d9 #e4d7c5 #dcc9af #d3b894 #c9a77a;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #111418;
+  --color-on-surface: #111418;
+  --icon-fill-color: #111418;
+  --popup-text-color: #15181c;
+  --keybinding-color: #8a867e;
+  --color-gray-60: #8a867e;
+  --input-label-color: #8a867e;
+
+  --island-bg-color: #fbfbf9;
+  --island-bg-color-alt: #fbfbf9;
+  --popup-bg-color: #fbfbf9;
+  --sidebar-bg-color: #fbfbf9;
+  --default-bg-color: #fbfbf9;
+  --popup-secondary-bg-color: #f1f1ef;
+  --input-bg-color: #ffffff;
+  --input-border-color: #dcd7cd;
+  --input-hover-bg-color: #f1f1ef;
+
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #f1f1ef;
+  --color-surface-mid: #f1f1ef;
+  --color-surface-high: #f1f1ef;
+  --color-surface-primary-container: #ece4d6;
+  --color-on-primary-container: #15181c;
+
+  --color-primary: #15181c;
+  --color-primary-darker: #15181c;
+  --color-primary-darkest: #15181c;
+  --color-primary-hover: #15181c;
+  --color-primary-light: #ece4d6;
+  --color-primary-light-darker: #ece4d6;
+  --color-brand-hover: #15181c;
+  --color-brand-active: #15181c;
+  --select-highlight-color: #a3743a;
+  --focus-highlight-color: #a3743a;
+
+  --button-hover-bg: #f1f1ef;
+  --button-active-bg: #ece4d6;
+  --button-active-border: #15181c;
+  --button-gray-1: #f1f1ef;
+  --button-gray-2: #f1f1ef;
+  --button-gray-3: #ece4d6;
+  --default-border-color: #e2e2df;
+  --dialog-border-color: #dcd7cd;
+  --sidebar-border-color: #dcd7cd;
+  --color-border-outline: #8a867e;
+  --color-border-outline-variant: #dcd7cd;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --shadow-island-stronger: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --modal-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --sidebar-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --library-dropdown-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --overlay-bg-color: rgba(251, 251, 249, 0.85);
+  --color-slider-track: #e2e2df;
+  --color-slider-thumb: #15181c;
+}
+
+:scope .selected-shape-actions legend,
+:scope .selected-shape-actions h3,
+:scope .frame-breadcrumb {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+}
+
+:scope .frame-breadcrumb {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}

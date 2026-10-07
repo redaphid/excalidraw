@@ -1,0 +1,138 @@
+/* Windows 95. mode: light */
+/*
+ * Teal desktop, silver beveled chrome, navy title bars and 1-pixel black
+ * ink, like it is 1995.
+ */
+:scope,
+:scope.theme--dark {
+  --element-freedraw-streamline: 0;
+  --canvas-background: #008080;
+  --canvas-grid-color: rgba(255, 255, 255, 0.07);
+  --canvas-grid-bold-color: rgba(255, 255, 255, 0.16);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #ffffff;
+  --canvas-frame-color: #000000;
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #ffffff;
+  --color-selection: #000080;
+  --element-stroke-color: #000000;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 16;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.5;
+  --color-picks-stroke: #000000 #800000 #008000 #000080 #808000;
+  --color-picks-background: transparent #ffadad #adffad #adadff #ffffad;
+  --color-palette-stroke: #d1d1d1 #9e9e9e #6b6b6b #333333 #000000,
+    #e8d1d1 #cf9e9e #b56b6b #993333 #800000,
+    #d1e8d1 #9ecf9e #6bb56b #339933 #008000,
+    #d1d1e8 #9e9ecf #6b6bb5 #333399 #000080,
+    #e8e8d1 #cfcf9e #b5b56b #999933 #808000,
+    #e8d1e8 #cf9ecf #b56bb5 #993399 #800080,
+    #d1e8e8 #9ecfcf #6bb5b5 #339999 #008080,
+    #e8e8e8 #cfcfcf #b5b5b5 #999999 #808080;
+  --color-palette-background: transparent,
+    #ededed #d6d6d6 #bdbdbd #9e9e9e #808080,
+    #ffdbdb #ffadad #ff7a7a #ff3d3d #ff0000,
+    #dbffdb #adffad #7aff7a #3dff3d #00ff00,
+    #dbdbff #adadff #7a7aff #3d3dff #0000ff,
+    #ffffdb #ffffad #ffff7a #ffff3d #ffff00,
+    #ffdbff #ffadff #ff7aff #ff3dff #ff00ff,
+    #dbffff #adffff #7affff #3dffff #00ffff,
+    #f6f6f6 #ebebeb #dedede #cfcfcf #c0c0c0;
+
+  --ui-font: Tahoma, "MS Sans Serif", "Microsoft Sans Serif", Arial, sans-serif;
+  --text-primary-color: #000000;
+  --color-on-surface: #000000;
+  --icon-fill-color: #000000;
+  --popup-text-color: #000000;
+  --keybinding-color: #404040;
+  --color-gray-60: #404040;
+  --input-label-color: #404040;
+
+  --island-bg-color: #c0c0c0;
+  --island-bg-color-alt: #c0c0c0;
+  --popup-bg-color: #c0c0c0;
+  --sidebar-bg-color: #c0c0c0;
+  --default-bg-color: #c0c0c0;
+  --popup-secondary-bg-color: #c0c0c0;
+  --input-bg-color: #ffffff;
+  --input-border-color: #808080;
+  --input-hover-bg-color: #c0c0c0;
+
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #c0c0c0;
+  --color-surface-mid: #c0c0c0;
+  --color-surface-high: #c0c0c0;
+  --color-surface-primary-container: #a8a8a8;
+  --color-on-primary-container: #000000;
+
+  --color-primary: #000080;
+  --color-primary-darker: #000080;
+  --color-primary-darkest: #000080;
+  --color-primary-hover: #000080;
+  --color-primary-light: #a8a8a8;
+  --color-primary-light-darker: #a8a8a8;
+  --color-brand-hover: #000080;
+  --color-brand-active: #000080;
+  --select-highlight-color: #000080;
+  --focus-highlight-color: #000080;
+
+  --button-hover-bg: #c0c0c0;
+  --button-active-bg: #a8a8a8;
+  --button-active-border: #000080;
+  --button-gray-1: #c0c0c0;
+  --button-gray-2: #c0c0c0;
+  --button-gray-3: #a8a8a8;
+  --default-border-color: #808080;
+  --dialog-border-color: #808080;
+  --sidebar-border-color: #808080;
+  --color-border-outline: #404040;
+  --color-border-outline-variant: #808080;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --shadow-island-stronger: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --modal-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --sidebar-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --library-dropdown-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --overlay-bg-color: rgba(0, 0, 0, 0.25);
+  --color-slider-track: #808080;
+  --color-slider-thumb: #000080;
+}
+
+:scope .ToolIcon__icon:hover,
+:scope .ToolIcon_type_radio:checked + .ToolIcon__icon {
+  box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #ffffff,
+    inset 2px 2px #808080, inset -2px -2px #dfdfdf;
+}
+
+:scope .Modal__content .Dialog__title,
+:scope .Dialog__title {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #ffffff;
+}
+
+:scope .frame-breadcrumb {
+  border-radius: 0;
+}
+
+:scope .Modal__content,
+:scope .Island {
+  border-radius: 0;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+}

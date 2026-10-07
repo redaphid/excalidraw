@@ -110,6 +110,67 @@ const verifyExcalidrawInstallsAlone = () => {
   console.info(
     `verify-draw-release: a bundler resolves every import of excalidraw-excalidraw-${version}.tgz installed alone`,
   );
+  return drawApp;
+};
+
+// draw serves the sample themes as MCP resources, importing them as text at
+// build time through the package's exports
+const verifyThemesImportAsText = (drawApp) => {
+  const { themes } = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        drawApp,
+        "node_modules/@excalidraw/excalidraw/themes/index.json",
+      ),
+      "utf-8",
+    ),
+  );
+  const files = [
+    "index.json",
+    "tokens.schema.json",
+    ...themes.flatMap(({ name, generated }) =>
+      generated ? [`${name}.css`, `${name}.tokens.json`] : [`${name}.css`],
+    ),
+  ];
+  fs.writeFileSync(
+    path.join(drawApp, "themes.js"),
+    `${files
+      .map(
+        (file, i) =>
+          `import file${i} from "@excalidraw/excalidraw/themes/${file}";`,
+      )
+      .join("\n")}\nexport default [${files.map((_, i) => `file${i}`)}];\n`,
+  );
+  let imported;
+  try {
+    buildSync({
+      absWorkingDir: drawApp,
+      entryPoints: ["themes.js"],
+      bundle: true,
+      format: "cjs",
+      outfile: "themes.cjs",
+      loader: { ".css": "text" },
+      logLevel: "error",
+    });
+    imported = require(path.join(drawApp, "themes.cjs")).default;
+  } catch {
+    fail(`a bundler cannot import every file themes/index.json lists`);
+  }
+  files.forEach((file, i) => {
+    const ok = file.endsWith(".css")
+      ? typeof imported[i] === "string" && imported[i].startsWith("/* ")
+      : typeof imported[i] === "object" && imported[i] !== null;
+    if (!ok) {
+      fail(
+        `themes/${file} does not import as ${
+          file.endsWith(".css") ? "text" : "JSON"
+        }`,
+      );
+    }
+  });
+  console.info(
+    `verify-draw-release: ${themes.length} themes and ${files.length} theme files import from excalidraw-excalidraw-${version}.tgz`,
+  );
 };
 
 const verifyLoadsAloneInNode = (packageName) => {
@@ -129,5 +190,5 @@ const verifyLoadsAloneInNode = (packageName) => {
 };
 
 verifyTarballNames();
-verifyExcalidrawInstallsAlone();
+verifyThemesImportAsText(verifyExcalidrawInstallsAlone());
 NODE_LOADABLE.forEach(verifyLoadsAloneInNode);

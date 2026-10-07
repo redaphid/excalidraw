@@ -1,0 +1,114 @@
+/* Synthwave. mode: dark */
+/*
+ * 1986 at midnight: violet night, magenta and cyan neon grid, glowing
+ * panel edges, rounded type.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #1b0b33;
+  --canvas-grid-color: rgba(255, 79, 216, 0.14);
+  --canvas-grid-bold-color: rgba(63, 240, 255, 0.42);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #1b0b33;
+  --canvas-frame-color: rgba(255, 79, 216, 0.7);
+  --canvas-frame-width: 1.5;
+  --canvas-frame-name-color: #ff9ce9;
+  --color-selection: #3ff0ff;
+  --element-stroke-color: #6c145b;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: medium;
+  --element-roughness: 0;
+  --element-roundness: round;
+  --element-arrow-type: round;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: Nunito;
+  --element-font-size: 18;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 1.1;
+  --color-picks-stroke: #6c145b #005263 #ce4600 #7b47cd #2e1000;
+  --color-picks-background: transparent #8fc4e9 #ffc0ff #dec0ff #ffc2f3;
+  --color-palette-stroke: #ffd8ff #ffb6ff #ff94ff #ff6df7 #ff49e9,
+    #c5dbff #77b9dd #2897b4 #00738b #005263,
+    #ffd8ef #f4b4b0 #e89271 #da6a2b #ce4600,
+    #f1d8ff #d5b6ff #b892f2 #996bdf #7b47cd,
+    #e4cfdc #b8a187 #8b7232 #5a3f00 #2e1000,
+    #ffdaff #ffb8e9 #ff97c9 #ff72a6 #ff5086,
+    #c8d5f0 #7fadb3 #368777 #005c36 #003500,
+    #dbc9f3 #a596ba #706380 #352a41 #000008;
+  --color-palette-background: transparent,
+    #ffdfff #ffc0ff #ff9dff #ff73f7 #ff49e9,
+    #d4e1ff #8fc4e9 #40a2c1 #007a93 #005263,
+    #ffdffa #f7bfc1 #ec9c84 #dc7138 #ce4600,
+    #f7dfff #dec0ff #c09cf8 #9e72e3 #7b47cd,
+    #ebd7eb #c5afa1 #99804c #634800 #2e1000,
+    #ffe1ff #ffc2f3 #ffa1d3 #ff79ac #ff5086,
+    #d8ddfc #96bac7 #4c9389 #006442 #003500,
+    #f8e5ff #e2cefe #c8b3e5 #ab94c8 #8c73a9;
+
+  --ui-font: Nunito, "Segoe UI", system-ui, sans-serif;
+  --text-primary-color: #fbeaff;
+  --color-on-surface: #fbeaff;
+  --icon-fill-color: #fbeaff;
+  --popup-text-color: #fbeaff;
+  --keybinding-color: #b48fd6;
+  --color-gray-60: #b48fd6;
+  --input-label-color: #b48fd6;
+
+  --island-bg-color: #22103f;
+  --island-bg-color-alt: #22103f;
+  --popup-bg-color: #22103f;
+  --sidebar-bg-color: #22103f;
+  --default-bg-color: #22103f;
+  --popup-secondary-bg-color: #33175c;
+  --input-bg-color: #1a0b31;
+  --input-border-color: rgba(255, 79, 216, 0.55);
+  --input-hover-bg-color: #33175c;
+
+  --color-surface-lowest: #1a0b31;
+  --color-surface-low: #33175c;
+  --color-surface-mid: #33175c;
+  --color-surface-high: #33175c;
+  --color-surface-primary-container: #4a1d7a;
+  --color-on-primary-container: #ffffff;
+
+  --color-primary: #3ff0ff;
+  --color-primary-darker: #3ff0ff;
+  --color-primary-darkest: #3ff0ff;
+  --color-primary-hover: #3ff0ff;
+  --color-primary-light: #4a1d7a;
+  --color-primary-light-darker: #4a1d7a;
+  --color-brand-hover: #3ff0ff;
+  --color-brand-active: #3ff0ff;
+  --select-highlight-color: #3ff0ff;
+  --focus-highlight-color: #3ff0ff;
+
+  --button-hover-bg: #33175c;
+  --button-active-bg: #4a1d7a;
+  --button-active-border: #3ff0ff;
+  --button-gray-1: #33175c;
+  --button-gray-2: #33175c;
+  --button-gray-3: #4a1d7a;
+  --default-border-color: rgba(255, 79, 216, 0.55);
+  --dialog-border-color: rgba(255, 79, 216, 0.55);
+  --sidebar-border-color: rgba(255, 79, 216, 0.55);
+  --color-border-outline: #b48fd6;
+  --color-border-outline-variant: rgba(255, 79, 216, 0.55);
+
+  --border-radius-md: 10px;
+  --border-radius-lg: 10px;
+  --shadow-island: 0 0 0 1px rgba(255, 79, 216, 0.7),
+    0 0 18px rgba(255, 79, 216, 0.35);
+  --shadow-island-stronger: 0 0 0 1px rgba(255, 79, 216, 0.7),
+    0 0 18px rgba(255, 79, 216, 0.35);
+  --modal-shadow: 0 0 0 1px rgba(255, 79, 216, 0.7),
+    0 0 18px rgba(255, 79, 216, 0.35);
+  --sidebar-shadow: 0 0 0 1px rgba(255, 79, 216, 0.7),
+    0 0 18px rgba(255, 79, 216, 0.35);
+  --library-dropdown-shadow: 0 0 0 1px rgba(255, 79, 216, 0.7),
+    0 0 18px rgba(255, 79, 216, 0.35);
+  --overlay-bg-color: rgba(15, 5, 30, 0.7);
+  --color-slider-track: rgba(255, 79, 216, 0.55);
+  --color-slider-thumb: #3ff0ff;
+}

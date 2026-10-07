@@ -1,0 +1,132 @@
+/* Raking Light. mode: light */
+/*
+ * Low warm key light from the left, cool fill from the right: the paper
+ * is a single quiet gradient and the panels cast one long shadow away from
+ * the light. Medium graphite outlines, sage and bronze bodies.
+ */
+:scope,
+:scope.theme--dark {
+  --element-freedraw-taper: 4;
+  --element-freedraw-thinning: 0.3;
+  --canvas-background: transparent;
+  --canvas-grid-color: rgba(70, 82, 92, 0);
+  --canvas-grid-bold-color: rgba(70, 82, 92, 0.12);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #f3eee4;
+  --canvas-frame-color: rgba(22, 26, 32, 0.45);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #5a5f66;
+  --color-selection: #b07531;
+  --element-stroke-color: #101317;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: medium;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 16;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.25;
+  --color-picks-stroke: #101317 #9e3a33 #3d5c48 #101317 #8a5a1c;
+  --color-picks-background: transparent #9ebdd1 #b3ccbd #86ae90 #d9a05a;
+  --color-palette-stroke: #c5c0b7 #9a9892 #6f6f6d #414345 #161a20,
+    #ddc6ba #cea499 #be8278 #ad5c54 #9e3a33,
+    #cfd2c3 #afbdab #90a994 #6d927a #4e7d62,
+    #cfd0ca #b0b9ba #91a1aa #6e8798 #4f7088,
+    #e0d1ba #d5ba99 #c9a477 #bc8b52 #b07531,
+    #d7c9c5 #c2aab0 #ac8b9b #946983 #7e4a6e,
+    #ded3b8 #d0c095 #c1ac71 #b1974a #a38327,
+    #dfcdb9 #d2b297 #c49774 #b57a4e #a85f2c;
+  --color-palette-background: transparent,
+    #d9d3c6 #c2bcaf #a8a296 #8a8377 #6b6459,
+    #e5d3c6 #ddbcb0 #d5a296 #ca8378 #c0645a,
+    #dadbcc #c3cfbd #abc2ac #8db198 #6fa184,
+    #d9d9d2 #c2cacb #a8b9c2 #89a5b8 #6a91ae,
+    #e6dac5 #dfcbad #d8ba92 #d0a772 #c79352,
+    #dfd3cc #cfbcbc #bea2aa #a98494 #94657f,
+    #e5dcc4 #ded1aa #d6c58d #ccb76a #c2a847,
+    #e6d6c4 #dfc4ab #d7af8f #cd966d #c47d4b;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #161a20;
+  --color-on-surface: #161a20;
+  --icon-fill-color: #161a20;
+  --popup-text-color: #161a20;
+  --keybinding-color: #5f625f;
+  --color-gray-60: #5f625f;
+  --input-label-color: #5f625f;
+
+  --island-bg-color: #f3eee4;
+  --island-bg-color-alt: #f3eee4;
+  --popup-bg-color: #f3eee4;
+  --sidebar-bg-color: #f3eee4;
+  --default-bg-color: #f3eee4;
+  --popup-secondary-bg-color: #e7e0d2;
+  --input-bg-color: #f8f5ef;
+  --input-border-color: #d5ccbb;
+  --input-hover-bg-color: #e7e0d2;
+
+  --color-surface-lowest: #f8f5ef;
+  --color-surface-low: #e7e0d2;
+  --color-surface-mid: #e7e0d2;
+  --color-surface-high: #e7e0d2;
+  --color-surface-primary-container: #dfd0b4;
+  --color-on-primary-container: #161a20;
+
+  --color-primary: #161a20;
+  --color-primary-darker: #161a20;
+  --color-primary-darkest: #161a20;
+  --color-primary-hover: #161a20;
+  --color-primary-light: #dfd0b4;
+  --color-primary-light-darker: #dfd0b4;
+  --color-brand-hover: #161a20;
+  --color-brand-active: #161a20;
+  --select-highlight-color: #b07531;
+  --focus-highlight-color: #b07531;
+
+  --button-hover-bg: #e7e0d2;
+  --button-active-bg: #dfd0b4;
+  --button-active-border: #161a20;
+  --button-gray-1: #e7e0d2;
+  --button-gray-2: #e7e0d2;
+  --button-gray-3: #dfd0b4;
+  --default-border-color: #d5ccbb;
+  --dialog-border-color: #d5ccbb;
+  --sidebar-border-color: #d5ccbb;
+  --color-border-outline: #5f625f;
+  --color-border-outline-variant: #d5ccbb;
+
+  --border-radius-md: 2px;
+  --border-radius-lg: 2px;
+  --shadow-island: 0 0 0 1px rgba(22, 26, 32, 0.12),
+    26px 30px 44px -20px rgba(80, 58, 28, 0.42);
+  --shadow-island-stronger: 0 0 0 1px rgba(22, 26, 32, 0.12),
+    26px 30px 44px -20px rgba(80, 58, 28, 0.42);
+  --modal-shadow: 0 0 0 1px rgba(22, 26, 32, 0.14),
+    40px 48px 80px -40px rgba(70, 52, 28, 0.45);
+  --sidebar-shadow: 0 0 0 1px rgba(22, 26, 32, 0.12),
+    18px 22px 36px -18px rgba(70, 52, 28, 0.38);
+  --library-dropdown-shadow: 0 0 0 1px rgba(22, 26, 32, 0.12),
+    18px 22px 36px -18px rgba(70, 52, 28, 0.38);
+  --overlay-bg-color: rgba(235, 229, 216, 0.6);
+  --color-slider-track: #d5ccbb;
+  --color-slider-thumb: #161a20;
+}
+
+:scope {
+  background: linear-gradient(
+    100deg,
+    #f2d29c 0%,
+    #eddcbd 30%,
+    #e2e1da 55%,
+    #c9d6de 82%,
+    #b7c9d4 100%
+  );
+}
+
+:scope .frame-breadcrumb {
+  border-radius: 2px;
+}

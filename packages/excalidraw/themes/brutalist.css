@@ -1,0 +1,132 @@
+/* Brutalist. mode: light */
+/*
+ * Raw and loud: hard black borders, offset block shadows, monospace, acid
+ * accents, no softness anywhere.
+ *
+ * Generated from theme tokens; edit the tokens, not this file.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #f4f4f0;
+  --canvas-grid-color: rgba(0, 0, 0, 0.12);
+  --canvas-grid-bold-color: rgba(0, 0, 0, 0.5);
+  --canvas-grid-style: dashed;
+  --canvas-handle-fill: #ffffff;
+  --canvas-frame-color: rgba(0, 0, 0, 1);
+  --canvas-frame-width: 3;
+  --canvas-frame-name-color: #737373;
+  --color-selection: #ff3b00;
+
+  --element-stroke-color: #000000;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: bold;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: triangle;
+  --element-font-family: "Cascadia";
+  --element-font-size: 18;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 2.5;
+  --color-picks-stroke: #000000 #ff3b00 #0047ff #009e4d #bf7700;
+  --color-picks-background: transparent #f8b9a3 #a6bdf5 #a6dbbd #f8d9a3;
+  --color-palette-stroke: #c8c8c5 #979795 #666665 #313130 #000000,
+    #f6d3c5 #f8ae95 #fa8965 #fd6030 #ff3b00,
+    #c8d5f3 #97b2f6 #6690f9 #316afc #0047ff,
+    #c8e5d3 #97d3b2 #66c291 #31af6e #009e4d,
+    #eadec5 #e0c595 #d5ac65 #ca9030 #bf7700,
+    #ebc8f3 #e297f6 #d866f9 #ce31fc #c400ff,
+    #d9d9d5 #babab8 #9c9c9a #7a7a7a #5c5c5c,
+    #c8e8e9 #97dbe0 #66ced8 #31c0cf #00b3c7;
+  --color-palette-background: transparent,
+    #f6dace #f8b9a3 #fa9473 #fc673a #ff3b00,
+    #d2dcf2 #a6bdf5 #759af8 #3b71fb #0047ff,
+    #d2e9da #a6dbbd #75cb9d #3bb977 #00a651,
+    #f6e8ce #f8d9a3 #fac873 #fcb33a #ff9f00,
+    #edd2f2 #e5a6f5 #db75f8 #d03bfb #c400ff,
+    #dfdfdb #c3c3c1 #a5a5a3 #808080 #5c5c5c,
+    #d2ebea #a6dfe3 #75d2db #3bc3d1 #00b3c7;
+
+  --ui-font: "Cascadia", system-ui, sans-serif;
+  --text-primary-color: #000000;
+  --color-on-surface: #000000;
+  --icon-fill-color: #000000;
+  --popup-text-color: #000000;
+  --keybinding-color: #737373;
+  --color-gray-60: #737373;
+  --input-label-color: #737373;
+
+  --island-bg-color: #ffffff;
+  --island-bg-color-alt: #ffffff;
+  --popup-bg-color: #ffffff;
+  --sidebar-bg-color: #ffffff;
+  --default-bg-color: #ffffff;
+  --popup-secondary-bg-color: #f0f0f0;
+  --input-bg-color: #ffffff;
+  --input-border-color: #000000;
+  --input-hover-bg-color: #f0f0f0;
+
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #f0f0f0;
+  --color-surface-mid: #f0f0f0;
+  --color-surface-high: #f0f0f0;
+  --color-surface-primary-container: #e8ff00;
+  --color-on-primary-container: #000000;
+
+  --color-primary: #000000;
+  --color-primary-darker: #000000;
+  --color-primary-darkest: #000000;
+  --color-primary-hover: #000000;
+  --color-primary-light: #e8ff00;
+  --color-primary-light-darker: #e8ff00;
+  --color-brand-hover: #000000;
+  --color-brand-active: #000000;
+  --select-highlight-color: #ff3b00;
+  --focus-highlight-color: #ff3b00;
+
+  --button-hover-bg: #f0f0f0;
+  --button-active-bg: #e8ff00;
+  --button-active-border: #000000;
+  --button-gray-1: #f0f0f0;
+  --button-gray-2: #f0f0f0;
+  --button-gray-3: #e8ff00;
+  --default-border-color: #000000;
+  --dialog-border-color: #000000;
+  --sidebar-border-color: #000000;
+  --color-border-outline: #737373;
+  --color-border-outline-variant: #000000;
+
+  --border-radius-md: 0px;
+  --border-radius-lg: 0px;
+  --shadow-island: 0 0 0 2px #000000, 5px 5px 0 2px #000000;
+  --shadow-island-stronger: 0 0 0 2px #000000, 5px 5px 0 2px #000000;
+  --modal-shadow: 0 0 0 2px #000000, 5px 5px 0 2px #000000;
+  --sidebar-shadow: 0 0 0 2px #000000, 5px 5px 0 2px #000000;
+  --library-dropdown-shadow: 0 0 0 2px #000000, 5px 5px 0 2px #000000;
+  --overlay-bg-color: rgba(244, 244, 240, 0.72);
+  --color-slider-track: #000000;
+  --color-slider-thumb: #000000;
+}
+
+:scope .HintViewer {
+  --color-gray-40: #6e6e6c;
+}
+
+:scope .HelpDialog__key {
+  color: #000000;
+}
+
+:scope [data-radix-popper-content-wrapper] .Island {
+  background: #ffffff;
+}
+
+:scope {
+  font-weight: 700;
+}
+
+:scope .frame-breadcrumb {
+  border-radius: 0;
+  text-transform: uppercase;
+}
