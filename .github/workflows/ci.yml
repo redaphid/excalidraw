@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: master
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: yarn test:typecheck
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: No workflow publishes to npm
+        # The brackets keep this step from matching its own pattern.
+        run: |
+          if grep -rnE 'NPM_[T]OKEN|NODE_AUTH_[T]OKEN|npm [p]ublish|yarn [r]elease' .github; then
+            echo "::error::A workflow publishes to npm. The fork ships GitHub release tarballs only."
+            exit 1
+          fi
+      - uses: ./.github/actions/setup
+      - name: ESLint
+        run: yarn test:code
+      - name: Prettier
+        run: yarn test:other
+
+  test:
+    name: test (${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: yarn test:app --watch=false --shard=${{ matrix.shard }}/3
