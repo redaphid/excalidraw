@@ -1,4 +1,5 @@
 {
+  "$schema": "./schema.json",
   "name": "Brutalist",
   "mode": "light",
   "description": "Raw and loud: hard black borders, offset block shadows, monospace, acid accents, no softness anywhere.",
@@ -6,11 +7,39 @@
   "ink": "#000000",
   "accent": "#ff3b00",
   "palette": ["#ff3b00", "#0047ff", "#00a651", "#ff9f00", "#c400ff", "#5c5c5c", "#00b3c7"],
-  "grid": { "color": "#000000", "minor": 0.12, "major": 0.5, "style": "dashed" },
-  "type": { "ui": "Cascadia", "canvas": "Cascadia", "size": 18 },
-  "stroke": { "width": "bold", "roughness": 0, "roundness": "sharp", "arrowhead": "triangle", "arrowType": "sharp", "fill": "solid" },
-  "pen": { "pressure": false, "width": 2.5 },
-  "surface": { "radius": 0, "border": "bold", "shadow": "hard", "panel": "#ffffff", "active": "#e8ff00" },
-  "frame": { "width": 3, "alpha": 1 },
+  "grid": {
+    "color": "#000000",
+    "minor": 0.12,
+    "major": 0.5,
+    "style": "dashed"
+  },
+  "type": {
+    "ui": "Cascadia",
+    "canvas": "Cascadia",
+    "size": 18
+  },
+  "stroke": {
+    "width": "bold",
+    "roughness": 0,
+    "roundness": "sharp",
+    "arrowhead": "triangle",
+    "arrowType": "sharp",
+    "fill": "solid"
+  },
+  "pen": {
+    "pressure": false,
+    "width": 2.5
+  },
+  "surface": {
+    "radius": 0,
+    "border": "bold",
+    "shadow": "hard",
+    "panel": "#ffffff",
+    "active": "#e8ff00"
+  },
+  "frame": {
+    "width": 3,
+    "alpha": 1
+  },
   "extra": ":scope {\n  font-weight: 700;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  text-transform: uppercase;\n}"
 }

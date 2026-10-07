@@ -1,27 +1,27 @@
 ---
 name: excalidraw-theming
-description: This skill should be used when the user asks to "make a theme", "theme the board", "css for excalidraw", "make it look like <X>", "match this image", "make an Excalidraw theme", "restyle the editor", "change the grid", "make the pen look like <X>", or "fix a theme". It generates a theme for this Excalidraw fork's `css` prop from a text vibe, a palette or a reference image, through a token file and scripts/theme-gen, then runs the screenshot, read and fix loop until the theme holds up.
+description: Generate and refine a theme for the Excalidraw fork's css prop from a text vibe, a palette or a reference image. Use when the user says "make a theme", "theme the board", "css for excalidraw", "make it look like <X>", "match this image", "restyle the editor" or "fix a theme". Covers the token file, generateThemeCss, and the apply, screenshot, judge and adjust loop.
 ---
 
 # Excalidraw theming
 
-A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DOM UI, and it sets custom properties that the editor reads to paint the canvas and to choose the stroke character of new elements. Write a theme as a small token file and let `scripts/theme-gen` derive the CSS: it fills in panels, states, shades, swatches and palettes, and enforces WCAG contrast. Then look at the result until it is right.
+A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DOM UI, and it sets custom properties that the editor reads to paint the canvas and to choose the stroke character of new elements. Write a theme as a small JSON token file and let `generateThemeCss` from `@excalidraw/common` derive the CSS. It fills in panels, states, shades, swatches and palettes, and enforces WCAG contrast. Then look at the result until it is right.
 
-- Token reference: `references/tokens.md`.
+- Token reference and the JSON Schema: `references/tokens.md`.
 - Lessons paid for in earlier passes: `references/pitfalls.md`. Read it before hand-editing CSS.
-- Variable reference for library consumers: `docs/theming.md`.
+- Variable reference for library consumers: `docs/theming.md` in the excalidraw repo.
 
 ## 1. Turn the input into tokens
 
-Create `playground/themes/tokens/<id>.json`. Copy the closest existing token file, then change it.
+Start from the closest existing token file in `playground/themes/tokens/`.
 
 - **From a vibe** ("Westworld title card"): name the instrument and the material first. What draws (technical pen, pencil, marker, phosphor trace)? On what (paper, film, screen, slate)? Pick a canvas, one ink, one accent and four to six palette colors that belong to that world. Fewer colors read as more deliberate.
 - **From a palette:** assign canvas (the most common, quietest color), ink (the darkest), accent (the one meant to catch the eye), and put the rest in `palette`.
-- **From a reference image:** extract its flat colors, then judge them against the image:
+- **From a reference image:** extract its flat colors, then judge them against the image. In the excalidraw repo:
   ```sh
   node scripts/theme-gen/palette-from-image.mjs <image> --name "Theme Name"
   ```
-  It prints each color with its share of the image and a starter token file. The role guesses are mechanical: look at the image and correct them. Drop colors that come from lighting (shadow tints, highlights). Keep the colors of the objects.
+  It prints each color with its share of the image and a starter token file. The role guesses are mechanical: look at the image and correct them. Drop colors that come from lighting (shadow tints, highlights). Keep the colors of the objects. Without the script, read the image yourself and name five to eight flat colors.
 
 Decide the stroke character with the same care as the colors. Colors alone leave the default blunt whiteboard look.
 
@@ -36,44 +36,42 @@ Decide the stroke character with the same care as the colors. Colors alone leave
 
 Freedraw widths are small numbers: `0.2` is a hairline, `1` is about 3 px, `2.5` is a fat marker.
 
-## 2. Generate
+## 2. The loop: apply, screenshot, judge, adjust
+
+1. **Apply.** Generate the CSS from the tokens and put it on an editor.
+2. **Screenshot.** Capture the scene with a selection, the color picker, the help dialog and the pen at 2.5x, on desktop and phone.
+3. **Judge.** Read the images themselves, against the checklist below. A green command proves nothing about how a theme looks.
+4. **Adjust.** Fix the biggest failure in the tokens, not in the CSS, and go back to 1.
+
+Every warning from `generateThemeCss` is `{token, from, to, reason}`: a color it had to move so text or ink stays legible. A warning means a token is close to illegible. Prefer changing the token over accepting the move.
+
+Stop when a full pass of the checklist finds nothing worth fixing. Keep a count of iterations and one line per iteration on what changed and why.
+
+### Running the loop locally (excalidraw repo, Playwright)
 
 ```sh
 yarn theme:gen <id>
-```
-
-It writes `playground/themes/<id>.css` and prints every contrast fix it made, such as `secondary text: #7b7c7b -> #696969 (3.53 -> 4.62)`. A printed fix means a token is close to illegible. Prefer changing the token over accepting the nudge. Put component rules in the token's `extra`, each prefixed with `:scope `.
-
-## 3. Shoot one theme
-
-```sh
 node scripts/theme-screenshots/shoot.mjs --themes <id> --viewports desktop,phone --states selected,colorpicker,dialog,pen --out theme-screenshots/<id>/iter<N> --sheet
 ```
 
-`--sheet` tiles every shot into `theme-screenshots/<id>/iter<N>/<id>/sheet.png`. Number the iterations, so a later reader can see how the theme got where it is.
+`yarn theme:gen` writes `playground/themes/<id>.css` from `playground/themes/tokens/<id>.json` and prints the warnings. The harness drives the playground in the installed Chromium and tiles every shot into `theme-screenshots/<id>/iter<N>/<id>/sheet.png`: read that one image. When the loop is done, shoot every viewport and state once (drop `--viewports` and `--states`, add `--video` for a live pen recording), and check one state in Firefox and WebKit with `--browser firefox` and `--browser webkit`.
 
-## 4. Read the sheet, then fix the biggest problem
+Optional, this machine only: `node D:/projects/_scratch/excalidraw-theme-gallery/publish.mjs` copies the screenshots to the gallery the user reads on a phone. Elsewhere, attach the sheet to the PR instead.
 
-Read the sheet image itself. A green command proves nothing about how a theme looks. Go through the checklist, write down every failure, fix the biggest one in the tokens, and go back to step 2.
+### Running the loop on a draw board (planned)
+
+The draw MCP is planned to grow a theme tool that takes the tokens, calls `generateThemeCss` and applies the CSS to the open board, returning the warnings. With it, the loop is: the theme tool, then draw's existing `screenshot` tool on the board, then judge and adjust the tokens. Until that tool exists, use the local harness.
+
+## 3. The checklist
 
 - **Structural, not decorative.** For every element on screen, ask whether it does a job. Remove texture, grain, vignettes, glows that carry nothing, and borders that only frame. A drafting or museum theme must "look at home in a high-prestige title sequence".
-- **Identity at thumbnail size.** Would this theme be mistaken for another one in the set? Compare it on a contact sheet (`--contact selected` over a directory of themes). Twins get merged or cut.
-- **The pen is the instrument.** Read `penzoom`. A technical pen is hairline with a faint taper; a pencil thins and tapers hard; a marker is fat and even. If it looks like the default marker, the pen tokens are wrong.
-- **Labels read.** Text on every fill, the selected tool's icon, panel headings, dialog keycaps, the hint text under the toolbar.
+- **Identity at thumbnail size.** Would this theme be mistaken for another one in the set? Compare contact sheets. Twins get merged or cut.
+- **The pen is the instrument.** Read the 2.5x pen shot. A technical pen is hairline with a faint taper, a pencil thins and tapers hard, a marker is fat and even. If it looks like the default marker, the pen tokens are wrong.
+- **Labels read.** Text on every fill, the selected tool's icon, panel headings, dialog keycaps, the hint under the toolbar.
 - **Popovers are opaque.** The color picker must not show the scene through it.
 - **Frames sit behind content.** A frame drawn heavier than the shapes inside it is wrong.
 - **The grid carries the theme, quietly.** Judge it at 100% zoom. Graph paper wants solid minors at about 0.15 to 0.2 alpha and majors at about 0.45.
-- **Phone is not an afterthought.** The bottom toolbar, the stacked scene, the color picker at phone width.
-
-Stop when a full pass of the checklist finds nothing worth fixing. Then shoot all viewports and states once (drop `--viewports` and `--states`, add `--video` for a live pen recording), and check one state in Firefox and WebKit with `--browser firefox` and `--browser webkit`.
-
-## 5. Publish (optional, this machine only)
-
-```sh
-node D:/projects/_scratch/excalidraw-theme-gallery/publish.mjs
-```
-
-It copies `theme-screenshots` (except the baselines) to the Cloudflare gallery that the user reads on a phone. It exists only on this machine. Elsewhere, attach the sheet image to the PR instead.
+- **Phone is not an afterthought.** The bottom toolbar, the stacked scene, the picker at phone width.
 
 ## Dark themes
 
