@@ -1,21 +1,12 @@
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 
 const { execSync } = require("child_process");
 
-// macOS tar otherwise adds an AppleDouble ._ file beside every packed file.
-process.env.COPYFILE_DISABLE = "1";
+const { atVersion, LOCKSTEP } = require("./semver/packages");
+const { pack } = require("./semver/pack");
 
-const PACKAGES = [
-  "common",
-  "fractional-indexing",
-  "math",
-  "element",
-  "excalidraw",
-];
 const PACKAGES_DIR = path.resolve(__dirname, "../packages");
-const OUT_DIR = path.resolve(__dirname, "../release");
 
 const version = process.argv
   .find((argument) => argument.startsWith("--version="))
@@ -28,152 +19,15 @@ if (!version) {
   process.exit(1);
 }
 
-const packageJsonPath = (packageName) =>
-  path.resolve(PACKAGES_DIR, packageName, "package.json");
-
-const tarballName = (packageName) => `excalidraw-${packageName}-${version}.tgz`;
-
-const readPackageJson = (packageName) =>
-  JSON.parse(fs.readFileSync(packageJsonPath(packageName), "utf-8"));
-
-const writePackageJson = (packageName, pkg) =>
+for (const id of LOCKSTEP) {
+  const file = path.resolve(PACKAGES_DIR, id, "package.json");
+  const manifest = JSON.parse(fs.readFileSync(file, "utf-8"));
   fs.writeFileSync(
-    packageJsonPath(packageName),
-    `${JSON.stringify(pkg, null, 2)}\n`,
+    file,
+    `${JSON.stringify(atVersion(manifest, version), null, 2)}\n`,
     "utf-8",
-  );
-
-const setInternalDependencies = (pkg) => {
-  if (!pkg.dependencies) {
-    return pkg;
-  }
-  const dependencies = { ...pkg.dependencies };
-  for (const packageName of PACKAGES) {
-    if (!dependencies[`@excalidraw/${packageName}`]) {
-      continue;
-    }
-    dependencies[`@excalidraw/${packageName}`] = version;
-  }
-  return { ...pkg, dependencies };
-};
-
-for (const packageName of PACKAGES) {
-  writePackageJson(
-    packageName,
-    setInternalDependencies({ ...readPackageJson(packageName), version }),
   );
 }
 
 execSync("yarn --frozen-lockfile", { stdio: "inherit" });
-execSync("yarn rm:build", { stdio: "inherit" });
-for (const packageName of PACKAGES) {
-  execSync("yarn run build:esm", {
-    cwd: path.resolve(PACKAGES_DIR, packageName),
-    stdio: "inherit",
-  });
-}
-
-fs.rmSync(OUT_DIR, { recursive: true, force: true });
-fs.mkdirSync(OUT_DIR);
-const packed = fs.mkdtempSync(path.join(os.tmpdir(), "excalidraw-packed-"));
-for (const packageName of PACKAGES) {
-  execSync(
-    `yarn pack --filename ${path.resolve(packed, tarballName(packageName))}`,
-    { cwd: path.resolve(PACKAGES_DIR, packageName), stdio: "inherit" },
-  );
-}
-
-const internalDependencies = (packageName) =>
-  Object.keys(readPackageJson(packageName).dependencies ?? {})
-    .map((name) => name.replace("@excalidraw/", ""))
-    .filter((name) => PACKAGES.includes(name));
-
-// common and math import each other, so the closure visits each package once.
-const siblingsOf = (packageName) => {
-  const closure = new Set();
-  const visit = (name) => {
-    if (closure.has(name)) {
-      return;
-    }
-    closure.add(name);
-    internalDependencies(name).forEach(visit);
-  };
-  visit(packageName);
-  return PACKAGES.filter(
-    (sibling) => sibling !== packageName && closure.has(sibling),
-  );
-};
-
-// These versions are never published to npm, so a consumer cannot resolve
-// the sibling packages. Each tarball carries its siblings as bundled
-// dependencies instead, which package managers install without resolving.
-// Bundles copy the packed tarballs, so no bundled copy nests another.
-const bundleSiblings = (packageName) => {
-  const siblings = siblingsOf(packageName);
-  if (siblings.length === 0) {
-    fs.copyFileSync(
-      path.resolve(packed, tarballName(packageName)),
-      path.resolve(OUT_DIR, tarballName(packageName)),
-    );
-    return;
-  }
-  const staging = fs.mkdtempSync(path.join(os.tmpdir(), "excalidraw-pack-"));
-  execSync(`tar -xzf ${tarballName(packageName)} -C ${staging}`, {
-    cwd: packed,
-  });
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(staging, "package/package.json"), "utf-8"),
-  );
-  const dependencies = { ...pkg.dependencies };
-  for (const siblingName of siblings) {
-    const target = path.join(
-      staging,
-      "package/node_modules/@excalidraw",
-      siblingName,
-    );
-    fs.mkdirSync(target, { recursive: true });
-    execSync(
-      `tar -xzf ${tarballName(siblingName)} --strip-components=1 -C ${target}`,
-      { cwd: packed },
-    );
-    const sibling = JSON.parse(
-      fs.readFileSync(path.join(target, "package.json"), "utf-8"),
-    );
-    for (const [name, specifier] of Object.entries(
-      sibling.dependencies ?? {},
-    )) {
-      if (name.startsWith("@excalidraw/")) {
-        continue;
-      }
-      dependencies[name] = specifier;
-    }
-    dependencies[`@excalidraw/${siblingName}`] = version;
-  }
-  fs.writeFileSync(
-    path.join(staging, "package/package.json"),
-    `${JSON.stringify(
-      {
-        ...pkg,
-        dependencies,
-        bundleDependencies: siblings.map(
-          (siblingName) => `@excalidraw/${siblingName}`,
-        ),
-      },
-      null,
-      2,
-    )}\n`,
-    "utf-8",
-  );
-  execSync(
-    `tar -czf ${path.resolve(
-      OUT_DIR,
-      tarballName(packageName),
-    )} -C ${staging} package`,
-  );
-  fs.rmSync(staging, { recursive: true, force: true });
-};
-
-for (const packageName of PACKAGES) {
-  bundleSiblings(packageName);
-}
-fs.rmSync(packed, { recursive: true, force: true });
+pack({ version });
