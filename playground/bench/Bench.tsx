@@ -194,6 +194,8 @@ const runScenario = async (
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
+  api.setActiveTool({ type: scenario.tool });
+  await flushTasks();
   scenario.begin(api, canvas);
   await flushTasks();
   takeCounters(1);
