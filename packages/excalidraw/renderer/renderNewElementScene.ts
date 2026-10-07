@@ -13,14 +13,14 @@ import {
   snapScrollToDevicePixels,
 } from "./helpers";
 
-import { frameClip } from "./staticScene";
+import { frameClip, renderSceneElements } from "./staticScene";
 
 import type { NewElementSceneRenderConfig } from "../scene/types";
 
 const _renderNewElementScene = ({
   canvas,
   rc,
-  newElement,
+  layer,
   elementsMap,
   allElementsMap,
   scale,
@@ -47,7 +47,18 @@ const _renderNewElementScene = ({
     // Apply zoom
     context.scale(appState.zoom.value, appState.zoom.value);
 
-    if (newElement && newElement.type !== "selection") {
+    if ("elementsAbove" in layer) {
+      renderSceneElements({
+        context,
+        rc,
+        elements: layer.elementsAbove,
+        elementsMap,
+        allElementsMap,
+        appState,
+        renderConfig,
+      });
+    } else if (layer.element.type !== "selection") {
+      const newElement = layer.element;
       // e.g. when creating arrows and we're still below the arrow drag distance
       // threshold
       // (for now we skip render only with elements while we're creating to be
