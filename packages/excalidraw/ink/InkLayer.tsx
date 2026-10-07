@@ -1,5 +1,7 @@
 import { memo, useEffect, useRef } from "react";
 
+import { invariant } from "@excalidraw/common";
+
 import { attachInk } from "./ink";
 
 import type App from "../components/App";
@@ -15,9 +17,10 @@ export const InkLayer = memo(({ app }: { app: App }) => {
   const layer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    invariant(layer.current, "ink: the layer mounts before its effect");
     const canvas = app.ownerDocument.createElement("canvas");
     canvas.className = "excalidraw__ink";
-    layer.current?.append(canvas);
+    layer.current.append(canvas);
     const ink = attachInk(app, canvas);
     app.ink = ink;
     return () => {

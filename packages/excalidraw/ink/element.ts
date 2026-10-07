@@ -100,9 +100,5 @@ export const indexAfter = (
   if (top && top.index === null) {
     return null;
   }
-  try {
-    return generateKeyBetween(top?.index ?? null, null) as FractionalIndex;
-  } catch {
-    return null;
-  }
+  return generateKeyBetween(top?.index ?? null, null) as FractionalIndex;
 };
