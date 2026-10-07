@@ -1,132 +1,80 @@
 ---
 name: excalidraw-theming
-description: This skill should be used when writing or fixing a theme for this Excalidraw fork's `css` prop, or when asked to "make an Excalidraw theme", "restyle the editor", "theme the canvas", "change the grid", "make the pen look like X", "fix contrast in the color picker", "add a theme to the playground", or "shoot the theme screenshots". Covers which custom properties matter, contrast rules on themed backgrounds, grid design, dark-mode color limits, pitfalls found the hard way, and the screenshot, inspect and fix loop.
+description: This skill should be used when the user asks to "make a theme", "theme the board", "css for excalidraw", "make it look like <X>", "match this image", "make an Excalidraw theme", "restyle the editor", "change the grid", "make the pen look like <X>", or "fix a theme". It generates a theme for this Excalidraw fork's `css` prop from a text vibe, a palette or a reference image, through a token file and scripts/theme-gen, then runs the screenshot, read and fix loop until the theme holds up.
 ---
 
 # Excalidraw theming
 
-A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DOM UI like any stylesheet, and it sets custom properties that the editor reads to paint the canvas and to choose defaults for new elements. The full variable reference is `docs/theming.md`. Read it before writing a theme. This skill covers how to make a theme good.
+A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DOM UI, and it sets custom properties that the editor reads to paint the canvas and to choose the stroke character of new elements. Write a theme as a small token file and let `scripts/theme-gen` derive the CSS: it fills in panels, states, shades, swatches and palettes, and enforces WCAG contrast. Then look at the result until it is right.
 
-Sample themes live in `playground/themes/*.css`. Copy the closest one rather than starting empty. The first line of each file is `/* Name. mode: light|dark */`. The playground reads it to set the editor's theme prop.
+- Token reference: `references/tokens.md`.
+- Lessons paid for in earlier passes: `references/pitfalls.md`. Read it before hand-editing CSS.
+- Variable reference for library consumers: `docs/theming.md`.
 
-## The loop
+## 1. Turn the input into tokens
 
-Treat a theme as unfinished until its screenshots are read.
+Create `playground/themes/tokens/<id>.json`. Copy the closest existing token file, then change it.
 
-1. Write or edit `playground/themes/<id>.css`.
-2. Shoot it:
-   ```sh
-   node scripts/theme-screenshots/shoot.mjs --themes <id> --out theme-screenshots/dev
-   ```
-   Add `--viewports desktop` for a fast first look, `--states pen` for the pen, `--video` for a live pen recording, and `--browser firefox` or `--browser webkit` for a cross-engine check.
-3. Read every PNG it printed: canvas, selected, colorpicker, menu, dialog, pen, penzoom, at desktop, tablet and phone.
-4. List what is ugly, broken or unreadable. Fix the biggest problem first, in the theme or in the library.
-5. Shoot again into a new folder (`pass2`, `pass3`) so passes can be compared.
+- **From a vibe** ("Westworld title card"): name the instrument and the material first. What draws (technical pen, pencil, marker, phosphor trace)? On what (paper, film, screen, slate)? Pick a canvas, one ink, one accent and four to six palette colors that belong to that world. Fewer colors read as more deliberate.
+- **From a palette:** assign canvas (the most common, quietest color), ink (the darkest), accent (the one meant to catch the eye), and put the rest in `palette`.
+- **From a reference image:** extract its flat colors, then judge them against the image:
+  ```sh
+  node scripts/theme-gen/palette-from-image.mjs <image> --name "Theme Name"
+  ```
+  It prints each color with its share of the image and a starter token file. The role guesses are mechanical: look at the image and correct them. Drop colors that come from lighting (shadow tints, highlights). Keep the colors of the objects.
 
-Never edit sources while a shoot runs if the harness server watches files. The harness disables HMR and watching for this reason. A reload mid-run destroys the page and kills the pass.
+Decide the stroke character with the same care as the colors. Colors alone leave the default blunt whiteboard look.
 
-A scripted pen stroke sent right after `setActiveTool` can arrive before the tool commits and turn into a selection drag. The harness waits for the tool and throws if a stroke is missing. Keep that check: in pass 1 the Westworld Night close-up was missing its first stroke, and it looked like a rendering bug.
+| Instrument | stroke width, roughness, roundness | arrowhead | canvas font | pen (pressure, width, thinning, taper) |
+| --- | --- | --- | --- | --- |
+| Technical pen | `thin`, `0`, `sharp` | `arrow` or `bar` | `Liberation Sans` | yes, `0.2`, `0.2`, `4` |
+| CAD trace | `thin`, `0`, `sharp` | `triangle` | `Cascadia` | no, `0.4` |
+| Illustration outline | `medium`, `0`, `round` | `arrow` | `Nunito` | yes, `0.35`, `0.3`, `3` |
+| Pencil | `medium`, `2`, `round` | `arrow` | `Excalifont` | yes, `0.35`, `0.75`, `6` |
+| Marker | `bold`, `0`, `sharp` | `triangle` | `Cascadia` | no, `2.5` |
+| Pixel pencil | `thin`, `0`, `sharp` | `arrow` | `Liberation Sans` | no, `0.5`, streamline `0` |
 
-Build a contact sheet per pass with the harness's `--contact selected`. At thumbnail size, twins show: four bead themes were indistinguishable there, and one was cut.
+Freedraw widths are small numbers: `0.2` is a hairline, `1` is about 3 px, `2.5` is a fat marker.
 
-## Selectors: use `:scope`
+## 2. Generate
 
-The editor wraps the CSS in `@scope ([data-excalidraw-id="…"])`. Inside `@scope`, a plain selector is a descendant of the scope root, so `.excalidraw { … }` never matches the editor root. Set variables on `:scope`.
-
-The editor's dark-mode variables sit on `.excalidraw.theme--dark`, which outranks `:scope`. Set variables on both so the theme holds in either mode:
-
-```css
-:scope,
-:scope.theme--dark { … }
+```sh
+yarn theme:gen <id>
 ```
 
-Prefix every component rule with `:scope `. The library writes `.excalidraw .frame-breadcrumb`, which is (0,2,0). A bare `.frame-breadcrumb` inside `@scope` is (0,1,0) and loses without any warning. In pass 1 every component override in every theme lost this way, and nothing looked broken until the screenshots were compared with the CSS.
+It writes `playground/themes/<id>.css` and prints every contrast fix it made, such as `secondary text: #7b7c7b -> #696969 (3.53 -> 4.62)`. A printed fix means a token is close to illegible. Prefer changing the token over accepting the nudge. Put component rules in the token's `extra`, each prefixed with `:scope `.
 
-The properties panel's headings are `.selected-shape-actions h3` and `.selected-shape-actions legend`. Check class names in `packages/excalidraw/components` before guessing: `.panelColumn` does not exist.
+## 3. Shoot one theme
 
-`@font-face` and `@import` are invalid inside `@scope`. Use the bundled fonts (`Liberation Sans`, `Cascadia`, `Nunito`, `Excalifont`, `Virgil`, `Lilita One`, `Comic Shanns`, `Assistant`) or system fonts.
+```sh
+node scripts/theme-screenshots/shoot.mjs --themes <id> --viewports desktop,phone --states selected,colorpicker,dialog,pen --out theme-screenshots/<id>/iter<N> --sheet
+```
 
-## Variables that carry a theme
+`--sheet` tiles every shot into `theme-screenshots/<id>/iter<N>/<id>/sheet.png`. Number the iterations, so a later reader can see how the theme got where it is.
 
-Set these first. They cover most of the visible surface:
+## 4. Read the sheet, then fix the biggest problem
 
-- Canvas: `--canvas-background`, `--canvas-grid-color`, `--canvas-grid-bold-color`, `--canvas-grid-style`, `--color-selection`, `--canvas-frame-color`, `--canvas-frame-width`.
-- Stroke character: `--element-stroke-width`, `--element-roughness`, `--element-roundness`, `--element-font-family`, `--element-end-arrowhead`, `--element-arrow-type`, `--element-freedraw-variability`, `--element-freedraw-width`.
-- Swatches: `--color-picks-stroke`, `--color-picks-background`, `--color-palette-stroke`, `--color-palette-background`.
-- UI: `--ui-font`, `--island-bg-color`, `--text-primary-color`, `--color-primary`, `--color-surface-primary-container` (selected tool), `--button-hover-bg`, `--default-border-color`, `--border-radius-lg`, `--shadow-island`, `--modal-shadow`, `--overlay-bg-color`.
+Read the sheet image itself. A green command proves nothing about how a theme looks. Go through the checklist, write down every failure, fix the biggest one in the tokens, and go back to step 2.
 
-`--button-gray-1`, `--button-gray-2` and `--button-gray-3` fill every panel button. Keep them close to the panel color. Brutalist pass 1 set them to the hover accent, and every button in the panel turned acid yellow.
+- **Structural, not decorative.** For every element on screen, ask whether it does a job. Remove texture, grain, vignettes, glows that carry nothing, and borders that only frame. A drafting or museum theme must "look at home in a high-prestige title sequence".
+- **Identity at thumbnail size.** Would this theme be mistaken for another one in the set? Compare it on a contact sheet (`--contact selected` over a directory of themes). Twins get merged or cut.
+- **The pen is the instrument.** Read `penzoom`. A technical pen is hairline with a faint taper; a pencil thins and tapers hard; a marker is fat and even. If it looks like the default marker, the pen tokens are wrong.
+- **Labels read.** Text on every fill, the selected tool's icon, panel headings, dialog keycaps, the hint text under the toolbar.
+- **Popovers are opaque.** The color picker must not show the scene through it.
+- **Frames sit behind content.** A frame drawn heavier than the shapes inside it is wrong.
+- **The grid carries the theme, quietly.** Judge it at 100% zoom. Graph paper wants solid minors at about 0.15 to 0.2 alpha and majors at about 0.45.
+- **Phone is not an afterthought.** The bottom toolbar, the stacked scene, the color picker at phone width.
 
-## Stroke character is half the theme
+Stop when a full pass of the checklist finds nothing worth fixing. Then shoot all viewports and states once (drop `--viewports` and `--states`, add `--video` for a live pen recording), and check one state in Firefox and WebKit with `--browser firefox` and `--browser webkit`.
 
-Colors alone leave the default blunt whiteboard look: medium strokes, rough.js wobble, round corners, a hand-drawn font, fat arrowheads and a marker pen. Decide each one for the theme's instrument:
+## 5. Publish (optional, this machine only)
 
-| Instrument | width | roughness | roundness | font | arrowhead | freedraw (variability, width, thinning, taper) |
-| --- | --- | --- | --- | --- | --- | --- |
-| Technical pen (drafting) | `thin` | `0` | `sharp` | `Liberation Sans` | `arrow` or `bar` | `variable`, `0.2`, `0.2`, `4` |
-| CAD trace | `thin` | `0` | `sharp` | `Cascadia` | `triangle` | `constant`, `0.2` |
-| Pencil (sketchbook) | `medium` | `2` | `round` | `Excalifont` | `arrow` | `variable`, `0.35`, `0.75`, `6` |
-| Marker (brutalist) | `bold` | `0` | `sharp` | `Cascadia` | `triangle` | `constant`, `2.5` |
-| Phosphor trace (terminal) | `thin` | `0` | `sharp` | `Cascadia` | `arrow` | `constant`, `0.35` |
-| Neon tube (synthwave) | `medium` | `0` | `round` | `Nunito` | `arrow` | `constant`, `1.1` |
+```sh
+node D:/projects/_scratch/excalidraw-theme-gallery/publish.mjs
+```
 
-Freedraw widths are small numbers on the fork's scale: `0.2` is a hairline, `1` is about 3 px, `2.5` is a fat marker. A `constant` pen ignores pressure. Pick `variable` whenever pressure should show, and control how much with thinning.
+It copies `theme-screenshots` (except the baselines) to the Cloudflare gallery that the user reads on a phone. It exists only on this machine. Elsewhere, attach the sheet image to the PR instead.
 
-Judge the pen at 2.5x (`penzoom`), not at 100%. In pass 1, fifteen of nineteen themes drew the same thin even hairline, and the 100% shots hid it.
+## Dark themes
 
-`triangle` heads are heavy next to thin strokes. Use `arrow` for slender drafting heads.
-
-Line caps and joins are fixed (round). Do not promise a theme butt caps.
-
-## Contrast and legibility
-
-- Text on a fill uses the element's stroke color. Keep background washes pale (the picker's shade 1) so ink text stays readable. A mid-tone fill under ink text fails. E-ink pass 1 put text on a black fill.
-- The picker grid shows shade 4 of each stroke entry and shade 1 of each background entry when nothing is selected. Put the ink at index 4 and the wash at index 1.
-- A palette entry the same color as the panel disappears from the grid. Every entry needs contrast against `--island-bg-color`.
-- Popovers, the color picker and dialogs use `--island-bg-color` and `--popup-bg-color`. On a dark canvas, check the menu and help dialog: dialog text uses `--text-primary-color`, and secondary text uses `--color-gray-60` and `--keybinding-color`.
-- The help dialog's keycaps sit on `--color-primary-light` with inherited text. A theme that makes `--color-primary-light` a strong selection color must set `:scope .HelpDialog__key { color: … }`. In pass 2, High Contrast's keycaps were white on yellow and Swiss's black on black; in pass 3, after the dialog became visible, E-ink's were black on black. Check every theme's dialog shot, not only the one that just changed.
-- Popovers (the color picker, the font picker) are an `.Island` inside Radix's `[data-radix-popper-content-wrapper]`, so they take `--island-bg-color`, not `--popup-bg-color`. A translucent island lets the scene read through the palette. Give `:scope [data-radix-popper-content-wrapper] .Island` a background at 0.9 alpha or more, even in a glass theme.
-- Never write `animation: none` in a theme. Dialogs fade in from opacity 0 with `animation-fill-mode: forwards`, so removing the animation leaves them invisible. Set `animation-duration: 0s` and `transition-duration: 0s` instead. E-ink's help dialog vanished this way in pass 2.
-
-## Dark themes and the element filter
-
-In dark mode the editor shows element colors through a lightness-inverting filter, so the scene stays portable between modes. For a dark theme:
-
-- Write element and palette colors as their light-mode equivalents. Black ink displays near-white.
-- The filter can't display saturated light colors. Displayed white tops out at `#ededed`. Bright yellow is impossible, and cyan becomes a muted teal. Magenta, orange and violet survive.
-- To get the stored color for a color you want displayed, use `removeDarkModeFilter` from `@excalidraw/common`. `theme-screenshots/tools/palette.ts` wraps it for whole palettes (run it with `npx vite-node -c playground/vite.config.mts`).
-- Canvas, grid and UI colors are never filtered. Put the neon there.
-
-## The grid carries the theme
-
-- Graph paper: `--canvas-grid-style: solid`, minor lines at about 0.15 to 0.2 alpha and major lines at about 0.45 in one hue. Majors fall every `gridStep` (5) lines.
-- Ruled notebook: the same color for both levels.
-- Quiet: minor alpha 0 and a faint major only.
-- In the fork's screen-unit authoring, the grid steps to the next power of `gridStep` below 100% zoom. Judge a graph-paper grid at exactly 100%, where the minor step is 20.
-
-## Restraint: structural, not decorative
-
-For drafting, architectural and museum-style themes, every element on screen must do a job. In each pass, ask of every screenshot: "is anything here decorative rather than structural?" Remove it if so.
-
-No paper textures, grain, stains, vignettes, aged edges or "old map" effects. The parchment is a flat, warm off-white. The sophistication comes from an exact limited palette, thin precise graphite lines, a faint graph-paper grid, generous space and crisp type. The user rejected the cheesy version before seeing it. Hold every theme in this family to "would this look at home in a high-prestige title sequence?"
-
-## Performance
-
-The editor reads the custom properties only on mount, scene load, `css` change and theme change. A theme adds no work per frame. The CSS can still be slow:
-
-- No `backdrop-filter` over the canvas: it re-blurs on every repaint. Glass gets its frost from translucency and a bright edge.
-- No animated gradients or animated shadows.
-- A static gradient behind a transparent canvas (`--canvas-background: transparent` plus a `background` on `:scope`) is free.
-
-`node scripts/theme-screenshots/bench.mjs --theme <id>` pans and zooms a 2,000-element scene and reports frame times, `getComputedStyle` calls and canvas creations. The last two must match the run without `--theme`.
-
-## Cross-engine checks
-
-The editor needs `@scope` (Chrome 118, Safari 17.4, Firefox 146). An older browser gets the CSS unscoped, with `:scope` rewritten to the root's attribute selector. Avoid features that fail silently in one engine:
-
-- Safe: custom properties, `linear-gradient`, `radial-gradient`, `box-shadow`, `outline`, `letter-spacing`, `text-transform`.
-- `color-mix()`: Firefox 113 and later, Safari 16.2 and later. Fine, but a fallback color is cheap insurance.
-- `:has()`: Firefox 121 and later. Do not make a theme depend on it.
-- `backdrop-filter`: avoid for performance, as above.
-
-Shoot one state per theme in Firefox and WebKit with `--browser`.
+In dark mode the editor shows element colors through a lightness-inverting filter, so scenes stay portable between modes. Write `"mode": "dark"` and give displayed colors: the generator stores their inverse. The filter can't display saturated light colors (white tops out at `#ededed`, no bright yellow, cyan turns teal). For full-value neon on a dark canvas, use `"mode": "light"` with a dark `canvas`. The cost is that black ink drawn under another theme vanishes. The Terminal theme makes that trade.

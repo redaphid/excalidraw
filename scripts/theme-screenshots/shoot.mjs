@@ -18,6 +18,8 @@
  *                       to OUT/<theme>/<viewport>-pen.webm (chromium)
  *   --contact STATE     after shooting, write one contact sheet per viewport
  *                       from STATE (e.g. selected) to OUT/contact-<viewport>.png
+ *   --sheet             after shooting, tile every shot of each theme into
+ *                       OUT/<theme>/sheet.png: one image to read per theme
  *   --no-shoot          skip the screenshots (use with --video or --contact)
  *   --compare A B       count differing pixels between same-named PNGs in two
  *                       output roots; exits 1 if any differ
@@ -231,6 +233,8 @@ const parseArgs = (argv) => {
       args.video = true;
     } else if (flag === "--contact") {
       args.contact = value();
+    } else if (flag === "--sheet") {
+      args.sheet = true;
     } else if (flag === "--no-shoot") {
       args.shoot = false;
     } else if (flag === "--compare") {
@@ -520,10 +524,67 @@ const contactSheet = async (args) => {
   }
 };
 
+/** every shot of a theme on one page, desktop and tablet first, phones after */
+const themeSheets = async (args) => {
+  const browser = await launch("chromium");
+  try {
+    for (const theme of args.themes) {
+      const dir = path.join(args.out, theme);
+      if (!fs.existsSync(dir)) {
+        continue;
+      }
+      const shots = fs
+        .readdirSync(dir)
+        .filter((file) => file.endsWith(".png") && file !== "sheet.png")
+        .sort(
+          (a, b) =>
+            Number(a.startsWith("phone")) - Number(b.startsWith("phone")) ||
+            a.localeCompare(b),
+        );
+      const cells = shots
+        .map((file) => {
+          const src = `data:image/png;base64,${fs
+            .readFileSync(path.join(dir, file))
+            .toString("base64")}`;
+          return `<figure class="${
+            file.startsWith("phone") ? "phone" : "wide"
+          }"><img src="${src}"><figcaption>${file}</figcaption></figure>`;
+        })
+        .join("");
+      const page = await browser.newPage({
+        viewport: { width: 1920, height: 400 },
+      });
+      await page.setContent(`<!doctype html><style>
+        body { margin: 0; padding: 12px; background: #16161a; font: 600 13px system-ui, sans-serif; color: #e8e8ee; }
+        main { display: flex; flex-wrap: wrap; gap: 14px; }
+        figure { margin: 0; }
+        figure.wide { width: 620px; }
+        figure.phone { width: 300px; }
+        img { width: 100%; display: block; box-shadow: 0 0 0 1px #333; }
+        figcaption { padding: 4px 2px 0; }
+      </style><main>${cells}</main>`);
+      await page.evaluate(() =>
+        Promise.all([...document.images].map((img) => img.decode())),
+      );
+      const file = path.join(dir, "sheet.png");
+      await page.screenshot({ path: file, fullPage: true });
+      await page.close();
+      console.log(file);
+    }
+  } finally {
+    await browser.close();
+  }
+};
+
 const listPngs = (dir) =>
   fs
     .readdirSync(dir, { recursive: true })
-    .filter((file) => file.endsWith(".png") && !file.startsWith("contact-"))
+    .filter(
+      (file) =>
+        file.endsWith(".png") &&
+        !file.startsWith("contact-") &&
+        !file.endsWith("sheet.png"),
+    )
     .sort();
 
 const compare = async ([a, b]) => {
@@ -588,7 +649,7 @@ root = args.root ?? root;
 args.viewports ??= Object.keys(VIEWPORTS);
 args.states ??= Object.keys(STATES);
 args.out ??= path.join(root, "theme-screenshots/shots");
-if (args.shoot || args.contact || args.video) {
+if (args.shoot || args.contact || args.video || args.sheet) {
   args.themes ??= listThemes();
 }
 
@@ -600,6 +661,9 @@ if (args.video) {
 }
 if (args.contact) {
   await contactSheet(args);
+}
+if (args.sheet) {
+  await themeSheets(args);
 }
 if (args.compare) {
   process.exitCode = (await compare(args.compare)) ? 1 : 0;

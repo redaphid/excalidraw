@@ -74,6 +74,7 @@
     "test:code": "eslint --max-warnings=0 --ext .js,.ts,.tsx .",
     "test:other": "yarn prettier --list-different",
     "test:typecheck": "tsc",
+    "theme:gen": "vite-node -c playground/vite.config.mts scripts/theme-gen/theme-gen.ts --",
     "test:update": "yarn test:app --update --watch=false",
     "test": "yarn test:app",
     "test:coverage": "vitest --coverage",
