@@ -1,6 +1,7 @@
 export * from "./binary-heap";
 export * from "./bounds";
 export * from "./colors";
+export * from "./themeTokens";
 export * from "./constants";
 export * from "./font-metadata";
 export * from "./queue";

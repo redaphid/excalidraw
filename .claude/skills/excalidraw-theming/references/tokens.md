@@ -1,6 +1,8 @@
 # Theme tokens
 
-`scripts/theme-gen/theme-gen.ts` reads `playground/themes/tokens/<id>.json` and writes `playground/themes/<id>.css`. Every color is a 6-digit hex, written as the user should see it in either mode.
+Tokens are plain JSON. `generateThemeCss(tokens)` from `@excalidraw/common` returns `{ css, warnings }`. It is pure (no DOM, no Node built-ins, no editor code), so a server or an MCP tool can call it. `THEME_TOKENS_SCHEMA` is the JSON Schema; `yarn theme:gen --schema` writes it to `playground/themes/tokens/schema.json`, and token files point at it with `"$schema": "./schema.json"`. In the repo, `yarn theme:gen <id>` reads `playground/themes/tokens/<id>.json` and writes `playground/themes/<id>.css`.
+
+Every color is a 6-digit hex, written as the user should see it in either mode.
 
 | Token | Meaning | Becomes |
 | --- | --- | --- |
@@ -30,6 +32,10 @@
 - **Swatches**: the ink and the first four palette colors for strokes; transparent and the four `washes` for backgrounds.
 - **Dark themes**: every element color is stored as `removeDarkModeFilter(color)`, so dark mode displays it as written, and contrast is checked on the displayed round trip.
 - **Popovers**: always the opaque panel color.
+
+## Warnings
+
+Each warning is `{ token, from, to, reason }`: `token` names what caused it (`ink`, `accent`, `surface.active`, `palette[2]`), `from` and `to` are the colors before and after, and `reason` says which surface it failed on and the ratio it needed. Colors the generator derives itself, such as secondary text, are fixed silently.
 
 ## When to hand-edit instead
 

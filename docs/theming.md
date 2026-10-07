@@ -43,6 +43,43 @@ import drafting from "./drafting.css?raw";
 
 The sample themes in [`playground/themes`](../playground/themes) are complete examples. Run the playground (`yarn build:playground`, or the screenshot harness below) and pick one from the theme menu at the top right.
 
+## Generate a theme from tokens
+
+Writing every variable by hand is optional. `@excalidraw/common` exports a generator that turns a small JSON description of a theme into the full stylesheet:
+
+```ts
+import { generateThemeCss, THEME_TOKENS_SCHEMA } from "@excalidraw/common";
+
+const { css, warnings } = generateThemeCss({
+  name: "Drafting",
+  mode: "light",
+  description: "Warm paper, graphite ink, one bronze accent.",
+  canvas: "#ebe4d6",
+  ink: "#1b2129",
+  accent: "#a8732f",
+  palette: ["#9e3a33", "#5a7a6a", "#4f7088", "#a8732f"],
+  grid: { color: "#547691", minor: 0.2, major: 0.48, style: "solid" },
+  type: { ui: "Liberation Sans", canvas: "Liberation Sans", size: 16 },
+  stroke: {
+    width: "thin",
+    roughness: 0,
+    roundness: "sharp",
+    arrowhead: "arrow",
+    arrowType: "sharp",
+    fill: "solid",
+  },
+  pen: { pressure: true, width: 0.2, thinning: 0.2, taper: 4 },
+  surface: { radius: 2, border: "hairline", shadow: "none" },
+  frame: { width: 1, alpha: 0.42 },
+});
+
+<Excalidraw css={css} theme="light" />;
+```
+
+It derives panels, hover and selected states, borders, shadows, five-shade palettes, the quick swatches and the dialog keycaps, and stores a dark theme's element colors so dark mode displays them as written. It checks WCAG contrast on every text and surface pair it writes. When a token makes text illegible, it moves the color until it passes and returns a warning, `{ token, from, to, reason }`.
+
+The generator is pure: no DOM, no Node built-ins, no editor code. A server, a Cloudflare Worker or an MCP tool can import it from `@excalidraw/common` without the editor. `THEME_TOKENS_SCHEMA` is the tokens' JSON Schema, for validating tokens an agent wrote. The sample themes with a file in [`playground/themes/tokens`](../playground/themes/tokens) are generated this way (`yarn theme:gen <id>`).
+
 ## How the css prop is applied
 
 The editor renders the CSS in a `<style>` element inside its root, wrapped in `@scope`. The root and each of the editor's portals (modals render into `document.body`) carry `data-excalidraw-id`, and each is a scope root:
