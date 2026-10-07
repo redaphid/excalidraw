@@ -16,6 +16,8 @@ const { values: opts } = parseArgs({
     only: { type: "string" },
     method: { type: "string", default: "Map.set" },
     every: { type: "string", default: "50" },
+    depth: { type: "string", default: "4" },
+    match: { type: "string" },
   },
 });
 if (!opts.build || !opts.only) {
@@ -50,7 +52,8 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 await page.addInitScript(
-  ({ method, every }) => {
+  ({ method, every, depth, match }) => {
+    Error.stackTraceLimit = depth + 4;
     const [owner, name] = method.split(".");
     const proto = window[owner].prototype;
     const original = proto[name];
@@ -59,9 +62,11 @@ await page.addInitScript(
     const sites = new Map();
     proto[name] = function (...args) {
       if (on && ++n % every === 0) {
+        if (match && !new Error().stack.includes(match))
+          return original.apply(this, args);
         const stack = new Error().stack
           .split("\n")
-          .slice(2, 6)
+          .slice(2, 2 + depth)
           .map((l) => l.trim().replace(/\(.*\//, "("))
           .join(" < ");
         sites.set(stack, (sites.get(stack) ?? 0) + 1);
@@ -77,7 +82,12 @@ await page.addInitScript(
         };
     };
   },
-  { method: opts.method, every: Number(opts.every) },
+  {
+    method: opts.method,
+    every: Number(opts.every),
+    depth: Number(opts.depth),
+    match: opts.match,
+  },
 );
 const query = new URLSearchParams({ bench: "auto", only: opts.only });
 await page.goto(
