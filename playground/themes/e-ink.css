@@ -25,10 +25,10 @@
   --element-end-arrowhead: arrow;
   --element-font-family: "Liberation Sans";
   --element-font-size: 20;
-  --element-freedraw-variability: constant;
-  --element-freedraw-width: 0.125;
-  --color-picks-stroke: #000000 #4d4d4d #808080 #b3b3b3 #ffffff;
-  --color-picks-background: transparent #e6e6e6 #cccccc #999999 #000000;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.25;
+  --color-picks-stroke: #000000 #444444 #000000 #222222 #666666;
+  --color-picks-background: transparent #f0f0f0 #e2e2e2 #d4d4d4 #ececec;
   --color-palette-stroke: #e6e6e6 #b3b3b3 #808080 #4d4d4d #000000, #4d4d4d,
     #808080, #b3b3b3, #ffffff;
   --color-palette-background: transparent,
@@ -91,6 +91,8 @@
   --sidebar-shadow: 0 0 0 1.5px #000000;
   --library-dropdown-shadow: 0 0 0 1.5px #000000;
   --overlay-bg-color: rgba(255, 255, 255, 0.9);
+  --color-slider-track: #000000;
+  --color-slider-thumb: #000000;
 }
 
 :scope *,

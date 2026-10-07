@@ -225,6 +225,18 @@ describe("css prop", () => {
     expect(swatches).not.toContain("#1971c2");
   });
 
+  it("shows the theme background in the canvas background swatch", async () => {
+    await render(<Excalidraw css=":scope { --canvas-background: #ebe4d6; }" />);
+    API.setAppState({ openMenu: "canvas" });
+    await act(async () => {});
+
+    const swatches = [
+      ...document.querySelectorAll<HTMLElement>(".active-color"),
+    ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
+    expect(swatches).toContain("#ebe4d6");
+    expect(swatches).not.toContain("#ffffff");
+  });
+
   it("applies a changed css prop", async () => {
     const { rerender } = await render(<Excalidraw css={THEME_CSS} />);
 

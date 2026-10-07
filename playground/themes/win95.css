@@ -109,20 +109,29 @@
   --library-dropdown-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
     inset -2px -2px #808080, inset 2px 2px #dfdfdf;
   --overlay-bg-color: rgba(0, 0, 0, 0.25);
+  --color-slider-track: #808080;
+  --color-slider-thumb: #000080;
 }
 
-.ToolIcon__icon:hover,
-.ToolIcon_type_radio:checked + .ToolIcon__icon {
+:scope .ToolIcon__icon:hover,
+:scope .ToolIcon_type_radio:checked + .ToolIcon__icon {
   box-shadow: inset 1px 1px #0a0a0a, inset -1px -1px #ffffff,
     inset 2px 2px #808080, inset -2px -2px #dfdfdf;
 }
 
-.Modal__content .Dialog__title,
-.Dialog__title {
+:scope .Modal__content .Dialog__title,
+:scope .Dialog__title {
   background: linear-gradient(90deg, #000080, #1084d0);
   color: #ffffff;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 0;
+}
+
+:scope .Modal__content,
+:scope .Island {
+  border-radius: 0;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+    inset -2px -2px #808080, inset 2px 2px #dfdfdf;
 }

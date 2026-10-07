@@ -11,6 +11,8 @@
  *   --states a,b        canvas, selected, colorpicker, menu, dialog, pen
  *                       (default: all; pen also writes a 2.5x close-up, penzoom)
  *   --browser NAME      chromium (default), firefox or webkit
+ *   --root DIR          the checkout whose playground to serve (default: this
+ *                       one), e.g. a worktree of master for a before/after diff
  *   --out DIR           output root (default: theme-screenshots/shots)
  *   --video             also record the pen strokes live, desktop and phone,
  *                       to OUT/<theme>/<viewport>-pen.webm (chromium)
@@ -35,10 +37,7 @@ import { createServer } from "vite";
 import { PEN_BOX, penStrokes } from "./pen.mjs";
 import { buildScene } from "./scene.mjs";
 
-const root = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
+let root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const VIEWPORTS = {
   desktop: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
@@ -208,6 +207,8 @@ const parseArgs = (argv) => {
       args.states = value().split(",");
     } else if (flag === "--browser") {
       args.browser = value();
+    } else if (flag === "--root") {
+      args.root = path.resolve(value());
     } else if (flag === "--out") {
       args.out = path.resolve(value());
     } else if (flag === "--video") {
@@ -302,7 +303,7 @@ const fitScene = (page, viewport) =>
     const maxY = Math.max(...elements.map((el) => el.y + el.height));
     api.setViewport({
       target: {
-        x: minX - leftPanel,
+        x: minX - leftPanel - 20,
         y: minY - 40,
         width: maxX - minX + leftPanel + 40,
         height: maxY - minY + 80,
@@ -559,6 +560,7 @@ const compare = async ([a, b]) => {
 };
 
 const args = parseArgs(process.argv.slice(2));
+root = args.root ?? root;
 args.viewports ??= Object.keys(VIEWPORTS);
 args.states ??= Object.keys(STATES);
 args.out ??= path.join(root, "theme-screenshots/shots");

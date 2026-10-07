@@ -109,6 +109,8 @@
   --library-dropdown-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9),
     0 12px 32px -12px rgba(49, 46, 129, 0.28);
   --overlay-bg-color: rgba(238, 241, 251, 0.5);
+  --color-slider-track: rgba(49, 46, 129, 0.18);
+  --color-slider-thumb: #4f46e5;
 }
 
 :scope {

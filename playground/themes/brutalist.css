@@ -26,7 +26,7 @@
   --element-font-family: Cascadia;
   --element-font-size: 18;
   --element-freedraw-variability: constant;
-  --element-freedraw-width: 0.125;
+  --element-freedraw-width: 0.5;
   --color-picks-stroke: #000000 #ff3b00 #0047ff #00a651 #ff9f00;
   --color-picks-background: transparent #f8b9a3 #a6bdf5 #a6e9c5 #f0f8a3;
   --color-palette-stroke: #c8c8c5 #979795 #666665 #313130 #000000,
@@ -61,15 +61,15 @@
   --popup-bg-color: #ffffff;
   --sidebar-bg-color: #ffffff;
   --default-bg-color: #ffffff;
-  --popup-secondary-bg-color: #e8ff00;
+  --popup-secondary-bg-color: #f0f0ea;
   --input-bg-color: #ffffff;
   --input-border-color: #000000;
-  --input-hover-bg-color: #e8ff00;
+  --input-hover-bg-color: #f0f0ea;
 
   --color-surface-lowest: #ffffff;
-  --color-surface-low: #e8ff00;
-  --color-surface-mid: #e8ff00;
-  --color-surface-high: #e8ff00;
+  --color-surface-low: #ffffff;
+  --color-surface-mid: #ffffff;
+  --color-surface-high: #f0f0ea;
   --color-surface-primary-container: #e8ff00;
   --color-on-primary-container: #000000;
 
@@ -87,8 +87,8 @@
   --button-hover-bg: #e8ff00;
   --button-active-bg: #e8ff00;
   --button-active-border: #000000;
-  --button-gray-1: #e8ff00;
-  --button-gray-2: #e8ff00;
+  --button-gray-1: #ffffff;
+  --button-gray-2: #ffffff;
   --button-gray-3: #e8ff00;
   --default-border-color: #000000;
   --dialog-border-color: #000000;
@@ -104,13 +104,15 @@
   --sidebar-shadow: 0 0 0 3px #000000, 6px 6px 0 3px #000000;
   --library-dropdown-shadow: 0 0 0 3px #000000, 6px 6px 0 3px #000000;
   --overlay-bg-color: rgba(232, 255, 0, 0.35);
+  --color-slider-track: #000000;
+  --color-slider-thumb: #000000;
 }
 
 :scope {
   font-weight: 700;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 0;
   text-transform: uppercase;
 }

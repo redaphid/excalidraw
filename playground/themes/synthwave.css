@@ -28,7 +28,7 @@
   --element-freedraw-variability: variable;
   --element-freedraw-width: 0.25;
   --color-picks-stroke: #ff49e9 #005263 #ce4600 #7b47cd #2e1000;
-  --color-picks-background: transparent #8fc4e9 #f7bfc1 #dec0ff #c5afa1;
+  --color-picks-background: transparent #8fc4e9 #ffc0ff #dec0ff #ffc2f3;
   --color-palette-stroke: #ffd8ff #ffb6ff #ff94ff #ff6df7 #ff49e9,
     #c5dbff #77b9dd #2897b4 #00738b #005263,
     #ffd8ef #f4b4b0 #e89271 #da6a2b #ce4600,
@@ -109,4 +109,6 @@
   --library-dropdown-shadow: 0 0 0 1px rgba(255, 79, 216, 0.7),
     0 0 18px rgba(255, 79, 216, 0.35);
   --overlay-bg-color: rgba(15, 5, 30, 0.7);
+  --color-slider-track: rgba(255, 79, 216, 0.55);
+  --color-slider-thumb: #3ff0ff;
 }

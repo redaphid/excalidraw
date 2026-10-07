@@ -28,7 +28,7 @@
   --element-freedraw-variability: constant;
   --element-freedraw-width: 0.125;
   --color-picks-stroke: #010000 #8b550b #eb8479 #405b70 #455d49;
-  --color-picks-background: transparent #deceb8 #fcdcda #c6cfd7 #c8d0cc;
+  --color-picks-background: transparent #deceb8 #d1d1d4 #afb0b1 #c6cfd7;
   --color-palette-stroke: #d5d6d6 #a2a2a1 #6f6d6a #35332e #010000,
     #ede5da #d6c2a8 #bf9f76 #a2783d #8b550b,
     #ffefef #fad4d0 #f6bab4 #f19e96 #eb8479,
@@ -104,16 +104,19 @@
   --sidebar-shadow: 0 0 0 1px rgba(240, 238, 232, 0.1);
   --library-dropdown-shadow: 0 0 0 1px rgba(240, 238, 232, 0.1);
   --overlay-bg-color: rgba(5, 5, 6, 0.72);
+  --color-slider-track: #26272b;
+  --color-slider-thumb: #c89a5a;
 }
 
-.panelColumn h3,
-.frame-breadcrumb {
+:scope .panelColumn h3,
+:scope .panelColumn legend,
+:scope .frame-breadcrumb {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: 0.6875rem;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 0;
   background: transparent;
   box-shadow: none;

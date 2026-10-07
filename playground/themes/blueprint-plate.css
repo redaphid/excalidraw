@@ -104,9 +104,11 @@
   --sidebar-shadow: 0 0 0 1px rgba(26, 31, 38, 0.16);
   --library-dropdown-shadow: 0 0 0 1px rgba(26, 31, 38, 0.16);
   --overlay-bg-color: rgba(223, 227, 225, 0.72);
+  --color-slider-track: #c7cfd2;
+  --color-slider-thumb: #1a1f26;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
