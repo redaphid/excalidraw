@@ -115,8 +115,6 @@
     "tunnel-rat": "0.1.2"
   },
   "devDependencies": {
-    "@size-limit/esbuild": "11.2.0",
-    "@size-limit/file": "11.2.0",
     "@testing-library/dom": "10.4.0",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.2.0",
@@ -135,7 +133,6 @@
     "fonteditor-core": "2.4.1",
     "harfbuzzjs": "0.3.6",
     "jest-diff": "29.7.0",
-    "size-limit": "11.2.0",
     "typescript": "5.9.3"
   }
 }
