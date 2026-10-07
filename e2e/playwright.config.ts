@@ -26,6 +26,8 @@ const PORT = 4173;
 
 export default defineConfig({
   testDir: ".",
+  // Not *.spec.ts, which vitest would collect as a unit test.
+  testMatch: "*.e2e.ts",
   timeout: 60_000,
   forbidOnly: !!process.env.CI,
   retries: 0,
