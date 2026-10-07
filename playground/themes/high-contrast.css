@@ -1,0 +1,116 @@
+/* High Contrast. mode: dark */
+/*
+ * For low vision: black ground, white text and 2px white edges, yellow
+ * for focus and selection, bold strokes and larger text.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #000000;
+  --canvas-grid-color: rgba(255, 255, 255, 0.18);
+  --canvas-grid-bold-color: rgba(255, 255, 255, 0.42);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #000000;
+  --canvas-frame-color: #ffffff;
+  --canvas-frame-width: 2;
+  --canvas-frame-name-color: #ffffff;
+  --color-selection: #ffff00;
+  --element-stroke-color: #000000;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: bold;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 24;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #000000 #d44040 #003b00 #004686 #4e1700;
+  --color-picks-background: transparent #ffdede #aae6b7 #c4e8ff #ecce99;
+  --color-palette-stroke: #dedede #a3a3a3 #686868 #272727 #000000,
+    #ffeded #fbc4c4 #ef9999 #e26b6b #d44040,
+    #d1ecd7 #89c195 #409652 #006708 #003b00,
+    #dfeffa #a5c5dd #6b9cc1 #2b6fa2 #004686,
+    #f1e6d6 #c9b492 #a1814b #774b00 #4e1700,
+    #f7eafe #d7bbe5 #b78ccc #9459b1 #742a99,
+    #e2e2c7 #abab73 #74741e #383800 #000000,
+    #cfeaea #82baba #378d8d #005959 #002a2a;
+  --color-palette-background: transparent,
+    #eaeaea #b4b4b4 #797979 #323232 #000000,
+    #fffbfb #ffdede #ffbbbb #ff9393 #ff6b6b,
+    #e6ffeb #aae6b7 #6aca7e #1ba938 #008700,
+    #f1ffff #c4e8ff #92ccff #56abff #1a89ff,
+    #fff4dc #ecce99 #d0a149 #b26c00 #943800,
+    #fffaff #fbd8ff #edb3ff #db86ff #c95aff,
+    #f4f4d0 #cccc78 #a1a11a #6a6a00 #353500,
+    #e2ffff #9fe2e2 #5ac4c4 #039e9e #007979;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #ffffff;
+  --color-on-surface: #ffffff;
+  --icon-fill-color: #ffffff;
+  --popup-text-color: #ffffff;
+  --keybinding-color: #e0e0e0;
+  --color-gray-60: #e0e0e0;
+  --input-label-color: #e0e0e0;
+
+  --island-bg-color: #000000;
+  --island-bg-color-alt: #000000;
+  --popup-bg-color: #000000;
+  --sidebar-bg-color: #000000;
+  --default-bg-color: #000000;
+  --popup-secondary-bg-color: #262626;
+  --input-bg-color: #000000;
+  --input-border-color: #ffffff;
+  --input-hover-bg-color: #262626;
+
+  --color-surface-lowest: #000000;
+  --color-surface-low: #262626;
+  --color-surface-mid: #262626;
+  --color-surface-high: #262626;
+  --color-surface-primary-container: #ffff00;
+  --color-on-primary-container: #000000;
+
+  --color-primary: #ffff00;
+  --color-primary-darker: #ffff00;
+  --color-primary-darkest: #ffff00;
+  --color-primary-hover: #ffff00;
+  --color-primary-light: #ffff00;
+  --color-primary-light-darker: #ffff00;
+  --color-brand-hover: #ffff00;
+  --color-brand-active: #ffff00;
+  --select-highlight-color: #ffff00;
+  --focus-highlight-color: #ffff00;
+
+  --button-hover-bg: #262626;
+  --button-active-bg: #ffff00;
+  --button-active-border: #ffff00;
+  --button-gray-1: #262626;
+  --button-gray-2: #262626;
+  --button-gray-3: #ffff00;
+  --default-border-color: #ffffff;
+  --dialog-border-color: #ffffff;
+  --sidebar-border-color: #ffffff;
+  --color-border-outline: #e0e0e0;
+  --color-border-outline-variant: #ffffff;
+
+  --border-radius-md: 4px;
+  --border-radius-lg: 4px;
+  --shadow-island: 0 0 0 2px #ffffff;
+  --shadow-island-stronger: 0 0 0 2px #ffffff;
+  --modal-shadow: 0 0 0 2px #ffffff;
+  --sidebar-shadow: 0 0 0 2px #ffffff;
+  --library-dropdown-shadow: 0 0 0 2px #ffffff;
+  --overlay-bg-color: rgba(0, 0, 0, 0.85);
+}
+
+:scope {
+  font-size: 1.0625rem;
+}
+
+:scope :focus-visible {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px;
+}

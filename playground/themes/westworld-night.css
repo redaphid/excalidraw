@@ -1,0 +1,120 @@
+/* Westworld Night. mode: dark */
+/*
+ * White-on-black stencil: deep graphite ground, a barely-there grid,
+ * hairline ivory ink, bronze for anything live. Machined, unhurried.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #0b0c0e;
+  --canvas-grid-color: rgba(240, 238, 232, 0.035);
+  --canvas-grid-bold-color: rgba(240, 238, 232, 0.09);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #0b0c0e;
+  --canvas-frame-color: rgba(240, 238, 232, 0.28);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #8d8a84;
+  --color-selection: #c89a5a;
+  --element-stroke-color: #141414;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 15;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #010000 #8b550b #eb8479 #405b70 #455d49;
+  --color-picks-background: transparent #deceb8 #fcdcda #c6cfd7 #c8d0cc;
+  --color-palette-stroke: #d5d6d6 #a2a2a1 #6f6d6a #35332e #010000,
+    #ede5da #d6c2a8 #bf9f76 #a2783d #8b550b,
+    #ffefef #fad4d0 #f6bab4 #f19e96 #eb8479,
+    #e1e6ec #b9c5ce #94a3b1 #697e8f #405b70,
+    #e2e8e6 #bdc6c0 #96a49a #6b7f70 #455d49,
+    #ebe8f0 #cfc6d6 #b2a4bb #937f9e #775d84,
+    #e3dfd1 #bfb697 #9a8c5c #715d1a #4d3300,
+    #f4e8e1 #e4c7b6 #d3a589 #bf8057 #ad5e2b;
+  --color-palette-background: transparent,
+    #edeff1 #d1d1d4 #afb0b1 #888888 #616161,
+    #f3ede5 #deceb8 #c5aa85 #a87f47 #8b550b,
+    #fff3f3 #fcdcda #f8c2be #f1a39c #eb8479,
+    #e9eff3 #c6cfd7 #9fadb9 #708595 #405b70,
+    #eaefed #c8d0cc #a2afa5 #728677 #455d49,
+    #f2eff7 #d7d0de #bbafc4 #9986a3 #775d84,
+    #ece9df #cac2aa #a5996d #7a6728 #4d3300,
+    #f9efea #e9d0c1 #d7af95 #c28761 #ad5e2b;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #e9e6df;
+  --color-on-surface: #e9e6df;
+  --icon-fill-color: #e9e6df;
+  --popup-text-color: #e9e6df;
+  --keybinding-color: #85827c;
+  --color-gray-60: #85827c;
+  --input-label-color: #85827c;
+
+  --island-bg-color: #121316;
+  --island-bg-color-alt: #121316;
+  --popup-bg-color: #121316;
+  --sidebar-bg-color: #121316;
+  --default-bg-color: #121316;
+  --popup-secondary-bg-color: #1c1d21;
+  --input-bg-color: #0e0f11;
+  --input-border-color: #26272b;
+  --input-hover-bg-color: #1c1d21;
+
+  --color-surface-lowest: #0e0f11;
+  --color-surface-low: #1c1d21;
+  --color-surface-mid: #1c1d21;
+  --color-surface-high: #1c1d21;
+  --color-surface-primary-container: #2a2419;
+  --color-on-primary-container: #e9e6df;
+
+  --color-primary: #c89a5a;
+  --color-primary-darker: #c89a5a;
+  --color-primary-darkest: #c89a5a;
+  --color-primary-hover: #c89a5a;
+  --color-primary-light: #2a2419;
+  --color-primary-light-darker: #2a2419;
+  --color-brand-hover: #c89a5a;
+  --color-brand-active: #c89a5a;
+  --select-highlight-color: #c89a5a;
+  --focus-highlight-color: #c89a5a;
+
+  --button-hover-bg: #1c1d21;
+  --button-active-bg: #2a2419;
+  --button-active-border: #c89a5a;
+  --button-gray-1: #1c1d21;
+  --button-gray-2: #1c1d21;
+  --button-gray-3: #2a2419;
+  --default-border-color: #26272b;
+  --dialog-border-color: #26272b;
+  --sidebar-border-color: #26272b;
+  --color-border-outline: #85827c;
+  --color-border-outline-variant: #26272b;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 1px rgba(240, 238, 232, 0.1);
+  --shadow-island-stronger: 0 0 0 1px rgba(240, 238, 232, 0.1);
+  --modal-shadow: 0 0 0 1px rgba(240, 238, 232, 0.1);
+  --sidebar-shadow: 0 0 0 1px rgba(240, 238, 232, 0.1);
+  --library-dropdown-shadow: 0 0 0 1px rgba(240, 238, 232, 0.1);
+  --overlay-bg-color: rgba(5, 5, 6, 0.72);
+}
+
+.panelColumn h3,
+.frame-breadcrumb {
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}

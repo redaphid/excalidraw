@@ -1325,7 +1325,9 @@ const drawElement = (
         );
         context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
-        context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
+        context.lineWidth =
+          (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth) /
+          appState.zoom.value;
         context.strokeStyle =
           renderConfig.canvasTheme?.frameColor ??
           applyDarkModeFilter(

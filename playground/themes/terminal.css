@@ -1,0 +1,115 @@
+/* Terminal. mode: dark */
+/*
+ * Green phosphor on black: monospace everything, square corners, a dim
+ * glow on text and nothing else lit.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #050a06;
+  --canvas-grid-color: rgba(93, 255, 138, 0.05);
+  --canvas-grid-bold-color: rgba(93, 255, 138, 0.14);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #050a06;
+  --canvas-frame-color: rgba(93, 255, 138, 0.45);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #5dff8a;
+  --color-selection: #5dff8a;
+  --element-stroke-color: #006700;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: Cascadia;
+  --element-font-size: 16;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #003d00 #fa4e4e #003d65 #7a2800 #7f41a8;
+  --color-picks-background: transparent #ffe8e5 #c8eaf4 #f3e1c7 #f1e5ff;
+  --color-palette-stroke: #c7e6ce #80bd8d #39934d #006707 #003d00,
+    #ffeae6 #ffc4c0 #ff9d9c #fb7372 #fa4e4e,
+    #cee6ea #8fbdc9 #5293a8 #0e6585 #003d65,
+    #ede3cf #d0b48f #b48752 #96550d #7a2800,
+    #efe8f7 #d1bee2 #b896cf #9a6aba #7f41a8,
+    #d8ddda #a6aaa8 #737673 #3d3e3d #090909,
+    #ccede4 #8bcabd #4ca997 #05846c #006246,
+    #f0e1ef #d7b1d3 #c081b8 #a54d9b #8d1d7f;
+  --color-palette-background: transparent,
+    #ebfcef #c9ead0 #a3d5af #77bd87 #49a460,
+    #fffbf7 #ffe8e5 #ffd1cf #ffb7b7 #ff9c9c,
+    #ebfcff #c8eaf4 #a1d4e8 #73bbda #45a2cc,
+    #fef9eb #f3e1c7 #e8c79f #dba870 #cd8840,
+    #fbfaff #f1e5ff #e4cdfe #d6b1fa #c795f7,
+    #f6fbf7 #e3e6e3 #cdcfce #b2b3b2 #979797,
+    #e6fcf6 #c0eadf #95d5c8 #61bbab #2ca28e,
+    #fff8fe #f4ddf0 #eac1e3 #de9fd3 #d17dc2;
+
+  --ui-font: Cascadia, "Cascadia Code", Consolas, "SF Mono", monospace;
+  --text-primary-color: #5dff8a;
+  --color-on-surface: #5dff8a;
+  --icon-fill-color: #5dff8a;
+  --popup-text-color: #5dff8a;
+  --keybinding-color: #2f9e52;
+  --color-gray-60: #2f9e52;
+  --input-label-color: #2f9e52;
+
+  --island-bg-color: #07120a;
+  --island-bg-color-alt: #07120a;
+  --popup-bg-color: #07120a;
+  --sidebar-bg-color: #07120a;
+  --default-bg-color: #07120a;
+  --popup-secondary-bg-color: #0d2414;
+  --input-bg-color: #040905;
+  --input-border-color: #1f5f2f;
+  --input-hover-bg-color: #0d2414;
+
+  --color-surface-lowest: #040905;
+  --color-surface-low: #0d2414;
+  --color-surface-mid: #0d2414;
+  --color-surface-high: #0d2414;
+  --color-surface-primary-container: #123d1f;
+  --color-on-primary-container: #b6ffcb;
+
+  --color-primary: #5dff8a;
+  --color-primary-darker: #5dff8a;
+  --color-primary-darkest: #5dff8a;
+  --color-primary-hover: #5dff8a;
+  --color-primary-light: #123d1f;
+  --color-primary-light-darker: #123d1f;
+  --color-brand-hover: #5dff8a;
+  --color-brand-active: #5dff8a;
+  --select-highlight-color: #5dff8a;
+  --focus-highlight-color: #5dff8a;
+
+  --button-hover-bg: #0d2414;
+  --button-active-bg: #123d1f;
+  --button-active-border: #5dff8a;
+  --button-gray-1: #0d2414;
+  --button-gray-2: #0d2414;
+  --button-gray-3: #123d1f;
+  --default-border-color: #1f5f2f;
+  --dialog-border-color: #1f5f2f;
+  --sidebar-border-color: #1f5f2f;
+  --color-border-outline: #2f9e52;
+  --color-border-outline-variant: #1f5f2f;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 1px #1f5f2f;
+  --shadow-island-stronger: 0 0 0 1px #1f5f2f;
+  --modal-shadow: 0 0 0 1px #1f5f2f;
+  --sidebar-shadow: 0 0 0 1px #1f5f2f;
+  --library-dropdown-shadow: 0 0 0 1px #1f5f2f;
+  --overlay-bg-color: rgba(0, 0, 0, 0.75);
+}
+
+:scope {
+  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+}

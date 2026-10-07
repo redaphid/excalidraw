@@ -95,7 +95,6 @@ export const buildScene = (style) => {
           verticalAlign: "middle",
           containerId: shape.id,
           frameId: shape.frameId,
-          strokeColor: shape.strokeColor,
         },
       ),
     ];
@@ -118,7 +117,7 @@ export const buildScene = (style) => {
     for (let i = 0; i <= 120; i++) {
       const t = i / 120;
       points.push([
-        Math.round(t * 230 * 10) / 10,
+        Math.round(t * 195 * 10) / 10,
         Math.round(Math.sin(t * Math.PI * 3) * 34 * (1 - t * 0.4) * 10) / 10,
       ]);
     }
@@ -144,7 +143,7 @@ export const buildScene = (style) => {
     strokeColor: stroke[2],
     roundness: shapeRoundness,
   });
-  const prototype = base("prototype", "rectangle", 760, 170, 220, 110, {
+  const prototype = base("prototype", "rectangle", 740, 170, 210, 110, {
     frameId: "build",
     backgroundColor: fill[1],
     strokeColor: stroke[1],
@@ -161,15 +160,15 @@ export const buildScene = (style) => {
       name: "Discovery",
       roughness: 0,
     }),
-    base("build", "frame", 720, 110, 560, 420, { name: "Build", roughness: 0 }),
+    base("build", "frame", 700, 110, 500, 420, { name: "Build", roughness: 0 }),
     ...boxed(research, "Research"),
     ...boxed(interviews, "Interviews"),
     ...boxed(decide, "Decide?"),
     ...boxed(prototype, "Prototype"),
     arrow("a1", 180, 275, 110, 90, { frameId: "discovery" }),
     arrow("a2", 470, 285, -60, 80, { frameId: "discovery" }),
-    arrow("a3", 445, 405, 310, -165, { strokeColor: stroke[3] }),
-    base("squiggle", "freedraw", 1010, 210, 230, 70, {
+    arrow("a3", 445, 405, 290, -165, { strokeColor: stroke[3] }),
+    base("squiggle", "freedraw", 975, 210, 195, 70, {
       frameId: "build",
       strokeWidth: style.currentItemFreedrawStrokeWidth,
       strokeStyle: "solid",
@@ -181,16 +180,16 @@ export const buildScene = (style) => {
         streamline: 0.5,
       },
     }),
-    text("notes", 760, 340, "Ship behind a flag,\nmeasure, then widen.", {
+    text("notes", 740, 340, "Ship behind a flag,\nmeasure, then widen.", {
       frameId: "build",
       fontSize: Math.round(fontSize * 1.2),
       height: Math.round(fontSize * 1.2) * 1.25 * 2,
     }),
-    base("line", "line", 760, 460, 470, 0, {
+    base("line", "line", 740, 460, 420, 0, {
       frameId: "build",
       points: [
         [0, 0],
-        [470, 0],
+        [420, 0],
       ],
       strokeStyle: "dotted",
       strokeColor: stroke[0],

@@ -1,0 +1,115 @@
+/* Blueprint Plate. mode: light */
+/*
+ * The top-down plate: cool drafting film, heavy blue-gray major lines over a
+ * fine minor grid, graphite ink, blueprint and sage washes.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #dfe3e1;
+  --canvas-grid-color: rgba(79, 112, 136, 0.16);
+  --canvas-grid-bold-color: rgba(79, 112, 136, 0.55);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #eef0ef;
+  --canvas-frame-color: rgba(26, 31, 38, 0.4);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #57616b;
+  --color-selection: #a8732f;
+  --element-stroke-color: #1a1f26;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 16;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #1a1f26 #9e3833 #4f7088 #5a7a6a #a8732f;
+  --color-picks-background: transparent #d6bcb7 #c0d0d7 #c5d4cc #ddcdb3;
+  --color-palette-stroke: #bcc0bf #94999a #6d7175 #41464b #1a1f26,
+    #d3c4c2 #c6a29f #b9807c #ab5a56 #9e3833,
+    #c5ced1 #a8b7bf #8ba0ad #6c879a #4f7088,
+    #c7d0cc #acbbb4 #92a69c #758f82 #5a7a6a,
+    #d5cfc1 #cab89d #bfa27a #b38953 #a8732f,
+    #d0c8d0 #bfaabc #af8ca9 #9d6b93 #8c4d80,
+    #d7d0be #cdbb97 #c4a670 #b98f46 #b07a1f,
+    #d7cbc0 #cfb19b #c69777 #bd7a4f #b4602a;
+  --color-palette-background: transparent,
+    #d2d7d6 #c0c7c8 #adb5b8 #969fa6 #7f8a93,
+    #dbd2cf #d6bcb7 #d1a49d #ca877e #c46a5f,
+    #d1dbdd #c0d0d7 #adc4d1 #95b5c9 #7ea7c2,
+    #d4dcd8 #c5d4cc #b5cabf #a2bfb0 #8fb3a0,
+    #ded9cd #ddcdb3 #dcbf97 #daaf74 #d99e52,
+    #d7d4d7 #ccc1ca #c0acbc #b292ab #a4799a,
+    #dedccc #dcd3b1 #dac892 #d8bc6e #d6b04a,
+    #ddd7cd #dac7b3 #d7b597 #d39f74 #cf8a52;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #1a1f26;
+  --color-on-surface: #1a1f26;
+  --icon-fill-color: #1a1f26;
+  --popup-text-color: #1a1f26;
+  --keybinding-color: #5d6770;
+  --color-gray-60: #5d6770;
+  --input-label-color: #5d6770;
+
+  --island-bg-color: #eceeed;
+  --island-bg-color-alt: #eceeed;
+  --popup-bg-color: #eceeed;
+  --sidebar-bg-color: #eceeed;
+  --default-bg-color: #eceeed;
+  --popup-secondary-bg-color: #dde2e1;
+  --input-bg-color: #f5f6f5;
+  --input-border-color: #c7cfd2;
+  --input-hover-bg-color: #dde2e1;
+
+  --color-surface-lowest: #f5f6f5;
+  --color-surface-low: #dde2e1;
+  --color-surface-mid: #dde2e1;
+  --color-surface-high: #dde2e1;
+  --color-surface-primary-container: #cdd8de;
+  --color-on-primary-container: #1a1f26;
+
+  --color-primary: #1a1f26;
+  --color-primary-darker: #1a1f26;
+  --color-primary-darkest: #1a1f26;
+  --color-primary-hover: #1a1f26;
+  --color-primary-light: #cdd8de;
+  --color-primary-light-darker: #cdd8de;
+  --color-brand-hover: #1a1f26;
+  --color-brand-active: #1a1f26;
+  --select-highlight-color: #a8732f;
+  --focus-highlight-color: #a8732f;
+
+  --button-hover-bg: #dde2e1;
+  --button-active-bg: #cdd8de;
+  --button-active-border: #1a1f26;
+  --button-gray-1: #dde2e1;
+  --button-gray-2: #dde2e1;
+  --button-gray-3: #cdd8de;
+  --default-border-color: #c7cfd2;
+  --dialog-border-color: #c7cfd2;
+  --sidebar-border-color: #c7cfd2;
+  --color-border-outline: #5d6770;
+  --color-border-outline-variant: #c7cfd2;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 1px rgba(26, 31, 38, 0.16);
+  --shadow-island-stronger: 0 0 0 1px rgba(26, 31, 38, 0.16);
+  --modal-shadow: 0 0 0 1px rgba(26, 31, 38, 0.16);
+  --sidebar-shadow: 0 0 0 1px rgba(26, 31, 38, 0.16);
+  --library-dropdown-shadow: 0 0 0 1px rgba(26, 31, 38, 0.16);
+  --overlay-bg-color: rgba(223, 227, 225, 0.72);
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}

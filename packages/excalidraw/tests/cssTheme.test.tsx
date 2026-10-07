@@ -13,7 +13,7 @@ const styleOf = (properties: Record<string, string>) => ({
   getPropertyValue: (name: string) => properties[name] ?? "",
 });
 
-const THEME_CSS = `.excalidraw {
+const THEME_CSS = `:scope {
   --canvas-background: #f4ecd8;
   --canvas-grid-color: rgba(60, 90, 120, 0.12);
   --canvas-grid-bold-color: #9fb3c4;
@@ -84,11 +84,42 @@ describe("readCssTheme", () => {
       }),
     );
 
-    expect(theme).toEqual({ canvas: {}, appState: {} });
+    expect(theme).toEqual({ canvas: {}, appState: {}, palettes: {} });
+  });
+
+  it("parses palettes of single colors and five-shade entries", () => {
+    const theme = readCssTheme(
+      styleOf({
+        "--color-palette-stroke":
+          "#1b2129, #ddc5b9 #cea398 #be8177 #ad5c54 #9e3a33",
+        "--color-palette-background": "transparent, #f4efe4",
+        "--canvas-frame-width": "1",
+      }),
+    );
+
+    expect(theme.palettes).toEqual({
+      elementStroke: {
+        "#1b2129": "#1b2129",
+        "#ddc5b9": ["#ddc5b9", "#cea398", "#be8177", "#ad5c54", "#9e3a33"],
+      },
+      elementBackground: { transparent: "transparent", "#f4efe4": "#f4efe4" },
+    });
+    expect(theme.canvas.frameWidth).toBe(1);
+  });
+
+  it("drops a palette with a malformed entry", () => {
+    const theme = readCssTheme(
+      styleOf({ "--color-palette-stroke": "#111, #222 #333" }),
+    );
+    expect(theme.palettes).toEqual({});
   });
 
   it("is empty when no property is set", () => {
-    expect(readCssTheme(styleOf({}))).toEqual({ canvas: {}, appState: {} });
+    expect(readCssTheme(styleOf({}))).toEqual({
+      canvas: {},
+      appState: {},
+      palettes: {},
+    });
   });
 });
 
@@ -163,13 +194,44 @@ describe("css prop", () => {
     expect(h.state.currentItemRoughness).toBe(2);
   });
 
+  it("shows the theme's palette in the color picker", async () => {
+    // radix popovers measure themselves
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    await render(
+      <Excalidraw css=":scope { --color-palette-stroke: #1b2129, #9e3a33, #5a7a6a; }" />,
+    );
+    const rectangle = UI.createElement("rectangle", { width: 40, height: 40 });
+    API.setAppState({
+      selectedElementIds: { [rectangle.id]: true },
+      openPopup: "elementStroke",
+    });
+    await act(async () => {});
+
+    const swatches = [
+      ...document.querySelectorAll<HTMLElement>(".color-picker__button--large"),
+    ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
+    expect(swatches).toEqual(
+      expect.arrayContaining(["#1b2129", "#9e3a33", "#5a7a6a"]),
+    );
+    // upstream's red and blue
+    expect(swatches).not.toContain("#e03131");
+    expect(swatches).not.toContain("#1971c2");
+  });
+
   it("applies a changed css prop", async () => {
     const { rerender } = await render(<Excalidraw css={THEME_CSS} />);
 
     rerender(
       <Excalidraw
         css={`
-          .excalidraw {
+          :scope {
             --element-roughness: 2;
             --canvas-grid-color: #123456;
           }

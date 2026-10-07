@@ -1,0 +1,116 @@
+/* Brutalist. mode: light */
+/*
+ * Raw and loud: hard black borders, offset block shadows, monospace,
+ * acid accents, no softness anywhere.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #f4f4f0;
+  --canvas-grid-color: rgba(0, 0, 0, 0.12);
+  --canvas-grid-bold-color: rgba(0, 0, 0, 0.5);
+  --canvas-grid-style: dashed;
+  --canvas-handle-fill: #e8ff00;
+  --canvas-frame-color: #000000;
+  --canvas-frame-width: 3;
+  --canvas-frame-name-color: #000000;
+  --color-selection: #ff3b00;
+  --element-stroke-color: #000000;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: bold;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: triangle;
+  --element-font-family: Cascadia;
+  --element-font-size: 18;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #000000 #ff3b00 #0047ff #00a651 #ff9f00;
+  --color-picks-background: transparent #f8b9a3 #a6bdf5 #a6e9c5 #f0f8a3;
+  --color-palette-stroke: #c8c8c5 #979795 #666665 #313130 #000000,
+    #f6d3c5 #f8ae95 #fa8965 #fd6030 #ff3b00,
+    #c8d5f3 #97b2f6 #6690f9 #316afc #0047ff,
+    #c8e6d3 #97d6b4 #66c794 #31b671 #00a651,
+    #f6e5c5 #f8d495 #fac365 #fdb030 #ff9f00,
+    #ebc8f3 #e297f6 #d866f9 #ce31fc #c400ff,
+    #d9d9d5 #babab8 #9c9c9a #7a7a7a #5c5c5c,
+    #c8e8e9 #97dbe0 #66ced8 #31c0cf #00b3c7;
+  --color-palette-background: transparent,
+    #d2d2ce #a6a6a3 #757573 #3b3b3a #000000,
+    #f6dace #f8b9a3 #fa9473 #fc673a #ff3b00,
+    #d2dcf2 #a6bdf5 #759af8 #3b71fb #0047ff,
+    #d2efdd #a6e9c5 #75e2aa #3bda8a #00d26a,
+    #f2f6ce #f0f8a3 #eefa73 #ebfc3a #e8ff00,
+    #f6e1ec #f8c8e7 #faace2 #fc8bdb #ff6ad5,
+    #e7e7e4 #d7d7d4 #c5c5c3 #b0b0af #9a9a9a,
+    #d2f1f2 #a6eef5 #75eaf8 #3be5fb #00e0ff;
+
+  --ui-font: Cascadia, "Cascadia Code", Consolas, "SF Mono", monospace;
+  --text-primary-color: #000000;
+  --color-on-surface: #000000;
+  --icon-fill-color: #000000;
+  --popup-text-color: #000000;
+  --keybinding-color: #3d3d3d;
+  --color-gray-60: #3d3d3d;
+  --input-label-color: #3d3d3d;
+
+  --island-bg-color: #ffffff;
+  --island-bg-color-alt: #ffffff;
+  --popup-bg-color: #ffffff;
+  --sidebar-bg-color: #ffffff;
+  --default-bg-color: #ffffff;
+  --popup-secondary-bg-color: #e8ff00;
+  --input-bg-color: #ffffff;
+  --input-border-color: #000000;
+  --input-hover-bg-color: #e8ff00;
+
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #e8ff00;
+  --color-surface-mid: #e8ff00;
+  --color-surface-high: #e8ff00;
+  --color-surface-primary-container: #e8ff00;
+  --color-on-primary-container: #000000;
+
+  --color-primary: #000000;
+  --color-primary-darker: #000000;
+  --color-primary-darkest: #000000;
+  --color-primary-hover: #000000;
+  --color-primary-light: #e8ff00;
+  --color-primary-light-darker: #e8ff00;
+  --color-brand-hover: #000000;
+  --color-brand-active: #000000;
+  --select-highlight-color: #ff3b00;
+  --focus-highlight-color: #ff3b00;
+
+  --button-hover-bg: #e8ff00;
+  --button-active-bg: #e8ff00;
+  --button-active-border: #000000;
+  --button-gray-1: #e8ff00;
+  --button-gray-2: #e8ff00;
+  --button-gray-3: #e8ff00;
+  --default-border-color: #000000;
+  --dialog-border-color: #000000;
+  --sidebar-border-color: #000000;
+  --color-border-outline: #3d3d3d;
+  --color-border-outline-variant: #000000;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 3px #000000, 6px 6px 0 3px #000000;
+  --shadow-island-stronger: 0 0 0 3px #000000, 6px 6px 0 3px #000000;
+  --modal-shadow: 0 0 0 3px #000000, 6px 6px 0 3px #000000;
+  --sidebar-shadow: 0 0 0 3px #000000, 6px 6px 0 3px #000000;
+  --library-dropdown-shadow: 0 0 0 3px #000000, 6px 6px 0 3px #000000;
+  --overlay-bg-color: rgba(232, 255, 0, 0.35);
+}
+
+:scope {
+  font-weight: 700;
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+  text-transform: uppercase;
+}

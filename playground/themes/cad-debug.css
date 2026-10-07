@@ -1,0 +1,113 @@
+/* CAD Debug. mode: light */
+/*
+ * A CAD viewport: blue-gray ground, white construction grid, graphite
+ * edges and the bright debug palette. Solid warm fills mean added material,
+ * dashed cool or red outlines mean voids.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #d4dbe1;
+  --canvas-grid-color: rgba(255, 255, 255, 0.45);
+  --canvas-grid-bold-color: rgba(255, 255, 255, 0.95);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #ffffff;
+  --canvas-frame-color: rgba(32, 38, 46, 0.55);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #3d4651;
+  --color-selection: #f07114;
+  --element-stroke-color: #20262e;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: triangle;
+  --element-font-family: Cascadia;
+  --element-font-size: 15;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #20262e #e02424 #d61fbf #f07114 #2f6fb0;
+  --color-picks-background: transparent #e2b2b6 #dcb2df #e2c6b2 #b2cade;
+  --color-palette-stroke: #b4bac1 #90969d #6c7279 #444a52 #20262e,
+    #d6babf #d99599 #db7173 #de494a #e02424,
+    #d4b9db #d594d4 #d56ecd #d645c6 #d61fbf,
+    #d9c8bc #dfb393 #e49e6a #ea863d #f07114,
+    #b6c8d8 #95b2ce #749cc5 #5085ba #2f6fb0,
+    #b3d0cc #8fc3b4 #6bb79d #43a983 #1f9d6b,
+    #ceccb9 #c7bc8c #c1ac5f #ba9a2d #b38a00,
+    #c1c2df #aca6de #978adc #806bda #6b4fd8;
+  --color-palette-background: transparent,
+    #c8d0d6 #b8c1c8 #a7b0b9 #929da6 #7d8994,
+    #dac9ce #e2b2b6 #ea989b #f5797a #ff5a5a,
+    #d8c9e0 #dcb2df #e299de #e87adc #ee5cdb,
+    #dad2cc #e2c6b2 #eab994 #f5aa71 #ff9a4d,
+    #c5d4e0 #b2cade #9dbfdd #83b3db #6aa6d9,
+    #c1d8d7 #a8d5c9 #8dd1ba #6dcca8 #4cc796,
+    #dadac5 #e2d8a1 #ead67a #f5d34a #ffd11a,
+    #cccfe5 #c2c0eb #b6aff1 #a99af8 #9b86ff;
+
+  --ui-font: Cascadia, "Cascadia Code", Consolas, "SF Mono", monospace;
+  --text-primary-color: #20262e;
+  --color-on-surface: #20262e;
+  --icon-fill-color: #20262e;
+  --popup-text-color: #20262e;
+  --keybinding-color: #56616d;
+  --color-gray-60: #56616d;
+  --input-label-color: #56616d;
+
+  --island-bg-color: #e6eaee;
+  --island-bg-color-alt: #e6eaee;
+  --popup-bg-color: #e6eaee;
+  --sidebar-bg-color: #e6eaee;
+  --default-bg-color: #e6eaee;
+  --popup-secondary-bg-color: #d9dfe5;
+  --input-bg-color: #f4f6f8;
+  --input-border-color: #b9c3cc;
+  --input-hover-bg-color: #d9dfe5;
+
+  --color-surface-lowest: #f4f6f8;
+  --color-surface-low: #d9dfe5;
+  --color-surface-mid: #d9dfe5;
+  --color-surface-high: #d9dfe5;
+  --color-surface-primary-container: #ffe7a3;
+  --color-on-primary-container: #20262e;
+
+  --color-primary: #20262e;
+  --color-primary-darker: #20262e;
+  --color-primary-darkest: #20262e;
+  --color-primary-hover: #20262e;
+  --color-primary-light: #ffe7a3;
+  --color-primary-light-darker: #ffe7a3;
+  --color-brand-hover: #20262e;
+  --color-brand-active: #20262e;
+  --select-highlight-color: #f07114;
+  --focus-highlight-color: #f07114;
+
+  --button-hover-bg: #d9dfe5;
+  --button-active-bg: #ffe7a3;
+  --button-active-border: #20262e;
+  --button-gray-1: #d9dfe5;
+  --button-gray-2: #d9dfe5;
+  --button-gray-3: #ffe7a3;
+  --default-border-color: #b9c3cc;
+  --dialog-border-color: #b9c3cc;
+  --sidebar-border-color: #b9c3cc;
+  --color-border-outline: #56616d;
+  --color-border-outline-variant: #b9c3cc;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 1px rgba(32, 38, 46, 0.22);
+  --shadow-island-stronger: 0 0 0 1px rgba(32, 38, 46, 0.22);
+  --modal-shadow: 0 0 0 1px rgba(32, 38, 46, 0.22);
+  --sidebar-shadow: 0 0 0 1px rgba(32, 38, 46, 0.22);
+  --library-dropdown-shadow: 0 0 0 1px rgba(32, 38, 46, 0.22);
+  --overlay-bg-color: rgba(212, 219, 225, 0.7);
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+  font-family: var(--ui-font);
+}

@@ -1,0 +1,117 @@
+/* Architect Parchment. mode: light */
+/*
+ * Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine
+ * minors), thin graphite ink, pale sage and blue-gray washes, one bronze
+ * accent. No textures and no soft shadows: restraint carries it.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #ebe4d6;
+  --canvas-grid-color: rgba(84, 118, 145, 0.2);
+  --canvas-grid-bold-color: rgba(84, 118, 145, 0.48);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #f4efe4;
+  --canvas-frame-color: rgba(27, 33, 41, 0.42);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #5f6670;
+  --color-selection: #a8732f;
+
+  --element-stroke-color: #1b2129;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 16;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #1b2129 #9e3a33 #5a7a6a #4f7088 #a8732f;
+  --color-picks-background: transparent #e3d0c2 #c3cabb #bec6c6 #dbc7a9;
+  --color-palette-stroke: #c6c1b7 #9c9a94 #727372 #45484c #1b2129,
+    #ddc5b9 #cea398 #be8177 #ad5c54 #9e3a33,
+    #d1d1c3 #b4bcad #97a797 #778f80 #5a7a6a,
+    #cfcfc8 #b0b8b8 #91a1a9 #6e8798 #4f7088,
+    #dfd0b8 #d2b997 #c4a275 #b58a50 #a8732f,
+    #ded3b7 #d0bf94 #c1ac71 #b1964a #a38327,
+    #d7c8c3 #c2a9ae #ac8b9a #946983 #7e4a6e,
+    #dfccb7 #d2b195 #c49773 #b57a4e #a85f2c,
+    #d4cdc0 #bab3a7 #a19a8e #857e72 #6b6459, #f4efe4;
+  --color-palette-background: transparent, #f4efe4,
+    #d9d2c5 #c2bbae #a8a195 #8a8377 #6b6459,
+    #e3d0c2 #dab6a9 #cf998d #c2776c #b5544a,
+    #dad9ca #c3cabb #abbaaa #8da795 #6f9481,
+    #d7d7cf #bec6c6 #a2b3bb #819daf #5f86a3,
+    #e4d7c2 #dbc7a9 #d1b58d #c5a06c #b98a4a,
+    #e4dac2 #dbcea8 #d1c18b #c5b069 #b9a046,
+    #dfd2ca #cfbbba #bea2a9 #a98394 #94657f,
+    #e4d5c2 #dbc1a9 #d0ab8d #c4916c #b8774a;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #1b2129;
+  --color-on-surface: #1b2129;
+  --icon-fill-color: #1b2129;
+  --keybinding-color: #8a8478;
+  --color-gray-60: #6b6459;
+
+  --island-bg-color: #f1ebdf;
+  --popup-bg-color: #f1ebdf;
+  --sidebar-bg-color: #f1ebdf;
+  --default-bg-color: #f1ebdf;
+  --input-bg-color: #f7f3ea;
+  --input-border-color: #c9bfae;
+  --input-hover-bg-color: #ece5d7;
+  --input-label-color: #4b525c;
+  --popup-secondary-bg-color: #e8e0cf;
+  --popup-text-color: #1b2129;
+
+  --color-surface-lowest: #f7f3ea;
+  --color-surface-low: #e8e0cf;
+  --color-surface-mid: #ece5d7;
+  --color-surface-high: #e2d8c4;
+  --color-surface-primary-container: #dccdb4;
+  --color-on-primary-container: #1b2129;
+
+  --color-primary: #1b2129;
+  --color-primary-darker: #0f1318;
+  --color-primary-darkest: #000000;
+  --color-primary-hover: #333a44;
+  --color-primary-light: #e0d3bb;
+  --color-primary-light-darker: #d5c5a8;
+  --color-brand-hover: #333a44;
+  --color-brand-active: #0f1318;
+  --select-highlight-color: #a8732f;
+  --focus-highlight-color: #c9a46e;
+
+  --button-hover-bg: #e6ddca;
+  --button-active-bg: #e0d3bb;
+  --button-active-border: #1b2129;
+  --default-border-color: #d6ccb9;
+  --dialog-border-color: #c9bfae;
+  --sidebar-border-color: #d6ccb9;
+  --color-border-outline: #6d675c;
+  --color-border-outline-variant: #cdc3b0;
+  --button-gray-1: #e8dfcd;
+  --button-gray-2: #ddd2bd;
+  --button-gray-3: #d1c4ab;
+
+  --border-radius-md: 2px;
+  --border-radius-lg: 2px;
+  --shadow-island: 0 0 0 1px rgba(27, 33, 41, 0.14);
+  --shadow-island-stronger: 0 0 0 1px rgba(27, 33, 41, 0.22);
+  --modal-shadow: 0 0 0 1px rgba(27, 33, 41, 0.2),
+    0 24px 48px -24px rgba(27, 33, 41, 0.25);
+  --sidebar-shadow: 0 0 0 1px rgba(27, 33, 41, 0.14);
+  --library-dropdown-shadow: 0 0 0 1px rgba(27, 33, 41, 0.14);
+  --overlay-bg-color: rgba(235, 228, 214, 0.72);
+}
+
+.frame-breadcrumb {
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: none;
+  letter-spacing: 0.04em;
+}
