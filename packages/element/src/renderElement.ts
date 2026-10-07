@@ -1196,6 +1196,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
   while (build.next < elements.length && hasTime()) {
     const element = elements[build.next++];
     if (
+      element.id === appState.newElement?.id ||
       !shouldDrawDirectly(element, elementsMap, appState) ||
       settledElementCanvas(element, elementsMap, appState)
     ) {
