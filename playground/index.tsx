@@ -15,6 +15,8 @@ const Bench = lazy(() =>
   import("./bench/Bench").then(({ Bench }) => ({ default: Bench })),
 );
 
+console.error("ci fail-proof: the smoke test must catch this");
+
 const save = debounce(saveScene, 300);
 window.addEventListener("pagehide", save.flush);
 
