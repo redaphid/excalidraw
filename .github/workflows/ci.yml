@@ -51,3 +51,54 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
       - run: yarn test:app --watch=false --shard=${{ matrix.shard }}/3
+
+  playground:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: yarn build:playground
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playground
+          path: playground/dist
+          retention-days: 7
+
+  e2e:
+    name: e2e (${{ matrix.browser }})
+    needs: playground
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      E2E_BROWSER: ${{ matrix.browser }}
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+      - run: yarn install --frozen-lockfile
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ matrix.browser }}-${{ hashFiles('e2e/yarn.lock') }}
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: playground
+          path: playground/dist
+      - run: echo "### Long tasks, ${{ matrix.browser }}" >> "$GITHUB_STEP_SUMMARY"
+      - run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-${{ matrix.browser }}-failures
+          path: e2e/test-results
+          retention-days: 14

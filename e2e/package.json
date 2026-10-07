@@ -1,0 +1,12 @@
+{
+  "private": true,
+  "name": "excalidraw-e2e",
+  "description": "Cross-browser smoke tests against the built playground (playground/dist).",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "http-server": "14.1.1"
+  }
+}
