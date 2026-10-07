@@ -85,7 +85,7 @@ Line caps and joins are fixed (round). Do not promise a theme butt caps.
 - A palette entry the same color as the panel disappears from the grid. Every entry needs contrast against `--island-bg-color`.
 - Popovers, the color picker and dialogs use `--island-bg-color` and `--popup-bg-color`. On a dark canvas, check the menu and help dialog: dialog text uses `--text-primary-color`, and secondary text uses `--color-gray-60` and `--keybinding-color`.
 - The help dialog's keycaps sit on `--color-primary-light` with inherited text. A theme that makes `--color-primary-light` a strong selection color must set `:scope .HelpDialog__key { color: … }`. In pass 2, High Contrast's keycaps were white on yellow and Swiss's black on black; in pass 3, after the dialog became visible, E-ink's were black on black. Check every theme's dialog shot, not only the one that just changed.
-- A translucent `--popup-bg-color` lets the scene show through the color picker. Keep popovers at 0.9 alpha or more, even in a glass theme.
+- Popovers (the color picker, the font picker) are an `.Island` inside Radix's `[data-radix-popper-content-wrapper]`, so they take `--island-bg-color`, not `--popup-bg-color`. A translucent island lets the scene read through the palette. Give `:scope [data-radix-popper-content-wrapper] .Island` a background at 0.9 alpha or more, even in a glass theme.
 - Never write `animation: none` in a theme. Dialogs fade in from opacity 0 with `animation-fill-mode: forwards`, so removing the animation leaves them invisible. Set `animation-duration: 0s` and `transition-duration: 0s` instead. E-ink's help dialog vanished this way in pass 2.
 
 ## Dark themes and the element filter

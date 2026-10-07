@@ -120,3 +120,8 @@
     radial-gradient(at 86% 26%, #fbcfe8 0, transparent 44%),
     radial-gradient(at 52% 96%, #bae6fd 0, transparent 52%), #eef1fb;
 }
+
+/* popovers sit over the scene: nearly opaque, or the palette reads through */
+:scope [data-radix-popper-content-wrapper] .Island {
+  background: rgba(255, 255, 255, 0.95);
+}
