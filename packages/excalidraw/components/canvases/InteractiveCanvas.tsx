@@ -20,7 +20,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { t } from "../../i18n";
-import { getSelectionColor } from "../../renderer/helpers";
+import { DEFAULT_SELECTION_COLOR } from "../../renderer/helpers";
 import { renderInteractiveScene } from "../../renderer/interactiveScene";
 
 import { AnimationController } from "../../renderer/animation";
@@ -137,7 +137,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       remotePointerButton.set(socketId, user.button);
     });
 
-    const selectionColor = getSelectionColor(props.containerRef?.current);
+    const canvasTheme = props.app.cssTheme.canvas;
 
     rendererParams.current = {
       app: props.app,
@@ -154,7 +154,8 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
         remoteSelectedElementIds,
         remotePointerUsernames,
         remotePointerUserStates,
-        selectionColor,
+        selectionColor: canvasTheme.selectionColor ?? DEFAULT_SELECTION_COLOR,
+        canvasTheme,
         renderScrollbars: props.renderScrollbars,
         // NOTE not memoized on so we don't rerender on cursor move
         lastViewportPosition: props.app.viewport.lastPosition,

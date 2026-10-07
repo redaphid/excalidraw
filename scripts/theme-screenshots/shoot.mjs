@@ -138,20 +138,60 @@ const settle = (page) =>
 // room for the properties panel, which covers the canvas's left edge
 const LEFT_PANEL = { desktop: 240, tablet: 240, phone: 0 };
 
-const shootOne = async (context, baseUrl, viewport, theme, state, file) => {
+const openTheme = async (context, baseUrl, theme, scene) => {
   const page = await context.newPage();
-  const scene = JSON.stringify(buildScene());
   await page.addInitScript((scene) => {
     // the dev server serves fonts from absolute /@fs/ paths, which the font
     // loader resolves only against EXCALIDRAW_ASSET_PATH
     window.EXCALIDRAW_ASSET_PATH = `${location.origin}/`;
     localStorage.clear();
-    localStorage.setItem("excalidraw-playground-scene", scene);
+    if (scene) {
+      localStorage.setItem("excalidraw-playground-scene", scene);
+    }
   }, scene);
   await page.goto(`${baseUrl}?theme=${theme}&switcher=0`);
   await page.waitForFunction(() => !!window.excalidrawAPI, null, {
     timeout: 180_000,
   });
+  await page.waitForFunction(
+    () => !window.excalidrawAPI.getAppState().isLoading,
+  );
+  return page;
+};
+
+/** the new-element defaults and swatches the theme gave a blank editor */
+const readStyle = async (context, baseUrl, theme) => {
+  const page = await openTheme(context, baseUrl, theme, null);
+  await settle(page);
+  const style = await page.evaluate(() => {
+    const state = window.excalidrawAPI.getAppState();
+    return {
+      ...Object.fromEntries(
+        Object.entries(state).filter(([key]) => key.startsWith("currentItem")),
+      ),
+      strokePicks: state.colorTopPicks.elementStroke,
+      backgroundPicks: state.colorTopPicks.elementBackground,
+    };
+  });
+  await page.close();
+  return style;
+};
+
+const shootOne = async (
+  context,
+  baseUrl,
+  viewport,
+  theme,
+  style,
+  state,
+  file,
+) => {
+  const page = await openTheme(
+    context,
+    baseUrl,
+    theme,
+    JSON.stringify(buildScene(style)),
+  );
   await page.waitForFunction(
     () => window.excalidrawAPI.getSceneElements().length > 0,
   );
@@ -190,14 +230,26 @@ const shoot = async (args) => {
   await server.listen();
   const baseUrl = server.resolvedUrls.local[0];
   const browser = await chromium.launch({ executablePath: findChromium() });
+  const styles = new Map();
   try {
     for (const viewport of args.viewports) {
       const context = await browser.newContext(VIEWPORTS[viewport]);
       for (const theme of args.themes) {
         fs.mkdirSync(path.join(args.out, theme), { recursive: true });
+        if (!styles.has(theme)) {
+          styles.set(theme, await readStyle(context, baseUrl, theme));
+        }
         for (const state of args.states) {
           const file = path.join(args.out, theme, `${viewport}-${state}.png`);
-          await shootOne(context, baseUrl, viewport, theme, state, file);
+          await shootOne(
+            context,
+            baseUrl,
+            viewport,
+            theme,
+            styles.get(theme),
+            state,
+            file,
+          );
           console.log(file);
         }
       }

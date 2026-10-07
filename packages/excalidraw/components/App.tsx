@@ -340,6 +340,7 @@ import {
 import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
+import { EMPTY_CSS_THEME, readCssTheme } from "../cssTheme";
 import { getCenter, getDistance } from "../gesture";
 import {
   copyElementRenderOverrides,
@@ -494,6 +495,7 @@ import type {
   NullableGridSize,
   UIConfig,
 } from "../types";
+import type { CssTheme } from "../cssTheme";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Action, ActionResult } from "../actions/types";
 
@@ -623,6 +625,11 @@ class App extends React.Component<AppProps, AppState> {
 
   private excalidrawContainerRef = React.createRef<HTMLDivElement>();
   private zenModeTransitionTimer = 0;
+
+  /** parsed from the container's custom properties when the `css` prop or
+   * the theme changes; renderers read it instead of the DOM */
+  public cssTheme: CssTheme = EMPTY_CSS_THEME;
+  private scopedCss: { css: string; scoped: string } | null = null;
 
   public get ownerDocument(): Document {
     return (
@@ -2360,9 +2367,11 @@ class App extends React.Component<AppProps, AppState> {
               fontFamily: "Assistant",
               fontSize: `${FRAME_STYLE.nameFontSize}px`,
               transform: `translate(-${FRAME_NAME_EDIT_PADDING}px, ${FRAME_NAME_EDIT_PADDING}px)`,
-              color: isDarkTheme
-                ? FRAME_STYLE.nameColorDarkTheme
-                : FRAME_STYLE.nameColorLightTheme,
+              color: `var(--canvas-frame-name-color, ${
+                isDarkTheme
+                  ? FRAME_STYLE.nameColorDarkTheme
+                  : FRAME_STYLE.nameColorLightTheme
+              })`,
               overflow: "hidden",
               maxWidth: `${
                 this.ownerDocument.body.clientWidth -
@@ -2403,9 +2412,11 @@ class App extends React.Component<AppProps, AppState> {
             left: `${x1 - this.state.offsetLeft}px`,
             zIndex: 2,
             fontSize: FRAME_STYLE.nameFontSize,
-            color: isDarkTheme
-              ? FRAME_STYLE.nameColorDarkTheme
-              : FRAME_STYLE.nameColorLightTheme,
+            color: `var(--canvas-frame-name-color, ${
+              isDarkTheme
+                ? FRAME_STYLE.nameColorDarkTheme
+                : FRAME_STYLE.nameColorLightTheme
+            })`,
             lineHeight: FRAME_STYLE.nameLineHeight,
             width: "max-content",
             maxWidth:
@@ -2539,6 +2550,7 @@ class App extends React.Component<AppProps, AppState> {
           ["--zen-mode-transition-duration" as any]: `${ZEN_MODE_TRANSITION_DURATION}ms`,
         }}
         ref={this.excalidrawContainerRef}
+        data-excalidraw-id={this.id}
         onDrop={this.isFileDropEnabled() ? this.handleAppOnDrop : undefined}
         tabIndex={0}
         onKeyDown={
@@ -2557,6 +2569,7 @@ class App extends React.Component<AppProps, AppState> {
             : undefined
         }
       >
+        {this.props.css && <style>{this.getScopedCss(this.props.css)}</style>}
         <ExcalidrawAPIContext.Provider value={this.api}>
           <AppContext.Provider value={this}>
             <AppPropsContext.Provider value={this.props}>
@@ -2772,6 +2785,7 @@ class App extends React.Component<AppProps, AppState> {
                               pendingFlowchartNodes:
                                 this.flowchart.pendingNodes,
                               theme: this.state.theme,
+                              canvasTheme: this.cssTheme.canvas,
                               ...this.getRenderOverrideConfig(),
                             }}
                           />
@@ -2795,6 +2809,7 @@ class App extends React.Component<AppProps, AppState> {
                                   this.elementsPendingErasure,
                                 pendingFlowchartNodes: null,
                                 theme: this.state.theme,
+                                canvasTheme: this.cssTheme.canvas,
                                 ...this.getRenderOverrideConfig(),
                               }}
                               // a tool dragged out of the toolbar previews
@@ -3919,6 +3934,7 @@ class App extends React.Component<AppProps, AppState> {
 
     this.excalidrawContainerValue.container =
       this.excalidrawContainerRef.current;
+    this.applyCssTheme(false);
 
     if (isTestEnv() || isDevEnv()) {
       const setState = this.setState.bind(this);
@@ -4424,6 +4440,8 @@ class App extends React.Component<AppProps, AppState> {
     // must be updated *before* state change listeners are triggered below
     if (!this._initialized && !this.state.isLoading) {
       this._initialized = true;
+      // loading the scene restored appState over the theme's defaults
+      this.applyCssTheme(true);
       this.editorLifecycleEvents.emit("editor:initialize", this.api);
       this.props.onInitialize?.(this.api);
     }
@@ -4541,6 +4559,13 @@ class App extends React.Component<AppProps, AppState> {
       "theme--dark",
       this.state.theme === THEME.DARK,
     );
+
+    if (
+      prevProps.css !== this.props.css ||
+      prevState.theme !== this.state.theme
+    ) {
+      this.applyCssTheme(false);
+    }
 
     if (
       this.state.selectedLinearElement?.isEditing &&
@@ -5198,6 +5223,63 @@ class App extends React.Component<AppProps, AppState> {
       isDragging: false,
     });
   };
+
+  /** wraps the `css` prop in `@scope`, so it reaches this editor and its
+   * portals only (each carries `data-excalidraw-id`) */
+  private getScopedCss(css: string) {
+    if (this.scopedCss?.css !== css) {
+      this.scopedCss = {
+        css,
+        // without `@scope` support the whole block would be dropped
+        scoped:
+          "CSSScopeRule" in this.ownerWindow
+            ? `@scope ([data-excalidraw-id="${this.id}"]) {
+${css}
+}`
+            : css,
+      };
+    }
+    return this.scopedCss.scoped;
+  }
+
+  /**
+   * Re-reads the theme's custom properties. Canvas colors repaint the
+   * canvases; new-element defaults are written to appState when they differ
+   * from the last read (or when `reapplyAppState`), so a light/dark toggle
+   * keeps the user's own picks.
+   */
+  private applyCssTheme(reapplyAppState: boolean) {
+    const container = this.excalidrawContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const prev = this.cssTheme;
+    const next = readCssTheme(this.ownerWindow.getComputedStyle(container));
+    const canvasChanged = !isShallowEqual(prev.canvas, next.canvas);
+    const appStateChanged =
+      JSON.stringify(prev.appState) !== JSON.stringify(next.appState);
+    if (!canvasChanged && !appStateChanged && !reapplyAppState) {
+      return;
+    }
+    this.cssTheme = {
+      canvas: canvasChanged ? next.canvas : prev.canvas,
+      appState: next.appState,
+    };
+    const { colorTopPicks, ...defaults } = next.appState;
+    if (
+      (appStateChanged || reapplyAppState) &&
+      (colorTopPicks || Object.keys(defaults).length)
+    ) {
+      this.setState((state) => ({
+        ...state,
+        ...defaults,
+        colorTopPicks: { ...state.colorTopPicks, ...colorTopPicks },
+      }));
+    }
+    if (canvasChanged) {
+      this.triggerRender(true);
+    }
+  }
 
   public triggerRender = (
     /** force always re-renders canvas even if no change */
