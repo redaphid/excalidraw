@@ -94,6 +94,11 @@ const instrument = () => {
   window.profilerHook = async (id, phase) => {
     if (phase === "stop") {
       const steps = repaintsAtStep.length - 1;
+      // the last move's paints land in React effects and the next frame
+      for (let i = 0; i < 2; i++) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
       window.parity.frames[id] = composite();
       window.parity.repaints[id] = {
         lastMoveRepainted: window.staticRepaints !== repaintsAtStep[steps],
