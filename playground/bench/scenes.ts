@@ -227,6 +227,14 @@ const MIXED_KINDS = [
   ...Array<string>(3).fill("image"),
 ];
 
+const LATE_IMAGE_ID = "bench-late-image" as FileId;
+
+/** the file of an image on the mixed board that arrives after it mounts */
+export const lateImage = () => ({
+  ...makeImages(5)["bench-image-4" as FileId],
+  id: LATE_IMAGE_ID,
+});
+
 const makeImages = (count: number): BinaryFiles => {
   const files: BinaryFiles = {};
   for (let i = 0; i < count; i++) {
@@ -295,6 +303,19 @@ const mixed = (): BenchScene => {
       ),
     );
   }
+  elements.push({
+    ...newImageElement({
+      type: "image",
+      x: 900,
+      y: 1000,
+      width: 360,
+      height: 270,
+      frameId: frames[0].id,
+      fileId: LATE_IMAGE_ID,
+      status: "saved",
+    }),
+    ...next(),
+  });
   return {
     elements: [...elements, ...frames],
     files,
