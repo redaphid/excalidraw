@@ -299,7 +299,10 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
     release: null as null | { draft: boolean; assets: string[] },
     failPublish: null as null | string,
     publishIsLost: false,
+    viewsBeforeVisible: 0,
+    hidden: new Map<string, number>(),
   };
+  const sleeps: number[] = [];
   const calls: Call[] = [];
   const npmrcSeen: string[] = [];
   const ok = (value?: unknown) => ({
@@ -320,7 +323,10 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
       npmrcSeen.push(readFileSync(userconfig.split("=")[1], "utf8"));
     }
     if (cmd === "npm" && verb === "view") {
-      const pkg = state.packages.get(target.slice(0, target.lastIndexOf("@")));
+      const name = target.slice(0, target.lastIndexOf("@"));
+      const hiddenViews = state.hidden.get(name) ?? 0;
+      state.hidden.set(name, hiddenViews - 1);
+      const pkg = hiddenViews > 0 ? undefined : state.packages.get(name);
       return pkg
         ? ok({
             version: VERSION,
@@ -338,6 +344,7 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
         return fail("npm error network ECONNRESET");
       }
       if (!state.publishIsLost) {
+        state.hidden.set(manifest.name, state.viewsBeforeVisible);
         state.packages.set(manifest.name, {
           integrity: `sha512-${sha512(readFileSync(target))}`,
           gitHead: manifest.gitHead,
@@ -406,8 +413,11 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
       NPM_CONFIG__AUTH: "npmjs-auth",
     },
     run,
+    sleep: (ms: number) => {
+      sleeps.push(ms);
+    },
   };
-  return { dir, artifact, state, calls, npmrcSeen, io };
+  return { dir, artifact, state, calls, npmrcSeen, sleeps, io };
 };
 
 const attempt = (run: () => void) => {
@@ -522,12 +532,27 @@ describe("main", () => {
     );
   });
 
-  it("stops when a step does not change what it observes", () => {
+  it("waits for a slow registry to show a publish instead of failing", () => {
+    // Defect: a propagation delay fails the release, or republishes a version.
+    const { state, calls, sleeps, io } = setup();
+    state.viewsBeforeVisible = 1;
+
+    main(io);
+
+    expect(calls.filter(isPublishCall)).toHaveLength(5);
+    expect(sleeps).toEqual(Array(5).fill(10_000));
+    expect(state.release?.draft).toBe(false);
+  });
+
+  it("stops when a step never changes what it observes", () => {
     // Defect: a publish that silently did nothing loops or reports success.
-    const { state, calls, io } = setup();
+    const { state, calls, sleeps, io } = setup();
     state.publishIsLost = true;
 
-    expect(() => main(io)).toThrow(/publish step did not take effect/);
+    expect(() => main(io)).toThrow(
+      /publish step did not take effect: nothing changed after 6 looks/,
+    );
     expect(calls.filter(isPublishCall)).toHaveLength(1);
+    expect(sleeps).toHaveLength(5);
   });
 });

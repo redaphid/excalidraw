@@ -15,6 +15,8 @@ const {
 const { parseVersion, tagMessage } = require("./version");
 
 const MAX_STEPS = 12;
+const SETTLE_LOOKS = 6;
+const SETTLE_MS = 10_000;
 const DEPENDENCY_FIELDS = [
   "dependencies",
   "optionalDependencies",
@@ -421,15 +423,27 @@ const main = (io) => {
     }
   };
 
+  // GitHub Packages can take a few seconds to show a new version, so an
+  // unchanged observation right after a step is retried before it counts.
+  const observeAfter = (previous) => {
+    for (let look = 1; ; look++) {
+      const observed = observe(ctx);
+      if (!previous || !isDeepStrictEqual(observed, previous.observed)) {
+        return observed;
+      }
+      if (look === SETTLE_LOOKS) {
+        throw new Error(
+          `The ${previous.step.kind} step did not take effect: nothing changed after ${SETTLE_LOOKS} looks.`,
+        );
+      }
+      io.sleep(SETTLE_MS);
+    }
+  };
+
   try {
     let previous = null;
     for (let attempt = 0; attempt < MAX_STEPS; attempt++) {
-      const observed = observe(ctx);
-      if (previous && isDeepStrictEqual(observed, previous.observed)) {
-        throw new Error(
-          `The ${previous.step.kind} step did not take effect: nothing changed.`,
-        );
-      }
+      const observed = observeAfter(previous);
       const step = nextStep(observed, artifact);
       if (step.kind === "done") {
         report(`${ctx.tag} is released.`);
@@ -467,7 +481,13 @@ const spawnRunner = (command, args, { input, cwd, env } = {}) => {
 
 if (require.main === module) {
   try {
-    main({ argv: process.argv.slice(2), env: process.env, run: spawnRunner });
+    main({
+      argv: process.argv.slice(2),
+      env: process.env,
+      run: spawnRunner,
+      sleep: (ms) =>
+        spawnSync(process.execPath, ["-e", `setTimeout(() => {}, ${ms})`]),
+    });
   } catch (error) {
     console.error(`::error::${error.message}`);
     process.exit(1);
