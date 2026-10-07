@@ -16,7 +16,12 @@ runs:
           examples/*/node_modules
         key: node-modules-${{ runner.os }}-node22-${{ hashFiles('yarn.lock') }}
         restore-keys: node-modules-${{ runner.os }}-node22-
-    # Runs even on a cache hit: it takes seconds there, and it still fails
-    # when a package.json change was not committed to yarn.lock.
+    # Runs even on a cache hit, where it takes seconds. A plain install plus a
+    # diff, because --frozen-lockfile misses entries a workspace never locked.
     - shell: bash
-      run: yarn install --frozen-lockfile --prefer-offline
+      run: |
+        yarn install --prefer-offline
+        git diff --exit-code yarn.lock || {
+          echo "::error file=yarn.lock::yarn.lock is out of date. Run yarn install and commit it."
+          exit 1
+        }
