@@ -76,6 +76,7 @@ import {
   updateActiveTool,
   isTransparent,
   muteFSAbortError,
+  memoize,
   isTestEnv,
   isDevEnv,
   updateStable,
@@ -1765,11 +1766,19 @@ class App extends React.Component<AppProps, AppState> {
     ShapeCache.delete(element);
   };
 
+  // filtered once per elements array, not on every render and update
+  private getIframeLikeElements = memoize(
+    ({ elements }: { elements: readonly NonDeletedExcalidrawElement[] }) =>
+      elements.filter(isIframeLikeElement),
+  );
+
   private updateEmbeddables = () => {
     const iframeLikes = new Set<ExcalidrawIframeLikeElement["id"]>();
 
     let updated = false;
-    this.scene.getNonDeletedElements().filter((element) => {
+    this.getIframeLikeElements({
+      elements: this.scene.getNonDeletedElements(),
+    }).forEach((element) => {
       if (isEmbeddableElement(element)) {
         iframeLikes.add(element.id);
         if (!this.embedsValidationStatus.has(element.id)) {
@@ -1785,7 +1794,6 @@ class App extends React.Component<AppProps, AppState> {
       } else if (isIframeElement(element)) {
         iframeLikes.add(element.id);
       }
-      return false;
     });
 
     if (updated) {
@@ -1805,14 +1813,14 @@ class App extends React.Component<AppProps, AppState> {
     const normalizedWidth = this.state.width;
     const normalizedHeight = this.state.height;
 
-    const embeddableElements = this.scene
-      .getNonDeletedElements()
-      .filter(
-        (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
-          (isEmbeddableElement(el) &&
-            this.embedsValidationStatus.get(el.id) === true) ||
-          isIframeElement(el),
-      );
+    const embeddableElements = this.getIframeLikeElements({
+      elements: this.scene.getNonDeletedElements(),
+    }).filter(
+      (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
+        (isEmbeddableElement(el) &&
+          this.embedsValidationStatus.get(el.id) === true) ||
+        isIframeElement(el),
+    );
 
     return (
       <>
