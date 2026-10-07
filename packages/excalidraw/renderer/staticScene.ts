@@ -2,7 +2,6 @@ import {
   applyDarkModeFilter,
   COLOR_WHITE,
   FRAME_STYLE,
-  isShallowEqual,
   THEME,
   throttleRAF,
 } from "@excalidraw/common";
@@ -49,6 +48,12 @@ import {
   getNormalizedCanvasDimensions,
   snapScrollToDevicePixels,
 } from "./helpers";
+import {
+  releaseUnderlay,
+  rememberUnderlay,
+  restoreUnderlay,
+  underlayKey,
+} from "./newElementUnderlay";
 
 import type {
   StaticCanvasRenderConfig,
@@ -273,46 +278,36 @@ const renderLinkIcon = (
     context.restore();
   }
 };
-
-type BelowNewElement = {
-  bitmap: HTMLCanvasElement;
-  newElement: ExcalidrawElement;
-  elements: readonly ExcalidrawElement[];
-  versions: readonly number[];
-  appState: StaticCanvasAppState;
-  renderConfig: StaticCanvasRenderConfig;
-  allElementsMap: ElementsMap;
-  scale: number;
-};
-
-// A new element drawn inside a frame stays on the static canvas to keep its
-// z-order among the frame's children, so the static scene repaints on every
-// pointer move. What lies under it does not change during the gesture, so it
-// is painted once and copied back on later moves.
-const belowNewElement = new WeakMap<HTMLCanvasElement, BelowNewElement>();
-
-const isBelowNewElementCurrent = (
-  below: BelowNewElement,
-  canvas: HTMLCanvasElement,
-  elements: readonly ExcalidrawElement[],
+/** The app state a static frame's pixels depend on. */
+export const getRelevantAppStateProps = (
   appState: StaticCanvasAppState,
-  renderConfig: StaticCanvasRenderConfig,
-  allElementsMap: ElementsMap,
-  scale: number,
-) =>
-  below.bitmap.width === canvas.width &&
-  below.bitmap.height === canvas.height &&
-  below.scale === scale &&
-  below.allElementsMap === allElementsMap &&
-  below.newElement === appState.newElement &&
-  below.elements.length === elements.length &&
-  elements.every(
-    (element, index) =>
-      element === below.elements[index] &&
-      element.version === below.versions[index],
-  ) &&
-  isShallowEqual(below.appState, appState) &&
-  isShallowEqual(below.renderConfig, renderConfig);
+): StaticCanvasAppState => ({
+  zoom: appState.zoom,
+  scrollX: appState.scrollX,
+  scrollY: appState.scrollY,
+  width: appState.width,
+  height: appState.height,
+  viewModeEnabled: appState.viewModeEnabled,
+  openDialog: appState.openDialog,
+  hoveredElementIds: appState.hoveredElementIds,
+  offsetLeft: appState.offsetLeft,
+  offsetTop: appState.offsetTop,
+  theme: appState.theme,
+  shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
+  viewBackgroundColor: appState.viewBackgroundColor,
+  exportScale: appState.exportScale,
+  selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
+  gridSize: appState.gridSize,
+  gridStep: appState.gridStep,
+  frameRendering: appState.frameRendering,
+  selectedElementIds: appState.selectedElementIds,
+  frameToHighlight: appState.frameToHighlight,
+  editingGroupId: appState.editingGroupId,
+  currentHoveredFontFamily: appState.currentHoveredFontFamily,
+  croppingElementId: appState.croppingElementId,
+  suggestedBinding: appState.suggestedBinding,
+  newElement: appState.newElement,
+});
 
 const _renderStaticScene = ({
   canvas,
@@ -339,71 +334,49 @@ const _renderStaticScene = ({
     scale,
   );
 
-  const context = bootstrapCanvas({
-    canvas,
-    scale,
-    normalizedWidth,
-    normalizedHeight,
-    theme: appState.theme,
-    isExporting,
-    viewBackgroundColor: appState.viewBackgroundColor,
-  });
+  const paintedElements = visibleElements.filter(
+    (el) => !isIframeLikeElement(el),
+  );
+  const { newElement } = unsnappedAppState;
+  const firstAbove =
+    !isExporting && newElement?.frameId
+      ? Math.max(
+          paintedElements.findIndex((el) => el.id === newElement.id),
+          0,
+        )
+      : 0;
+  const underlay =
+    firstAbove > 0
+      ? underlayKey(
+          canvas,
+          scale,
+          getRelevantAppStateProps(unsnappedAppState),
+          renderConfig,
+          paintedElements.slice(0, firstAbove),
+        )
+      : null;
+  if (!underlay) {
+    releaseUnderlay(canvas);
+  }
+  const restored = underlay && restoreUnderlay(canvas, underlay);
+
+  const context =
+    restored ||
+    bootstrapCanvas({
+      canvas,
+      scale,
+      normalizedWidth,
+      normalizedHeight,
+      theme: appState.theme,
+      isExporting,
+      viewBackgroundColor: appState.viewBackgroundColor,
+    });
 
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
 
-  const paintedElements = visibleElements.filter(
-    (el) => !isIframeLikeElement(el),
-  );
-  const newElementIndex =
-    isExporting || !unsnappedAppState.newElement
-      ? -1
-      : paintedElements.findIndex(
-          (element) => element.id === unsnappedAppState.newElement?.id,
-        );
-  const elementsBelow = paintedElements.slice(0, Math.max(newElementIndex, 0));
-  const cachedBelow = belowNewElement.get(canvas);
-  const reusesBelow =
-    !!cachedBelow &&
-    newElementIndex > 0 &&
-    isBelowNewElementCurrent(
-      cachedBelow,
-      canvas,
-      elementsBelow,
-      unsnappedAppState,
-      renderConfig,
-      allElementsMap,
-      scale,
-    );
-  if (newElementIndex <= 0) {
-    belowNewElement.delete(canvas);
-  }
-  if (reusesBelow) {
-    context.save();
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.globalCompositeOperation = "copy";
-    context.drawImage(cachedBelow.bitmap, 0, 0);
-    context.restore();
-  }
-  const keepBelow = () => {
-    const bitmap = cachedBelow?.bitmap ?? document.createElement("canvas");
-    bitmap.width = canvas.width;
-    bitmap.height = canvas.height;
-    bitmap.getContext("2d")!.drawImage(canvas, 0, 0);
-    belowNewElement.set(canvas, {
-      bitmap,
-      newElement: unsnappedAppState.newElement!,
-      elements: elementsBelow,
-      versions: elementsBelow.map((element) => element.version),
-      appState: unsnappedAppState,
-      renderConfig,
-      allElementsMap,
-      scale,
-    });
-  };
-
   // Grid
-  if (renderGrid && !reusesBelow) {
+  if (renderGrid && !restored) {
     strokeGrid(
       context,
       renderConfig.gridSize ?? appState.gridSize,
@@ -485,14 +458,7 @@ const _renderStaticScene = ({
     }
   };
 
-  // Paint visible elements
-  paintedElements.forEach((element, index) => {
-    if (reusesBelow && index < newElementIndex) {
-      return;
-    }
-    if (!reusesBelow && index === newElementIndex && newElementIndex > 0) {
-      keepBelow();
-    }
+  const paintElement = (element: NonDeletedExcalidrawElement) => {
     try {
       if (
         isTextElement(element) &&
@@ -546,7 +512,16 @@ const _renderStaticScene = ({
         element.height,
       );
     }
-  });
+  };
+
+  // Paint visible elements
+  if (!restored) {
+    paintedElements.slice(0, firstAbove).forEach(paintElement);
+    if (underlay) {
+      rememberUnderlay(canvas, underlay);
+    }
+  }
+  paintedElements.slice(firstAbove).forEach(paintElement);
 
   // render embeddables on top
   visibleElements
