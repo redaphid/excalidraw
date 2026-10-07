@@ -25,7 +25,11 @@ const UPSTREAM_BACKGROUND_PICKS = [
 const fivePicks = (picks, fallback) =>
   fallback.map((color, index) => picks?.[index] ?? color);
 
-export const buildScene = (style) => {
+/**
+ * `stacked` puts the Build frame under Discovery instead of beside it, the
+ * layout a phone gives a scene.
+ */
+export const buildScene = (style, { stacked = false } = {}) => {
   const stroke = fivePicks(style.strokePicks, UPSTREAM_STROKE_PICKS);
   const fill = fivePicks(style.backgroundPicks, UPSTREAM_BACKGROUND_PICKS);
   const ink = style.currentItemStrokeColor;
@@ -195,8 +199,35 @@ export const buildScene = (style) => {
       strokeColor: stroke[0],
     }),
   ];
+  const BUILD_SHIFT = { x: -660, y: 470 };
+  const placed = stacked
+    ? elements.map((element) => {
+        if (element.id === "build" || element.frameId === "build") {
+          return {
+            ...element,
+            x: element.x + BUILD_SHIFT.x,
+            y: element.y + BUILD_SHIFT.y,
+          };
+        }
+        // from Decide? down to Prototype
+        return element.id === "a3"
+          ? {
+              ...element,
+              x: 345,
+              y: 482,
+              points: [
+                [0, 0],
+                [-150, 152],
+              ],
+              width: 150,
+              height: 152,
+            }
+          : element;
+      })
+    : elements;
+
   return {
-    elements,
+    elements: placed,
     appState: { gridModeEnabled: true, viewBackgroundColor: "#ffffff" },
     files: {},
   };
