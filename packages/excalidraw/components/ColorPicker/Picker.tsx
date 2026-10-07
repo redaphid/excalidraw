@@ -1,6 +1,6 @@
 import React, { useEffect, useImperativeHandle, useState } from "react";
 
-import { EVENT } from "@excalidraw/common";
+import { EVENT, TAP_TWICE_TIMEOUT } from "@excalidraw/common";
 
 import {
   DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX,
@@ -14,6 +14,7 @@ import type { ColorPaletteCustom } from "@excalidraw/common";
 
 import { useAtom } from "../../editor-jotai";
 import { t } from "../../i18n";
+import { useApp } from "../App";
 import { TopPicksTip } from "../TopPicksDnD/TopPicksTip";
 
 import { CustomColorList } from "./CustomColorList";
@@ -141,6 +142,11 @@ export const Picker = React.forwardRef(
       };
     }, [colorObj, onEyeDropperToggle]);
     const pickerRef = React.useRef<HTMLDivElement>(null);
+    const app = useApp();
+    const lastSwatchTap = React.useRef<{
+      swatch: Element;
+      time: number;
+    } | null>(null);
 
     useImperativeHandle(ref, () => pickerRef.current!);
 
@@ -172,6 +178,29 @@ export const Picker = React.forwardRef(
               event.preventDefault();
               event.stopPropagation();
             }
+          }}
+          onClick={(event) => {
+            const swatch =
+              event.target instanceof app.ownerWindow.Element
+                ? event.target.closest(".color-picker__button")
+                : null;
+            const previous = lastSwatchTap.current;
+            lastSwatchTap.current = null;
+            // keyboard activation reports no click count
+            if (!swatch || event.detail === 0) {
+              return;
+            }
+            lastSwatchTap.current = { swatch, time: Date.now() };
+            if (previous?.swatch !== swatch) {
+              return;
+            }
+            if (
+              event.detail < 2 &&
+              lastSwatchTap.current.time - previous.time > TAP_TWICE_TIMEOUT
+            ) {
+              return;
+            }
+            updateData({ openPopup: null });
           }}
           className="color-picker-content properties-content"
           // to allow focusing by clicking but not by tabbing
