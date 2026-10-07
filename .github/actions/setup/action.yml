@@ -1,0 +1,22 @@
+name: Set up dependencies
+description: Node 22 and the workspace node_modules, restored from cache.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 22.x
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          node_modules
+          excalidraw-app/node_modules
+          packages/*/node_modules
+          examples/*/node_modules
+        key: node-modules-${{ runner.os }}-node22-${{ hashFiles('yarn.lock') }}
+        restore-keys: node-modules-${{ runner.os }}-node22-
+    # Runs even on a cache hit: it takes seconds there, and it still fails
+    # when a package.json change was not committed to yarn.lock.
+    - shell: bash
+      run: yarn install --frozen-lockfile --prefer-offline
