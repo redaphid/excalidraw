@@ -282,10 +282,6 @@ const generateElementCanvas = (
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
 ): ExcalidrawElementWithCanvas | null => {
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d")!;
-  const padding = getCanvasPadding(element);
-
   const { width, height, scale } = cappedElementCanvasSize(
     element,
     elementsMap,
@@ -296,6 +292,9 @@ const generateElementCanvas = (
     return null;
   }
 
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d")!;
+  const padding = getCanvasPadding(element);
   canvas.width = width;
   canvas.height = height;
 
