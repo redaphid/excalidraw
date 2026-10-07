@@ -1,0 +1,109 @@
+/* Risograph. mode: light */
+/*
+ * Two-drum riso print: blue and fluorescent pink on warm stock, panels
+ * printed slightly off register.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #f6efe2;
+  --canvas-grid-color: rgba(0, 120, 191, 0.08);
+  --canvas-grid-bold-color: rgba(0, 120, 191, 0.2);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #f6efe2;
+  --canvas-frame-color: #0078bf;
+  --canvas-frame-width: 1.5;
+  --canvas-frame-name-color: #0078bf;
+  --color-selection: #ff48b0;
+  --element-stroke-color: #1b3a6b;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: medium;
+  --element-roughness: 1;
+  --element-roundness: round;
+  --element-arrow-type: round;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: Nunito;
+  --element-font-size: 18;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.25;
+  --color-picks-stroke: #1b3a6b #0078bf #ff48b0 #00a95c #ff6c2f;
+  --color-picks-background: transparent #a7c9d7 #f9bad2 #a7d9b7 #f9ed9a;
+  --color-palette-stroke: #cfcecd #a3aab5 #77869d #475e83 #1b3a6b,
+    #cadadc #99c2d5 #67aace #3190c6 #0078bf,
+    #f8d1d9 #f9b0cf #fb8ec5 #fd69ba #ff48b0,
+    #cae2ca #99d4af #67c694 #31b777 #00a95c,
+    #f8d7c2 #f9bd9e #fba37a #fd8653 #ff6c2f,
+    #dfd4d7 #c5b7cc #ac99c0 #9079b3 #765ba7,
+    #eae1c1 #ddd19c #d0c177 #c1af4e #b49f29,
+    #f3d5c8 #efb8ab #ec9a8d #e87a6d #e45d50;
+  --color-palette-background: transparent,
+    #e0ddd6 #c5c6c7 #a6acb7 #818ea3 #5c6f8f,
+    #d4dedd #a7c9d7 #76b1d0 #3b95c7 #0078bf,
+    #f7d8db #f9bad2 #fb98c8 #fd70bc #ff48b0,
+    #d4e5cf #a7d9b7 #76cb9c #3bba7c #00a95c,
+    #f7eec2 #f9ed9a #fbeb6c #fdea36 #ffe800,
+    #f7ddc9 #f9c5a9 #fbab85 #fd8b5a #ff6c2f,
+    #eadfe0 #dacadd #c8b2da #b296d6 #9d7ad2,
+    #f7e7c5 #f9dc9f #fbd175 #fdc343 #ffb511;
+
+  --ui-font: Nunito, "Segoe UI", system-ui, sans-serif;
+  --text-primary-color: #1b3a6b;
+  --color-on-surface: #1b3a6b;
+  --icon-fill-color: #1b3a6b;
+  --popup-text-color: #1b3a6b;
+  --keybinding-color: #5c6f8f;
+  --color-gray-60: #5c6f8f;
+  --input-label-color: #5c6f8f;
+
+  --island-bg-color: #f6efe2;
+  --island-bg-color-alt: #f6efe2;
+  --popup-bg-color: #f6efe2;
+  --sidebar-bg-color: #f6efe2;
+  --default-bg-color: #f6efe2;
+  --popup-secondary-bg-color: #ffe1f0;
+  --input-bg-color: #fbf7ef;
+  --input-border-color: #0078bf;
+  --input-hover-bg-color: #ffe1f0;
+
+  --color-surface-lowest: #fbf7ef;
+  --color-surface-low: #ffe1f0;
+  --color-surface-mid: #ffe1f0;
+  --color-surface-high: #ffe1f0;
+  --color-surface-primary-container: #ffc2e2;
+  --color-on-primary-container: #1b3a6b;
+
+  --color-primary: #0078bf;
+  --color-primary-darker: #0078bf;
+  --color-primary-darkest: #0078bf;
+  --color-primary-hover: #0078bf;
+  --color-primary-light: #ffc2e2;
+  --color-primary-light-darker: #ffc2e2;
+  --color-brand-hover: #0078bf;
+  --color-brand-active: #0078bf;
+  --select-highlight-color: #ff48b0;
+  --focus-highlight-color: #ff48b0;
+
+  --button-hover-bg: #ffe1f0;
+  --button-active-bg: #ffc2e2;
+  --button-active-border: #0078bf;
+  --button-gray-1: #ffe1f0;
+  --button-gray-2: #ffe1f0;
+  --button-gray-3: #ffc2e2;
+  --default-border-color: #0078bf;
+  --dialog-border-color: #0078bf;
+  --sidebar-border-color: #0078bf;
+  --color-border-outline: #5c6f8f;
+  --color-border-outline-variant: #0078bf;
+
+  --border-radius-md: 4px;
+  --border-radius-lg: 4px;
+  --shadow-island: 0 0 0 2px #0078bf, 4px 4px 0 2px rgba(255, 72, 176, 0.8);
+  --shadow-island-stronger: 0 0 0 2px #0078bf,
+    4px 4px 0 2px rgba(255, 72, 176, 0.8);
+  --modal-shadow: 0 0 0 2px #0078bf, 4px 4px 0 2px rgba(255, 72, 176, 0.8);
+  --sidebar-shadow: 0 0 0 2px #0078bf, 4px 4px 0 2px rgba(255, 72, 176, 0.8);
+  --library-dropdown-shadow: 0 0 0 2px #0078bf,
+    4px 4px 0 2px rgba(255, 72, 176, 0.8);
+  --overlay-bg-color: rgba(246, 239, 226, 0.7);
+}

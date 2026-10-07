@@ -1,0 +1,121 @@
+/* Locked Profile. mode: light */
+/*
+ * The quietest plate: near-white paper, no minor grid, graphite hairlines,
+ * one bronze accent. Panels are almost not there.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #f1eee8;
+  --canvas-grid-color: rgba(21, 24, 28, 0);
+  --canvas-grid-bold-color: rgba(21, 24, 28, 0.07);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #f1eee8;
+  --canvas-frame-color: rgba(21, 24, 28, 0.3);
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #7a7770;
+  --color-selection: #a3743a;
+  --element-stroke-color: #15181c;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: bar;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 15;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #15181c #5c636b #a3743a #8a3b35 #43627a;
+  --color-picks-background: transparent #dcccb6 #d8bfb8 #c3ccd0 #cad1c6;
+  --color-palette-stroke: #c9c7c3 #9d9d9a #717272 #414345 #15181c,
+    #d6d5d2 #b8b9b9 #9b9da0 #7a7f84 #5c636b,
+    #e3d8c9 #d3c0a6 #c4a783 #b38c5d #a3743a,
+    #decec8 #caaaa4 #b58680 #9f5f59 #8a3b35,
+    #d2d5d4 #afb9be #8c9da8 #667e90 #43627a,
+    #d6d9d1 #b8c2b8 #9bab9e #7a9182 #5c7a69,
+    #cdccc8 #a6a5a4 #7e7f80 #535559 #2b2f35,
+    #dfdcd6 #cbc8c1 #b8b4ad #a29e96 #8e8a82;
+  --color-palette-background: transparent,
+    #dfddd8 #c7c7c4 #adaeae #8e9193 #6f7378,
+    #e8dfd2 #dcccb6 #cfb797 #c09d71 #b0844c,
+    #e6d9d3 #d8bfb8 #c8a19a #b67e76 #a35a52,
+    #dddfde #c3ccd0 #a7b7c1 #849eaf #62859d,
+    #e0e1d9 #cad1c6 #b2bfb1 #94a998 #77937f,
+    #e9e6df #dfdbd3 #d4cfc6 #c6c0b6 #b9b2a6,
+    #dad8d4 #bcbbb9 #9a9b9c #727579 #4a4f56,
+    #ebe4d9 #e4d7c5 #dcc9af #d3b894 #c9a77a;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #15181c;
+  --color-on-surface: #15181c;
+  --icon-fill-color: #15181c;
+  --popup-text-color: #15181c;
+  --keybinding-color: #8a867e;
+  --color-gray-60: #8a867e;
+  --input-label-color: #8a867e;
+
+  --island-bg-color: #f1eee8;
+  --island-bg-color-alt: #f1eee8;
+  --popup-bg-color: #f1eee8;
+  --sidebar-bg-color: #f1eee8;
+  --default-bg-color: #f1eee8;
+  --popup-secondary-bg-color: #e7e3db;
+  --input-bg-color: #f7f5f1;
+  --input-border-color: #dcd7cd;
+  --input-hover-bg-color: #e7e3db;
+
+  --color-surface-lowest: #f7f5f1;
+  --color-surface-low: #e7e3db;
+  --color-surface-mid: #e7e3db;
+  --color-surface-high: #e7e3db;
+  --color-surface-primary-container: #e1d6c4;
+  --color-on-primary-container: #15181c;
+
+  --color-primary: #15181c;
+  --color-primary-darker: #15181c;
+  --color-primary-darkest: #15181c;
+  --color-primary-hover: #15181c;
+  --color-primary-light: #e1d6c4;
+  --color-primary-light-darker: #e1d6c4;
+  --color-brand-hover: #15181c;
+  --color-brand-active: #15181c;
+  --select-highlight-color: #a3743a;
+  --focus-highlight-color: #a3743a;
+
+  --button-hover-bg: #e7e3db;
+  --button-active-bg: #e1d6c4;
+  --button-active-border: #15181c;
+  --button-gray-1: #e7e3db;
+  --button-gray-2: #e7e3db;
+  --button-gray-3: #e1d6c4;
+  --default-border-color: #dcd7cd;
+  --dialog-border-color: #dcd7cd;
+  --sidebar-border-color: #dcd7cd;
+  --color-border-outline: #8a867e;
+  --color-border-outline-variant: #dcd7cd;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --shadow-island-stronger: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --modal-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --sidebar-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --library-dropdown-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
+  --overlay-bg-color: rgba(241, 238, 232, 0.8);
+}
+
+.App-menu_top .Stack_vertical h3,
+.panelColumn h3,
+.frame-breadcrumb {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}

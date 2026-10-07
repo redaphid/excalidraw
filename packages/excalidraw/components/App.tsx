@@ -5225,18 +5225,19 @@ class App extends React.Component<AppProps, AppState> {
   };
 
   /** wraps the `css` prop in `@scope`, so it reaches this editor and its
-   * portals only (each carries `data-excalidraw-id`) */
+   * portals only (each carries `data-excalidraw-id`, and is a `:scope`) */
   private getScopedCss(css: string) {
     if (this.scopedCss?.css !== css) {
+      const root = `[data-excalidraw-id="${this.id}"]`;
       this.scopedCss = {
         css,
-        // without `@scope` support the whole block would be dropped
+        // a browser without `@scope` would drop the whole block
         scoped:
           "CSSScopeRule" in this.ownerWindow
-            ? `@scope ([data-excalidraw-id="${this.id}"]) {
+            ? `@scope (${root}) {
 ${css}
 }`
-            : css,
+            : css.replaceAll(":scope", root),
       };
     }
     return this.scopedCss.scoped;
@@ -5258,12 +5259,20 @@ ${css}
     const canvasChanged = !isShallowEqual(prev.canvas, next.canvas);
     const appStateChanged =
       JSON.stringify(prev.appState) !== JSON.stringify(next.appState);
-    if (!canvasChanged && !appStateChanged && !reapplyAppState) {
+    const palettesChanged =
+      JSON.stringify(prev.palettes) !== JSON.stringify(next.palettes);
+    if (
+      !canvasChanged &&
+      !appStateChanged &&
+      !palettesChanged &&
+      !reapplyAppState
+    ) {
       return;
     }
     this.cssTheme = {
       canvas: canvasChanged ? next.canvas : prev.canvas,
       appState: next.appState,
+      palettes: palettesChanged ? next.palettes : prev.palettes,
     };
     const { colorTopPicks, ...defaults } = next.appState;
     if (

@@ -1,0 +1,114 @@
+/* Sketchbook. mode: light */
+/*
+ * A cream sketchbook page with faint ruled lines, soft graphite, colored
+ * pencils and hachure. Loose and hand-drawn on purpose.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #f7f2e7;
+  --canvas-grid-color: rgba(80, 120, 190, 0.14);
+  --canvas-grid-bold-color: rgba(80, 120, 190, 0.14);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #fffaf0;
+  --canvas-frame-color: rgba(51, 49, 46, 0.5);
+  --canvas-frame-width: 1.5;
+  --canvas-frame-name-color: #6e6a62;
+  --color-selection: #c0392b;
+  --element-stroke-color: #33312e;
+  --element-background-color: transparent;
+  --element-fill-style: hachure;
+  --element-stroke-width: medium;
+  --element-roughness: 2;
+  --element-roundness: round;
+  --element-arrow-type: round;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: Excalifont;
+  --element-font-size: 20;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.25;
+  --color-picks-stroke: #33312e #c0392b #2e7d4f #2f5fa7 #d17a00;
+  --color-picks-background: transparent #fad1c6 #d6e7d0 #d4dfea #fae4bf;
+  --color-palette-stroke: #d4cfc6 #ada9a1 #85827c #5a5853 #33312e,
+    #edd1c5 #e2aca0 #d7877a #cb5e51 #c0392b,
+    #d3ddcc #abc6ad #82ae8f #56946d #2e7d4f,
+    #d3d8db #abbacf #839dc2 #577cb4 #2f5fa7,
+    #f0dcbd #e9c48f #e1ac61 #d9922e #d17a00,
+    #e4d3dd #cfb0d1 #ba8dc5 #a367b9 #8e44ad,
+    #ebd9c3 #debc9a #d1a072 #c28145 #b5651d,
+    #cfe3d5 #a2d3c2 #75c2ae #43b099 #16a085;
+  --color-palette-background: transparent,
+    #e6e1d6 #cfcac0 #b6b1a7 #98938a #7a756c,
+    #f8e3d9 #fad1c6 #fbbcb1 #fda399 #ff8a80,
+    #e8eddd #d6e7d0 #c1e1c1 #a8d9b0 #8fd19e,
+    #e8eae8 #d4dfea #bed3ec #a4c4ee #8ab6f0,
+    #f8ecd6 #fae4bf #fbdba7 #fdd089 #ffc56b,
+    #f0e6e6 #e8d6e5 #dec5e3 #d3b0e2 #c79be0,
+    #f4e7d6 #f1d9bf #edc9a7 #e8b789 #e3a46b,
+    #e5eee2 #cee9dc #b4e4d5 #95ddcc #76d7c4;
+
+  --ui-font: Excalifont, "Comic Shanns", "Segoe Print", cursive;
+  --text-primary-color: #33312e;
+  --color-on-surface: #33312e;
+  --icon-fill-color: #33312e;
+  --popup-text-color: #33312e;
+  --keybinding-color: #7a756c;
+  --color-gray-60: #7a756c;
+  --input-label-color: #7a756c;
+
+  --island-bg-color: #fffaf0;
+  --island-bg-color-alt: #fffaf0;
+  --popup-bg-color: #fffaf0;
+  --sidebar-bg-color: #fffaf0;
+  --default-bg-color: #fffaf0;
+  --popup-secondary-bg-color: #f1e9d8;
+  --input-bg-color: #fffdf8;
+  --input-border-color: #33312e;
+  --input-hover-bg-color: #f1e9d8;
+
+  --color-surface-lowest: #fffdf8;
+  --color-surface-low: #f1e9d8;
+  --color-surface-mid: #f1e9d8;
+  --color-surface-high: #f1e9d8;
+  --color-surface-primary-container: #f6dcc2;
+  --color-on-primary-container: #33312e;
+
+  --color-primary: #33312e;
+  --color-primary-darker: #33312e;
+  --color-primary-darkest: #33312e;
+  --color-primary-hover: #33312e;
+  --color-primary-light: #f6dcc2;
+  --color-primary-light-darker: #f6dcc2;
+  --color-brand-hover: #33312e;
+  --color-brand-active: #33312e;
+  --select-highlight-color: #c0392b;
+  --focus-highlight-color: #c0392b;
+
+  --button-hover-bg: #f1e9d8;
+  --button-active-bg: #f6dcc2;
+  --button-active-border: #33312e;
+  --button-gray-1: #f1e9d8;
+  --button-gray-2: #f1e9d8;
+  --button-gray-3: #f6dcc2;
+  --default-border-color: #33312e;
+  --dialog-border-color: #33312e;
+  --sidebar-border-color: #33312e;
+  --color-border-outline: #7a756c;
+  --color-border-outline-variant: #33312e;
+
+  --border-radius-md: 6px;
+  --border-radius-lg: 6px;
+  --shadow-island: 0 0 0 1.5px #33312e, 3px 4px 0 rgba(51, 49, 46, 0.18);
+  --shadow-island-stronger: 0 0 0 1.5px #33312e,
+    3px 4px 0 rgba(51, 49, 46, 0.18);
+  --modal-shadow: 0 0 0 1.5px #33312e, 3px 4px 0 rgba(51, 49, 46, 0.18);
+  --sidebar-shadow: 0 0 0 1.5px #33312e, 3px 4px 0 rgba(51, 49, 46, 0.18);
+  --library-dropdown-shadow: 0 0 0 1.5px #33312e,
+    3px 4px 0 rgba(51, 49, 46, 0.18);
+  --overlay-bg-color: rgba(247, 242, 231, 0.7);
+}
+
+.Island,
+.frame-breadcrumb {
+  border-radius: 255px 12px 225px 12px / 12px 225px 12px 255px;
+}

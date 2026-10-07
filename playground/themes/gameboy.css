@@ -1,0 +1,98 @@
+/* Game Boy. mode: light */
+/*
+ * Four shades of green and nothing else: DMG palette, chunky borders,
+ * monospace.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #9bbc0f;
+  --canvas-grid-color: rgba(15, 56, 15, 0.12);
+  --canvas-grid-bold-color: rgba(15, 56, 15, 0.28);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #9bbc0f;
+  --canvas-frame-color: #0f380f;
+  --canvas-frame-width: 2;
+  --canvas-frame-name-color: #0f380f;
+  --color-selection: #306230;
+  --element-stroke-color: #0f380f;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: medium;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: Cascadia;
+  --element-font-size: 18;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #0f380f #306230 #8bac0f #9bbc0f #0f380f;
+  --color-picks-background: transparent #8bac0f #306230 #0f380f #9bbc0f;
+  --color-palette-stroke: #9bbc0f #8bac0f #306230 #306230 #0f380f, #306230,
+    #8bac0f, #9bbc0f, #0f380f;
+  --color-palette-background: transparent,
+    #9bbc0f #8bac0f #8bac0f #306230 #0f380f, #8bac0f, #306230, #0f380f, #9bbc0f;
+
+  --ui-font: Cascadia, "Cascadia Code", Consolas, "SF Mono", monospace;
+  --text-primary-color: #0f380f;
+  --color-on-surface: #0f380f;
+  --icon-fill-color: #0f380f;
+  --popup-text-color: #0f380f;
+  --keybinding-color: #306230;
+  --color-gray-60: #306230;
+  --input-label-color: #306230;
+
+  --island-bg-color: #8bac0f;
+  --island-bg-color-alt: #8bac0f;
+  --popup-bg-color: #8bac0f;
+  --sidebar-bg-color: #8bac0f;
+  --default-bg-color: #8bac0f;
+  --popup-secondary-bg-color: #9bbc0f;
+  --input-bg-color: #9bbc0f;
+  --input-border-color: #0f380f;
+  --input-hover-bg-color: #9bbc0f;
+
+  --color-surface-lowest: #9bbc0f;
+  --color-surface-low: #9bbc0f;
+  --color-surface-mid: #9bbc0f;
+  --color-surface-high: #9bbc0f;
+  --color-surface-primary-container: #306230;
+  --color-on-primary-container: #9bbc0f;
+
+  --color-primary: #0f380f;
+  --color-primary-darker: #0f380f;
+  --color-primary-darkest: #0f380f;
+  --color-primary-hover: #0f380f;
+  --color-primary-light: #306230;
+  --color-primary-light-darker: #306230;
+  --color-brand-hover: #0f380f;
+  --color-brand-active: #0f380f;
+  --select-highlight-color: #306230;
+  --focus-highlight-color: #306230;
+
+  --button-hover-bg: #9bbc0f;
+  --button-active-bg: #306230;
+  --button-active-border: #0f380f;
+  --button-gray-1: #9bbc0f;
+  --button-gray-2: #9bbc0f;
+  --button-gray-3: #306230;
+  --default-border-color: #0f380f;
+  --dialog-border-color: #0f380f;
+  --sidebar-border-color: #0f380f;
+  --color-border-outline: #306230;
+  --color-border-outline-variant: #0f380f;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 3px #0f380f;
+  --shadow-island-stronger: 0 0 0 3px #0f380f;
+  --modal-shadow: 0 0 0 3px #0f380f;
+  --sidebar-shadow: 0 0 0 3px #0f380f;
+  --library-dropdown-shadow: 0 0 0 3px #0f380f;
+  --overlay-bg-color: rgba(15, 56, 15, 0.4);
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+}

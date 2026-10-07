@@ -1,0 +1,119 @@
+/* Swiss. mode: light */
+/*
+ * International typographic style: white space, Helvetica, a strict faint
+ * grid, black hairlines and one red.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #fbfbf9;
+  --canvas-grid-color: rgba(17, 17, 17, 0.05);
+  --canvas-grid-bold-color: rgba(17, 17, 17, 0.12);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #ffffff;
+  --canvas-frame-color: #111111;
+  --canvas-frame-width: 1;
+  --canvas-frame-name-color: #111111;
+  --color-selection: #e3000f;
+  --element-stroke-color: #111111;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: thin;
+  --element-roughness: 0;
+  --element-roundness: sharp;
+  --element-arrow-type: sharp;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Liberation Sans";
+  --element-font-size: 18;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 0.125;
+  --color-picks-stroke: #111111 #e3000f #0057b8 #6f6f6f #008a5e;
+  --color-picks-background: transparent #f3abae #abc7e4 #dcdcdb #abe0cf;
+  --color-palette-stroke: #d1d1cf #a2a2a1 #737372 #40403f #111111,
+    #f7cecf #f29ca0 #ed6971 #e8323e #e3000f,
+    #cedded #9cbde0 #699cd3 #3278c5 #0057b8,
+    #e2e2e0 #c6c6c5 #aaaaa9 #8b8b8b #6f6f6f,
+    #cee7dd #9cd0be #69b99f #32a17d #008a5e,
+    #fce4cc #fdca9a #fdb069 #fe9432 #ff7a00,
+    #ded5e4 #beaccd #9e82b6 #7b549d #5b2a86,
+    #eeeeed #e0e0df #d2d2d2 #c3c3c3 #b5b5b5;
+  --color-palette-background: transparent,
+    #dadad9 #b0b0af #818180 #494949 #111111,
+    #f8d8d8 #f3abae #ef787f #e93c47 #e3000f,
+    #d8e4f0 #abc7e4 #78a6d7 #3c7ec8 #0057b8,
+    #ededec #dcdcdb #c9c9c8 #b1b1b1 #9a9a9a,
+    #d8efe7 #abe0cf #78cfb5 #3cba95 #00a676,
+    #fcf4d6 #fceca9 #fde378 #fed73c #ffcc00,
+    #e9e2ef #d2c2e2 #b89fd3 #9974c2 #7a4ab0,
+    #fce9d6 #fcd2a9 #fdb878 #fe993c #ff7a00;
+
+  --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
+  --text-primary-color: #111111;
+  --color-on-surface: #111111;
+  --icon-fill-color: #111111;
+  --popup-text-color: #111111;
+  --keybinding-color: #6f6f6f;
+  --color-gray-60: #6f6f6f;
+  --input-label-color: #6f6f6f;
+
+  --island-bg-color: #ffffff;
+  --island-bg-color-alt: #ffffff;
+  --popup-bg-color: #ffffff;
+  --sidebar-bg-color: #ffffff;
+  --default-bg-color: #ffffff;
+  --popup-secondary-bg-color: #f0f0f0;
+  --input-bg-color: #ffffff;
+  --input-border-color: #111111;
+  --input-hover-bg-color: #f0f0f0;
+
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #f0f0f0;
+  --color-surface-mid: #f0f0f0;
+  --color-surface-high: #f0f0f0;
+  --color-surface-primary-container: #111111;
+  --color-on-primary-container: #ffffff;
+
+  --color-primary: #e3000f;
+  --color-primary-darker: #e3000f;
+  --color-primary-darkest: #e3000f;
+  --color-primary-hover: #e3000f;
+  --color-primary-light: #111111;
+  --color-primary-light-darker: #111111;
+  --color-brand-hover: #e3000f;
+  --color-brand-active: #e3000f;
+  --select-highlight-color: #e3000f;
+  --focus-highlight-color: #e3000f;
+
+  --button-hover-bg: #f0f0f0;
+  --button-active-bg: #111111;
+  --button-active-border: #e3000f;
+  --button-gray-1: #f0f0f0;
+  --button-gray-2: #f0f0f0;
+  --button-gray-3: #111111;
+  --default-border-color: #111111;
+  --dialog-border-color: #111111;
+  --sidebar-border-color: #111111;
+  --color-border-outline: #6f6f6f;
+  --color-border-outline-variant: #111111;
+
+  --border-radius-md: 0;
+  --border-radius-lg: 0;
+  --shadow-island: 0 0 0 1px #111111;
+  --shadow-island-stronger: 0 0 0 1px #111111;
+  --modal-shadow: 0 0 0 1px #111111;
+  --sidebar-shadow: 0 0 0 1px #111111;
+  --library-dropdown-shadow: 0 0 0 1px #111111;
+  --overlay-bg-color: rgba(251, 251, 249, 0.85);
+}
+
+.ToolIcon__icon svg,
+.ToolIcon__keybinding {
+  color: inherit;
+}
+
+.frame-breadcrumb {
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  font-weight: 700;
+}

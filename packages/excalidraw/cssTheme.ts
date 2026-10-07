@@ -1,5 +1,7 @@
 import { FONT_FAMILY } from "@excalidraw/common";
 
+import type { ColorPaletteCustom, ColorTuple } from "@excalidraw/common";
+
 import type {
   Arrowhead,
   FillStyle,
@@ -28,6 +30,8 @@ export type CanvasTheme = Readonly<{
   /** fill of the resize and rotation handles */
   handleFill?: string;
   frameColor?: string;
+  /** frame outline width in screen pixels */
+  frameWidth?: number;
 }>;
 
 /** The appState fields a theme may seed: new-element defaults and swatches. */
@@ -57,11 +61,17 @@ export type CssThemeAppState = Partial<
 export type CssTheme = Readonly<{
   canvas: CanvasTheme;
   appState: CssThemeAppState;
+  /** replace the color picker's palette grid */
+  palettes: Readonly<{
+    elementStroke?: ColorPaletteCustom;
+    elementBackground?: ColorPaletteCustom;
+  }>;
 }>;
 
 export const EMPTY_CSS_THEME: CssTheme = Object.freeze({
   canvas: Object.freeze({}),
   appState: Object.freeze({}),
+  palettes: Object.freeze({}),
 });
 
 const ARROWHEADS: readonly Arrowhead[] = [
@@ -125,7 +135,35 @@ const arrowhead = (value: string): Arrowhead | null | undefined =>
 const colorList = (value: string) => {
   const colors = value.split(/[\s,]+/).filter(Boolean);
   return colors.length && colors.every((color) => elementColor(color))
-    ? colors.slice(0, 5)
+    ? colors
+    : undefined;
+};
+
+const isColorTuple = (colors: string[]): colors is [...ColorTuple] =>
+  colors.length === 5;
+
+/**
+ * Comma-separated entries, each one color or five shades from lightest to
+ * darkest. The picker keys a palette by name; an entry is named after its
+ * first color.
+ */
+const palette = (value: string): ColorPaletteCustom | undefined => {
+  const entries = value
+    .split(",")
+    .map((entry) => entry.trim().split(/\s+/).filter(Boolean))
+    .filter((entry) => entry.length);
+  const valid = entries.every(
+    (entry) =>
+      (entry.length === 1 || isColorTuple(entry)) &&
+      entry.every((color) => elementColor(color)),
+  );
+  return entries.length && valid
+    ? Object.fromEntries(
+        entries.map((entry) => [
+          entry[0],
+          isColorTuple(entry) ? entry : entry[0],
+        ]),
+      )
     : undefined;
 };
 
@@ -145,8 +183,11 @@ export const readCssTheme = (style: {
   const read = (name: string) => unquote(style.getPropertyValue(name).trim());
   const color = (name: string) => read(name) || undefined;
 
-  const strokePicks = colorList(read("--color-picks-stroke"));
-  const backgroundPicks = colorList(read("--color-picks-background"));
+  const strokePicks = colorList(read("--color-picks-stroke"))?.slice(0, 5);
+  const backgroundPicks = colorList(read("--color-picks-background"))?.slice(
+    0,
+    5,
+  );
 
   const canvas: CanvasTheme = definedEntries({
     background: color("--canvas-background"),
@@ -156,6 +197,7 @@ export const readCssTheme = (style: {
     selectionColor: color("--color-selection"),
     handleFill: color("--canvas-handle-fill"),
     frameColor: color("--canvas-frame-color"),
+    frameWidth: positiveNumber(read("--canvas-frame-width")),
   });
 
   const appState: CssThemeAppState = definedEntries({
@@ -204,5 +246,10 @@ export const readCssTheme = (style: {
     });
   }
 
-  return { canvas, appState };
+  const palettes = definedEntries({
+    elementStroke: palette(read("--color-palette-stroke")),
+    elementBackground: palette(read("--color-palette-background")),
+  });
+
+  return { canvas, appState, palettes };
 };
