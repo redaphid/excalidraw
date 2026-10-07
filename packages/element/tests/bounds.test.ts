@@ -4,6 +4,8 @@ import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
 import type { LocalPoint } from "@excalidraw/math";
 
+import { mutateElement } from "../src/mutateElement";
+
 import {
   elementsOverlappingBBox,
   getElementAbsoluteCoords,
@@ -67,6 +69,27 @@ describe("getElementAbsoluteCoords", () => {
     const [, , , y2] = getElementAbsoluteCoords(element, arrayToMap([element]));
     expect(y2).toEqual(20);
   });
+});
+
+describe("getElementAbsoluteCoords after an element changes", () => {
+  it.each(["arrow", "freedraw"] as const)(
+    "follows the points of a %s",
+    (type) => {
+      const element = API.createElement({
+        type,
+        x: 0,
+        y: 0,
+        points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(50, 20)],
+      });
+      const before = getElementAbsoluteCoords(element, new Map());
+      mutateElement(element, new Map(), {
+        points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(200, 80)],
+      });
+      const after = getElementAbsoluteCoords(element, new Map());
+      expect(after[2]).toBeGreaterThan(before[2] + 100);
+      expect(after[3]).toBeGreaterThan(before[3] + 40);
+    },
+  );
 });
 
 describe("getElementBounds", () => {
