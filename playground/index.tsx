@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { debounce } from "@excalidraw/common";
 import { Excalidraw } from "@excalidraw/excalidraw";
 
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import {
   loadBookmarks,
   loadScene,
@@ -14,6 +16,13 @@ import {
 const Bench = lazy(() =>
   import("./bench/Bench").then(({ Bench }) => ({ default: Bench })),
 );
+
+declare global {
+  interface Window {
+    /** for scripted drivers such as scripts/theme-screenshots */
+    excalidrawAPI?: ExcalidrawImperativeAPI | null;
+  }
+}
 
 const save = debounce(saveScene, 300);
 window.addEventListener("pagehide", save.flush);
@@ -34,6 +43,9 @@ const Playground = () => {
       authoringUnits="screen"
       initialData={initialData}
       frameNavigation={frameNavigation}
+      onExcalidrawAPI={(api) => {
+        window.excalidrawAPI = api;
+      }}
       onChange={(elements, appState, files) =>
         save(localStorage, elements, appState, files)
       }
