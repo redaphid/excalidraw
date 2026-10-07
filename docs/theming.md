@@ -165,8 +165,11 @@ The UI reads the editor's existing variables, defined in [`packages/excalidraw/c
 | `--shadow-island`, `--modal-shadow`, `--sidebar-shadow` | panel and dialog edges |
 | `--overlay-bg-color` | the backdrop behind dialogs |
 | `--keybinding-color`, `--color-gray-60` | secondary text |
+| `--color-slider-track`, `--color-slider-thumb` | the opacity and pen-size sliders |
 
-Anything else is a selector away: the `css` prop is a stylesheet, so `.frame-breadcrumb`, `.Island` or `.ToolIcon__icon` can be restyled directly.
+Anything else is a selector away: the `css` prop is a stylesheet, so `:scope .frame-breadcrumb`, `:scope .Island` or `:scope .ToolIcon__icon` can be restyled directly.
+
+`--color-primary-light` is also the background of the help dialog's keycaps, whose text inherits `--text-primary-color`. A theme that makes it a strong selection color sets `:scope .HelpDialog__key { color: … }` too.
 
 ## Dark themes
 
@@ -234,6 +237,13 @@ Make the canvas transparent and give the root a background. The browser composit
 ## Performance
 
 A theme adds no work per frame. The custom properties are read only at the moments listed above, and the renderers get the parsed object by reference.
+
+[`scripts/theme-screenshots/bench.mjs`](../scripts/theme-screenshots/bench.mjs) pans and zooms a 2,000-element scene under a 4x CPU throttle and counts `getComputedStyle` calls and canvas creations, with and without a theme. During pan and zoom the editor makes no `getComputedStyle` calls. Before this change it made one per render to read `--color-selection`.
+
+```sh
+node scripts/theme-screenshots/bench.mjs --theme architect-parchment
+node scripts/theme-screenshots/bench.mjs --root ../a-checkout-of-master
+```
 
 The CSS itself can still be slow. `backdrop-filter` over the canvas re-blurs on every repaint, and a large animated gradient repaints the screen. The sample Glass theme gets its frosted look from translucency and a bright edge, not from a blur.
 
