@@ -2480,6 +2480,22 @@ class App extends React.Component<AppProps, AppState> {
     // (it is not in the scene until dropped)
     const previewElement = newElementCanvasElement ?? this.toolDrag.preview;
 
+    const staticVisibleElements = this.elementRenderOffsets.size
+      ? this.renderer.getVisibleElementsWithRenderOffsets(
+          visibleElements,
+          renderableElementsMap,
+          this.state,
+          this.elementRenderOffsets,
+        )
+      : visibleElements;
+    const newElementSplit = this.renderer.splitAtNewElement(
+      staticVisibleElements,
+      this.state.newElement,
+    );
+    const newElementLayer = newElementSplit
+      ? { elementsAbove: newElementSplit.above }
+      : previewElement && { element: previewElement };
+
     const shouldBlockPointerEvents =
       // default back to `--ui-pointerEvents` flow if setPointerCapture
       // not supported
@@ -2742,14 +2758,7 @@ class App extends React.Component<AppProps, AppState> {
                             elementsMap={renderableElementsMap}
                             allElementsMap={allElementsMap}
                             visibleElements={
-                              this.elementRenderOffsets.size
-                                ? this.renderer.getVisibleElementsWithRenderOffsets(
-                                    visibleElements,
-                                    renderableElementsMap,
-                                    this.state,
-                                    this.elementRenderOffsets,
-                                  )
-                                : visibleElements
+                              newElementSplit?.below ?? staticVisibleElements
                             }
                             canvasNonce={canvasNonce}
                             selectionNonce={
@@ -2769,16 +2778,17 @@ class App extends React.Component<AppProps, AppState> {
                                 this.embedsValidationStatus,
                               elementsPendingErasure:
                                 this.elementsPendingErasure,
-                              pendingFlowchartNodes:
-                                this.flowchart.pendingNodes,
+                              pendingFlowchartNodes: newElementSplit
+                                ? null
+                                : this.flowchart.pendingNodes,
                               theme: this.state.theme,
                               ...this.getRenderOverrideConfig(),
                             }}
                           />
-                          {previewElement && (
+                          {newElementLayer && (
                             <NewElementCanvas
                               appState={this.state}
-                              newElement={previewElement}
+                              layer={newElementLayer}
                               scale={this.ownerWindow.devicePixelRatio}
                               rc={this.rc}
                               elementsMap={renderableElementsMap}
@@ -2793,7 +2803,9 @@ class App extends React.Component<AppProps, AppState> {
                                   this.embedsValidationStatus,
                                 elementsPendingErasure:
                                   this.elementsPendingErasure,
-                                pendingFlowchartNodes: null,
+                                pendingFlowchartNodes: newElementSplit
+                                  ? this.flowchart.pendingNodes
+                                  : null,
                                 theme: this.state.theme,
                                 ...this.getRenderOverrideConfig(),
                               }}

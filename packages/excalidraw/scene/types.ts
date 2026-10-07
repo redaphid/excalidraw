@@ -116,10 +116,18 @@ export type InteractiveSceneRenderConfig = {
   deltaTime: number;
 };
 
+/** what the new-element canvas paints */
+export type NewElementLayer =
+  /** an unframed new element or a tool-drag preview, drawn over the scene */
+  | { element: NonDeletedExcalidrawElement }
+  /** a new element drawn inside a frame and everything the static scene
+   * would paint over it (see Renderer.splitAtNewElement) */
+  | { elementsAbove: readonly NonDeletedExcalidrawElement[] };
+
 export type NewElementSceneRenderConfig = {
   canvas: HTMLCanvasElement | null;
   rc: RoughCanvas;
-  newElement: NonDeletedExcalidrawElement | null;
+  layer: NewElementLayer;
   elementsMap: RenderableElementsMap;
   allElementsMap: NonDeletedSceneElementsMap;
   scale: number;

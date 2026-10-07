@@ -54,7 +54,7 @@ describe("the elements to render while a stroke is drawn inside a frame", () => 
     const before = render();
     extend(60);
     const after = render();
-    expect(after.canvasNonce).not.toBe(before.canvasNonce);
+    expect(after.canvasNonce).toBe(before.canvasNonce);
     expect(after.elementsMap).toBe(before.elementsMap);
     expect(after.visibleElements).toBe(before.visibleElements);
   });
@@ -66,11 +66,73 @@ describe("the elements to render while a stroke is drawn inside a frame", () => 
     expect(render().visibleElements).not.toBe(before.visibleElements);
   });
 
-  it("are culled again when the stroke goes out of view", () => {
+  it("keep the stroke when it goes out of view, for the split to place it", () => {
     const { stroke, render } = board();
-    const before = render();
-    expect(before.visibleElements).toContain(stroke);
     mutateElement(stroke, new Map(), { x: 10_000, y: 10_000 });
-    expect(render().visibleElements).not.toContain(stroke);
+    expect(render().visibleElements).toContain(stroke);
+  });
+});
+
+describe("the split around a new element drawn inside a frame", () => {
+  it("puts embeds over everything the new-element canvas paints", () => {
+    const frame = API.createElement({
+      type: "frame",
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 400,
+    });
+    const below = API.createElement({
+      type: "rectangle",
+      x: 20,
+      y: 20,
+      frameId: frame.id,
+    });
+    const embed = API.createElement({
+      type: "embeddable",
+      x: 40,
+      y: 40,
+      width: 100,
+      height: 100,
+      frameId: frame.id,
+    });
+    const stroke = API.createElement({
+      type: "freedraw",
+      x: 50,
+      y: 50,
+      frameId: frame.id,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(30, 10)],
+    });
+    const above = API.createElement({ type: "rectangle", x: 60, y: 60 });
+    const scene = new Scene([below, embed, stroke, above, frame], {
+      skipValidation: true,
+    });
+    const renderer = new Renderer(scene);
+    const { visibleElements } = renderer.getRenderableElements({
+      ...getDefaultAppState(),
+      width: 500,
+      height: 500,
+      offsetLeft: 0,
+      offsetTop: 0,
+      newElement: stroke,
+      selectedElements: [],
+    });
+    expect(renderer.splitAtNewElement(visibleElements, stroke)).toEqual({
+      below: [below],
+      above: [stroke, above, frame, embed],
+    });
+  });
+
+  it("is not made for a new element outside a frame", () => {
+    const stroke = API.createElement({
+      type: "freedraw",
+      x: 50,
+      y: 50,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(30, 10)],
+    });
+    const renderer = new Renderer(
+      new Scene([stroke], { skipValidation: true }),
+    );
+    expect(renderer.splitAtNewElement([stroke], stroke)).toBeNull();
   });
 });
