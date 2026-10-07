@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
+import { reseed } from "@excalidraw/common";
 import { Excalidraw } from "@excalidraw/excalidraw";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import { SCENARIOS } from "./scenarios";
+import { PARITY_SCENARIOS, SCENARIOS } from "./scenarios";
 import { SCENES } from "./scenes";
 
 import type { Scenario } from "./scenarios";
@@ -57,6 +58,7 @@ declare global {
     benchReport?: BenchReport;
     benchError?: string;
     profilerHook?: (id: string, phase: "start" | "stop") => Promise<void>;
+    stepHook?: (id: string, step: number) => void;
   }
 }
 
@@ -192,13 +194,21 @@ const runScenario = async (
   api: ExcalidrawImperativeAPI,
   scene: BenchScene,
 ): Promise<ScenarioResult> => {
-  api.updateScene({ appState: { ...scene.view, selectedElementIds: {} } });
+  api.updateScene({
+    appState: {
+      ...scene.view,
+      selectedElementIds: {},
+      theme: "light",
+      viewBackgroundColor: "#fff",
+    },
+  });
   await wait(VIEW_RESET_MS);
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
   api.setActiveTool({ type: scenario.tool });
   await flushTasks();
+  reseed(1);
   scenario.begin(api, canvas);
   await flushTasks();
   takeCounters(1);
@@ -207,6 +217,10 @@ const runScenario = async (
   const frames: number[] = [];
   let frameStart = await nextFrame();
   for (let i = 1; i <= scenario.steps; i++) {
+    window.stepHook?.(scenario.id, i);
+    if (i === (scenario.midwayStep ?? Math.floor(scenario.steps / 2))) {
+      await scenario.midway?.(api, canvas);
+    }
     scenario.step(canvas, i);
     await flushTasks();
     const next = await nextFrame();
@@ -242,7 +256,9 @@ const runScenario = async (
   };
 };
 
-const selected = SCENARIOS.filter((s) => !only || only.includes(s.id));
+const selected = only
+  ? [...SCENARIOS, ...PARITY_SCENARIOS].filter((s) => only.includes(s.id))
+  : SCENARIOS;
 const sceneOrder = [...new Set(selected.map((s) => s.scene))];
 
 const runBench = async (ui: BenchUi): Promise<BenchReport> => {
