@@ -28,3 +28,6 @@ html
 meta*.json
 .claude
 release/
+
+# local output of scripts/theme-screenshots
+/theme-screenshots/
