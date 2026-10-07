@@ -67,7 +67,7 @@ jobs:
             exit 1
           fi
 
-          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq .sha 2>/dev/null || true)
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq .sha 2>/dev/null) || tag_sha=""
           if [ -n "$tag_sha" ] && [ "$tag_sha" != "$GITHUB_SHA" ]; then
             echo "::error::$tag already points at $tag_sha, not at $GITHUB_SHA."
             exit 1

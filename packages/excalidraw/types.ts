@@ -217,6 +217,7 @@ export type StaticCanvasAppState = Readonly<
     suggestedBinding: AppState["suggestedBinding"];
     // Cropping
     croppingElementId: AppState["croppingElementId"];
+    newElement?: AppState["newElement"];
   }
 >;
 

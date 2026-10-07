@@ -1,6 +1,8 @@
+import { newElementWith } from "@excalidraw/element";
+
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import { DEEP_CENTER } from "./scenes";
+import { DEEP_CENTER, lateImage } from "./scenes";
 
 import type { SceneName } from "./scenes";
 
@@ -8,8 +10,14 @@ export type Scenario = {
   id: string;
   scene: SceneName;
   steps: number;
-  tool: "hand" | "selection" | "freedraw";
+  tool: "hand" | "selection" | "freedraw" | "rectangle" | "arrow";
   begin: (api: ExcalidrawImperativeAPI, canvas: HTMLCanvasElement) => void;
+  midway?: (
+    api: ExcalidrawImperativeAPI,
+    canvas: HTMLCanvasElement,
+  ) => void | Promise<void>;
+  /** the step before which `midway` runs, half way by default */
+  midwayStep?: number;
   step: (canvas: HTMLCanvasElement, i: number) => void;
   end: (canvas: HTMLCanvasElement) => void;
 };
@@ -148,22 +156,42 @@ const pinch = (scene: SceneName, steps: number): Scenario => {
   };
 };
 
-const freedraw = (scene: SceneName, steps: number): Scenario => {
-  let origin = { x: 0, y: 0 };
-  let width = 0;
-  const at = (i: number) => ({
-    x: origin.x + (i / steps) * width + Math.sin(i / 4) * 30,
-    y: origin.y + Math.cos(i / 4) * 40,
-  });
+type Path = (
+  i: number,
+  steps: number,
+  rect: DOMRect,
+) => { x: number; y: number };
+
+const loops: Path = (i, steps, rect) => ({
+  x: rect.left + rect.width * (0.2 + (0.6 * i) / steps) + Math.sin(i / 4) * 30,
+  y: rect.top + rect.height / 2 + Math.cos(i / 4) * 40,
+});
+
+const diagonal: Path = (i, steps, rect) => ({
+  x: rect.left + rect.width * (0.3 + (0.25 * i) / steps),
+  y: rect.top + rect.height * (0.45 + (0.3 * i) / steps),
+});
+
+const gesture = (
+  id: string,
+  scene: SceneName,
+  tool: Scenario["tool"],
+  steps: number,
+  path: Path,
+  midway?: Scenario["midway"],
+  midwayStep?: number,
+): Scenario => {
+  let rect = new DOMRect();
+  const at = (i: number) => path(i, steps, rect);
   return {
-    id: `${scene}/freedraw`,
+    id,
     scene,
     steps,
-    tool: "freedraw",
+    tool,
+    midway,
+    midwayStep,
     begin: (_, canvas) => {
-      const rect = canvas.getBoundingClientRect();
-      width = rect.width * 0.6;
-      origin = { x: rect.left + rect.width * 0.2, y: center(canvas).y };
+      rect = canvas.getBoundingClientRect();
       const { x, y } = at(0);
       pointer(canvas, "pointerdown", x, y, { kind: "pen" });
     },
@@ -177,6 +205,9 @@ const freedraw = (scene: SceneName, steps: number): Scenario => {
     },
   };
 };
+
+const freedraw = (scene: SceneName, steps: number) =>
+  gesture(`${scene}/freedraw`, scene, "freedraw", steps, loops);
 
 const deepAnchor = (
   api: ExcalidrawImperativeAPI,
@@ -207,4 +238,85 @@ export const SCENARIOS: Scenario[] = [
   zoom("deep", 0, 130, 10, deepAnchor),
   pinch("deep", 120),
   pan("deep", 120),
+];
+
+/** gestures for checking that a change paints what master paints: shapes
+ * drawn inside a frame, and a stroke inside a frame while something else
+ * changes the scene halfway through it */
+export const PARITY_SCENARIOS: Scenario[] = [
+  gesture("mixed/rectangle", "mixed", "rectangle", 120, diagonal),
+  gesture("mixed/arrow", "mixed", "arrow", 120, diagonal),
+  gesture("mixed/freedraw-theme", "mixed", "freedraw", 240, loops, (api) => {
+    api.updateScene({ appState: { theme: "dark" } });
+    return new Promise((resolve) => setTimeout(resolve, 1500));
+  }),
+  gesture(
+    "mixed/freedraw-zoom",
+    "mixed",
+    "freedraw",
+    240,
+    loops,
+    (_, canvas) => {
+      const { x, y } = center(canvas);
+      wheel(canvas, x, y, -20);
+    },
+  ),
+  gesture("mixed/freedraw-image", "mixed", "freedraw", 240, loops, (api) =>
+    api.addFiles([lateImage()]),
+  ),
+  gesture(
+    "mixed/freedraw-stroke-color",
+    "mixed",
+    "freedraw",
+    240,
+    loops,
+    (api) =>
+      api.updateScene({
+        elements: api
+          .getSceneElements()
+          .map((element) =>
+            element.type === "rectangle"
+              ? newElementWith(element, { strokeColor: "#e03131" })
+              : element,
+          ),
+      }),
+  ),
+  gesture("mixed/freedraw-background", "mixed", "freedraw", 240, loops, (api) =>
+    api.updateScene({ appState: { viewBackgroundColor: "#fff3bf" } }),
+  ),
+  gesture(
+    "mixed/freedraw-resize",
+    "mixed",
+    "freedraw",
+    240,
+    loops,
+    () => {
+      window.dispatchEvent(new Event("resize"));
+    },
+    238,
+  ),
+  gesture(
+    "mixed/freedraw-pause",
+    "mixed",
+    "freedraw",
+    240,
+    loops,
+    () => new Promise((resolve) => setTimeout(resolve, 300)),
+  ),
+  gesture(
+    "mixed/freedraw-collaborator",
+    "mixed",
+    "freedraw",
+    240,
+    loops,
+    (api) =>
+      api.updateScene({
+        collaborators: new Map([
+          [
+            "peer" as never,
+            { username: "peer", pointer: { x: 900, y: 1100, tool: "pointer" } },
+          ],
+        ]),
+      }),
+  ),
 ];

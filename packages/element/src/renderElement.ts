@@ -848,22 +848,23 @@ const visibleBitmapRect = (
     return null;
   }
   const { width, height } = context.canvas;
-  const corners = [
-    [0, 0],
-    [width, 0],
-    [0, height],
-    [width, height],
-  ].map(([x, y]) => [
-    ((d * (x - e) - c * (y - f)) / det - drawX) * scale,
-    ((a * (y - f) - b * (x - e)) / det - drawY) * scale,
-  ]);
-  const xs = corners.map(([x]) => x);
-  const ys = corners.map(([, y]) => y);
+  // the canvas corners in bitmap pixels, written out to allocate nothing on
+  // a path that runs for every bitmap on every frame
+  const x0 = ((d * (0 - e) - c * (0 - f)) / det - drawX) * scale;
+  const x1 = ((d * (width - e) - c * (0 - f)) / det - drawX) * scale;
+  const x2 = ((d * (0 - e) - c * (height - f)) / det - drawX) * scale;
+  const x3 = ((d * (width - e) - c * (height - f)) / det - drawX) * scale;
+  const y0 = ((a * (0 - f) - b * (0 - e)) / det - drawY) * scale;
+  const y1 = ((a * (0 - f) - b * (width - e)) / det - drawY) * scale;
+  const y2 = ((a * (height - f) - b * (0 - e)) / det - drawY) * scale;
+  const y3 = ((a * (height - f) - b * (width - e)) / det - drawY) * scale;
   // a pixel to spare on each side, for smoothing that samples past the edge
-  const sx = clamp(Math.floor(Math.min(...xs)) - 1, 0, bitmap.width);
-  const sy = clamp(Math.floor(Math.min(...ys)) - 1, 0, bitmap.height);
-  const sw = clamp(Math.ceil(Math.max(...xs)) + 1, 0, bitmap.width) - sx;
-  const sh = clamp(Math.ceil(Math.max(...ys)) + 1, 0, bitmap.height) - sy;
+  const sx = clamp(Math.floor(Math.min(x0, x1, x2, x3)) - 1, 0, bitmap.width);
+  const sy = clamp(Math.floor(Math.min(y0, y1, y2, y3)) - 1, 0, bitmap.height);
+  const sw =
+    clamp(Math.ceil(Math.max(x0, x1, x2, x3)) + 1, 0, bitmap.width) - sx;
+  const sh =
+    clamp(Math.ceil(Math.max(y0, y1, y2, y3)) + 1, 0, bitmap.height) - sy;
   if (sw <= 0 || sh <= 0) {
     return null;
   }
@@ -1196,6 +1197,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
   while (build.next < elements.length && hasTime()) {
     const element = elements[build.next++];
     if (
+      element.id === appState.newElement?.id ||
       !shouldDrawDirectly(element, elementsMap, appState) ||
       settledElementCanvas(element, elementsMap, appState)
     ) {
