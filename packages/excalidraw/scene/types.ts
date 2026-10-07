@@ -45,7 +45,6 @@ export type StaticCanvasRenderConfig = {
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
   elementRenderOverrides?: ElementRenderOverrides;
-  /** changes whenever the scene does, including image and font loads */
   sceneNonce?: number;
 };
 

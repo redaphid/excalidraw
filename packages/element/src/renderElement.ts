@@ -1179,11 +1179,9 @@ const scheduleSettledBuild = (delay: number) => {
   }
 };
 
-let settledBitmapsBuilt = 0;
+let settledBitmapGeneration = 0;
 
-/** How many bitmaps the idle builder has made. Each one changes how later
- * frames draw its element, without any change to the element or app state. */
-export const getSettledBitmapsBuilt = () => settledBitmapsBuilt;
+export const getSettledBitmapGeneration = () => settledBitmapGeneration;
 
 const buildSettledBitmaps = (hasTime: () => boolean) => {
   const build = settledBuild;
@@ -1215,7 +1213,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     // a bitmap larger than the screen costs more memory than it saves time
     if (scale === appState.zoom.value && width * height <= screenArea) {
       generateElementWithCanvas(element, elementsMap, renderConfig, appState);
-      settledBitmapsBuilt++;
+      settledBitmapGeneration++;
     }
   }
   if (build.next < elements.length) {

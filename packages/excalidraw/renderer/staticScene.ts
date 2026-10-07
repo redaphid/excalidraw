@@ -278,7 +278,6 @@ const renderLinkIcon = (
     context.restore();
   }
 };
-/** The app state a static frame's pixels depend on. */
 export const getRelevantAppStateProps = (
   appState: StaticCanvasAppState,
 ): StaticCanvasAppState => ({
@@ -338,18 +337,20 @@ const _renderStaticScene = ({
     (el) => !isIframeLikeElement(el),
   );
   const { newElement } = unsnappedAppState;
+  const { sceneNonce } = renderConfig;
   const firstAbove =
-    !isExporting && newElement?.frameId
-      ? Math.max(
+    isExporting || !newElement || sceneNonce === undefined
+      ? 0
+      : Math.max(
           paintedElements.findIndex((el) => el.id === newElement.id),
           0,
-        )
-      : 0;
+        );
   const underlay =
-    firstAbove > 0
+    sceneNonce !== undefined && firstAbove > 0
       ? underlayKey(
           canvas,
           scale,
+          sceneNonce,
           getRelevantAppStateProps(unsnappedAppState),
           renderConfig,
           paintedElements.slice(0, firstAbove),
@@ -358,19 +359,18 @@ const _renderStaticScene = ({
   if (!underlay) {
     releaseUnderlay(canvas);
   }
-  const restored = underlay && restoreUnderlay(canvas, underlay);
+  const restored = !!underlay && restoreUnderlay(canvas, underlay);
 
-  const context =
-    restored ||
-    bootstrapCanvas({
-      canvas,
-      scale,
-      normalizedWidth,
-      normalizedHeight,
-      theme: appState.theme,
-      isExporting,
-      viewBackgroundColor: appState.viewBackgroundColor,
-    });
+  const context = bootstrapCanvas({
+    canvas,
+    scale,
+    normalizedWidth,
+    normalizedHeight,
+    theme: appState.theme,
+    isExporting,
+    viewBackgroundColor: appState.viewBackgroundColor,
+    paintBackground: !restored,
+  });
 
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
