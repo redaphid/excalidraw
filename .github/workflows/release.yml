@@ -37,8 +37,9 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Write, because a read-only token cannot see draft releases.
     permissions:
-      contents: read
+      contents: write
     outputs:
       version: ${{ steps.plan.outputs.version }}
       tag: ${{ steps.plan.outputs.tag }}
@@ -59,7 +60,7 @@ jobs:
             tag="v$version"
           fi
 
-          if is_draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null); then
+          if is_draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>&1); then
             if [ "$is_draft" = true ]; then
               echo "::error::A draft release for $tag already exists. Publish or delete it, then run again."
               exit 1
@@ -67,6 +68,9 @@ jobs:
             echo "::notice::Release $tag already exists, and this workflow never changes a published release."
             echo "exists=true" >> "$GITHUB_OUTPUT"
             exit 0
+          elif [ "$is_draft" != "release not found" ]; then
+            echo "::error::Could not check for an existing $tag release: $is_draft"
+            exit 1
           fi
 
           package_version=$(node -p "require('./packages/excalidraw/package.json').version")
@@ -100,7 +104,7 @@ jobs:
             echo "version=$version"
             echo "tag=$tag"
           } >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$notes" > notes.md
+          printf '%s' "$notes" > notes.md
       - if: steps.plan.outputs.exists != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
