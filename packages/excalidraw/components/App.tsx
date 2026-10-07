@@ -12984,8 +12984,8 @@ class App extends React.Component<AppProps, AppState> {
     });
   };
 
-  // flushed, so the crisp frame is drawn by the time a host's onChange sees
-  // the flag clear
+  // flushed, so the crisp frame is drawn before this timer returns, ahead of
+  // the next paint (onChange fires first, mid-flush, before the redraw)
   public resetShouldCacheIgnoreZoomDebounced = debounce(() => {
     if (!this.unmounted) {
       flushSync(() => {
