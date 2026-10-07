@@ -134,13 +134,17 @@ jobs:
           path: ${{ runner.temp }}
       - env:
           GH_TOKEN: ${{ github.token }}
-          DRAFT: ${{ inputs.draft && '--draft' || '' }}
+          DRAFT: ${{ inputs.draft }}
         run: |
+          flags=()
+          if [ "$DRAFT" = true ]; then
+            flags+=(--draft)
+          fi
           gh release create "$TAG" release/*.tgz \
             --title "$VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             --target "$GITHUB_SHA" \
-            $DRAFT
+            "${flags[@]}"
           gh release view "$TAG" --json url,isDraft,assets \
             --jq '"Released \(.url) (draft: \(.isDraft)) with \([.assets[].name] | join(", "))"' \
             | tee -a "$GITHUB_STEP_SUMMARY"
