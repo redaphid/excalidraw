@@ -254,11 +254,9 @@ describe("css prop", () => {
       API.createElement({
         type: "freedraw",
         strokeWidth: 2,
-        simulatePressure: false,
         points: Array.from({ length: 21 }, (_, i) =>
           pointFrom<LocalPoint>(i * 5, 0),
         ),
-        pressures: Array.from({ length: 21 }, () => 0.5),
         strokeOptions: { variability: "variable", streamline: 0.5, taper },
       }) as ExcalidrawFreeDrawElement;
     const halfWidthAtStart = (element: ExcalidrawFreeDrawElement) =>
