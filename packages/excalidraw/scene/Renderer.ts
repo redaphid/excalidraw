@@ -239,35 +239,39 @@ export class Renderer {
     return visibleElements;
   }
 
-  private getRenderableElementsMap({
-    elements,
-    editingTextElement,
-    newElement,
-  }: {
-    elements: readonly NonDeletedExcalidrawElement[];
-    editingTextElement: AppState["editingTextElement"];
-    newElement: AppState["newElement"];
-  }) {
-    const elementsMap = toBrandedType<RenderableElementsMap>(new Map());
-    const newElementCanvasElement = newElement?.frameId ? null : newElement;
+  // keyed apart from the viewport, so a pan or zoom frame reuses the map
+  private getRenderableElementsMap = memoize(
+    ({
+      elements,
+      editingTextElement,
+      newElement,
+    }: {
+      canvasNonce: string;
+      elements: readonly NonDeletedExcalidrawElement[];
+      editingTextElement: AppState["editingTextElement"];
+      newElement: AppState["newElement"];
+    }) => {
+      const elementsMap = toBrandedType<RenderableElementsMap>(new Map());
+      const newElementCanvasElement = newElement?.frameId ? null : newElement;
 
-    for (const element of elements) {
-      if (newElementCanvasElement?.id === element.id) {
-        continue;
-      }
+      for (const element of elements) {
+        if (newElementCanvasElement?.id === element.id) {
+          continue;
+        }
 
-      // we don't want to render text element that's being currently edited
-      // (it's rendered on remote only)
-      if (
-        !editingTextElement ||
-        editingTextElement.type !== "text" ||
-        element.id !== editingTextElement.id
-      ) {
-        elementsMap.set(element.id, element);
+        // we don't want to render text element that's being currently edited
+        // (it's rendered on remote only)
+        if (
+          !editingTextElement ||
+          editingTextElement.type !== "text" ||
+          element.id !== editingTextElement.id
+        ) {
+          elementsMap.set(element.id, element);
+        }
       }
-    }
-    return { elementsMap, newElementCanvasElement };
-  }
+      return { elementsMap, newElementCanvasElement };
+    },
+  );
 
   private sortSelectedElementsIntoHighlightedFrame<
     T extends ExcalidrawElement,
@@ -333,6 +337,7 @@ export class Renderer {
 
       const { elementsMap, newElementCanvasElement } =
         this.getRenderableElementsMap({
+          canvasNonce,
           elements,
           editingTextElement,
           newElement,
