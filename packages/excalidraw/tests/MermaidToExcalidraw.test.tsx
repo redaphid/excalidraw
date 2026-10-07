@@ -1,5 +1,8 @@
 import { expect, vi } from "vitest";
 
+import { EDITOR_LS_KEYS } from "@excalidraw/common";
+
+import { EditorLocalStorage } from "../data/EditorLocalStorage";
 import { Excalidraw } from "../index";
 
 import { mockMermaidToExcalidraw } from "./helpers/mocks";
@@ -103,6 +106,51 @@ const normalizeDialogSnapshot = (dialog: Element) => {
   return dialogClone.outerHTML;
 };
 
+const OUTPUT_ERROR = '[data-testid="ttd-dialog-output-error"]';
+
+// The dialog saves its definition and reopens on it, so one test's
+// definition would otherwise become the next test's starting text.
+beforeEach(() => {
+  EditorLocalStorage.delete(EDITOR_LS_KEYS.MERMAID_TO_EXCALIDRAW);
+});
+
+describe("Opening the mermaid dialog", () => {
+  it("shows no error for a valid definition while the library loads", async () => {
+    const errorsShown: string[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const { addedNodes } of records) {
+        addedNodes.forEach((node) => {
+          const error =
+            node instanceof Element &&
+            (node.matches(OUTPUT_ERROR)
+              ? node
+              : node.querySelector(OUTPUT_ERROR));
+          if (error) {
+            errorsShown.push(error.textContent ?? "");
+          }
+        });
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    await render(
+      <Excalidraw
+        initialData={{
+          appState: {
+            openDialog: { name: "ttd", tab: "mermaid" },
+          },
+        }}
+      />,
+    );
+    await waitFor(() =>
+      expect(document.querySelector(".ttd-dialog canvas")).not.toBeNull(),
+    );
+    observer.disconnect();
+
+    expect(errorsShown).toEqual([]);
+  });
+});
+
 describe("Test <MermaidToExcalidraw/>", () => {
   beforeEach(async () => {
     await render(
@@ -118,7 +166,10 @@ describe("Test <MermaidToExcalidraw/>", () => {
 
   it("should open mermaid popup when active tool is mermaid", async () => {
     const dialog = document.querySelector(".ttd-dialog")!;
-    await waitFor(() => expect(dialog.querySelector("canvas")).not.toBeNull());
+    await waitFor(() => {
+      expect(dialog.querySelector("canvas")).not.toBeNull();
+      expect(dialog.querySelector("textarea")).not.toBeNull();
+    });
     expect(normalizeDialogSnapshot(dialog)).toMatchSnapshot();
   });
 
