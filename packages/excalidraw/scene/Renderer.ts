@@ -239,14 +239,15 @@ export class Renderer {
     return visibleElements;
   }
 
-  // keyed apart from the viewport, so a pan or zoom frame reuses the map
+  // keyed on what decides its entries, so pan, zoom and in-frame drawing
+  // frames reuse the map
   private getRenderableElementsMap = memoize(
     ({
       elements,
       editingTextElement,
       newElement,
     }: {
-      canvasNonce: string;
+      newElementFrameId: string | null;
       elements: readonly NonDeletedExcalidrawElement[];
       editingTextElement: AppState["editingTextElement"];
       newElement: AppState["newElement"];
@@ -313,9 +314,10 @@ export class Renderer {
     ] as readonly T[];
   }
 
+  // A new element being drawn is mutated in place without informing the
+  // scene; it only needs re-culling when it comes into or goes out of view
   private _getRenderableElements = memoize(
     ({
-      canvasNonce,
       zoom,
       offsetLeft,
       offsetTop,
@@ -331,13 +333,15 @@ export class Renderer {
       | "selectedElementsAreBeingDragged"
       | "frameToHighlight"
     > & {
-      canvasNonce: string;
+      sceneNonce: number | undefined;
+      newElementFrameId: string | null;
+      newElementInViewport: boolean;
     }) => {
       const elements = this.scene.getNonDeletedElements();
 
       const { elementsMap, newElementCanvasElement } =
         this.getRenderableElementsMap({
-          canvasNonce,
+          newElementFrameId: newElement?.frameId ?? null,
           elements,
           editingTextElement,
           newElement,
@@ -358,7 +362,6 @@ export class Renderer {
         elementsMap,
         visibleElements,
         newElementCanvasElement,
-        canvasNonce,
       };
     },
   );
@@ -377,21 +380,34 @@ export class Renderer {
         : ""
     }`;
 
-    const ret = this._getRenderableElements({
+    const ret = {
+      ...this._getRenderableElements({
+        sceneNonce: this.scene.getSceneNonce(),
+        newElementFrameId: newElement?.frameId ?? null,
+        newElementInViewport:
+          !!newElement?.frameId &&
+          isElementInViewport(
+            newElement,
+            opts.width,
+            opts.height,
+            opts,
+            this.scene.getNonDeletedElementsMap(),
+          ),
+
+        // don't spread `opts` because we don't want to memoize on some props
+
+        zoom: opts.zoom,
+        offsetLeft: opts.offsetLeft,
+        offsetTop: opts.offsetTop,
+        scrollX: opts.scrollX,
+        scrollY: opts.scrollY,
+        height: opts.height,
+        width: opts.width,
+        editingTextElement: opts.editingTextElement,
+        newElement: opts.newElement,
+      }),
       canvasNonce,
-
-      // don't spread `opts` because we don't want to memoize on some props
-
-      zoom: opts.zoom,
-      offsetLeft: opts.offsetLeft,
-      offsetTop: opts.offsetTop,
-      scrollX: opts.scrollX,
-      scrollY: opts.scrollY,
-      height: opts.height,
-      width: opts.width,
-      editingTextElement: opts.editingTextElement,
-      newElement: opts.newElement,
-    });
+    };
 
     // if we're dragging elements over a frame, reorder the selected elements
     // inside the frame during render (we don't set the `element.frameId` until
