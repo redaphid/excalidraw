@@ -169,6 +169,7 @@ import {
   getBoundTextElement,
   getContainerCenter,
   getContainerElement,
+  getSettledBitmapCount,
   getColorUpdate,
   getStickyNoteMinSize,
   isValidTextContainer,
@@ -2783,6 +2784,9 @@ class App extends React.Component<AppProps, AppState> {
                                 : this.flowchart.pendingNodes,
                               theme: this.state.theme,
                               ...this.getRenderOverrideConfig(),
+                              settledBitmapCount: newElementSplit
+                                ? getSettledBitmapCount()
+                                : undefined,
                             }}
                           />
                           {newElementLayer && (

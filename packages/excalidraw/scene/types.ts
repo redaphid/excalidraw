@@ -45,6 +45,9 @@ export type StaticCanvasRenderConfig = {
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
   elementRenderOverrides?: ElementRenderOverrides;
+  /** while the static canvas holds still under a new element, repaints it
+   * once settled bitmaps land, as the per-move repaint otherwise would */
+  settledBitmapCount?: number;
 };
 
 export type SVGRenderConfig = {
