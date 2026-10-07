@@ -2,7 +2,10 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 
 import { KEYS, THEME } from "@excalidraw/common";
-import { elementsOverlappingBBox } from "@excalidraw/element";
+import {
+  elementsOverlappingBBox,
+  isInitializedImageElement,
+} from "@excalidraw/element";
 import { exportToCanvas } from "@excalidraw/utils/export";
 
 import { useCurrentFrameId, useFrameModel } from "../hooks/useFrameModel";
@@ -63,7 +66,14 @@ const useThumbnails = (app: AppClassProperties, dark: boolean) => {
             bounds: frame,
             type: "overlap",
           })
-            .map((e) => `${e.id}:${e.version}:${e.versionNonce}`)
+            .map((e) =>
+              [
+                e.id,
+                e.version,
+                e.versionNonce,
+                isInitializedImageElement(e) && e.fileId in app.files,
+              ].join(":"),
+            )
             .join()}`;
           if (shown.current.get(frame.id)?.key === key) {
             continue;
