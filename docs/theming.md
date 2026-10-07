@@ -41,7 +41,35 @@ import drafting from "./drafting.css?raw";
 }
 ```
 
-The sample themes in [`playground/themes`](../playground/themes) are complete examples. Run the playground (`yarn build:playground`, or the screenshot harness below) and pick one from the theme menu at the top right.
+### Sample themes
+
+The package ships 18 sample themes in [`themes/`](../packages/excalidraw/themes). They are meant to be read and adapted: find the one closest to what you want, copy it, and change it. [`themes/index.json`](../packages/excalidraw/themes/index.json) lists them, and each entry gives:
+
+- the name, which is also the file name;
+- the title;
+- the mode to pass as `theme`;
+- a short description of the look;
+- the pen's character;
+- whether the stylesheet was generated from tokens;
+- caveats such as a dark canvas.
+
+Import them through the package:
+
+```js
+import index from "@excalidraw/excalidraw/themes/index.json";
+// with a text loader for .css, such as Vite's ?raw or a wrangler Text rule
+import blueprint from "@excalidraw/excalidraw/themes/blueprint.css";
+```
+
+They are data files, outside the JavaScript bundle: importing `Excalidraw` does not import them. To see them, run the playground (`yarn build:playground`, or the screenshot harness below) and pick one from the theme menu at the top right.
+
+The draw MCP server will serve the same files as resources, so an agent can read an example before writing a theme. These URIs are planned and do not exist yet:
+
+| URI                     | Contents                                          |
+| ----------------------- | ------------------------------------------------- |
+| `theme://index`         | `themes/index.json`                               |
+| `theme://<name>/css`    | `themes/<name>.css`                               |
+| `theme://<name>/tokens` | `themes/<name>.tokens.json`, for generated themes |
 
 ## Generate a theme from tokens
 
@@ -78,7 +106,7 @@ const { css, warnings } = generateThemeCss({
 
 It derives panels, hover and selected states, borders, shadows, five-shade palettes, the quick swatches and the dialog keycaps, and stores a dark theme's element colors so dark mode displays them as written. It checks WCAG contrast on every text and surface pair it writes. When a token makes text illegible, it moves the color until it passes and returns a warning, `{ token, from, to, reason }`.
 
-The generator is pure: no DOM, no Node built-ins, no editor code. A server, a Cloudflare Worker or an MCP tool can import it from `@excalidraw/common` without the editor. `THEME_TOKENS_SCHEMA` is the tokens' JSON Schema, for validating tokens an agent wrote. The sample themes with a file in [`playground/themes/tokens`](../playground/themes/tokens) are generated this way (`yarn theme:gen <id>`).
+The generator is pure: no DOM, no Node built-ins, no editor code. A server, a Cloudflare Worker or an MCP tool can import it from `@excalidraw/common` without the editor. `THEME_TOKENS_SCHEMA` is the tokens' JSON Schema, for validating tokens an agent wrote. The sample themes marked `generated` in `themes/index.json` are generated this way from `themes/<name>.tokens.json` (`yarn theme:gen <name>`).
 
 ## How the css prop is applied
 
@@ -293,37 +321,37 @@ The playground ships these themes. Each is one CSS file that sets the canvas, th
 
 ### Drafting family
 
-**Architect Parchment** ([`architect-parchment.css`](../playground/themes/architect-parchment.css), generated from [`tokens/architect-parchment.json`](../playground/themes/tokens/architect-parchment.json), light mode). Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.
+**Architect Parchment** ([`architect-parchment.css`](../packages/excalidraw/themes/architect-parchment.css), generated from [`architect-parchment.tokens.json`](../packages/excalidraw/themes/architect-parchment.tokens.json), light mode). Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Architect Parchment: the sample scene with a selection](theming/architect-parchment-desktop-selected.webp) | ![Architect Parchment: handwriting at 2.5x](theming/architect-parchment-desktop-penzoom.webp) |
 
-**CAD Debug** ([`cad-debug.css`](../playground/themes/cad-debug.css), light mode). A CAD viewport: blue-gray ground, white construction grid, graphite edges and the bright debug palette. Solid warm fills mean added material, dashed cool or red outlines mean voids.
+**CAD Debug** ([`cad-debug.css`](../packages/excalidraw/themes/cad-debug.css), light mode). A CAD viewport: blue-gray ground, white construction grid, graphite edges and the bright debug palette. Solid warm fills mean added material, dashed cool or red outlines mean voids.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![CAD Debug: the sample scene with a selection](theming/cad-debug-desktop-selected.webp) | ![CAD Debug: handwriting at 2.5x](theming/cad-debug-desktop-penzoom.webp) |
 
-**Cel** ([`cel.css`](../playground/themes/cel.css), generated from [`tokens/cel.json`](../playground/themes/tokens/cel.json), light mode). Flat cel illustration on warm grey board: one even slate outline around every shape, rounded forms, muted apricot, sage and slate-blue fills, no shading.
+**Cel** ([`cel.css`](../packages/excalidraw/themes/cel.css), generated from [`cel.tokens.json`](../packages/excalidraw/themes/cel.tokens.json), light mode). Flat cel illustration on warm grey board: one even slate outline around every shape, rounded forms, muted apricot, sage and slate-blue fills, no shading.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Cel: the sample scene with a selection](theming/cel-desktop-selected.webp) | ![Cel: handwriting at 2.5x](theming/cel-desktop-penzoom.webp) |
 
-**Locked Profile** ([`locked-profile.css`](../playground/themes/locked-profile.css), light mode). The quietest plate: graphite on cool white, no grid at all, hairline ink, one bronze accent for anything live. Panels are almost not there.
+**Locked Profile** ([`locked-profile.css`](../packages/excalidraw/themes/locked-profile.css), light mode). The quietest plate: graphite on cool white, no grid at all, hairline ink, one bronze accent for anything live. Panels are almost not there.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Locked Profile: the sample scene with a selection](theming/locked-profile-desktop-selected.webp) | ![Locked Profile: handwriting at 2.5x](theming/locked-profile-desktop-penzoom.webp) |
 
-**Raking Light** ([`raking-light.css`](../playground/themes/raking-light.css), light mode). Low warm key light from the left, cool fill from the right: the paper is a single quiet gradient and the panels cast one long shadow away from the light. Medium graphite outlines, sage and bronze bodies.
+**Raking Light** ([`raking-light.css`](../packages/excalidraw/themes/raking-light.css), light mode). Low warm key light from the left, cool fill from the right: the paper is a single quiet gradient and the panels cast one long shadow away from the light. Medium graphite outlines, sage and bronze bodies.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Raking Light: the sample scene with a selection](theming/raking-light-desktop-selected.webp) | ![Raking Light: handwriting at 2.5x](theming/raking-light-desktop-penzoom.webp) |
 
-**Westworld Night** ([`westworld-night.css`](../playground/themes/westworld-night.css), generated from [`tokens/westworld-night.json`](../playground/themes/tokens/westworld-night.json), dark mode). White-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills, bronze for anything live. Machined, unhurried.
+**Westworld Night** ([`westworld-night.css`](../packages/excalidraw/themes/westworld-night.css), generated from [`westworld-night.tokens.json`](../packages/excalidraw/themes/westworld-night.tokens.json), dark mode). White-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills, bronze for anything live. Machined, unhurried.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
@@ -331,73 +359,73 @@ The playground ships these themes. Each is one CSS file that sets the canvas, th
 
 ### Wide set
 
-**Blueprint** ([`blueprint.css`](../playground/themes/blueprint.css), dark mode). Cyanotype: deep cobalt paper, a white construction grid, chalk-white linework and monospace annotations.
+**Blueprint** ([`blueprint.css`](../packages/excalidraw/themes/blueprint.css), dark mode). Cyanotype: deep cobalt paper, a white construction grid, chalk-white linework and monospace annotations.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Blueprint: the sample scene with a selection](theming/blueprint-desktop-selected.webp) | ![Blueprint: handwriting at 2.5x](theming/blueprint-desktop-penzoom.webp) |
 
-**Brutalist** ([`brutalist.css`](../playground/themes/brutalist.css), generated from [`tokens/brutalist.json`](../playground/themes/tokens/brutalist.json), light mode). Raw and loud: hard black borders, offset block shadows, monospace, acid accents, no softness anywhere.
+**Brutalist** ([`brutalist.css`](../packages/excalidraw/themes/brutalist.css), generated from [`brutalist.tokens.json`](../packages/excalidraw/themes/brutalist.tokens.json), light mode). Raw and loud: hard black borders, offset block shadows, monospace, acid accents, no softness anywhere.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Brutalist: the sample scene with a selection](theming/brutalist-desktop-selected.webp) | ![Brutalist: handwriting at 2.5x](theming/brutalist-desktop-penzoom.webp) |
 
-**E-ink** ([`e-ink.css`](../playground/themes/e-ink.css), light mode). For e-paper tablets: pure black on white, no gray fills behind text, no shadows and no motion, so the panel never ghosts.
+**E-ink** ([`e-ink.css`](../packages/excalidraw/themes/e-ink.css), light mode). For e-paper tablets: pure black on white, no gray fills behind text, no shadows and no motion, so the panel never ghosts.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![E-ink: the sample scene with a selection](theming/e-ink-desktop-selected.webp) | ![E-ink: handwriting at 2.5x](theming/e-ink-desktop-penzoom.webp) |
 
-**Game Boy** ([`gameboy.css`](../playground/themes/gameboy.css), light mode). Four shades of green and nothing else: DMG palette, chunky borders, monospace.
+**Game Boy** ([`gameboy.css`](../packages/excalidraw/themes/gameboy.css), light mode). Four shades of green and nothing else: DMG palette, chunky borders, monospace.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Game Boy: the sample scene with a selection](theming/gameboy-desktop-selected.webp) | ![Game Boy: handwriting at 2.5x](theming/gameboy-desktop-penzoom.webp) |
 
-**Glass** ([`glass.css`](../playground/themes/glass.css), light mode). Frosted panels over a pale aurora. The frost is translucency and a bright edge, not backdrop-filter, so the canvas never pays for a blur.
+**Glass** ([`glass.css`](../packages/excalidraw/themes/glass.css), light mode). Frosted panels over a pale aurora. The frost is translucency and a bright edge, not backdrop-filter, so the canvas never pays for a blur.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Glass: the sample scene with a selection](theming/glass-desktop-selected.webp) | ![Glass: handwriting at 2.5x](theming/glass-desktop-penzoom.webp) |
 
-**High Contrast** ([`high-contrast.css`](../playground/themes/high-contrast.css), dark mode). For low vision: black ground, white text and 2px white edges, yellow for focus and selection, bold strokes and larger text.
+**High Contrast** ([`high-contrast.css`](../packages/excalidraw/themes/high-contrast.css), dark mode). For low vision: black ground, white text and 2px white edges, yellow for focus and selection, bold strokes and larger text.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![High Contrast: the sample scene with a selection](theming/high-contrast-desktop-selected.webp) | ![High Contrast: handwriting at 2.5x](theming/high-contrast-desktop-penzoom.webp) |
 
-**Risograph** ([`risograph.css`](../playground/themes/risograph.css), light mode). Two-drum riso print: blue and fluorescent pink on warm stock, panels printed slightly off register.
+**Risograph** ([`risograph.css`](../packages/excalidraw/themes/risograph.css), light mode). Two-drum riso print: blue and fluorescent pink on warm stock, panels printed slightly off register.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Risograph: the sample scene with a selection](theming/risograph-desktop-selected.webp) | ![Risograph: handwriting at 2.5x](theming/risograph-desktop-penzoom.webp) |
 
-**Sketchbook** ([`sketchbook.css`](../playground/themes/sketchbook.css), light mode). A cream sketchbook page with faint ruled lines, soft graphite, colored pencils and hachure. Loose and hand-drawn on purpose.
+**Sketchbook** ([`sketchbook.css`](../packages/excalidraw/themes/sketchbook.css), light mode). A cream sketchbook page with faint ruled lines, soft graphite, colored pencils and hachure. Loose and hand-drawn on purpose.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Sketchbook: the sample scene with a selection](theming/sketchbook-desktop-selected.webp) | ![Sketchbook: handwriting at 2.5x](theming/sketchbook-desktop-penzoom.webp) |
 
-**Swiss** ([`swiss.css`](../playground/themes/swiss.css), light mode). International typographic style: white space, Helvetica, a strict faint grid, black hairlines and one red.
+**Swiss** ([`swiss.css`](../packages/excalidraw/themes/swiss.css), light mode). International typographic style: white space, Helvetica, a strict faint grid, black hairlines and one red.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Swiss: the sample scene with a selection](theming/swiss-desktop-selected.webp) | ![Swiss: handwriting at 2.5x](theming/swiss-desktop-penzoom.webp) |
 
-**Synthwave** ([`synthwave.css`](../playground/themes/synthwave.css), dark mode). 1986 at midnight: violet night, magenta and cyan neon grid, glowing panel edges, rounded type.
+**Synthwave** ([`synthwave.css`](../packages/excalidraw/themes/synthwave.css), dark mode). 1986 at midnight: violet night, magenta and cyan neon grid, glowing panel edges, rounded type.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Synthwave: the sample scene with a selection](theming/synthwave-desktop-selected.webp) | ![Synthwave: handwriting at 2.5x](theming/synthwave-desktop-penzoom.webp) |
 
-**Terminal** ([`terminal.css`](../playground/themes/terminal.css), generated from [`tokens/terminal.json`](../playground/themes/tokens/terminal.json), dark mode). Green phosphor on black: monospace everything, square corners, a dim glow on UI text and nothing else lit. Element greens display at #6fc76f, the brightest dark mode allows.
+**Terminal** ([`terminal.css`](../packages/excalidraw/themes/terminal.css), generated from [`terminal.tokens.json`](../packages/excalidraw/themes/terminal.tokens.json), dark mode). Green phosphor on black: monospace everything, square corners, a dim glow on UI text and nothing else lit. Element greens display at #6fc76f, the brightest dark mode allows.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![Terminal: the sample scene with a selection](theming/terminal-desktop-selected.webp) | ![Terminal: handwriting at 2.5x](theming/terminal-desktop-penzoom.webp) |
 
-**Windows 95** ([`win95.css`](../playground/themes/win95.css), light mode). Teal desktop, silver beveled chrome, navy title bars and 1-pixel black ink, like it is 1995.
+**Windows 95** ([`win95.css`](../packages/excalidraw/themes/win95.css), light mode). Teal desktop, silver beveled chrome, navy title bars and 1-pixel black ink, like it is 1995.
 
 | Scene | Pen at 2.5x |
 | --- | --- |

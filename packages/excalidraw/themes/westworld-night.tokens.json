@@ -1,5 +1,5 @@
 {
-  "$schema": "./schema.json",
+  "$schema": "./tokens.schema.json",
   "name": "Westworld Night",
   "mode": "dark",
   "description": "White-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills, bronze for anything live. Machined, unhurried.",

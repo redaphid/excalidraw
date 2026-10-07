@@ -13,7 +13,7 @@ A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DO
 
 ## 1. Turn the input into tokens
 
-Start from the closest existing token file in `playground/themes/tokens/`.
+Start from the closest sample. `packages/excalidraw/themes/index.json` (shipped in the package as `@excalidraw/excalidraw/themes/index.json`) lists the 18 sample themes with their look, mode, pen and caveats. They are meant to be read and adapted. For a generated one, copy its `<name>.tokens.json`. For a hand-written one, read its `<name>.css` for the choices and write tokens that make them. The draw MCP server will serve the same files as `theme://index`, `theme://<name>/css` and `theme://<name>/tokens` (planned, not yet available).
 
 - **From a vibe** ("Westworld title card"): name the instrument and the material first. What draws (technical pen, pencil, marker, phosphor trace)? On what (paper, film, screen, slate)? Pick a canvas, one ink, one accent and four to six palette colors that belong to that world. Fewer colors read as more deliberate.
 - **From a palette:** assign canvas (the most common, quietest color), ink (the darkest), accent (the one meant to catch the eye), and put the rest in `palette`.
@@ -56,7 +56,7 @@ yarn theme:gen <id>
 node scripts/theme-screenshots/shoot.mjs --themes <id> --viewports desktop,phone --states selected,colorpicker,dialog,pen --out theme-screenshots/<id>/iter<N> --sheet
 ```
 
-`yarn theme:gen` (or `corepack yarn theme:gen` where `yarn` is not on the PATH) writes `playground/themes/<id>.css` from `playground/themes/tokens/<id>.json` and prints the warnings. The `pen` state writes both the 100% shot and the 2.5x close-up, `penzoom`. The harness drives the playground in the installed Chromium and tiles every shot into `theme-screenshots/<id>/iter<N>/<id>/sheet.png`: read that one image. To check for twins, shoot the theme beside its nearest neighbours and read the contact sheet:
+`yarn theme:gen` (or `corepack yarn theme:gen` where `yarn` is not on the PATH) writes `packages/excalidraw/themes/<id>.css` from `<id>.tokens.json` beside it and prints the warnings. A new theme also needs an entry in `themes/index.json`; `sampleThemes.test.ts` fails until the index and the files agree. The `pen` state writes both the 100% shot and the 2.5x close-up, `penzoom`. The harness drives the playground in the installed Chromium and tiles every shot into `theme-screenshots/<id>/iter<N>/<id>/sheet.png`: read that one image. To check for twins, shoot the theme beside its nearest neighbours and read the contact sheet:
 
 ```sh
 node scripts/theme-screenshots/shoot.mjs --themes <id>,<neighbour>,<neighbour> --viewports desktop --states selected --out theme-screenshots/<id>/contact --contact selected

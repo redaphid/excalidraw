@@ -6,7 +6,7 @@
  *
  *   node scripts/theme-screenshots/shoot.mjs [options]
  *
- *   --themes a,b        theme ids (default: "default" plus playground/themes/*.css)
+ *   --themes a,b        theme ids (default: "default" plus themes/index.json)
  *   --viewports a,b     desktop, tablet, phone (default: all)
  *   --states a,b        canvas, selected, colorpicker, menu, dialog, pen
  *                       (default: all; pen also writes a 2.5x close-up, penzoom)
@@ -249,10 +249,13 @@ const parseArgs = (argv) => {
 
 const listThemes = () => [
   "default",
-  ...fs
-    .readdirSync(path.join(root, "playground/themes"), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".css"))
-    .map((entry) => entry.name.replace(/\.css$/, ""))
+  ...JSON.parse(
+    fs.readFileSync(
+      path.join(root, "packages/excalidraw/themes/index.json"),
+      "utf8",
+    ),
+  )
+    .themes.map(({ name }) => name)
     .sort(),
 ];
 

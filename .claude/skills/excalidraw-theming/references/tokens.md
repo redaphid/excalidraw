@@ -1,6 +1,6 @@
 # Theme tokens
 
-Tokens are plain JSON. `generateThemeCss(tokens)` from `@excalidraw/common` returns `{ css, warnings }`. It is pure (no DOM, no Node built-ins, no editor code), so a server or an MCP tool can call it. `THEME_TOKENS_SCHEMA` is the JSON Schema; `yarn theme:gen --schema` writes it to `playground/themes/tokens/schema.json`, and token files point at it with `"$schema": "./schema.json"`. In the repo, `yarn theme:gen <id>` reads `playground/themes/tokens/<id>.json` and writes `playground/themes/<id>.css`.
+Tokens are plain JSON. `generateThemeCss(tokens)` from `@excalidraw/common` returns `{ css, warnings }`. It is pure (no DOM, no Node built-ins, no editor code), so a server or an MCP tool can call it. `THEME_TOKENS_SCHEMA` is the JSON Schema; `yarn theme:gen --schema` writes it to `packages/excalidraw/themes/tokens.schema.json`, and token files point at it with `"$schema": "./tokens.schema.json"`. In the repo, `yarn theme:gen <id>` reads `packages/excalidraw/themes/<id>.tokens.json` and writes `<id>.css` beside it.
 
 Every color is a 6-digit hex, written as the user should see it in either mode.
 

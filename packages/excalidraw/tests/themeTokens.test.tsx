@@ -13,10 +13,7 @@ const { h } = window;
 
 const tokens: ThemeTokens = JSON.parse(
   fs.readFileSync(
-    path.resolve(
-      __dirname,
-      "../../../playground/themes/tokens/architect-parchment.json",
-    ),
+    path.resolve(__dirname, "../themes/architect-parchment.tokens.json"),
     "utf8",
   ),
 );

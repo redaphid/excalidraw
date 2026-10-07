@@ -3,7 +3,21 @@
   "title": "Excalidraw theme tokens",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "mode", "description", "canvas", "ink", "accent", "palette", "grid", "type", "stroke", "pen", "surface", "frame"],
+  "required": [
+    "name",
+    "mode",
+    "description",
+    "canvas",
+    "ink",
+    "accent",
+    "palette",
+    "grid",
+    "type",
+    "stroke",
+    "pen",
+    "surface",
+    "frame"
+  ],
   "properties": {
     "$schema": {
       "type": "string"
@@ -13,7 +27,10 @@
       "minLength": 1
     },
     "mode": {
-      "enum": ["light", "dark"]
+      "enum": [
+        "light",
+        "dark"
+      ]
     },
     "description": {
       "type": "string"
@@ -51,7 +68,12 @@
     "grid": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["color", "minor", "major", "style"],
+      "required": [
+        "color",
+        "minor",
+        "major",
+        "style"
+      ],
       "properties": {
         "color": {
           "type": "string",
@@ -68,20 +90,37 @@
           "maximum": 1
         },
         "style": {
-          "enum": ["solid", "dashed"]
+          "enum": [
+            "solid",
+            "dashed"
+          ]
         }
       }
     },
     "type": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ui", "canvas", "size"],
+      "required": [
+        "ui",
+        "canvas",
+        "size"
+      ],
       "properties": {
         "ui": {
           "type": "string"
         },
         "canvas": {
-          "enum": ["Excalifont", "Virgil", "Nunito", "Lilita One", "Comic Shanns", "Liberation Sans", "Cascadia", "Assistant", "Helvetica"]
+          "enum": [
+            "Excalifont",
+            "Virgil",
+            "Nunito",
+            "Lilita One",
+            "Comic Shanns",
+            "Liberation Sans",
+            "Cascadia",
+            "Assistant",
+            "Helvetica"
+          ]
         },
         "size": {
           "type": "number",
@@ -92,32 +131,70 @@
     "stroke": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["width", "roughness", "roundness", "arrowhead", "arrowType", "fill"],
+      "required": [
+        "width",
+        "roughness",
+        "roundness",
+        "arrowhead",
+        "arrowType",
+        "fill"
+      ],
       "properties": {
         "width": {
-          "enum": ["thin", "medium", "bold"]
+          "enum": [
+            "thin",
+            "medium",
+            "bold"
+          ]
         },
         "roughness": {
-          "enum": [0, 1, 2]
+          "enum": [
+            0,
+            1,
+            2
+          ]
         },
         "roundness": {
-          "enum": ["sharp", "round"]
+          "enum": [
+            "sharp",
+            "round"
+          ]
         },
         "arrowhead": {
-          "enum": ["arrow", "bar", "circle", "circle_outline", "triangle", "triangle_outline", "diamond", "diamond_outline"]
+          "enum": [
+            "arrow",
+            "bar",
+            "circle",
+            "circle_outline",
+            "triangle",
+            "triangle_outline",
+            "diamond",
+            "diamond_outline"
+          ]
         },
         "arrowType": {
-          "enum": ["sharp", "round"]
+          "enum": [
+            "sharp",
+            "round"
+          ]
         },
         "fill": {
-          "enum": ["solid", "hachure", "cross-hatch", "zigzag"]
+          "enum": [
+            "solid",
+            "hachure",
+            "cross-hatch",
+            "zigzag"
+          ]
         }
       }
     },
     "pen": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pressure", "width"],
+      "required": [
+        "pressure",
+        "width"
+      ],
       "properties": {
         "pressure": {
           "type": "boolean"
@@ -146,17 +223,30 @@
     "surface": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["radius", "border", "shadow"],
+      "required": [
+        "radius",
+        "border",
+        "shadow"
+      ],
       "properties": {
         "radius": {
           "type": "number",
           "minimum": 0
         },
         "border": {
-          "enum": ["none", "hairline", "bold"]
+          "enum": [
+            "none",
+            "hairline",
+            "bold"
+          ]
         },
         "shadow": {
-          "enum": ["none", "soft", "long", "hard"]
+          "enum": [
+            "none",
+            "soft",
+            "long",
+            "hard"
+          ]
         },
         "panel": {
           "type": "string",
@@ -171,7 +261,10 @@
     "frame": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["width", "alpha"],
+      "required": [
+        "width",
+        "alpha"
+      ],
       "properties": {
         "width": {
           "type": "number",

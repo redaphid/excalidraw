@@ -1,5 +1,5 @@
 {
-  "$schema": "./schema.json",
+  "$schema": "./tokens.schema.json",
   "name": "Architect Parchment",
   "mode": "light",
   "description": "Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.",
