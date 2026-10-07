@@ -21,7 +21,9 @@ Start from the closest existing token file in `playground/themes/tokens/`.
   ```sh
   node scripts/theme-gen/palette-from-image.mjs <image> --name "Theme Name"
   ```
-  It prints each color with its share of the image and a starter token file. The role guesses are mechanical: look at the image and correct them. Drop colors that come from lighting (shadow tints, highlights). Keep the colors of the objects. Without the script, read the image yourself and name five to eight flat colors.
+  It prints each color with its share of the image and a starter token file that already passes the generator's contrast checks. The role guesses are mechanical: look at the image and correct them. Drop colors that come from lighting (shadow tints, highlights). Keep the colors of the objects. Thin outlines get averaged with their surroundings, so read the outline color off the image by eye. Without the script, name five to eight flat colors yourself.
+
+Each palette color does two jobs: at full strength it is a stroke swatch, and mixed about 32% into the canvas it is the fill wash under labels. On a mid-tone canvas those washes turn gray, so pick hues deeper and more saturated than the fills you want to see.
 
 Decide the stroke character with the same care as the colors. Colors alone leave the default blunt whiteboard look.
 
@@ -34,16 +36,16 @@ Decide the stroke character with the same care as the colors. Colors alone leave
 | Marker | `bold`, `0`, `sharp` | `triangle` | `Cascadia` | no, `2.5` |
 | Pixel pencil | `thin`, `0`, `sharp` | `arrow` | `Liberation Sans` | no, `0.5`, streamline `0` |
 
-Freedraw widths are small numbers: `0.2` is a hairline, `1` is about 3 px, `2.5` is a fat marker.
+Freedraw widths are small numbers. A constant pen draws about 2.8 times its width in pixels and a pressure pen up to about 4.25 times: `0.2` is a hairline, `2.5` a fat marker.
 
 ## 2. The loop: apply, screenshot, judge, adjust
 
 1. **Apply.** Generate the CSS from the tokens and put it on an editor.
 2. **Screenshot.** Capture the scene with a selection, the color picker, the help dialog and the pen at 2.5x, on desktop and phone.
 3. **Judge.** Read the images themselves, against the checklist below. A green command proves nothing about how a theme looks.
-4. **Adjust.** Fix the biggest failure in the tokens, not in the CSS, and go back to 1.
+4. **Adjust.** Fix the biggest failure in the tokens, not in the CSS, and go back to 1. Small independent fixes (a hint color, one swatch) can ride along with it; change only one structural thing (palette, stroke character, surface style) per iteration, so the next sheet shows what it did.
 
-Every warning from `generateThemeCss` is `{token, from, to, reason}`: a color it had to move so text or ink stays legible. A warning means a token is close to illegible. Prefer changing the token over accepting the move.
+Every warning from `generateThemeCss` is `{token, from, to, reason}`: a color it had to move so text or ink stays legible, a color dark mode cannot display, or a `mode` that fights the canvas. Prefer changing the token over accepting the move.
 
 Stop when a full pass of the checklist finds nothing worth fixing. Keep a count of iterations and one line per iteration on what changed and why.
 
@@ -54,7 +56,13 @@ yarn theme:gen <id>
 node scripts/theme-screenshots/shoot.mjs --themes <id> --viewports desktop,phone --states selected,colorpicker,dialog,pen --out theme-screenshots/<id>/iter<N> --sheet
 ```
 
-`yarn theme:gen` writes `playground/themes/<id>.css` from `playground/themes/tokens/<id>.json` and prints the warnings. The harness drives the playground in the installed Chromium and tiles every shot into `theme-screenshots/<id>/iter<N>/<id>/sheet.png`: read that one image. When the loop is done, shoot every viewport and state once (drop `--viewports` and `--states`, add `--video` for a live pen recording), and check one state in Firefox and WebKit with `--browser firefox` and `--browser webkit`.
+`yarn theme:gen` (or `corepack yarn theme:gen` where `yarn` is not on the PATH) writes `playground/themes/<id>.css` from `playground/themes/tokens/<id>.json` and prints the warnings. The `pen` state writes both the 100% shot and the 2.5x close-up, `penzoom`. The harness drives the playground in the installed Chromium and tiles every shot into `theme-screenshots/<id>/iter<N>/<id>/sheet.png`: read that one image. To check for twins, shoot the theme beside its nearest neighbours and read the contact sheet:
+
+```sh
+node scripts/theme-screenshots/shoot.mjs --themes <id>,<neighbour>,<neighbour> --viewports desktop --states selected --out theme-screenshots/<id>/contact --contact selected
+```
+
+When the loop is done, shoot every viewport and state once into `theme-screenshots/<id>/final` (drop `--viewports` and `--states`, add `--video` for a live pen recording), and check one state in Firefox and WebKit with `--browser firefox` and `--browser webkit`.
 
 Optional, this machine only: `node D:/projects/_scratch/excalidraw-theme-gallery/publish.mjs` copies the screenshots to the gallery the user reads on a phone. Elsewhere, attach the sheet to the PR instead.
 
@@ -71,8 +79,13 @@ The draw MCP is planned to grow a theme tool that takes the tokens, calls `gener
 - **Popovers are opaque.** The color picker must not show the scene through it.
 - **Frames sit behind content.** A frame drawn heavier than the shapes inside it is wrong.
 - **The grid carries the theme, quietly.** Judge it at 100% zoom. Graph paper wants solid minors at about 0.15 to 0.2 alpha and majors at about 0.45.
+- **Menus and dialogs.** The main menu, the help dialog and its keycaps, the color picker.
 - **Phone is not an afterthought.** The bottom toolbar, the stacked scene, the picker at phone width.
+
+The sample scene outlines each shape in its palette color. A theme built on one dark outline around colored fills shows that outline only in shapes drawn after the theme applies; judge the outline in the pen and hint shots, or draw a shape by hand.
 
 ## Dark themes
 
-In dark mode the editor shows element colors through a lightness-inverting filter, so scenes stay portable between modes. Write `"mode": "dark"` and give displayed colors: the generator stores their inverse. The filter can't display saturated light colors (white tops out at `#ededed`, no bright yellow, cyan turns teal). For full-value neon on a dark canvas, use `"mode": "light"` with a dark `canvas`. The cost is that black ink drawn under another theme vanishes. The Terminal theme makes that trade.
+In dark mode the editor shows element colors through a lightness-inverting filter, so scenes stay portable between modes. Write `"mode": "dark"` and give displayed colors: the generator stores their inverse and warns about any it cannot display (white tops out at `#ededed`, no bright yellow, cyan turns teal, green stops at `#6fc76f`). UI and canvas colors are not filtered, so neon belongs there.
+
+A dark canvas needs `"mode": "dark"`. A board is shared, and ink drawn under other themes is black by default: on a dark canvas in light mode it is invisible. The generator warns on `mode` whenever the canvas and the mode disagree. Terminal accepts dark mode's `#6fc76f` for its element greens and keeps full phosphor in its UI text for this reason.
