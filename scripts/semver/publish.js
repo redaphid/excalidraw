@@ -84,7 +84,6 @@ const assertPublishable = (manifest, expected) => {
 const registryEntry = (artifact, id) =>
   artifact.registry.find((entry) => entry.id === id);
 
-// Byte-identical, or rebuilt from the same commit by an earlier attempt.
 const isOurs = (observed, entry, sha) =>
   observed.integrity === `sha512-${entry.sha512}` || observed.gitHead === sha;
 
@@ -161,8 +160,6 @@ const gh = (ctx, args, input) => {
   return parseJson(result.stdout);
 };
 
-// npm must not inherit a registry or a token from the runner, so its only
-// config is the userconfig written here plus the flags below.
 const npm = (ctx, args) =>
   ctx.io.run(
     "npm",
@@ -400,7 +397,6 @@ const main = (io) => {
 
   const workdir = fs.mkdtempSync(path.join(os.tmpdir(), "semver-publish-"));
   const userconfig = path.join(workdir, "npmrc");
-  // A literal reference that npm expands, so the token never lands on disk.
   fs.writeFileSync(
     userconfig,
     `//${new URL(GITHUB_REGISTRY).host}/:_authToken=\${GITHUB_TOKEN}\n`,
@@ -423,8 +419,6 @@ const main = (io) => {
     }
   };
 
-  // GitHub Packages can take a few seconds to show a new version, so an
-  // unchanged observation right after a step is retried before it counts.
   const observeAfter = (previous) => {
     for (let look = 1; ; look++) {
       const observed = observe(ctx);

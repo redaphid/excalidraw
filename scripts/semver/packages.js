@@ -6,8 +6,6 @@ const LOCKSTEP = [
   "excalidraw",
 ];
 
-// excalidraw goes last, so a consumer never resolves it while a sibling it
-// depends on is still missing from the registry.
 const PUBLISH_ORDER = [
   "fractional-indexing",
   "math",
@@ -30,7 +28,6 @@ const isLockstep = (name) => LOCKSTEP.some((id) => sourceName(id) === name);
 const lockstepDependencies = (manifest) =>
   LOCKSTEP.filter((id) => manifest.dependencies?.[sourceName(id)]);
 
-// common and math import each other, so the walk visits each package once.
 const siblingClosure = (id, manifestsById) => {
   const reached = new Set([id]);
   const visit = (current) => {
@@ -58,8 +55,6 @@ const atVersion = (manifest, version) => {
   return { ...manifest, version, dependencies };
 };
 
-// The draw app installs each tarball from its release URL, where no registry
-// can resolve the siblings, so each tarball bundles its sibling closure.
 const urlManifest = (packed, id, version, siblings) => {
   const manifest = atVersion(packed[id], version);
   if (siblings.length === 0) {
@@ -83,9 +78,10 @@ const urlManifest = (packed, id, version, siblings) => {
   };
 };
 
-// Built code imports siblings by their @excalidraw/* names, including ones a
-// manifest never declares (excalidraw imports fractional-indexing), so every
-// sibling in the closure is declared under that name as an alias.
+// Upstream's excalidraw source imports element's source by relative path, so
+// its bundle carries element's imports, such as @excalidraw/fractional-indexing,
+// that its manifest never declares. Aliasing the whole sibling closure covers
+// any sibling that bundled code reaches.
 const registryManifest = (packed, id, version, sha, siblings) => {
   const { dependencies = {}, ...manifest } = packed[id];
   delete manifest.bundleDependencies;
@@ -110,8 +106,6 @@ const registryManifest = (packed, id, version, sha, siblings) => {
   };
 };
 
-// npm and pnpm expand ${NODE_AUTH_TOKEN} when they read .npmrc, so the token
-// itself never lands in a file.
 const consumerNpmrc = (registryUrl) => {
   const { host, pathname } = new URL(registryUrl);
   return `@redaphid:registry=${registryUrl}\n//${host}${pathname}:_authToken=\${NODE_AUTH_TOKEN}\n`;

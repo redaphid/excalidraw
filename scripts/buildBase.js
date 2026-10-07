@@ -14,8 +14,9 @@ const getConfig = (outdir) => ({
   assetNames: "[dir]/[name]",
   alias: {
     "@excalidraw/utils": path.resolve(__dirname, "../packages/utils/src"),
-    // Published under another name, a package cannot resolve its own source
-    // name, so its imports of itself are bundled from src.
+    // Upstream's source imports its own package name, and every upstream
+    // merge can add more. Published under @redaphid/*, that name resolves to
+    // nothing, so the build bundles it from src.
     [name]: path.resolve("src"),
   },
   external: [

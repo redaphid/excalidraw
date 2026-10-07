@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Only scripts/semver/publish.js may publish, and only to GitHub Packages.
-# Plain bash and grep, because CI runs this before installing dependencies.
 set -euo pipefail
 
 cd "${1:-.}"
@@ -45,7 +43,6 @@ check() {
 
 check R1 'registry\.npmjs\.org|registry\.yarnpkg\.com' "${all[@]}"
 check R2 'NPM_TOKEN|NODE_AUTH_TOKEN|registry-url' "${github[@]}"
-# The quoted form catches an argv array such as ["publish", tarball].
 check R3 "(npm|yarn|pnpm)[[:space:]]+publish|yarn[[:space:]]+release|[\"'\`]publish[\"'\`]" "${not_publisher[@]}"
 check R4 'packages:[[:space:]]*write' "${workflows[@]}"
 

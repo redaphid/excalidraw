@@ -138,7 +138,6 @@ const verifyLoadsAloneInNode = (packageName) => {
   passed(`@excalidraw/${packageName} loads on its own in Node`);
 };
 
-// Read from the source tree, so the check never trusts the manifests it tests.
 const EXCALIDRAW_CLOSURE = siblingClosure(
   "excalidraw",
   Object.fromEntries(
@@ -149,8 +148,6 @@ const EXCALIDRAW_CLOSURE = siblingClosure(
   ),
 );
 
-// Each config entry goes on the command line and into .npmrc, so neither a
-// global pnpm config nor a stray flag decides the layout under test.
 const MANAGERS = {
   npm: {
     install: "npm install --no-audit --no-fund --ignore-scripts",
@@ -295,8 +292,6 @@ const verifyRegistry = (target) => {
   }
 };
 
-// The installs run through execSync, which blocks this event loop, so the
-// registry has to live in its own process.
 const startLocalRegistry = (authToken) =>
   new Promise((resolve, reject) => {
     const child = spawn(

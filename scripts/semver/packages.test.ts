@@ -12,8 +12,6 @@ const {
 const DRAW = "0.19.0-draw.21";
 const SHA = "9ae2769c3f00d45f7a0a753946dcfceb5abce8f3";
 
-// The packed manifests as yarn writes them today: names @excalidraw/*, the
-// draw version, and excalidraw never declaring fractional-indexing.
 const packed = {
   common: {
     name: "@excalidraw/common",

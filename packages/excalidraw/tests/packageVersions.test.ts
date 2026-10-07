@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 
-// The packages that release together at one version.
 const LOCKSTEP = [
   "common",
   "fractional-indexing",

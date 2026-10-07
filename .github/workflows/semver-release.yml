@@ -57,8 +57,6 @@ jobs:
           if [ -n "$INPUT_VERSION" ]; then
             args+=(--version="$INPUT_VERSION")
           fi
-          # A dry run of a pull request builds the pull request, never an
-          # open claim on master.
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             args+=(--offline)
           fi
@@ -98,8 +96,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # No dependency install here: no third-party code runs while the write
-  # tokens are live.
   publish:
     needs: [plan, build]
     if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && github.ref == 'refs/heads/master' && needs.plan.outputs.action != 'nothing'

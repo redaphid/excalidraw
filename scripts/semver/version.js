@@ -69,9 +69,6 @@ const foreignReason = (raw, version) => {
   return null;
 };
 
-// v0.x tags are upstream's, so a release tag starts at 1.0.0. A tag at or
-// above 1.0.0 that this workflow did not create would silently become the
-// base of the next version, so it stops the release instead.
 const releaseTags = (rawTags) =>
   rawTags
     .flatMap((raw) => {
@@ -111,8 +108,6 @@ const renderNotes = (plan) => {
   return [headline(plan), ...sections].join("\n\n");
 };
 
-// tags: releaseTags() output, oldest first. commits: newest first, listed
-// from `since` (the newest release tag, or the newest draw tag before 1.0.0).
 const planRelease = ({ head, tags, isComplete, override, commits, since }) => {
   const open = tags.filter((tag) => !isComplete(tag.tag)).at(-1);
   if (open) {

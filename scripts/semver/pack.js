@@ -81,7 +81,6 @@ const pack = ({ version }) => {
   for (const id of LOCKSTEP) {
     const siblings = siblingClosure(id, packed);
 
-    // Bundles copy the packed tarballs, so no bundled copy nests another.
     const urlStaging = path.join(work, "url", id, "package");
     fs.cpSync(unpacked(id), urlStaging, { recursive: true });
     writeJson(
@@ -111,7 +110,6 @@ const pack = ({ version }) => {
       path.join(registryStaging, "package.json"),
       registryManifest(packed, id, version, sha, siblings),
     );
-    // npm pack writes the same bytes for the same files, unlike tar.
     const [{ filename }] = JSON.parse(
       execSync(
         `npm pack ${registryStaging} --pack-destination ${REGISTRY_DIR} --ignore-scripts --json`,
