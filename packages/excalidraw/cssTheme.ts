@@ -61,6 +61,8 @@ export type CssThemeAppState = Partial<
 export type CssTheme = Readonly<{
   canvas: CanvasTheme;
   appState: CssThemeAppState;
+  /** perfect-freehand options for new variable-width freedraw strokes */
+  pen: Readonly<{ thinning?: number; taper?: number }>;
   /** replace the color picker's palette grid */
   palettes: Readonly<{
     elementStroke?: ColorPaletteCustom;
@@ -71,6 +73,7 @@ export type CssTheme = Readonly<{
 export const EMPTY_CSS_THEME: CssTheme = Object.freeze({
   canvas: Object.freeze({}),
   appState: Object.freeze({}),
+  pen: Object.freeze({}),
   palettes: Object.freeze({}),
 });
 
@@ -251,5 +254,16 @@ export const readCssTheme = (style: {
     elementBackground: palette(read("--color-palette-background")),
   });
 
-  return { canvas, appState, palettes };
+  const thinning = Number(read("--element-freedraw-thinning"));
+  const pen = definedEntries({
+    thinning:
+      read("--element-freedraw-thinning") !== "" &&
+      thinning >= -1 &&
+      thinning <= 1
+        ? thinning
+        : undefined,
+    taper: positiveNumber(read("--element-freedraw-taper")),
+  });
+
+  return { canvas, appState, pen, palettes };
 };

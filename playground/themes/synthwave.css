@@ -25,8 +25,8 @@
   --element-end-arrowhead: arrow;
   --element-font-family: Nunito;
   --element-font-size: 18;
-  --element-freedraw-variability: variable;
-  --element-freedraw-width: 0.25;
+  --element-freedraw-variability: constant;
+  --element-freedraw-width: 1.1;
   --color-picks-stroke: #ff49e9 #005263 #ce4600 #7b47cd #2e1000;
   --color-picks-background: transparent #8fc4e9 #ffc0ff #dec0ff #ffc2f3;
   --color-palette-stroke: #ffd8ff #ffb6ff #ff94ff #ff6df7 #ff49e9,

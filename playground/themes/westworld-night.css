@@ -5,14 +5,16 @@
  */
 :scope,
 :scope.theme--dark {
+  --element-freedraw-taper: 5;
+  --element-freedraw-thinning: 0.25;
   --canvas-background: #0b0c0e;
-  --canvas-grid-color: rgba(240, 238, 232, 0.035);
-  --canvas-grid-bold-color: rgba(240, 238, 232, 0.09);
+  --canvas-grid-color: rgba(240, 238, 232, 0.045);
+  --canvas-grid-bold-color: rgba(240, 238, 232, 0.11);
   --canvas-grid-style: solid;
   --canvas-handle-fill: #0b0c0e;
-  --canvas-frame-color: rgba(240, 238, 232, 0.28);
+  --canvas-frame-color: rgba(240, 238, 232, 0.55);
   --canvas-frame-width: 1;
-  --canvas-frame-name-color: #8d8a84;
+  --canvas-frame-name-color: #c9c4ba;
   --color-selection: #c89a5a;
   --element-stroke-color: #141414;
   --element-background-color: transparent;
@@ -25,10 +27,10 @@
   --element-end-arrowhead: arrow;
   --element-font-family: "Liberation Sans";
   --element-font-size: 15;
-  --element-freedraw-variability: constant;
-  --element-freedraw-width: 0.125;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.2;
   --color-picks-stroke: #010000 #8b550b #eb8479 #405b70 #455d49;
-  --color-picks-background: transparent #deceb8 #d1d1d4 #afb0b1 #c6cfd7;
+  --color-picks-background: transparent #f2e9dc #f0f1f7 #f8f9fe #f2f4fa;
   --color-palette-stroke: #d5d6d6 #a2a2a1 #6f6d6a #35332e #010000,
     #ede5da #d6c2a8 #bf9f76 #a2783d #8b550b,
     #ffefef #fad4d0 #f6bab4 #f19e96 #eb8479,

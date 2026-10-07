@@ -5,16 +5,18 @@
  */
 :scope,
 :scope.theme--dark {
-  --canvas-background: #f1eee8;
-  --canvas-grid-color: rgba(21, 24, 28, 0);
-  --canvas-grid-bold-color: rgba(21, 24, 28, 0.07);
+  --element-freedraw-taper: 3;
+  --element-freedraw-thinning: 0.15;
+  --canvas-background: #fbfbf9;
+  --canvas-grid-color: rgba(17, 20, 24, 0);
+  --canvas-grid-bold-color: rgba(17, 20, 24, 0);
   --canvas-grid-style: solid;
-  --canvas-handle-fill: #f1eee8;
-  --canvas-frame-color: rgba(21, 24, 28, 0.3);
+  --canvas-handle-fill: #fbfbf9;
+  --canvas-frame-color: rgba(17, 20, 24, 0.35);
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #7a7770;
   --color-selection: #a3743a;
-  --element-stroke-color: #15181c;
+  --element-stroke-color: #111418;
   --element-background-color: transparent;
   --element-fill-style: solid;
   --element-stroke-width: thin;
@@ -25,10 +27,10 @@
   --element-end-arrowhead: bar;
   --element-font-family: "Liberation Sans";
   --element-font-size: 15;
-  --element-freedraw-variability: constant;
-  --element-freedraw-width: 0.125;
-  --color-picks-stroke: #15181c #5c636b #a3743a #8a3b35 #43627a;
-  --color-picks-background: transparent #ece3d4 #ece0dd #e3e8ea #e5ebe5;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.18;
+  --color-picks-stroke: #111418 #3a3f45 #111418 #111418 #a3743a;
+  --color-picks-background: transparent #f0f0ee #e6e6e3 #ececea #f1ece4;
   --color-palette-stroke: #c9c7c3 #9d9d9a #717272 #414345 #15181c,
     #d6d5d2 #b8b9b9 #9b9da0 #7a7f84 #5c636b,
     #e3d8c9 #d3c0a6 #c4a783 #b38c5d #a3743a,
@@ -48,49 +50,49 @@
     #ebe4d9 #e4d7c5 #dcc9af #d3b894 #c9a77a;
 
   --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
-  --text-primary-color: #15181c;
-  --color-on-surface: #15181c;
-  --icon-fill-color: #15181c;
+  --text-primary-color: #111418;
+  --color-on-surface: #111418;
+  --icon-fill-color: #111418;
   --popup-text-color: #15181c;
   --keybinding-color: #8a867e;
   --color-gray-60: #8a867e;
   --input-label-color: #8a867e;
 
-  --island-bg-color: #f1eee8;
-  --island-bg-color-alt: #f1eee8;
-  --popup-bg-color: #f1eee8;
-  --sidebar-bg-color: #f1eee8;
-  --default-bg-color: #f1eee8;
-  --popup-secondary-bg-color: #e7e3db;
-  --input-bg-color: #f7f5f1;
+  --island-bg-color: #fbfbf9;
+  --island-bg-color-alt: #fbfbf9;
+  --popup-bg-color: #fbfbf9;
+  --sidebar-bg-color: #fbfbf9;
+  --default-bg-color: #fbfbf9;
+  --popup-secondary-bg-color: #f1f1ef;
+  --input-bg-color: #ffffff;
   --input-border-color: #dcd7cd;
-  --input-hover-bg-color: #e7e3db;
+  --input-hover-bg-color: #f1f1ef;
 
-  --color-surface-lowest: #f7f5f1;
-  --color-surface-low: #e7e3db;
-  --color-surface-mid: #e7e3db;
-  --color-surface-high: #e7e3db;
-  --color-surface-primary-container: #e1d6c4;
+  --color-surface-lowest: #ffffff;
+  --color-surface-low: #f1f1ef;
+  --color-surface-mid: #f1f1ef;
+  --color-surface-high: #f1f1ef;
+  --color-surface-primary-container: #ece4d6;
   --color-on-primary-container: #15181c;
 
   --color-primary: #15181c;
   --color-primary-darker: #15181c;
   --color-primary-darkest: #15181c;
   --color-primary-hover: #15181c;
-  --color-primary-light: #e1d6c4;
-  --color-primary-light-darker: #e1d6c4;
+  --color-primary-light: #ece4d6;
+  --color-primary-light-darker: #ece4d6;
   --color-brand-hover: #15181c;
   --color-brand-active: #15181c;
   --select-highlight-color: #a3743a;
   --focus-highlight-color: #a3743a;
 
-  --button-hover-bg: #e7e3db;
-  --button-active-bg: #e1d6c4;
+  --button-hover-bg: #f1f1ef;
+  --button-active-bg: #ece4d6;
   --button-active-border: #15181c;
-  --button-gray-1: #e7e3db;
-  --button-gray-2: #e7e3db;
-  --button-gray-3: #e1d6c4;
-  --default-border-color: #dcd7cd;
+  --button-gray-1: #f1f1ef;
+  --button-gray-2: #f1f1ef;
+  --button-gray-3: #ece4d6;
+  --default-border-color: #e2e2df;
   --dialog-border-color: #dcd7cd;
   --sidebar-border-color: #dcd7cd;
   --color-border-outline: #8a867e;
@@ -103,8 +105,8 @@
   --modal-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
   --sidebar-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
   --library-dropdown-shadow: 0 0 0 1px rgba(21, 24, 28, 0.08);
-  --overlay-bg-color: rgba(241, 238, 232, 0.8);
-  --color-slider-track: #dcd7cd;
+  --overlay-bg-color: rgba(251, 251, 249, 0.85);
+  --color-slider-track: #e2e2df;
   --color-slider-thumb: #15181c;
 }
 

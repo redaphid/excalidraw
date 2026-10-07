@@ -5261,10 +5261,12 @@ ${css}
       JSON.stringify(prev.appState) !== JSON.stringify(next.appState);
     const palettesChanged =
       JSON.stringify(prev.palettes) !== JSON.stringify(next.palettes);
+    const penChanged = !isShallowEqual(prev.pen, next.pen);
     if (
       !canvasChanged &&
       !appStateChanged &&
       !palettesChanged &&
+      !penChanged &&
       !reapplyAppState
     ) {
       return;
@@ -5272,6 +5274,7 @@ ${css}
     this.cssTheme = {
       canvas: canvasChanged ? next.canvas : prev.canvas,
       appState: next.appState,
+      pen: penChanged ? next.pen : prev.pen,
       palettes: palettesChanged ? next.palettes : prev.palettes,
     };
     const { colorTopPicks, ...defaults } = next.appState;
@@ -9117,6 +9120,7 @@ ${css}
           event.pointerType !== "mouse"
             ? DEFAULT_STROKE_STREAMLINE_PRECISE
             : DEFAULT_STROKE_STREAMLINE,
+        ...this.cssTheme.pen,
       },
       locked: false,
       frameId: topLayerFrame ? topLayerFrame.id : null,
