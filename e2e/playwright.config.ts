@@ -18,9 +18,9 @@ const FORM_FACTORS: Record<string, Partial<PlaywrightTestOptions>> = {
   },
 };
 
-const browsers = process.env.E2E_BROWSER
-  ? [process.env.E2E_BROWSER as typeof BROWSERS[number]]
-  : BROWSERS;
+const browsers = BROWSERS.filter(
+  (browser) => !process.env.E2E_BROWSER || browser === process.env.E2E_BROWSER,
+);
 
 const PORT = 4173;
 
