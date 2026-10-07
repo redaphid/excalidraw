@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "name": "excalidraw-perf-bench",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

@@ -4,6 +4,8 @@ This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [dr
 
 **[Try it](https://redaphid.github.io/excalidraw/)**: the fork's editor on a static page, with `authoringUnits="screen"`. The drawing stays in your browser's localStorage: there is no collaboration, sharing, AI or analytics, and the only requests are for the page's own scripts, styles and fonts. It redeploys on every push to `master` ([`playground/`](playground), [`playground.yml`](.github/workflows/playground.yml)); `yarn build:playground` builds it locally.
 
+**[Benchmark it](https://redaphid.github.io/excalidraw/?bench)**: the same page with `?bench` loads three generated boards instead of your drawing and, on **run**, scripts a pan, a wheel zoom, a two-finger pinch and a pen stroke on each. It reports the median, 95th-percentile and mean time between animation frames per gesture, with the device pixel ratio and user agent, and **copy JSON** puts the report on the clipboard. `?bench=auto` starts on load, `&only=mixed/pan,deep/zoom` picks gestures, and `&counters` adds draw-call and work counts per frame (these slow the frames, so time without them). It never touches the saved drawing ([`playground/bench/`](playground/bench)).
+
 The fork changes five things:
 
 - **Deep zoom.** The editor zooms from 0.1x to 1,000,000x, and the wheel and trackpad zoom by the same ratio per tick at any depth.

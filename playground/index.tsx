@@ -1,4 +1,4 @@
-import { StrictMode, useMemo, useState } from "react";
+import { lazy, StrictMode, Suspense, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { debounce } from "@excalidraw/common";
@@ -10,6 +10,10 @@ import {
   saveScene,
   toggleBookmark,
 } from "./persistence";
+
+const Bench = lazy(() =>
+  import("./bench/Bench").then(({ Bench }) => ({ default: Bench })),
+);
 
 const save = debounce(saveScene, 300);
 window.addEventListener("pagehide", save.flush);
@@ -39,6 +43,12 @@ const Playground = () => {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Playground />
+    {new URLSearchParams(window.location.search).has("bench") ? (
+      <Suspense fallback={null}>
+        <Bench />
+      </Suspense>
+    ) : (
+      <Playground />
+    )}
   </StrictMode>,
 );
