@@ -14,7 +14,7 @@
   --canvas-frame-width: 1.5;
   --canvas-frame-name-color: #ff9ce9;
   --color-selection: #3ff0ff;
-  --element-stroke-color: #ff49e9;
+  --element-stroke-color: #6c145b;
   --element-background-color: transparent;
   --element-fill-style: solid;
   --element-stroke-width: medium;
@@ -27,7 +27,7 @@
   --element-font-size: 18;
   --element-freedraw-variability: constant;
   --element-freedraw-width: 1.1;
-  --color-picks-stroke: #ff49e9 #005263 #ce4600 #7b47cd #2e1000;
+  --color-picks-stroke: #6c145b #005263 #ce4600 #7b47cd #2e1000;
   --color-picks-background: transparent #8fc4e9 #ffc0ff #dec0ff #ffc2f3;
   --color-palette-stroke: #ffd8ff #ffb6ff #ff94ff #ff6df7 #ff49e9,
     #c5dbff #77b9dd #2897b4 #00738b #005263,

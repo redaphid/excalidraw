@@ -110,8 +110,8 @@
   --color-slider-thumb: #c89a5a;
 }
 
-:scope .panelColumn h3,
-:scope .panelColumn legend,
+:scope .selected-shape-actions h3,
+:scope .selected-shape-actions legend,
 :scope .frame-breadcrumb {
   letter-spacing: 0.14em;
   text-transform: uppercase;
