@@ -219,7 +219,7 @@ In dark mode the editor displays element colors through a filter: it inverts lig
 
 `removeDarkModeFilter` from `@excalidraw/common` turns a color you want to see in dark mode into the color to store.
 
-A theme can also run in light mode on a dark canvas, with its element colors stored as displayed. The sample Terminal theme does this, because the brightest green dark mode can display is `#6fc76f`. The cost: black ink drawn under another theme is invisible on it.
+Give a dark canvas a dark theme. In light mode on a dark canvas, element colors display as written, but ink drawn under any other theme (black by default) is invisible, and on a shared board that is other people's work. `generateThemeCss` warns about it. The sample Terminal theme stays in dark mode: its element greens show at `#6fc76f`, the brightest dark mode displays, and its UI text keeps full-value phosphor.
 
 ## Recipes
 
@@ -289,11 +289,11 @@ The CSS itself can still be slow. `backdrop-filter` over the canvas re-blurs on 
 
 ## Sample themes
 
-The playground ships these themes. Each is one CSS file that sets the canvas, the stroke character of new elements, the swatches and the UI. The screenshots come from `scripts/theme-screenshots`.
+The playground ships these themes. Each is one CSS file that sets the canvas, the stroke character of new elements, the swatches and the UI. Cel was made from a reference render by an agent following only the theming skill, in five rounds of shoot, read and fix. The screenshots come from `scripts/theme-screenshots`.
 
 ### Drafting family
 
-**Architect Parchment** ([`architect-parchment.css`](../playground/themes/architect-parchment.css), light mode). Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.
+**Architect Parchment** ([`architect-parchment.css`](../playground/themes/architect-parchment.css), generated from [`tokens/architect-parchment.json`](../playground/themes/tokens/architect-parchment.json), light mode). Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
@@ -304,6 +304,12 @@ The playground ships these themes. Each is one CSS file that sets the canvas, th
 | Scene | Pen at 2.5x |
 | --- | --- |
 | ![CAD Debug: the sample scene with a selection](theming/cad-debug-desktop-selected.webp) | ![CAD Debug: handwriting at 2.5x](theming/cad-debug-desktop-penzoom.webp) |
+
+**Cel** ([`cel.css`](../playground/themes/cel.css), generated from [`tokens/cel.json`](../playground/themes/tokens/cel.json), light mode). Flat cel illustration on warm grey board: one even slate outline around every shape, rounded forms, muted apricot, sage and slate-blue fills, no shading.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Cel: the sample scene with a selection](theming/cel-desktop-selected.webp) | ![Cel: handwriting at 2.5x](theming/cel-desktop-penzoom.webp) |
 
 **Locked Profile** ([`locked-profile.css`](../playground/themes/locked-profile.css), light mode). The quietest plate: graphite on cool white, no grid at all, hairline ink, one bronze accent for anything live. Panels are almost not there.
 
@@ -317,7 +323,7 @@ The playground ships these themes. Each is one CSS file that sets the canvas, th
 | --- | --- |
 | ![Raking Light: the sample scene with a selection](theming/raking-light-desktop-selected.webp) | ![Raking Light: handwriting at 2.5x](theming/raking-light-desktop-penzoom.webp) |
 
-**Westworld Night** ([`westworld-night.css`](../playground/themes/westworld-night.css), dark mode). White-on-black stencil: deep graphite ground, a barely-there grid, hairline ivory ink, bronze for anything live. Machined, unhurried.
+**Westworld Night** ([`westworld-night.css`](../playground/themes/westworld-night.css), generated from [`tokens/westworld-night.json`](../playground/themes/tokens/westworld-night.json), dark mode). White-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills, bronze for anything live. Machined, unhurried.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
@@ -331,7 +337,7 @@ The playground ships these themes. Each is one CSS file that sets the canvas, th
 | --- | --- |
 | ![Blueprint: the sample scene with a selection](theming/blueprint-desktop-selected.webp) | ![Blueprint: handwriting at 2.5x](theming/blueprint-desktop-penzoom.webp) |
 
-**Brutalist** ([`brutalist.css`](../playground/themes/brutalist.css), light mode). Raw and loud: hard black borders, offset block shadows, monospace, acid accents, no softness anywhere.
+**Brutalist** ([`brutalist.css`](../playground/themes/brutalist.css), generated from [`tokens/brutalist.json`](../playground/themes/tokens/brutalist.json), light mode). Raw and loud: hard black borders, offset block shadows, monospace, acid accents, no softness anywhere.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
@@ -385,7 +391,7 @@ The playground ships these themes. Each is one CSS file that sets the canvas, th
 | --- | --- |
 | ![Synthwave: the sample scene with a selection](theming/synthwave-desktop-selected.webp) | ![Synthwave: handwriting at 2.5x](theming/synthwave-desktop-penzoom.webp) |
 
-**Terminal** ([`terminal.css`](../playground/themes/terminal.css), dark mode). Green phosphor on black: monospace everything, square corners, a dim glow on text and nothing else lit.
+**Terminal** ([`terminal.css`](../playground/themes/terminal.css), generated from [`tokens/terminal.json`](../playground/themes/tokens/terminal.json), dark mode). Green phosphor on black: monospace everything, square corners, a dim glow on UI text and nothing else lit. Element greens display at #6fc76f, the brightest dark mode allows.
 
 | Scene | Pen at 2.5x |
 | --- | --- |
