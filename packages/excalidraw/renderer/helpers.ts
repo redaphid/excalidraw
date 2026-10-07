@@ -78,6 +78,7 @@ export const bootstrapCanvas = ({
   theme,
   isExporting,
   viewBackgroundColor,
+  paintBackground = true,
 }: {
   canvas: HTMLCanvasElement;
   scale: number;
@@ -86,11 +87,16 @@ export const bootstrapCanvas = ({
   theme?: AppState["theme"];
   isExporting?: StaticCanvasRenderConfig["isExporting"];
   viewBackgroundColor?: StaticCanvasAppState["viewBackgroundColor"];
+  paintBackground?: boolean;
 }): CanvasRenderingContext2D => {
   const context = canvas.getContext("2d")!;
 
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.scale(scale, scale);
+
+  if (!paintBackground) {
+    return context;
+  }
 
   // Paint background
   if (typeof viewBackgroundColor === "string") {

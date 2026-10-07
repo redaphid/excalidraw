@@ -2772,6 +2772,7 @@ class App extends React.Component<AppProps, AppState> {
                               pendingFlowchartNodes:
                                 this.flowchart.pendingNodes,
                               theme: this.state.theme,
+                              sceneNonce: this.scene.getSceneNonce(),
                               ...this.getRenderOverrideConfig(),
                             }}
                           />
