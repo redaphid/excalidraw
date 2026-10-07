@@ -1,209 +1,14 @@
 /**
- * Theme tokens: a small JSON description of an editor theme, and the
- * function that turns it into CSS for `<Excalidraw css={...}>`.
+ * Turns a theme's design tokens (a W3C DTCG document, read by
+ * designTokens.ts) into CSS for `<Excalidraw css={...}>`.
  *
  * Pure and isomorphic: no DOM, no Node built-ins, no editor code, so a
  * server (a Cloudflare Worker, an MCP tool) can generate themes too.
  */
 import { applyDarkModeFilter, removeDarkModeFilter } from "./colors";
+import { readThemeTokens } from "./designTokens";
 
-/** Colors are 6-digit hex, written as the user should see them. */
-export type ThemeTokens = {
-  name: string;
-  mode: "light" | "dark";
-  description: string;
-  canvas: string;
-  ink: string;
-  accent: string;
-  /** element colors besides ink */
-  palette: string[];
-  /** indexes into `palette` for the four background swatches */
-  washes?: number[];
-  grid: {
-    color: string;
-    minor: number;
-    major: number;
-    style: "solid" | "dashed";
-  };
-  type: { ui: string; canvas: string; size: number };
-  stroke: {
-    width: "thin" | "medium" | "bold";
-    roughness: 0 | 1 | 2;
-    roundness: "sharp" | "round";
-    arrowhead: string;
-    arrowType: "sharp" | "round";
-    fill: "solid" | "hachure" | "cross-hatch" | "zigzag";
-  };
-  pen: {
-    pressure: boolean;
-    width: number;
-    thinning?: number;
-    taper?: number;
-    streamline?: number;
-  };
-  surface: {
-    radius: number;
-    border: "none" | "hairline" | "bold";
-    shadow: "none" | "soft" | "long" | "hard";
-    panel?: string;
-    active?: string;
-  };
-  frame: { width: number; alpha: number };
-  /** paints the canvas transparent and puts this CSS background behind it */
-  backdrop?: string;
-  /** CSS appended verbatim; prefix each selector with `:scope ` */
-  extra?: string;
-};
-
-/** A color the generator changed so that text or ink stays legible. */
-export type ThemeWarning = {
-  /** the token the color came from, e.g. `ink` or `palette[2]` */
-  token: string;
-  from: string;
-  to: string;
-  reason: string;
-};
-
-const HEX = { type: "string", pattern: "^#[0-9a-fA-F]{6}$" } as const;
-const UNIT = { type: "number", minimum: 0, maximum: 1 } as const;
-
-/** JSON Schema (draft 2020-12) for {@link ThemeTokens}. */
-export const THEME_TOKENS_SCHEMA = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  title: "Excalidraw theme tokens",
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "name",
-    "mode",
-    "description",
-    "canvas",
-    "ink",
-    "accent",
-    "palette",
-    "grid",
-    "type",
-    "stroke",
-    "pen",
-    "surface",
-    "frame",
-  ],
-  properties: {
-    $schema: { type: "string" },
-    name: { type: "string", minLength: 1 },
-    mode: { enum: ["light", "dark"] },
-    description: { type: "string" },
-    canvas: HEX,
-    ink: HEX,
-    accent: HEX,
-    palette: { type: "array", items: HEX, minItems: 4, maxItems: 12 },
-    washes: {
-      type: "array",
-      items: { type: "integer", minimum: 0 },
-      minItems: 4,
-      maxItems: 4,
-    },
-    grid: {
-      type: "object",
-      additionalProperties: false,
-      required: ["color", "minor", "major", "style"],
-      properties: {
-        color: HEX,
-        minor: UNIT,
-        major: UNIT,
-        style: { enum: ["solid", "dashed"] },
-      },
-    },
-    type: {
-      type: "object",
-      additionalProperties: false,
-      required: ["ui", "canvas", "size"],
-      properties: {
-        ui: { type: "string" },
-        canvas: {
-          enum: [
-            "Excalifont",
-            "Virgil",
-            "Nunito",
-            "Lilita One",
-            "Comic Shanns",
-            "Liberation Sans",
-            "Cascadia",
-            "Assistant",
-            "Helvetica",
-          ],
-        },
-        size: { type: "number", exclusiveMinimum: 0 },
-      },
-    },
-    stroke: {
-      type: "object",
-      additionalProperties: false,
-      required: [
-        "width",
-        "roughness",
-        "roundness",
-        "arrowhead",
-        "arrowType",
-        "fill",
-      ],
-      properties: {
-        width: { enum: ["thin", "medium", "bold"] },
-        roughness: { enum: [0, 1, 2] },
-        roundness: { enum: ["sharp", "round"] },
-        arrowhead: {
-          enum: [
-            "arrow",
-            "bar",
-            "circle",
-            "circle_outline",
-            "triangle",
-            "triangle_outline",
-            "diamond",
-            "diamond_outline",
-          ],
-        },
-        arrowType: { enum: ["sharp", "round"] },
-        fill: { enum: ["solid", "hachure", "cross-hatch", "zigzag"] },
-      },
-    },
-    pen: {
-      type: "object",
-      additionalProperties: false,
-      required: ["pressure", "width"],
-      properties: {
-        pressure: { type: "boolean" },
-        width: { type: "number", exclusiveMinimum: 0, maximum: 4 },
-        thinning: { type: "number", minimum: -1, maximum: 1 },
-        taper: { type: "number", minimum: 0 },
-        streamline: UNIT,
-      },
-    },
-    surface: {
-      type: "object",
-      additionalProperties: false,
-      required: ["radius", "border", "shadow"],
-      properties: {
-        radius: { type: "number", minimum: 0 },
-        border: { enum: ["none", "hairline", "bold"] },
-        shadow: { enum: ["none", "soft", "long", "hard"] },
-        panel: HEX,
-        active: HEX,
-      },
-    },
-    frame: {
-      type: "object",
-      additionalProperties: false,
-      required: ["width", "alpha"],
-      properties: {
-        width: { type: "number", exclusiveMinimum: 0 },
-        alpha: UNIT,
-      },
-    },
-    backdrop: { type: "string" },
-    extra: { type: "string" },
-  },
-} as const;
+import type { ThemeSpec, ThemeTokens, ThemeWarning } from "./designTokens";
 
 type RGB = [number, number, number];
 
@@ -238,32 +43,38 @@ export const contrastRatio = (a: string, b: string) => {
   return (high + 0.05) / (low + 0.05);
 };
 
-const SHADOWS: Record<
-  ThemeTokens["surface"]["shadow"],
-  (ink: string) => string
-> = {
-  none: (ink) => `0 0 0 1px ${rgba(ink, 0.14)}`,
-  soft: (ink) =>
-    `0 0 0 1px ${rgba(ink, 0.1)}, 0 10px 28px -14px ${rgba(ink, 0.3)}`,
-  long: (ink) =>
-    `0 0 0 1px ${rgba(ink, 0.12)}, 26px 30px 44px -20px ${rgba(ink, 0.38)}`,
-  hard: (ink) => `0 0 0 2px ${ink}, 5px 5px 0 2px ${ink}`,
-};
+const SHADOWS: Record<ThemeSpec["surface"]["shadow"], (ink: string) => string> =
+  {
+    none: (ink) => `0 0 0 1px ${rgba(ink, 0.14)}`,
+    soft: (ink) =>
+      `0 0 0 1px ${rgba(ink, 0.1)}, 0 10px 28px -14px ${rgba(ink, 0.3)}`,
+    long: (ink) =>
+      `0 0 0 1px ${rgba(ink, 0.12)}, 26px 30px 44px -20px ${rgba(ink, 0.38)}`,
+    hard: (ink) => `0 0 0 2px ${ink}, 5px 5px 0 2px ${ink}`,
+  };
 
 const STROKE_SHADES = [0.82, 0.62, 0.42, 0.2, 0];
+const GENERIC_FONTS = [
+  "serif",
+  "sans-serif",
+  "monospace",
+  "cursive",
+  "fantasy",
+  "system-ui",
+  "ui-serif",
+  "ui-sans-serif",
+  "ui-monospace",
+  "ui-rounded",
+];
 const FILL_WASH = 0.68;
 
-/**
- * Turns tokens into a stylesheet for the `css` prop. Derives panels, states,
- * borders, shadows, shade ramps, swatches and palettes, and moves any color
- * that would make text or ink illegible until it passes WCAG contrast,
- * reporting each move as a warning.
- */
-export const generateThemeCss = (
-  tokens: ThemeTokens,
+const generate = (
+  tokens: ThemeSpec,
 ): { css: string; warnings: ThemeWarning[] } => {
   const warnings: ThemeWarning[] = [];
-  const dark = tokens.mode === "dark";
+  const mode =
+    tokens.mode ?? (luminance(tokens.canvas) < 0.18 ? "dark" : "light");
+  const dark = mode === "dark";
   // dark mode shows element colors through a filter, so store the inverse
   const store = (color: string) =>
     dark && color !== "transparent" ? removeDarkModeFilter(color) : color;
@@ -345,8 +156,8 @@ export const generateThemeCss = (
   if (canvasIsDark !== dark) {
     warnings.push({
       token: "mode",
-      from: tokens.mode,
-      to: tokens.mode,
+      from: mode,
+      to: mode,
       reason: dark
         ? "dark mode on a light canvas: ink drawn under other themes displays light and may be invisible"
         : "light mode on a dark canvas: ink drawn under other themes (black by default) may be invisible",
@@ -416,7 +227,7 @@ export const generateThemeCss = (
   const optional = (name: string, value: number | undefined) =>
     value === undefined ? "" : `\n  ${name}: ${value};`;
 
-  const css = `/* ${tokens.name}. mode: ${tokens.mode} */
+  const css = `/* ${tokens.name}. mode: ${mode} */
 /*
 ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
  *
@@ -462,7 +273,9 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --color-palette-background: transparent,
     ${list(fillEntries.slice(1))};
 
-  --ui-font: "${tokens.type.ui}", system-ui, sans-serif;
+  --ui-font: ${tokens.type.ui
+    .map((family) => (GENERIC_FONTS.includes(family) ? family : `"${family}"`))
+    .join(", ")}, system-ui, sans-serif;
   --text-primary-color: ${ink};
   --color-on-surface: ${ink};
   --icon-fill-color: ${ink};
@@ -545,4 +358,28 @@ ${
 }${tokens.extra ? `\n${tokens.extra.trim()}\n` : ""}`;
 
   return { css, warnings };
+};
+
+/**
+ * Turns a design tokens document (DTCG 2025.10) into a stylesheet for the
+ * `css` prop. Derives panels, states, borders, shadows, shade ramps, swatches
+ * and palettes, and moves any color that would make text or ink illegible
+ * until it passes WCAG contrast. Each warning names the token path behind
+ * it: a color it moved, a value it could not read, or a role it filled.
+ */
+export const generateThemeCss = (
+  tokens: ThemeTokens,
+): { css: string; warnings: ThemeWarning[] } => {
+  const { spec, paths, warnings } = readThemeTokens(tokens);
+  const generated = generate(spec);
+  return {
+    css: generated.css,
+    warnings: [
+      ...warnings,
+      ...generated.warnings.map((warning) => ({
+        ...warning,
+        token: paths[warning.token] ?? warning.token,
+      })),
+    ],
+  };
 };

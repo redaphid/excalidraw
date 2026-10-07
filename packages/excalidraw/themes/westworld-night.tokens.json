@@ -1,47 +1,185 @@
 {
   "$schema": "./tokens.schema.json",
-  "name": "Westworld Night",
-  "mode": "dark",
-  "description": "White-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills, bronze for anything live. Machined, unhurried.",
-  "canvas": "#0b0c0e",
-  "ink": "#ece8e0",
-  "accent": "#c89a5a",
-  "palette": ["#c89a5a", "#d9d4ca", "#ece8e0", "#a7abb2", "#b0574e", "#2e2f35", "#3a3b42", "#8fa6b8"],
-  "washes": [5, 6, 7, 0],
-  "grid": {
-    "color": "#f0eee8",
-    "minor": 0.045,
-    "major": 0.11,
-    "style": "solid"
+  "$description": "White-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills, bronze for anything live. Machined, unhurried.",
+  "$extensions": {
+    "com.hypnodroid.draw": {
+      "name": "Westworld Night",
+      "mode": "dark",
+      "stroke": {
+        "width": "thin",
+        "roundness": "sharp",
+        "arrowhead": "arrow",
+        "arrowType": "sharp",
+        "fill": "solid"
+      },
+      "pen": {
+        "pressure": true
+      },
+      "surface": {
+        "border": "hairline",
+        "shadow": "none"
+      },
+      "washes": ["graphite", "iron", "slate", "bronze"],
+      "extra": ":scope .selected-shape-actions h3,\n:scope .selected-shape-actions legend,\n:scope .frame-breadcrumb {\n  letter-spacing: 0.14em;\n  text-transform: uppercase;\n  font-size: 0.6875rem;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;\n}"
+    }
   },
-  "type": {
-    "ui": "Liberation Sans",
-    "canvas": "Liberation Sans",
-    "size": 15
+  "color": {
+    "$type": "color",
+    "canvas": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.0431, 0.0471, 0.0549],
+        "hex": "#0b0c0e"
+      }
+    },
+    "ink": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.9255, 0.9098, 0.8784],
+        "hex": "#ece8e0"
+      }
+    },
+    "accent": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.7843, 0.6039, 0.3529],
+        "hex": "#c89a5a"
+      }
+    },
+    "panel": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.0706, 0.0745, 0.0863],
+        "hex": "#121316"
+      }
+    },
+    "grid": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.9412, 0.9333, 0.9098],
+        "hex": "#f0eee8"
+      }
+    },
+    "palette": {
+      "bronze": {
+        "$value": "{color.accent}"
+      },
+      "bone": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.851, 0.8314, 0.7922],
+          "hex": "#d9d4ca"
+        }
+      },
+      "ivory": {
+        "$value": "{color.ink}"
+      },
+      "steel": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.6549, 0.6706, 0.698],
+          "hex": "#a7abb2"
+        }
+      },
+      "oxide": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.6902, 0.3412, 0.3059],
+          "hex": "#b0574e"
+        }
+      },
+      "graphite": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1804, 0.1843, 0.2078],
+          "hex": "#2e2f35"
+        }
+      },
+      "iron": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.2275, 0.2314, 0.2588],
+          "hex": "#3a3b42"
+        }
+      },
+      "slate": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.5608, 0.651, 0.7216],
+          "hex": "#8fa6b8"
+        }
+      }
+    }
+  },
+  "font": {
+    "ui": {
+      "$type": "fontFamily",
+      "$value": "Liberation Sans"
+    },
+    "canvas": {
+      "$type": "fontFamily",
+      "$value": "Liberation Sans"
+    },
+    "size": {
+      "$type": "dimension",
+      "$value": {
+        "value": 15,
+        "unit": "px"
+      }
+    }
+  },
+  "grid": {
+    "minor": {
+      "$type": "number",
+      "$value": 0.045
+    },
+    "major": {
+      "$type": "number",
+      "$value": 0.11
+    },
+    "style": {
+      "$type": "strokeStyle",
+      "$value": "solid"
+    }
   },
   "stroke": {
-    "width": "thin",
-    "roughness": 0,
-    "roundness": "sharp",
-    "arrowhead": "arrow",
-    "arrowType": "sharp",
-    "fill": "solid"
+    "roughness": {
+      "$type": "number",
+      "$value": 0
+    }
   },
   "pen": {
-    "pressure": true,
-    "width": 0.2,
-    "thinning": 0.25,
-    "taper": 5
+    "$type": "number",
+    "width": {
+      "$value": 0.2
+    },
+    "thinning": {
+      "$value": 0.25
+    },
+    "taper": {
+      "$value": 5
+    }
   },
   "surface": {
-    "radius": 0,
-    "border": "hairline",
-    "shadow": "none",
-    "panel": "#121316"
+    "radius": {
+      "$type": "dimension",
+      "$value": {
+        "value": 0,
+        "unit": "px"
+      }
+    }
   },
   "frame": {
-    "width": 1,
-    "alpha": 0.8
-  },
-  "extra": ":scope .selected-shape-actions h3,\n:scope .selected-shape-actions legend,\n:scope .frame-breadcrumb {\n  letter-spacing: 0.14em;\n  text-transform: uppercase;\n  font-size: 0.6875rem;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;\n}"
+    "width": {
+      "$type": "dimension",
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      }
+    },
+    "alpha": {
+      "$type": "number",
+      "$value": 0.8
+    }
+  }
 }

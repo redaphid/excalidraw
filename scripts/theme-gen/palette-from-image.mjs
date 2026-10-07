@@ -2,7 +2,7 @@
 /**
  * Pulls a restrained palette out of a reference image: the dominant flat
  * colors, not the noise. Prints them with their coverage and suggested
- * roles, then a starter tokens file to judge and edit.
+ * roles, then a starter design tokens file (DTCG) to judge and edit.
  *
  *   node scripts/theme-gen/palette-from-image.mjs <image> [--colors 8] [--name "Theme Name"]
  *
@@ -197,29 +197,70 @@ console.log("\nstarter tokens (judge them against the image before using):");
 console.log(
   "fills are each palette color at about 32% over the canvas: pick hues deeper than the image's fills\n",
 );
+const srgb = (color) => ({
+  $value: {
+    colorSpace: "srgb",
+    components: channels(color).map((v) => Number((v / 255).toFixed(4))),
+    hex: color,
+  },
+});
+const px = (value) => ({ value, unit: "px" });
 console.log(
   JSON.stringify(
     {
-      name: option("name", path.basename(image, path.extname(image))),
-      mode: dark ? "dark" : "light",
-      description: "",
-      canvas: canvas.hex,
-      ink: inkColor,
-      accent: lines[0],
-      palette: lines,
-      grid: { color: ink.hex, minor: 0.12, major: 0.3, style: "solid" },
-      type: { ui: "Liberation Sans", canvas: "Liberation Sans", size: 16 },
-      stroke: {
-        width: "thin",
-        roughness: 0,
-        roundness: "sharp",
-        arrowhead: "arrow",
-        arrowType: "sharp",
-        fill: "solid",
+      $schema: "./tokens.schema.json",
+      $description: "",
+      $extensions: {
+        "com.hypnodroid.draw": {
+          name: option("name", path.basename(image, path.extname(image))),
+          mode: dark ? "dark" : "light",
+          stroke: {
+            width: "thin",
+            roundness: "sharp",
+            arrowhead: "arrow",
+            arrowType: "sharp",
+            fill: "solid",
+          },
+          pen: { pressure: true },
+          surface: { border: "hairline", shadow: "none" },
+        },
       },
-      pen: { pressure: true, width: 0.2, thinning: 0.2, taper: 4 },
-      surface: { radius: 2, border: "hairline", shadow: "none" },
-      frame: { width: 1, alpha: 0.42 },
+      color: {
+        $type: "color",
+        canvas: srgb(canvas.hex),
+        ink: srgb(inkColor),
+        accent: srgb(lines[0]),
+        grid: srgb(ink.hex),
+        palette: Object.fromEntries(
+          lines.map((color, i) => [
+            `swatch-${i + 1}`,
+            i ? srgb(color) : { $value: "{color.accent}" },
+          ]),
+        ),
+      },
+      font: {
+        ui: { $type: "fontFamily", $value: "Liberation Sans" },
+        canvas: { $type: "fontFamily", $value: "Liberation Sans" },
+        size: { $type: "dimension", $value: px(16) },
+      },
+      grid: {
+        $type: "number",
+        minor: { $value: 0.12 },
+        major: { $value: 0.3 },
+        style: { $type: "strokeStyle", $value: "solid" },
+      },
+      stroke: { roughness: { $type: "number", $value: 0 } },
+      pen: {
+        $type: "number",
+        width: { $value: 0.2 },
+        thinning: { $value: 0.2 },
+        taper: { $value: 4 },
+      },
+      surface: { radius: { $type: "dimension", $value: px(2) } },
+      frame: {
+        width: { $type: "dimension", $value: px(1) },
+        alpha: { $type: "number", $value: 0.42 },
+      },
     },
     null,
     2,

@@ -5,7 +5,7 @@ description: Generate and refine a theme for the Excalidraw fork's css prop from
 
 # Excalidraw theming
 
-A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DOM UI, and it sets custom properties that the editor reads to paint the canvas and to choose the stroke character of new elements. Write a theme as a small JSON token file and let `generateThemeCss` from `@excalidraw/common` derive the CSS. It fills in panels, states, shades, swatches and palettes, and enforces WCAG contrast. Then look at the result until it is right.
+A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DOM UI, and it sets custom properties that the editor reads to paint the canvas and to choose the stroke character of new elements. Write a theme as a small W3C design tokens file (DTCG 2025.10, `<name>.tokens.json`) and let `generateThemeCss` from `@excalidraw/common` derive the CSS. It fills in panels, states, shades, swatches and palettes, and enforces WCAG contrast. Then look at the result until it is right.
 
 - Token reference and the JSON Schema: `references/tokens.md`.
 - Lessons paid for in earlier passes: `references/pitfalls.md`. Read it before hand-editing CSS.
@@ -16,7 +16,7 @@ A theme is one CSS string passed to `<Excalidraw css={...}>`. It restyles the DO
 Start from the closest sample. `packages/excalidraw/themes/index.json` (shipped in the package as `@excalidraw/excalidraw/themes/index.json`) lists the 18 sample themes with their look, mode, pen and caveats. They are meant to be read and adapted. For a generated one, copy its `<name>.tokens.json`. For a hand-written one, read its `<name>.css` for the choices and write tokens that make them. The draw MCP server will serve the same files as `theme://index`, `theme://<name>/css` and `theme://<name>/tokens` (planned, not yet available).
 
 - **From a vibe** ("Westworld title card"): name the instrument and the material first. What draws (technical pen, pencil, marker, phosphor trace)? On what (paper, film, screen, slate)? Pick a canvas, one ink, one accent and four to six palette colors that belong to that world. Fewer colors read as more deliberate.
-- **From a palette:** assign canvas (the most common, quietest color), ink (the darkest), accent (the one meant to catch the eye), and put the rest in `palette`.
+- **From a palette:** assign canvas (the most common, quietest color), ink (the darkest), accent (the one meant to catch the eye), and put the rest in `color.palette`, named and in order.
 - **From a reference image:** extract its flat colors, then judge them against the image. In the excalidraw repo:
   ```sh
   node scripts/theme-gen/palette-from-image.mjs <image> --name "Theme Name"
@@ -38,6 +38,8 @@ Decide the stroke character with the same care as the colors. Colors alone leave
 
 Freedraw widths are small numbers. A constant pen draws about 2.8 times its width in pixels and a pressure pen up to about 4.25 times: `0.2` is a hairline, `2.5` a fat marker.
 
+Roughness, the canvas font and the pen's numbers are standard tokens (`stroke.roughness`, `font.canvas`, `pen.width`, `pen.thinning`, `pen.taper`, `pen.streamline`). Stroke width, roundness, arrowhead and pen pressure are the editor's own and go in `$extensions["com.hypnodroid.draw"]`. `references/tokens.md` has every path.
+
 ## 2. The loop: apply, screenshot, judge, adjust
 
 1. **Apply.** Generate the CSS from the tokens and put it on an editor.
@@ -45,7 +47,7 @@ Freedraw widths are small numbers. A constant pen draws about 2.8 times its widt
 3. **Judge.** Read the images themselves, against the checklist below. A green command proves nothing about how a theme looks.
 4. **Adjust.** Fix the biggest failure in the tokens, not in the CSS, and go back to 1. Small independent fixes (a hint color, one swatch) can ride along with it; change only one structural thing (palette, stroke character, surface style) per iteration, so the next sheet shows what it did.
 
-Every warning from `generateThemeCss` is `{token, from, to, reason}`: a color it had to move so text or ink stays legible, a color dark mode cannot display, or a `mode` that fights the canvas. Prefer changing the token over accepting the move.
+Every warning from `generateThemeCss` is `{token, from, to, reason}`, and `token` is a DTCG path such as `color.ink` or `color.palette.sage`: a color it had to move so text or ink stays legible, a color dark mode cannot display, a `mode` that fights the canvas, or a value it could not read. Prefer changing the token over accepting the move.
 
 Stop when a full pass of the checklist finds nothing worth fixing. Keep a count of iterations and one line per iteration on what changed and why.
 
@@ -86,6 +88,6 @@ The sample scene outlines each shape in its palette color. A theme built on one 
 
 ## Dark themes
 
-In dark mode the editor shows element colors through a lightness-inverting filter, so scenes stay portable between modes. Write `"mode": "dark"` and give displayed colors: the generator stores their inverse and warns about any it cannot display (white tops out at `#ededed`, no bright yellow, cyan turns teal, green stops at `#6fc76f`). UI and canvas colors are not filtered, so neon belongs there.
+In dark mode the editor shows element colors through a lightness-inverting filter, so scenes stay portable between modes. Use dark mode (it follows a dark canvas unless the extension's `mode` says otherwise) and give displayed colors: the generator stores their inverse and warns about any it cannot display (white tops out at `#ededed`, no bright yellow, cyan turns teal, green stops at `#6fc76f`). UI and canvas colors are not filtered, so neon belongs there.
 
-A dark canvas needs `"mode": "dark"`. A board is shared, and ink drawn under other themes is black by default: on a dark canvas in light mode it is invisible. The generator warns on `mode` whenever the canvas and the mode disagree. Terminal accepts dark mode's `#6fc76f` for its element greens and keeps full phosphor in its UI text for this reason.
+A dark canvas needs dark mode. Leave `mode` out and it follows the canvas. A board is shared, and ink drawn under other themes is black by default: on a dark canvas in light mode it is invisible. The generator warns on `mode` whenever the canvas and the mode disagree. Terminal accepts dark mode's `#6fc76f` for its element greens and keeps full phosphor in its UI text for this reason.
