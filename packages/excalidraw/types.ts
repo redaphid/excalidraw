@@ -36,6 +36,7 @@ import type {
   BindMode,
   ExcalidrawTextElement,
   StrokeVariability,
+  ExcalidrawFreeDrawElement,
 } from "@excalidraw/element/types";
 
 import type {
@@ -57,6 +58,7 @@ import type { Action } from "./actions/types";
 import type { Spreadsheet } from "./charts";
 import type { ClipboardData } from "./clipboard";
 import type App from "./components/App";
+import type { InkStatus } from "./ink/ink";
 import type Library from "./data/library";
 import type { ContextMenuItems } from "./components/ContextMenu";
 import type { SnapLine } from "./snapping";
@@ -904,6 +906,43 @@ export interface ExcalidrawProps {
    * named widths, which are hidden while the tool is out.
    */
   freedrawStrokeWidth?: number;
+  /**
+   * What draws a freedraw stroke while the pointer is down. `"canvas"` (the
+   * default) re-renders the editor on every move. `"webgl"` draws it once a
+   * frame on a GPU layer and adds the finished element on release, as one
+   * undoable step; without WebGL2 it falls back to `"canvas"`. Only
+   * variable-width strokes go to the GPU. The layer's window listener is
+   * added when the editor mounts and stops a pen's or a mouse's events while
+   * it draws, so host listeners added later never see them (a finger's
+   * still reach them, for `cameraLayer`).
+   */
+  freedrawRenderer?: "canvas" | "webgl";
+  /**
+   * With `freedrawRenderer="webgl"`, called about every 80ms with the stroke
+   * drawn so far, for collaborators; the editor's scene only gets it on
+   * release. A stroke that was reported and is then dropped is reported once
+   * more with `isDeleted: true`.
+   */
+  onFreedrawProgress?: (element: ExcalidrawFreeDrawElement) => void;
+  /**
+   * A host layer that moves the camera itself, for `freedrawRenderer="webgl"`.
+   * While `moving()`, no stroke starts. While `ready()`, finger strokes are
+   * drawn, and a second finger hands both fingers to the host (the editor
+   * stops their events at the window, so a later window listener still
+   * gets them): the stroke is dropped if it is younger than 300ms, else
+   * kept. The functions are called at each press and should read the
+   * layer's live state (a ref, say); a new object with new functions does
+   * not re-render the editor, and the first one passed is kept until
+   * something else does.
+   */
+  cameraLayer?: { ready(): boolean; moving(): boolean };
+  /**
+   * A pen's barrel (side) button, held as the pen touches down with the
+   * freedraw tool out, selects instead of drawing: the press is handled as
+   * a selection-tool press, and the freedraw tool comes back once nothing
+   * is selected.
+   */
+  penBarrelSelects?: boolean;
   onPointerUpdate?: (payload: {
     pointer: { x: number; y: number; tool: "pointer" | "laser" };
     button: "down" | "up";
@@ -1457,6 +1496,11 @@ export interface ExcalidrawImperativeAPI {
   ) => UnsubscribeCallback;
   onStateChange: InstanceType<typeof App>["onStateChange"];
   onEvent: InstanceType<typeof App>["onEvent"];
+  /**
+   * The GPU ink layer's state, or null unless `freedrawRenderer="webgl"` has
+   * one running (it does not without WebGL2).
+   */
+  getInkStatus: () => InkStatus | null;
 }
 
 export type FrameNameBounds = {

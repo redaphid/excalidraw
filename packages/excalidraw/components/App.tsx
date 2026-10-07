@@ -27,8 +27,6 @@ import {
   KEYS,
   APP_NAME,
   CURSOR_TYPE,
-  DEFAULT_STROKE_STREAMLINE,
-  DEFAULT_STROKE_STREAMLINE_PRECISE,
   DEFAULT_TRANSFORM_HANDLE_SPACING,
   DRAGGING_THRESHOLD,
   ELEMENT_SHIFT_TRANSLATE_AMOUNT,
@@ -118,7 +116,6 @@ import {
   LinearElementEditor,
   newElementWith,
   newFrameElement,
-  newFreeDrawElement,
   newEmbeddableElement,
   newMagicFrameElement,
   newStickyNoteElement,
@@ -401,6 +398,8 @@ import { withBatchedUpdates, withBatchedUpdatesThrottled } from "../reactUtils";
 import { isOverScrollBars } from "../scene/scrollbars";
 import { LassoTrail } from "../lasso";
 import { EraserTrail } from "../eraser";
+import { newFreedrawAt } from "../ink/element";
+import { InkLayer } from "../ink/InkLayer";
 import { FRAME_NAME_HEIGHT, frameNameOpacities } from "../frameNameVisibility";
 import { getShortcutKey } from "../shortcut";
 
@@ -426,6 +425,7 @@ import { AppCursor } from "./App.cursor";
 import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
 import { AppFlowchart } from "./App.flowchart";
+import { AppBarrel } from "./App.barrel";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -491,6 +491,7 @@ import type {
   NullableGridSize,
   UIConfig,
 } from "../types";
+import type { Ink } from "../ink/ink";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Action, ActionResult } from "../actions/types";
 
@@ -696,6 +697,12 @@ class App extends React.Component<AppProps, AppState> {
     getPointerCount: () => gesture.pointers.size,
     isDraggingScrollBar: () => isDraggingScrollBar,
   });
+  public barrel: AppBarrel = new AppBarrel(this, {
+    getPointerCount: () => gesture.pointers.size,
+    // once the tool switch has applied
+    replay: (event) =>
+      this.setState({}, () => this.handleCanvasPointerDown(event)),
+  });
   public textTool: AppTextTool = new AppTextTool(this);
   public clipboard: AppClipboard = new AppClipboard(this, {
     getContainer: () => this.excalidrawContainerRef.current,
@@ -710,6 +717,8 @@ class App extends React.Component<AppProps, AppState> {
     isGestureActive: () => gesture.pointers.size >= 2 || this.pan.isActive(),
   });
   public wheel: AppWheel = new AppWheel(this);
+  /** the GPU ink layer, while `freedrawRenderer="webgl"` has one running */
+  public ink: Ink | null = null;
 
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
@@ -837,6 +846,7 @@ class App extends React.Component<AppProps, AppState> {
       onUserFollow: (cb) => this.onUserFollowEmitter.on(cb),
       onStateChange: this.onStateChange,
       onEvent: this.onEvent,
+      getInkStatus: () => this.ink?.status() ?? null,
     };
     return api;
   }
@@ -2829,6 +2839,9 @@ class App extends React.Component<AppProps, AppState> {
                             onPointerDown={this.handleCanvasPointerDown}
                             onDoubleClick={this.handleCanvasDoubleClick}
                           />
+                          {this.props.freedrawRenderer === "webgl" && (
+                            <InkLayer app={this} />
+                          )}
                           {this.props.viewportStatusFrame?.border &&
                             this.editorInterface.formFactor === "phone" && (
                               <ViewportStatusBorder
@@ -4418,6 +4431,7 @@ class App extends React.Component<AppProps, AppState> {
 
     this.handleInteractionStateChange(prevProps, prevState);
     this.handleForcedToolChange(prevProps, prevState);
+    this.barrel.settle();
 
     this.appStateObserver.flush(prevState);
 
@@ -7830,7 +7844,7 @@ class App extends React.Component<AppProps, AppState> {
     // we must exit before we set `cursorButton` state and `savePointer`
     // else it will send pointer state & laser pointer events in collab when
     // panning
-    if (this.pan.start(event)) {
+    if (this.barrel.start(event) || this.pan.start(event)) {
       return;
     }
 
@@ -8079,11 +8093,7 @@ class App extends React.Component<AppProps, AppState> {
         pointerDownState,
       );
     } else if (this.state.activeTool.type === "freedraw") {
-      this.handleFreeDrawElementOnPointerDown(
-        event,
-        this.state.activeTool.type,
-        pointerDownState,
-      );
+      this.handleFreeDrawElementOnPointerDown(event, pointerDownState);
     } else if (this.state.activeTool.type === "custom") {
       this.cursor.applyForTool();
     } else if (
@@ -8962,7 +8972,6 @@ class App extends React.Component<AppProps, AppState> {
 
   private handleFreeDrawElementOnPointerDown = (
     event: React.PointerEvent<HTMLElement>,
-    elementType: ExcalidrawFreeDrawElement["type"],
     pointerDownState: PointerDownState,
   ) => {
     // Begin a mark capture. This does not have to update state yet.
@@ -8972,42 +8981,7 @@ class App extends React.Component<AppProps, AppState> {
       null,
     );
 
-    const topLayerFrame = this.getTopLayerFrameAtSceneCoords({
-      x: gridX,
-      y: gridY,
-    });
-
-    const simulatePressure = event.pressure === 0.5;
-
-    const strokeVariability = this.state.currentItemStrokeVariability;
-
-    const element = newFreeDrawElement({
-      type: elementType,
-      x: gridX,
-      y: gridY,
-      strokeColor: this.state.currentItemStrokeColor,
-      backgroundColor: this.state.currentItemBackgroundColor,
-      fillStyle: this.state.currentItemFillStyle,
-      ...this.getCurrentItemScale("freedraw"),
-      strokeStyle: this.state.currentItemStrokeStyle,
-      roughness: this.state.currentItemRoughness,
-      opacity: this.state.currentItemOpacity,
-      roundness: null,
-      simulatePressure,
-      strokeOptions: {
-        variability: strokeVariability,
-        streamline:
-          event.pointerType !== "mouse"
-            ? DEFAULT_STROKE_STREAMLINE_PRECISE
-            : DEFAULT_STROKE_STREAMLINE,
-      },
-      locked: false,
-      frameId: topLayerFrame ? topLayerFrame.id : null,
-      points: [pointFrom<LocalPoint>(0, 0)],
-      // pressures are only consumed when rendering a real-pressure stroke, so
-      // skip persisting them while pressure is being simulated
-      pressures: simulatePressure ? [] : [event.pressure],
-    });
+    const element = newFreedrawAt(this, { x: gridX, y: gridY }, event);
 
     this.insertNewElement(element);
 
@@ -12366,7 +12340,10 @@ class App extends React.Component<AppProps, AppState> {
     // when it comes with the press (macOS and Linux fire it on mousedown,
     // and the session opens the menu on release if no drag follows), nor
     // when it follows a release that was a drag
-    if (this.pan.consumesContextMenuEvent()) {
+    if (
+      this.pan.consumesContextMenuEvent() ||
+      this.barrel.consumesContextMenuEvent()
+    ) {
       return;
     }
     this.openContextMenu({
