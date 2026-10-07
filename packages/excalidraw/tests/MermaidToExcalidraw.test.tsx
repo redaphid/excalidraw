@@ -108,8 +108,6 @@ const normalizeDialogSnapshot = (dialog: Element) => {
 
 const OUTPUT_ERROR = '[data-testid="ttd-dialog-output-error"]';
 
-// The dialog saves its definition and reopens on it, so one test's
-// definition would otherwise become the next test's starting text.
 beforeEach(() => {
   EditorLocalStorage.delete(EDITOR_LS_KEYS.MERMAID_TO_EXCALIDRAW);
 });
