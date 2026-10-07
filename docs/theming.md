@@ -36,7 +36,7 @@ import drafting from "./drafting.css?raw";
   --border-radius-lg: 2px;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 2px;
 }
 ```
@@ -57,6 +57,7 @@ So:
 
 - `:scope` matches the editor root and each portal root. Set custom properties there.
 - Plain selectors such as `.frame-breadcrumb` match inside this editor only. A second editor on the page is not affected.
+- The library writes its component rules as `.excalidraw .frame-breadcrumb`. Inside `@scope`, a bare `.frame-breadcrumb` is less specific and loses. Write `:scope .frame-breadcrumb`: it ties, and the theme wins because it comes later.
 - A selector that starts above the editor, such as `body .excalidraw`, matches nothing.
 - `@import` and `@font-face` are not allowed inside `@scope`. Load fonts in the host page.
 - In a browser without `@scope` support, the editor inserts the CSS unscoped and replaces `:scope` with the root's attribute selector.
@@ -127,8 +128,12 @@ Theme colors are painted as written in both light and dark mode. The dark-mode f
 | `--element-arrow-type` | `sharp`, `round`, `elbow` | `currentItemArrowType` |
 | `--element-freedraw-variability` | `variable` (pressure and taper) or `constant` (an even line) | `currentItemStrokeVariability` |
 | `--element-freedraw-width` | a positive number, the pen size | `currentItemFreedrawStrokeWidth` |
+| `--element-freedraw-thinning` | `-1` to `1`: how much pressure narrows a `variable` stroke (default `0.6`) | `strokeOptions.thinning` on new strokes |
+| `--element-freedraw-taper` | a positive number: how far each end of a `variable` stroke tapers, in stroke widths | `strokeOptions.taper` on new strokes |
 
 Element colors are stored in the scene, so they must be hex.
+
+Thinning and taper are stored on each new freedraw stroke, so a stroke keeps its look in any theme. A stroke without them renders as before, and loading a scene adds neither.
 
 The font names are `Excalifont`, `Virgil`, `Nunito`, `Lilita One`, `Comic Shanns`, `Liberation Sans`, `Cascadia`, `Assistant` and `Helvetica`. The editor bundles all of them except `Helvetica`, which is the system font, so the UI can use them in `--ui-font` too.
 
@@ -198,10 +203,14 @@ The bold line falls on every `gridStep`th line (5 by default). The grid shows on
   --element-roundness: sharp;
   --element-arrow-type: sharp;
   --element-end-arrowhead: arrow;
-  --element-freedraw-variability: constant;
-  --element-freedraw-width: 0.125;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.2;
+  --element-freedraw-thinning: 0.2;
+  --element-freedraw-taper: 4;
 }
 ```
+
+A low `thinning` keeps the line even under pressure, and a short taper finishes each stroke like an ink pen lifting. A pencil wants the opposite: `thinning: 0.75` and `taper: 6`. A marker is `constant` with a large width.
 
 ### A gradient behind the canvas
 
@@ -219,7 +228,7 @@ Make the canvas transparent and give the root a background. The browser composit
 - **Line caps and joins.** Shapes and lines are drawn with round caps and joins, baked into each element's cached bitmap. At a 1 px stroke the difference is under a pixel. Changing it would mean keying the bitmap cache on the theme.
 - **New fonts on the canvas.** Elements use the bundled fonts listed above. Registering a new canvas font is a separate feature.
 - **New arrowhead shapes.** The theme picks among the existing `Arrowhead` values.
-- **Perfect-freehand parameters.** A theme picks `variable` or `constant` freedraw and the pen size. Taper and thinning are per element, not per theme.
+- **Freedraw caps and glow.** A theme sets the pen's width, pressure response and taper. Stroke ends stay round, and there is no glow or blur.
 - **Exports.** PNG and SVG exports use the scene's colors, never the theme's.
 
 ## Performance
