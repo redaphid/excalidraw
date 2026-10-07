@@ -15,6 +15,7 @@ import { FrameBreadcrumb } from "./FrameBreadcrumb";
 import { Island } from "./Island";
 
 import { PenModeButton } from "./PenModeButton";
+import { Toast } from "./Toast";
 import { ViewportStatusBadge } from "./ViewportStatusFrame/ViewportStatusFrame";
 
 import type { ActionManager } from "../actions/manager";
@@ -149,6 +150,17 @@ export const MobileMenu = ({
 
   const breadcrumb = app.props.frameNavigation ? <FrameBreadcrumb /> : null;
 
+  const floatingStatus = appState.toast ? (
+    <Toast
+      message={appState.toast.message}
+      onClose={() => setAppState({ toast: null })}
+      duration={appState.toast.duration}
+      closable={appState.toast.closable}
+    />
+  ) : (
+    scrollBackToContentButton
+  );
+
   const viewportStatusLabel = app.props.viewportStatusFrame?.label;
   const viewportStatusBadge = viewportStatusLabel ? (
     <ViewportStatusBadge
@@ -174,9 +186,9 @@ export const MobileMenu = ({
           }}
           data-viewport-ui="bottom"
         >
-          {(scrollBackToContentButton || breadcrumb) && (
+          {(floatingStatus || breadcrumb) && (
             <div className="floating-status-stack">
-              {scrollBackToContentButton}
+              {floatingStatus}
               {breadcrumb}
             </div>
           )}
@@ -196,13 +208,12 @@ export const MobileMenu = ({
         </div>
       )}
 
-      {!shouldRenderDefaultBottomBar &&
-        (scrollBackToContentButton || breadcrumb) && (
-          <div className="floating-status-stack">
-            {scrollBackToContentButton}
-            {breadcrumb}
-          </div>
-        )}
+      {!shouldRenderDefaultBottomBar && (floatingStatus || breadcrumb) && (
+        <div className="floating-status-stack">
+          {floatingStatus}
+          {breadcrumb}
+        </div>
+      )}
 
       {viewportStatusBadge && (
         <div className="viewport-status-frame__badge-row">
