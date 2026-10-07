@@ -32,6 +32,7 @@ import { mutateElement } from "./mutateElement";
 import { getBoundTextElement, getContainerElement } from "./textElement";
 import { syncMovedIndices } from "./fractionalIndex";
 import {
+  isBoundToContainer,
   isFrameElement,
   isFrameLikeElement,
   isTextElement,
@@ -96,11 +97,49 @@ const getFrameLineSegments = (
   return segments;
 };
 
+// whether an element crosses a frame's edge only changes when either moves;
+// a bound label follows its container without a version of its own
+const frameIntersectionCache = new WeakMap<
+  ExcalidrawElement,
+  {
+    version: number;
+    frame: ExcalidrawFrameLikeElement;
+    frameVersion: number;
+    intersects: boolean;
+  }
+>();
+
 export function isElementIntersectingFrame(
   element: ExcalidrawElement,
   frame: ExcalidrawFrameLikeElement,
   elementsMap: ElementsMap,
 ) {
+  const cached = frameIntersectionCache.get(element);
+  if (
+    cached &&
+    cached.version === element.version &&
+    cached.frame === frame &&
+    cached.frameVersion === frame.version
+  ) {
+    return cached.intersects;
+  }
+  const intersects = elementCrossesFrame(element, frame, elementsMap);
+  if (!isBoundToContainer(element)) {
+    frameIntersectionCache.set(element, {
+      version: element.version,
+      frame,
+      frameVersion: frame.version,
+      intersects,
+    });
+  }
+  return intersects;
+}
+
+const elementCrossesFrame = (
+  element: ExcalidrawElement,
+  frame: ExcalidrawFrameLikeElement,
+  elementsMap: ElementsMap,
+) => {
   const elementLineSegments = getElementLineSegments(element, elementsMap);
   if (elementLineSegments.length === 0) {
     return false;
@@ -135,7 +174,7 @@ export function isElementIntersectingFrame(
       segmentsIntersectAt(frameLineSegment, elementLineSegment),
     ),
   );
-}
+};
 
 export const getElementsCompletelyInFrame = (
   elements: readonly ExcalidrawElement[],
