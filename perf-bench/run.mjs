@@ -1,3 +1,4 @@
+process.exit(1);
 import { createServer } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
