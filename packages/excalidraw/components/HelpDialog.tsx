@@ -4,7 +4,7 @@ import { isDarwin, isFirefox, isWindows } from "@excalidraw/common";
 
 import { KEYS } from "@excalidraw/common";
 
-import { actionToggleTheme } from "../actions";
+import { actionToggleFramesMenu, actionToggleTheme } from "../actions";
 import { getShortcutFromShortcutName } from "../actions/shortcuts";
 import { probablySupportsClipboardBlob } from "../clipboard";
 import { t } from "../i18n";
@@ -321,6 +321,12 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
               label={t("search.title")}
               shortcuts={[getShortcutFromShortcutName("searchMenu")]}
             />
+            {actionManager.isActionEnabled(actionToggleFramesMenu) && (
+              <Shortcut
+                label={t("frameNavigation.title")}
+                shortcuts={[getShortcutFromShortcutName("framesMenu")]}
+              />
+            )}
             <Shortcut
               label={t("commandPalette.title")}
               shortcuts={
@@ -347,6 +353,18 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
               shortcuts={[getShortcutKey(`Alt+Arrow Key`)]}
               isOr={true}
             />
+            {actionManager.isActionEnabled(actionToggleFramesMenu) && (
+              <>
+                <Shortcut
+                  label={t("frameNavigation.stepHelp")}
+                  shortcuts={[getShortcutKey("Arrow Key")]}
+                />
+                <Shortcut
+                  label={t("frameNavigation.bookmarkHelp")}
+                  shortcuts={[getShortcutKey("Alt+1…9")]}
+                />
+              </>
+            )}
             <Shortcut
               label={t("labels.moveCanvas")}
               shortcuts={[

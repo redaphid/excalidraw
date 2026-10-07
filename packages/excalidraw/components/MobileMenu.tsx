@@ -10,6 +10,7 @@ import { SCROLLBAR_WIDTH, SCROLLBAR_MARGIN } from "../scene/scrollbars";
 import { ExitViewModeButton, MobileShapeActions } from "./Actions";
 import { MobileToolbar } from "./MobileToolbar";
 import { FixedSideContainer } from "./FixedSideContainer";
+import { FrameBreadcrumb } from "./FrameBreadcrumb";
 
 import { Island } from "./Island";
 
@@ -147,6 +148,8 @@ export const MobileMenu = ({
       </button>
     ) : null;
 
+  const breadcrumb = app.props.frameNavigation ? <FrameBreadcrumb /> : null;
+
   const floatingStatus = appState.toast ? (
     <Toast
       message={appState.toast.message}
@@ -183,8 +186,11 @@ export const MobileMenu = ({
           }}
           data-viewport-ui="bottom"
         >
-          {floatingStatus && (
-            <div className="floating-status-stack">{floatingStatus}</div>
+          {(floatingStatus || breadcrumb) && (
+            <div className="floating-status-stack">
+              {floatingStatus}
+              {breadcrumb}
+            </div>
           )}
 
           <MobileShapeActions
@@ -202,8 +208,11 @@ export const MobileMenu = ({
         </div>
       )}
 
-      {!shouldRenderDefaultBottomBar && floatingStatus && (
-        <div className="floating-status-stack">{floatingStatus}</div>
+      {!shouldRenderDefaultBottomBar && (floatingStatus || breadcrumb) && (
+        <div className="floating-status-stack">
+          {floatingStatus}
+          {breadcrumb}
+        </div>
       )}
 
       {viewportStatusBadge && (

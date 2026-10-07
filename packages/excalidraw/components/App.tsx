@@ -426,6 +426,7 @@ import { AppCursor } from "./App.cursor";
 import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
 import { AppFlowchart } from "./App.flowchart";
+import { AppFrameNavigation } from "./App.frameNavigation";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -690,6 +691,7 @@ class App extends React.Component<AppProps, AppState> {
   public duplicate: AppDuplicate = new AppDuplicate(this);
   public toolDrag: AppToolDrag = new AppToolDrag(this);
   public flowchart: AppFlowchart = new AppFlowchart(this);
+  public frameNavigation: AppFrameNavigation = new AppFrameNavigation(this);
   public cursor: AppCursor = new AppCursor(this);
   public arrowText: AppArrowText = new AppArrowText(this);
   public pan: AppPan = new AppPan(this, {
@@ -3955,6 +3957,7 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.scene.onUpdate(this.triggerRender);
+    this.scene.onUpdate(() => this.frameNavigation.sceneUpdated.trigger());
     this.addEventListeners();
 
     if (this.props.autoFocus && this.excalidrawContainerRef.current) {
@@ -5401,6 +5404,10 @@ class App extends React.Component<AppProps, AppState> {
         } else {
           maybeHandleArrowPointlikeDrag({ app: this, event });
         }
+      }
+
+      if (this.frameNavigation.handleKeyDown(event)) {
+        return;
       }
 
       if (this.actionManager.handleKeyDown(event)) {

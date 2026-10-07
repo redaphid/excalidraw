@@ -1,0 +1,29 @@
+.excalidraw {
+  .frame-breadcrumb {
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0.125rem 0.375rem;
+    border-radius: 999px;
+    background: var(--island-bg-color);
+    box-shadow: var(--shadow-island);
+    color: var(--color-gray-60);
+    font-size: 0.75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: var(--ui-pointerEvents);
+
+    button {
+      padding: 0.125rem 0.375rem;
+      border: none;
+      background: none;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button[aria-current] {
+      color: var(--text-primary-color);
+      font-weight: 600;
+    }
+  }
+}
