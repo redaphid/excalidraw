@@ -62,7 +62,7 @@ export type CssTheme = Readonly<{
   canvas: CanvasTheme;
   appState: CssThemeAppState;
   /** perfect-freehand options for new variable-width freedraw strokes */
-  pen: Readonly<{ thinning?: number; taper?: number }>;
+  pen: Readonly<{ thinning?: number; taper?: number; streamline?: number }>;
   /** replace the color picker's palette grid */
   palettes: Readonly<{
     elementStroke?: ColorPaletteCustom;
@@ -254,15 +254,15 @@ export const readCssTheme = (style: {
     elementBackground: palette(read("--color-palette-background")),
   });
 
-  const thinning = Number(read("--element-freedraw-thinning"));
+  const unitInterval = (name: string, min: number) => {
+    const value = read(name);
+    const number = Number(value);
+    return value !== "" && number >= min && number <= 1 ? number : undefined;
+  };
   const pen = definedEntries({
-    thinning:
-      read("--element-freedraw-thinning") !== "" &&
-      thinning >= -1 &&
-      thinning <= 1
-        ? thinning
-        : undefined,
+    thinning: unitInterval("--element-freedraw-thinning", -1),
     taper: positiveNumber(read("--element-freedraw-taper")),
+    streamline: unitInterval("--element-freedraw-streamline", 0),
   });
 
   return { canvas, appState, pen, palettes };

@@ -1,4 +1,5 @@
 import { FONT_FAMILY, THEME } from "@excalidraw/common";
+import { isFreeDrawElement } from "@excalidraw/element";
 
 import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 
@@ -121,9 +122,10 @@ describe("readCssTheme", () => {
         styleOf({
           "--element-freedraw-thinning": "0.2",
           "--element-freedraw-taper": "4",
+          "--element-freedraw-streamline": "0",
         }),
       ).pen,
-    ).toEqual({ thinning: 0.2, taper: 4 });
+    ).toEqual({ thinning: 0.2, taper: 4, streamline: 0 });
     expect(
       readCssTheme(styleOf({ "--element-freedraw-thinning": "3" })).pen,
     ).toEqual({});
@@ -198,8 +200,11 @@ describe("css prop", () => {
     await render(
       <Excalidraw css=":scope { --element-freedraw-thinning: 0.2; --element-freedraw-taper: 4; }" />,
     );
-    const stroke = UI.createElement("freedraw", { width: 40, height: 40 });
-    expect(stroke.strokeOptions).toMatchObject({ thinning: 0.2, taper: 4 });
+    UI.createElement("freedraw", { width: 40, height: 40 });
+    expect(h.elements.find(isFreeDrawElement)?.strokeOptions).toMatchObject({
+      thinning: 0.2,
+      taper: 4,
+    });
   });
 
   it("restores a pen's options and adds none to strokes without them", () => {

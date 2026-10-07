@@ -130,6 +130,7 @@ Theme colors are painted as written in both light and dark mode. The dark-mode f
 | `--element-freedraw-width` | a positive number, the pen size | `currentItemFreedrawStrokeWidth` |
 | `--element-freedraw-thinning` | `-1` to `1`: how much pressure narrows a `variable` stroke (default `0.6`) | `strokeOptions.thinning` on new strokes |
 | `--element-freedraw-taper` | a positive number: how far each end of a `variable` stroke tapers, in stroke widths | `strokeOptions.taper` on new strokes |
+| `--element-freedraw-streamline` | `0` to `1`: how much the pen smooths its input. `0` keeps every wobble, like a pixel pencil | `strokeOptions.streamline` on new strokes |
 
 Element colors are stored in the scene, so they must be hex.
 
@@ -180,6 +181,8 @@ In dark mode the editor displays element colors through a filter: it inverts lig
 - Canvas and UI colors are not filtered. A neon grid on a dark canvas is fine.
 
 `removeDarkModeFilter` from `@excalidraw/common` turns a color you want to see in dark mode into the color to store.
+
+A theme can also run in light mode on a dark canvas, with its element colors stored as displayed. The sample Terminal theme does this, because the brightest green dark mode can display is `#6fc76f`. The cost: black ink drawn under another theme is invisible on it.
 
 ## Recipes
 
