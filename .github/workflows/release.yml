@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*-draw.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, such as 0.19.0-draw.21. Every package at the chosen ref must already be at it.
+        required: true
+      notes:
+        description: Release notes, in prose.
+        required: true
+      draft:
+        description: Create a draft release instead of publishing.
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Write, because a read-only token cannot see draft releases.
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      exists: ${{ steps.plan.outputs.exists }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_NOTES: ${{ inputs.notes }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            tag="$GITHUB_REF_NAME"
+            version="${tag#v}"
+          else
+            version="$INPUT_VERSION"
+            tag="v$version"
+          fi
+
+          if is_draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>&1); then
+            if [ "$is_draft" = true ]; then
+              echo "::error::A draft release for $tag already exists. Publish or delete it, then run again."
+              exit 1
+            fi
+            echo "::notice::Release $tag already exists, and this workflow never changes a published release."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          elif [ "$is_draft" != "release not found" ]; then
+            echo "::error::Could not check for an existing $tag release: $is_draft"
+            exit 1
+          fi
+
+          package_version=$(node -p "require('./packages/excalidraw/package.json').version")
+          if [ "$version" != "$package_version" ]; then
+            echo "::error::Asked to release $version, but packages/excalidraw is at $package_version. Release the version commit."
+            exit 1
+          fi
+
+          tag_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq .sha 2>/dev/null || true)
+          if [ -n "$tag_sha" ] && [ "$tag_sha" != "$GITHUB_SHA" ]; then
+            echo "::error::$tag already points at $tag_sha, not at $GITHUB_SHA."
+            exit 1
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag")
+            if [ "$(jq -r .object.type <<< "$ref")" != tag ]; then
+              echo "::error::$tag is a lightweight tag, so it has no release notes. Push an annotated tag (git tag -a $tag -m \"<notes>\") or run this workflow with notes."
+              exit 1
+            fi
+            notes=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$(jq -r .object.sha <<< "$ref")" --jq .message)
+          else
+            notes="$INPUT_NOTES"
+          fi
+          if [ -z "${notes//[[:space:]]/}" ]; then
+            echo "::error::The release notes are empty."
+            exit 1
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+          } >> "$GITHUB_OUTPUT"
+          printf '%s' "$notes" > notes.md
+      - if: steps.plan.outputs.exists != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-notes
+          path: notes.md
+          retention-days: 7
+
+  publish:
+    needs: plan
+    if: needs.plan.outputs.exists != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/pack-draw-release
+        with:
+          version: ${{ needs.plan.outputs.version }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          DRAFT: ${{ inputs.draft }}
+        run: |
+          flags=()
+          if [ "$DRAFT" = true ]; then
+            flags+=(--draft)
+          fi
+          gh release create "$TAG" release/*.tgz \
+            --title "$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --target "$GITHUB_SHA" \
+            "${flags[@]}"
+          gh release view "$TAG" --json url,isDraft,assets \
+            --jq '"Released \(.url) (draft: \(.isDraft)) with \([.assets[].name] | join(", "))"' \
+            | tee -a "$GITHUB_STEP_SUMMARY"

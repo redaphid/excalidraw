@@ -21,6 +21,7 @@ type Counters = {
   canvasesCreated: number;
   arrayElementsWalked: number;
   mapSets: number;
+  mapGets: number;
   boundingRectReads: number;
 };
 
@@ -66,7 +67,7 @@ const counting = params.has("counters");
 
 const TASK_HOPS = 3;
 const SETTLE_WINDOW_MS = 400;
-const VIEW_RESET_MS = 500;
+const VIEW_RESET_MS = Number(params.get("wait") ?? 500);
 
 // synthetic pointers are unknown to the browser, so capturing one throws and
 // aborts the editor's pointerdown before it records a pinch
@@ -115,6 +116,7 @@ const counters: Counters = {
   canvasesCreated: 0,
   arrayElementsWalked: 0,
   mapSets: 0,
+  mapGets: 0,
   boundingRectReads: 0,
 };
 
@@ -163,6 +165,7 @@ const installCounters = () => {
     });
   }
   wrap(Map.prototype, "set", () => counters.mapSets++);
+  wrap(Map.prototype, "get", () => counters.mapGets++);
   wrap(
     Element.prototype,
     "getBoundingClientRect",
