@@ -178,15 +178,15 @@ const zoomOnHandwriting = (page) =>
   page.evaluate((viewport) => {
     const api = window.excalidrawAPI;
     const [word] = api.getSceneElements();
+    // freedraw points are relative to the first one and can go negative
+    const xs = word.points.map(([x]) => word.x + x);
+    const ys = word.points.map(([, y]) => word.y + y);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
     const width = viewport.width / 2.5;
     const height = viewport.height / 2.5;
     api.setViewport({
-      target: {
-        x: word.x + word.width / 2 - width / 2,
-        y: word.y + word.height / 2 - height / 2,
-        width,
-        height,
-      },
+      target: { x: cx - width / 2, y: cy - height / 2, width, height },
       fit: "contain",
     });
   }, page.viewportSize());
