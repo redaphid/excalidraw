@@ -2,6 +2,8 @@ const path = require("path");
 
 const { build } = require("esbuild");
 
+const { name } = require(path.resolve("package.json"));
+
 // contains all dependencies bundled inside
 const getConfig = (outdir) => ({
   outdir,
@@ -12,13 +14,16 @@ const getConfig = (outdir) => ({
   assetNames: "[dir]/[name]",
   alias: {
     "@excalidraw/utils": path.resolve(__dirname, "../packages/utils/src"),
+    // Published under another name, a package cannot resolve its own source
+    // name, so its imports of itself are bundled from src.
+    [name]: path.resolve("src"),
   },
   external: [
     "@excalidraw/common",
     "@excalidraw/element",
     "@excalidraw/math",
     "@excalidraw/fractional-indexing",
-  ],
+  ].filter((dependency) => dependency !== name),
 });
 
 function buildDev(config) {
