@@ -102,3 +102,18 @@ jobs:
           name: e2e-${{ matrix.browser }}-failures
           path: e2e/test-results
           retention-days: 14
+
+  size:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Build package JavaScript
+        run: |
+          for package in common fractional-indexing math element; do
+            (cd "packages/$package" && node ../../scripts/buildBase.js)
+          done
+          cd packages/excalidraw && node ../../scripts/buildPackage.js
+      - run: npx size-limit
+        working-directory: packages/excalidraw
