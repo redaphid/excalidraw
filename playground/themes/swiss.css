@@ -104,14 +104,16 @@
   --sidebar-shadow: 0 0 0 1px #111111;
   --library-dropdown-shadow: 0 0 0 1px #111111;
   --overlay-bg-color: rgba(251, 251, 249, 0.85);
+  --color-slider-track: #111111;
+  --color-slider-thumb: #e3000f;
 }
 
-.ToolIcon__icon svg,
-.ToolIcon__keybinding {
+:scope .ToolIcon__icon svg,
+:scope .ToolIcon__keybinding {
   color: inherit;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 0;
   box-shadow: none;
   background: transparent;

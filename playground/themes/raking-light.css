@@ -7,15 +7,15 @@
 :scope,
 :scope.theme--dark {
   --canvas-background: transparent;
-  --canvas-grid-color: rgba(70, 82, 92, 0.1);
-  --canvas-grid-bold-color: rgba(70, 82, 92, 0.28);
+  --canvas-grid-color: rgba(70, 82, 92, 0);
+  --canvas-grid-bold-color: rgba(70, 82, 92, 0.16);
   --canvas-grid-style: solid;
   --canvas-handle-fill: #f3eee4;
   --canvas-frame-color: rgba(22, 26, 32, 0.45);
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #5a5f66;
   --color-selection: #b07531;
-  --element-stroke-color: #161a20;
+  --element-stroke-color: #101317;
   --element-background-color: transparent;
   --element-fill-style: solid;
   --element-stroke-width: medium;
@@ -28,8 +28,8 @@
   --element-font-size: 16;
   --element-freedraw-variability: constant;
   --element-freedraw-width: 0.125;
-  --color-picks-stroke: #161a20 #9e3a33 #4e7d62 #4f7088 #b07531;
-  --color-picks-background: transparent #ddbcb0 #c3cfbd #c2cacb #dfcbad;
+  --color-picks-stroke: #101317 #9e3a33 #3d5c48 #101317 #8a5a1c;
+  --color-picks-background: transparent #9ebdd1 #b3ccbd #86ae90 #d9a05a;
   --color-palette-stroke: #c5c0b7 #9a9892 #6f6f6d #414345 #161a20,
     #ddc6ba #cea499 #be8278 #ad5c54 #9e3a33,
     #cfd2c3 #afbdab #90a994 #6d927a #4e7d62,
@@ -100,9 +100,9 @@
   --border-radius-md: 2px;
   --border-radius-lg: 2px;
   --shadow-island: 0 0 0 1px rgba(22, 26, 32, 0.12),
-    18px 22px 36px -18px rgba(70, 52, 28, 0.38);
+    26px 30px 44px -20px rgba(80, 58, 28, 0.42);
   --shadow-island-stronger: 0 0 0 1px rgba(22, 26, 32, 0.12),
-    18px 22px 36px -18px rgba(70, 52, 28, 0.38);
+    26px 30px 44px -20px rgba(80, 58, 28, 0.42);
   --modal-shadow: 0 0 0 1px rgba(22, 26, 32, 0.14),
     40px 48px 80px -40px rgba(70, 52, 28, 0.45);
   --sidebar-shadow: 0 0 0 1px rgba(22, 26, 32, 0.12),
@@ -110,12 +110,20 @@
   --library-dropdown-shadow: 0 0 0 1px rgba(22, 26, 32, 0.12),
     18px 22px 36px -18px rgba(70, 52, 28, 0.38);
   --overlay-bg-color: rgba(235, 229, 216, 0.6);
+  --color-slider-track: #d5ccbb;
+  --color-slider-thumb: #161a20;
 }
 
 :scope {
-  background: linear-gradient(105deg, #f1e3c8 0%, #ece5d6 42%, #dfe3e2 100%);
+  background: linear-gradient(
+    100deg,
+    #f4ddb2 0%,
+    #ece2cf 38%,
+    #dfe3e1 72%,
+    #cfdae0 100%
+  );
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 2px;
 }

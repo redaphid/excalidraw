@@ -28,7 +28,7 @@
   --element-freedraw-variability: constant;
   --element-freedraw-width: 0.125;
   --color-picks-stroke: #000000 #782013 #002c05 #002c61 #3f0f00;
-  --color-picks-background: transparent #b1a9cd #69adc5 #79b0f3 #95a1af;
+  --color-picks-background: transparent #8dc7ff #7db7fe #a9bbff #81c6da;
   --color-palette-stroke: #89b3e5 #6586ad #415774 #192536 #000000,
     #a2bbea #9795b6 #8e7082 #824647 #782013,
     #87bde6 #609ab1 #387779 #0c503d #002c05,
@@ -104,8 +104,10 @@
   --sidebar-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
   --library-dropdown-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
   --overlay-bg-color: rgba(8, 30, 58, 0.7);
+  --color-slider-track: rgba(255, 255, 255, 0.35);
+  --color-slider-thumb: #ffd27a;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 0;
 }

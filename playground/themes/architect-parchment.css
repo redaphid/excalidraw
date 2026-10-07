@@ -39,7 +39,7 @@
     #ded3b7 #d0bf94 #c1ac71 #b1964a #a38327,
     #d7c8c3 #c2a9ae #ac8b9a #946983 #7e4a6e,
     #dfccb7 #d2b195 #c49773 #b57a4e #a85f2c,
-    #d4cdc0 #bab3a7 #a19a8e #857e72 #6b6459, #f4efe4;
+    #d4cdc0 #bab3a7 #a19a8e #857e72 #6b6459, #46505b;
   --color-palette-background: transparent, #f4efe4,
     #d9d2c5 #c2bbae #a8a195 #8a8377 #6b6459,
     #e3d0c2 #dab6a9 #cf998d #c2776c #b5544a,
@@ -107,9 +107,11 @@
   --sidebar-shadow: 0 0 0 1px rgba(27, 33, 41, 0.14);
   --library-dropdown-shadow: 0 0 0 1px rgba(27, 33, 41, 0.14);
   --overlay-bg-color: rgba(235, 228, 214, 0.72);
+  --color-slider-track: #d6ccb9;
+  --color-slider-thumb: #1b2129;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 2px;
   background: transparent;
   box-shadow: none;

@@ -29,7 +29,7 @@
   --element-freedraw-variability: constant;
   --element-freedraw-width: 0.125;
   --color-picks-stroke: #20262e #e02424 #d61fbf #f07114 #2f6fb0;
-  --color-picks-background: transparent #e2b2b6 #dcb2df #e2c6b2 #b2cade;
+  --color-picks-background: transparent #ffd11a #a9cbbd #9fbfd8 #f0a35a;
   --color-palette-stroke: #b4bac1 #90969d #6c7279 #444a52 #20262e,
     #d6babf #d99599 #db7173 #de494a #e02424,
     #d4b9db #d594d4 #d56ecd #d645c6 #d61fbf,
@@ -105,9 +105,11 @@
   --sidebar-shadow: 0 0 0 1px rgba(32, 38, 46, 0.22);
   --library-dropdown-shadow: 0 0 0 1px rgba(32, 38, 46, 0.22);
   --overlay-bg-color: rgba(212, 219, 225, 0.7);
+  --color-slider-track: #b9c3cc;
+  --color-slider-thumb: #20262e;
 }
 
-.frame-breadcrumb {
+:scope .frame-breadcrumb {
   border-radius: 0;
   font-family: var(--ui-font);
 }
