@@ -1,0 +1,16 @@
+{
+  "name": "Architect Parchment",
+  "mode": "light",
+  "description": "Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.",
+  "canvas": "#ebe4d6",
+  "ink": "#1b2129",
+  "accent": "#a8732f",
+  "palette": ["#9e3a33", "#5a7a6a", "#4f7088", "#a8732f", "#a38327", "#7e4a6e", "#a85f2c", "#6b6459"],
+  "grid": { "color": "#547691", "minor": 0.2, "major": 0.48, "style": "solid" },
+  "type": { "ui": "Liberation Sans", "canvas": "Liberation Sans", "size": 16 },
+  "stroke": { "width": "thin", "roughness": 0, "roundness": "sharp", "arrowhead": "arrow", "arrowType": "sharp", "fill": "solid" },
+  "pen": { "pressure": true, "width": 0.2, "thinning": 0.2, "taper": 4 },
+  "surface": { "radius": 2, "border": "hairline", "shadow": "none", "panel": "#f1ebdf" },
+  "frame": { "width": 1, "alpha": 0.42 },
+  "extra": ":scope .frame-breadcrumb {\n  border-radius: 2px;\n  background: transparent;\n  box-shadow: none;\n  letter-spacing: 0.04em;\n}"
+}
