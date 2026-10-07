@@ -8,6 +8,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { isRenderThrottlingEnabled } from "../../reactUtils";
+import { releaseUnderlay } from "../../renderer/newElementUnderlay";
 import {
   getRelevantAppStateProps,
   renderStaticScene,
@@ -43,6 +44,11 @@ const StaticCanvas = (props: StaticCanvasProps) => {
     props.canvas.width = props.appState.width * props.scale;
     props.canvas.height = props.appState.height * props.scale;
   }, [props.appState.height, props.appState.width, props.canvas, props.scale]);
+
+  useEffect(() => {
+    const canvas = props.canvas;
+    return () => releaseUnderlay(canvas);
+  }, [props.canvas]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
