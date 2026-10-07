@@ -2,6 +2,7 @@ import {
   applyDarkModeFilter,
   COLOR_WHITE,
   FRAME_STYLE,
+  isShallowEqual,
   THEME,
   throttleRAF,
 } from "@excalidraw/common";
@@ -272,6 +273,47 @@ const renderLinkIcon = (
     context.restore();
   }
 };
+
+type BelowNewElement = {
+  bitmap: HTMLCanvasElement;
+  newElement: ExcalidrawElement;
+  elements: readonly ExcalidrawElement[];
+  versions: readonly number[];
+  appState: StaticCanvasAppState;
+  renderConfig: StaticCanvasRenderConfig;
+  allElementsMap: ElementsMap;
+  scale: number;
+};
+
+// A new element drawn inside a frame stays on the static canvas to keep its
+// z-order among the frame's children, so the static scene repaints on every
+// pointer move. What lies under it does not change during the gesture, so it
+// is painted once and copied back on later moves.
+const belowNewElement = new WeakMap<HTMLCanvasElement, BelowNewElement>();
+
+const isBelowNewElementCurrent = (
+  below: BelowNewElement,
+  canvas: HTMLCanvasElement,
+  elements: readonly ExcalidrawElement[],
+  appState: StaticCanvasAppState,
+  renderConfig: StaticCanvasRenderConfig,
+  allElementsMap: ElementsMap,
+  scale: number,
+) =>
+  below.bitmap.width === canvas.width &&
+  below.bitmap.height === canvas.height &&
+  below.scale === scale &&
+  below.allElementsMap === allElementsMap &&
+  below.newElement === appState.newElement &&
+  below.elements.length === elements.length &&
+  elements.every(
+    (element, index) =>
+      element === below.elements[index] &&
+      element.version === below.versions[index],
+  ) &&
+  isShallowEqual(below.appState, appState) &&
+  isShallowEqual(below.renderConfig, renderConfig);
+
 const _renderStaticScene = ({
   canvas,
   rc,
@@ -310,8 +352,58 @@ const _renderStaticScene = ({
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
 
+  const paintedElements = visibleElements.filter(
+    (el) => !isIframeLikeElement(el),
+  );
+  const newElementIndex =
+    isExporting || !unsnappedAppState.newElement
+      ? -1
+      : paintedElements.findIndex(
+          (element) => element.id === unsnappedAppState.newElement?.id,
+        );
+  const elementsBelow = paintedElements.slice(0, Math.max(newElementIndex, 0));
+  const cachedBelow = belowNewElement.get(canvas);
+  const reusesBelow =
+    !!cachedBelow &&
+    newElementIndex > 0 &&
+    isBelowNewElementCurrent(
+      cachedBelow,
+      canvas,
+      elementsBelow,
+      unsnappedAppState,
+      renderConfig,
+      allElementsMap,
+      scale,
+    );
+  if (newElementIndex <= 0) {
+    belowNewElement.delete(canvas);
+  }
+  if (reusesBelow) {
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.globalCompositeOperation = "copy";
+    context.drawImage(cachedBelow.bitmap, 0, 0);
+    context.restore();
+  }
+  const keepBelow = () => {
+    const bitmap = cachedBelow?.bitmap ?? document.createElement("canvas");
+    bitmap.width = canvas.width;
+    bitmap.height = canvas.height;
+    bitmap.getContext("2d")!.drawImage(canvas, 0, 0);
+    belowNewElement.set(canvas, {
+      bitmap,
+      newElement: unsnappedAppState.newElement!,
+      elements: elementsBelow,
+      versions: elementsBelow.map((element) => element.version),
+      appState: unsnappedAppState,
+      renderConfig,
+      allElementsMap,
+      scale,
+    });
+  };
+
   // Grid
-  if (renderGrid) {
+  if (renderGrid && !reusesBelow) {
     strokeGrid(
       context,
       renderConfig.gridSize ?? appState.gridSize,
@@ -394,63 +486,67 @@ const _renderStaticScene = ({
   };
 
   // Paint visible elements
-  visibleElements
-    .filter((el) => !isIframeLikeElement(el))
-    .forEach((element) => {
-      try {
-        if (
-          isTextElement(element) &&
-          element.containerId &&
-          elementsMap.has(element.containerId)
-        ) {
-          // will be rendered with the container
-          return;
-        }
+  paintedElements.forEach((element, index) => {
+    if (reusesBelow && index < newElementIndex) {
+      return;
+    }
+    if (!reusesBelow && index === newElementIndex && newElementIndex > 0) {
+      keepBelow();
+    }
+    try {
+      if (
+        isTextElement(element) &&
+        element.containerId &&
+        elementsMap.has(element.containerId)
+      ) {
+        // will be rendered with the container
+        return;
+      }
 
-        context.save();
-        const boundTextElement = getBoundTextElement(element, elementsMap);
+      context.save();
+      const boundTextElement = getBoundTextElement(element, elementsMap);
 
-        const renderState = getRenderState(element);
-        clipElementToFrame(element, renderState);
+      const renderState = getRenderState(element);
+      clipElementToFrame(element, renderState);
+      renderElement(
+        element,
+        elementsMap,
+        allElementsMap,
+        rc,
+        context,
+        renderConfig,
+        appState,
+        renderState,
+      );
+
+      if (boundTextElement) {
         renderElement(
-          element,
+          boundTextElement,
           elementsMap,
           allElementsMap,
           rc,
           context,
           renderConfig,
           appState,
-          renderState,
-        );
-
-        if (boundTextElement) {
-          renderElement(
-            boundTextElement,
-            elementsMap,
-            allElementsMap,
-            rc,
-            context,
-            renderConfig,
-            appState,
-          );
-        }
-
-        context.restore();
-
-        if (!isExporting && renderConfig.renderLinks !== false) {
-          renderLinkIcon(element, context, appState, elementsMap, renderState);
-        }
-      } catch (error: any) {
-        console.error(
-          error,
-          element.id,
-          element.x,
-          element.y,
-          element.width,
-          element.height,
         );
       }
-    });
+
+      context.restore();
+
+      if (!isExporting && renderConfig.renderLinks !== false) {
+        renderLinkIcon(element, context, appState, elementsMap, renderState);
+      }
+    } catch (error: any) {
+      console.error(
+        error,
+        element.id,
+        element.x,
+        element.y,
+        element.width,
+        element.height,
+      );
+    }
+  });
 
   // render embeddables on top
   visibleElements
