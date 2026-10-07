@@ -24,11 +24,11 @@
   --element-start-arrowhead: none;
   --element-end-arrowhead: arrow;
   --element-font-family: "Liberation Sans";
-  --element-font-size: 18;
+  --element-font-size: 20;
   --element-freedraw-variability: constant;
   --element-freedraw-width: 0.3;
   --color-picks-stroke: #111111 #e3000f #0057b8 #6f6f6f #008a5e;
-  --color-picks-background: transparent #f3abae #abc7e4 #dcdcdb #abe0cf;
+  --color-picks-background: transparent #e3000f #f4f4f4 #e8e8e8 #ffffff;
   --color-palette-stroke: #d1d1cf #a2a2a1 #737372 #40403f #111111,
     #f7cecf #f29ca0 #ed6971 #e8323e #e3000f,
     #cedded #9cbde0 #699cd3 #3278c5 #0057b8,
@@ -70,26 +70,26 @@
   --color-surface-low: #f0f0f0;
   --color-surface-mid: #f0f0f0;
   --color-surface-high: #f0f0f0;
-  --color-surface-primary-container: #111111;
+  --color-surface-primary-container: #e3000f;
   --color-on-primary-container: #ffffff;
 
   --color-primary: #e3000f;
   --color-primary-darker: #e3000f;
   --color-primary-darkest: #e3000f;
   --color-primary-hover: #e3000f;
-  --color-primary-light: #111111;
-  --color-primary-light-darker: #111111;
+  --color-primary-light: #e3000f;
+  --color-primary-light-darker: #e3000f;
   --color-brand-hover: #e3000f;
   --color-brand-active: #e3000f;
   --select-highlight-color: #e3000f;
   --focus-highlight-color: #e3000f;
 
   --button-hover-bg: #f0f0f0;
-  --button-active-bg: #111111;
+  --button-active-bg: #e3000f;
   --button-active-border: #e3000f;
   --button-gray-1: #f0f0f0;
   --button-gray-2: #f0f0f0;
-  --button-gray-3: #111111;
+  --button-gray-3: #e3000f;
   --default-border-color: #111111;
   --dialog-border-color: #111111;
   --sidebar-border-color: #111111;
@@ -118,4 +118,9 @@
   box-shadow: none;
   background: transparent;
   font-weight: 700;
+}
+
+/* help dialog keycaps sit on --color-primary-light */
+:scope .HelpDialog__key {
+  color: #ffffff;
 }

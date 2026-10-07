@@ -116,3 +116,8 @@
   outline: 3px solid #ffff00 !important;
   outline-offset: 2px;
 }
+
+/* help dialog keycaps sit on --color-primary-light */
+:scope .HelpDialog__key {
+  color: #000000;
+}

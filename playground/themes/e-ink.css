@@ -100,6 +100,9 @@
 :scope *,
 :scope *::before,
 :scope *::after {
-  transition: none !important;
-  animation: none !important;
+  /* zero, not none: fade-ins end on their last frame (a dialog that fades
+     in from opacity 0 stays invisible with animation: none) */
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
 }

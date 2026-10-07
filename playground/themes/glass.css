@@ -58,11 +58,11 @@
   --color-gray-60: #5b5f86;
   --input-label-color: #5b5f86;
 
-  --island-bg-color: rgba(255, 255, 255, 0.58);
-  --island-bg-color-alt: rgba(255, 255, 255, 0.58);
-  --popup-bg-color: rgba(255, 255, 255, 0.58);
-  --sidebar-bg-color: rgba(255, 255, 255, 0.58);
-  --default-bg-color: rgba(255, 255, 255, 0.58);
+  --island-bg-color: rgba(255, 255, 255, 0.72);
+  --island-bg-color-alt: rgba(255, 255, 255, 0.72);
+  --popup-bg-color: rgba(255, 255, 255, 0.94);
+  --sidebar-bg-color: rgba(255, 255, 255, 0.9);
+  --default-bg-color: rgba(255, 255, 255, 0.94);
   --popup-secondary-bg-color: rgba(255, 255, 255, 0.75);
   --input-bg-color: rgba(255, 255, 255, 0.7);
   --input-border-color: rgba(255, 255, 255, 0.85);
