@@ -8,6 +8,7 @@ export type Scenario = {
   id: string;
   scene: SceneName;
   steps: number;
+  tool: "hand" | "selection" | "freedraw";
   begin: (api: ExcalidrawImperativeAPI, canvas: HTMLCanvasElement) => void;
   step: (canvas: HTMLCanvasElement, i: number) => void;
   end: (canvas: HTMLCanvasElement) => void;
@@ -60,17 +61,14 @@ const center = (canvas: HTMLCanvasElement) => {
   return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
 };
 
-const select = (api: ExcalidrawImperativeAPI) =>
-  api.setActiveTool({ type: "selection" });
-
 const pan = (scene: SceneName, steps: number): Scenario => {
   let origin = { x: 0, y: 0 };
   return {
     id: `${scene}/pan`,
     scene,
     steps,
-    begin: (api, canvas) => {
-      api.setActiveTool({ type: "hand" });
+    tool: "hand",
+    begin: (_, canvas) => {
       origin = center(canvas);
       pointer(canvas, "pointerdown", origin.x, origin.y);
     },
@@ -104,8 +102,8 @@ const zoom = (
     id: `${scene}/zoom`,
     scene,
     steps: outSteps + inSteps,
+    tool: "selection",
     begin: (api, canvas) => {
-      select(api);
       at = anchor(api, canvas);
       pointer(canvas, "pointermove", at.x, at.y, { buttons: 0 });
     },
@@ -130,8 +128,8 @@ const pinch = (scene: SceneName, steps: number): Scenario => {
     id: `${scene}/pinch`,
     scene,
     steps,
-    begin: (api, canvas) => {
-      select(api);
+    tool: "selection",
+    begin: (_, canvas) => {
       mid = center(canvas);
       const { x, y, spread } = at(0);
       pointer(canvas, "pointerdown", x - spread, y, { id: 11, kind: "touch" });
@@ -161,8 +159,8 @@ const freedraw = (scene: SceneName, steps: number): Scenario => {
     id: `${scene}/freedraw`,
     scene,
     steps,
-    begin: (api, canvas) => {
-      api.setActiveTool({ type: "freedraw" });
+    tool: "freedraw",
+    begin: (_, canvas) => {
       const rect = canvas.getBoundingClientRect();
       width = rect.width * 0.6;
       origin = { x: rect.left + rect.width * 0.2, y: center(canvas).y };
