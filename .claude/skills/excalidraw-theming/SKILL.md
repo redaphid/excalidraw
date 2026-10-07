@@ -25,6 +25,10 @@ Treat a theme as unfinished until its screenshots are read.
 
 Never edit sources while a shoot runs if the harness server watches files. The harness disables HMR and watching for this reason. A reload mid-run destroys the page and kills the pass.
 
+A scripted pen stroke sent right after `setActiveTool` can arrive before the tool commits and turn into a selection drag. The harness waits for the tool and throws if a stroke is missing. Keep that check: in pass 1 the Westworld Night close-up was missing its first stroke, and it looked like a rendering bug.
+
+Build a contact sheet per pass with the harness's `--contact selected`. At thumbnail size, twins show: four bead themes were indistinguishable there, and one was cut.
+
 ## Selectors: use `:scope`
 
 The editor wraps the CSS in `@scope ([data-excalidraw-id="…"])`. Inside `@scope`, a plain selector is a descendant of the scope root, so `.excalidraw { … }` never matches the editor root. Set variables on `:scope`.
@@ -35,6 +39,10 @@ The editor's dark-mode variables sit on `.excalidraw.theme--dark`, which outrank
 :scope,
 :scope.theme--dark { … }
 ```
+
+Prefix every component rule with `:scope `. The library writes `.excalidraw .frame-breadcrumb`, which is (0,2,0). A bare `.frame-breadcrumb` inside `@scope` is (0,1,0) and loses without any warning. In pass 1 every component override in every theme lost this way, and nothing looked broken until the screenshots were compared with the CSS.
+
+The properties panel's headings are `.selected-shape-actions h3` and `.selected-shape-actions legend`. Check class names in `packages/excalidraw/components` before guessing: `.panelColumn` does not exist.
 
 `@font-face` and `@import` are invalid inside `@scope`. Use the bundled fonts (`Liberation Sans`, `Cascadia`, `Nunito`, `Excalifont`, `Virgil`, `Lilita One`, `Comic Shanns`, `Assistant`) or system fonts.
 
@@ -53,12 +61,18 @@ Set these first. They cover most of the visible surface:
 
 Colors alone leave the default blunt whiteboard look: medium strokes, rough.js wobble, round corners, a hand-drawn font, fat arrowheads and a marker pen. Decide each one for the theme's instrument:
 
-| Instrument | width | roughness | roundness | font | arrowhead | freedraw |
+| Instrument | width | roughness | roundness | font | arrowhead | freedraw (variability, width, thinning, taper) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Technical pen (drafting, CAD) | `thin` | `0` | `sharp` | `Liberation Sans` or `Cascadia` | `arrow` or `bar` | `constant`, `0.125` |
-| Pencil (sketchbook) | `medium` | `2` | `round` | `Excalifont` | `arrow` | `variable`, `0.25` |
-| Marker (brutalist, high contrast) | `bold` | `0` | `sharp` | `Cascadia` | `triangle` | `constant`, `0.5` |
-| Phosphor trace (terminal) | `thin` | `0` | `sharp` | `Cascadia` | `arrow` | `constant` |
+| Technical pen (drafting) | `thin` | `0` | `sharp` | `Liberation Sans` | `arrow` or `bar` | `variable`, `0.2`, `0.2`, `4` |
+| CAD trace | `thin` | `0` | `sharp` | `Cascadia` | `triangle` | `constant`, `0.2` |
+| Pencil (sketchbook) | `medium` | `2` | `round` | `Excalifont` | `arrow` | `variable`, `0.35`, `0.75`, `6` |
+| Marker (brutalist) | `bold` | `0` | `sharp` | `Cascadia` | `triangle` | `constant`, `2.5` |
+| Phosphor trace (terminal) | `thin` | `0` | `sharp` | `Cascadia` | `arrow` | `constant`, `0.35` |
+| Neon tube (synthwave) | `medium` | `0` | `round` | `Nunito` | `arrow` | `constant`, `1.1` |
+
+Freedraw widths are small numbers on the fork's scale: `0.2` is a hairline, `1` is about 3 px, `2.5` is a fat marker. A `constant` pen ignores pressure. Pick `variable` whenever pressure should show, and control how much with thinning.
+
+Judge the pen at 2.5x (`penzoom`), not at 100%. In pass 1, fifteen of nineteen themes drew the same thin even hairline, and the 100% shots hid it.
 
 `triangle` heads are heavy next to thin strokes. Use `arrow` for slender drafting heads.
 
