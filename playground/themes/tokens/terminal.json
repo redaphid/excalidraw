@@ -1,0 +1,45 @@
+{
+  "$schema": "./schema.json",
+  "name": "Terminal",
+  "mode": "dark",
+  "description": "Green phosphor on black: monospace everything, square corners, a dim glow on UI text and nothing else lit. Element greens display at #6fc76f, the brightest dark mode allows.",
+  "canvas": "#050a06",
+  "ink": "#39ff6a",
+  "accent": "#5dff8a",
+  "palette": ["#ff6b6b", "#7fdcff", "#39ff6a", "#ffb86b", "#c792ea", "#4fd6be"],
+  "washes": [2, 1, 2, 1],
+  "grid": {
+    "color": "#5dff8a",
+    "minor": 0.05,
+    "major": 0.14,
+    "style": "solid"
+  },
+  "type": {
+    "ui": "Cascadia",
+    "canvas": "Cascadia",
+    "size": 16
+  },
+  "stroke": {
+    "width": "thin",
+    "roughness": 0,
+    "roundness": "sharp",
+    "arrowhead": "arrow",
+    "arrowType": "sharp",
+    "fill": "solid"
+  },
+  "pen": {
+    "pressure": false,
+    "width": 0.35
+  },
+  "surface": {
+    "radius": 0,
+    "border": "hairline",
+    "shadow": "none",
+    "panel": "#07120a"
+  },
+  "frame": {
+    "width": 1,
+    "alpha": 0.45
+  },
+  "extra": ":scope {\n  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n}"
+}

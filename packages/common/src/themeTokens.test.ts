@@ -82,6 +82,27 @@ describe("generateThemeCss", () => {
     );
   });
 
+  it("warns when the canvas is dark but the mode is light", () => {
+    expect(
+      generateThemeCss({ ...tokens, canvas: "#050a06", ink: "#39ff6a" })
+        .warnings,
+    ).toContainEqual(expect.objectContaining({ token: "mode" }));
+  });
+
+  it("warns when dark mode cannot display an element color", () => {
+    const { warnings } = generateThemeCss({
+      ...tokens,
+      mode: "dark",
+      canvas: "#050a06",
+      ink: "#39ff6a",
+      surface: { ...tokens.surface, panel: "#07120a" },
+    });
+
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ token: "ink", from: "#39ff6a" }),
+    );
+  });
+
   it("is deterministic", () => {
     expect(generateThemeCss(tokens).css).toBe(generateThemeCss(tokens).css);
   });

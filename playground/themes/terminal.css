@@ -1,9 +1,10 @@
-/* Terminal. mode: light */
+/* Terminal. mode: dark */
 /*
  * Green phosphor on black: monospace everything, square corners, a dim
- * glow on text and nothing else lit. It runs in light mode so its greens
- * display at full value; dark mode's color filter tops out at #6fc76f.
- * Black ink drawn under another theme disappears on this canvas.
+ * glow on UI text and nothing else lit. Element greens display at #6fc76f,
+ * the brightest dark mode allows.
+ *
+ * Generated from theme tokens; edit the tokens, not this file.
  */
 :scope,
 :scope.theme--dark {
@@ -11,12 +12,13 @@
   --canvas-grid-color: rgba(93, 255, 138, 0.05);
   --canvas-grid-bold-color: rgba(93, 255, 138, 0.14);
   --canvas-grid-style: solid;
-  --canvas-handle-fill: #050a06;
-  --canvas-frame-color: rgba(93, 255, 138, 0.45);
+  --canvas-handle-fill: #07120a;
+  --canvas-frame-color: rgba(57, 255, 106, 0.45);
   --canvas-frame-width: 1;
-  --canvas-frame-name-color: #5dff8a;
+  --canvas-frame-name-color: #23943f;
   --color-selection: #5dff8a;
-  --element-stroke-color: #39ff6a;
+
+  --element-stroke-color: #006700;
   --element-background-color: transparent;
   --element-fill-style: solid;
   --element-stroke-width: thin;
@@ -25,89 +27,98 @@
   --element-arrow-type: sharp;
   --element-start-arrowhead: none;
   --element-end-arrowhead: arrow;
-  --element-font-family: Cascadia;
+  --element-font-family: "Cascadia";
   --element-font-size: 16;
   --element-freedraw-variability: constant;
   --element-freedraw-width: 0.35;
-  --color-picks-stroke: #39ff6a #ff5f5f #5fd7ff #39ff6a #ffb000;
-  --color-picks-background: transparent #0c2c14 #122729 #165826 #0f2720;
-  --color-palette-stroke: #0e3618 #19672c #239840 #2fce56 #39ff6a,
-    #321916 #642a28 #963b3a #cd4e4d #ff5f5f,
-    #152f33 #275865 #398196 #4daecd #5fd7ff,
-    #322805 #644904 #966a03 #cd8f01 #ffb000,
-    #28222f #4f3e5d #76598a #a077bc #c792ea,
-    #2d312e #5a5d5b #878987 #b8b9b8 #e5e5e5,
-    #122f27 #21584c #308071 #40ad99 #4fd6be,
-    #322531 #644360 #96608f #cd81c4 #ff9ff3;
+  --color-picks-stroke: #006700 #fa4e4e #003d65 #006700 #7a2800;
+  --color-picks-background: transparent #95dca6 #abcfd7 #95dca6 #abcfd7;
+  --color-palette-stroke: #bfedca #72cd88 #24ac46 #008700 #006700,
+    #ffeae6 #ffc4c0 #ff9d9c #fb7372 #fa4e4e,
+    #cee6ea #8fbdc9 #5293a8 #0e6585 #003d65,
+    #bfedca #72cd88 #24ac46 #008700 #006700,
+    #ede3cf #d0b48f #b48752 #96550d #7a2800,
+    #efe8f7 #d1bee2 #b896cf #9a6aba #7f41a8,
+    #ccede4 #8bcabd #4ca997 #05846c #006246;
   --color-palette-background: transparent,
-    #0c2c14 #165826 #20893a #2dc452 #39ff6a,
-    #281612 #552522 #873634 #c34b4a #ff5f5f,
-    #122729 #224c56 #347587 #49a6c3 #5fd7ff,
-    #282105 #553f04 #876003 #c38801 #ffb000,
-    #201d26 #43364f #6a517d #9871b3 #c792ea,
-    #1a1e1b #353835 #525553 #767776 #9a9a9a,
-    #0f2720 #1d4b41 #2b7466 #3da592 #4fd6be,
-    #281f27 #553a52 #875781 #c37bba #ff9ff3;
+    #fff1ec #ffcfcc #ffa9a8 #fc7b7a #fa4e4e,
+    #dbeff1 #abcfd7 #649fb2 #1a6d8b #003d65,
+    #cff4d8 #95dca6 #3bb65a #008e09 #006700,
+    #f2ebdb #d8c2a2 #be9565 #9c5e1a #7a2800,
+    #f2eff9 #dacae8 #bfa2d5 #9f72bf #7f41a8,
+    #d7f3eb #9fd5c9 #5eb3a3 #128b74 #006246;
 
-  --ui-font: Cascadia, "Cascadia Code", Consolas, "SF Mono", monospace;
-  --text-primary-color: #5dff8a;
-  --color-on-surface: #5dff8a;
-  --icon-fill-color: #5dff8a;
-  --popup-text-color: #5dff8a;
-  --keybinding-color: #2f9e52;
-  --color-gray-60: #2f9e52;
-  --input-label-color: #2f9e52;
+  --ui-font: "Cascadia", system-ui, sans-serif;
+  --text-primary-color: #39ff6a;
+  --color-on-surface: #39ff6a;
+  --icon-fill-color: #39ff6a;
+  --popup-text-color: #39ff6a;
+  --keybinding-color: #23943f;
+  --color-gray-60: #23943f;
+  --input-label-color: #23943f;
 
   --island-bg-color: #07120a;
   --island-bg-color-alt: #07120a;
   --popup-bg-color: #07120a;
   --sidebar-bg-color: #07120a;
   --default-bg-color: #07120a;
-  --popup-secondary-bg-color: #0d2414;
-  --input-bg-color: #040905;
-  --input-border-color: #1f5f2f;
-  --input-hover-bg-color: #0d2414;
+  --popup-secondary-bg-color: #0a2010;
+  --input-bg-color: #050c07;
+  --input-border-color: #0f3819;
+  --input-hover-bg-color: #0a2010;
 
-  --color-surface-lowest: #040905;
-  --color-surface-low: #0d2414;
-  --color-surface-mid: #0d2414;
-  --color-surface-high: #0d2414;
-  --color-surface-primary-container: #123d1f;
-  --color-on-primary-container: #b6ffcb;
+  --color-surface-lowest: #050c07;
+  --color-surface-low: #0a2010;
+  --color-surface-mid: #0a2010;
+  --color-surface-high: #0a2010;
+  --color-surface-primary-container: #215930;
+  --color-on-primary-container: #39ff6a;
 
   --color-primary: #5dff8a;
   --color-primary-darker: #5dff8a;
   --color-primary-darkest: #5dff8a;
   --color-primary-hover: #5dff8a;
-  --color-primary-light: #123d1f;
-  --color-primary-light-darker: #123d1f;
+  --color-primary-light: #215930;
+  --color-primary-light-darker: #215930;
   --color-brand-hover: #5dff8a;
   --color-brand-active: #5dff8a;
   --select-highlight-color: #5dff8a;
   --focus-highlight-color: #5dff8a;
 
-  --button-hover-bg: #0d2414;
-  --button-active-bg: #123d1f;
+  --button-hover-bg: #0a2010;
+  --button-active-bg: #215930;
   --button-active-border: #5dff8a;
-  --button-gray-1: #0d2414;
-  --button-gray-2: #0d2414;
-  --button-gray-3: #123d1f;
-  --default-border-color: #1f5f2f;
-  --dialog-border-color: #1f5f2f;
-  --sidebar-border-color: #1f5f2f;
-  --color-border-outline: #2f9e52;
-  --color-border-outline-variant: #1f5f2f;
+  --button-gray-1: #0a2010;
+  --button-gray-2: #0a2010;
+  --button-gray-3: #215930;
+  --default-border-color: #0f3819;
+  --dialog-border-color: #0f3819;
+  --sidebar-border-color: #0f3819;
+  --color-border-outline: #23943f;
+  --color-border-outline-variant: #0f3819;
 
-  --border-radius-md: 0;
-  --border-radius-lg: 0;
-  --shadow-island: 0 0 0 1px #1f5f2f;
-  --shadow-island-stronger: 0 0 0 1px #1f5f2f;
-  --modal-shadow: 0 0 0 1px #1f5f2f;
-  --sidebar-shadow: 0 0 0 1px #1f5f2f;
-  --library-dropdown-shadow: 0 0 0 1px #1f5f2f;
-  --overlay-bg-color: rgba(0, 0, 0, 0.75);
-  --color-slider-track: #1f5f2f;
+  --border-radius-md: 0px;
+  --border-radius-lg: 0px;
+  --shadow-island: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --shadow-island-stronger: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --modal-shadow: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --sidebar-shadow: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --library-dropdown-shadow: 0 0 0 1px rgba(57, 255, 106, 0.14);
+  --overlay-bg-color: rgba(5, 10, 6, 0.72);
+  --color-slider-track: #0f3819;
   --color-slider-thumb: #5dff8a;
+}
+
+:scope .HintViewer {
+  --color-gray-40: #22913d;
+}
+
+:scope .HelpDialog__key {
+  color: #39ff6a;
+}
+
+:scope [data-radix-popper-content-wrapper] .Island {
+  background: #07120a;
 }
 
 :scope {

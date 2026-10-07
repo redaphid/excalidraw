@@ -4964,8 +4964,9 @@ class App extends React.Component<AppProps, AppState> {
       return {
         penMode: force ?? !prevState.penMode,
         penDetected: true,
+        // a theme's pen keeps its pressure response when a pen shows up
         currentItemStrokeVariability: !prevState.penDetected
-          ? "variable"
+          ? this.cssTheme.appState.currentItemStrokeVariability ?? "variable"
           : prevState.currentItemStrokeVariability,
       };
     });
@@ -7927,7 +7928,8 @@ ${css}
         return {
           penMode: true,
           penDetected: true,
-          currentItemStrokeVariability: "variable",
+          currentItemStrokeVariability:
+            this.cssTheme.appState.currentItemStrokeVariability ?? "variable",
         };
       });
     }

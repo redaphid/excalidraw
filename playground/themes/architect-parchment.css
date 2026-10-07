@@ -115,6 +115,10 @@
   --color-slider-thumb: #1b2129;
 }
 
+:scope .HintViewer {
+  --color-gray-40: #61615f;
+}
+
 :scope .HelpDialog__key {
   color: #1b2129;
 }

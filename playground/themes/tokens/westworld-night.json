@@ -2,12 +2,12 @@
   "$schema": "./schema.json",
   "name": "Westworld Night",
   "mode": "dark",
-  "description": "White-on-black stencil: deep graphite ground, a barely-there grid, hairline bone ink, bronze for anything live. Machined, unhurried.",
+  "description": "White-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills, bronze for anything live. Machined, unhurried.",
   "canvas": "#0b0c0e",
   "ink": "#ece8e0",
   "accent": "#c89a5a",
-  "palette": ["#c89a5a", "#b0574e", "#8fa6b8", "#93a897", "#a58fb0", "#d8c27a", "#c98559", "#45464c", "#5a5b61"],
-  "washes": [0, 7, 8, 2],
+  "palette": ["#c89a5a", "#d9d4ca", "#ece8e0", "#a7abb2", "#b0574e", "#2e2f35", "#3a3b42", "#8fa6b8"],
+  "washes": [5, 6, 7, 0],
   "grid": {
     "color": "#f0eee8",
     "minor": 0.045,
@@ -41,7 +41,7 @@
   },
   "frame": {
     "width": 1,
-    "alpha": 0.55
+    "alpha": 0.8
   },
   "extra": ":scope .selected-shape-actions h3,\n:scope .selected-shape-actions legend,\n:scope .frame-breadcrumb {\n  letter-spacing: 0.14em;\n  text-transform: uppercase;\n  font-size: 0.6875rem;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;\n}"
 }

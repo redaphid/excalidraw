@@ -8,7 +8,7 @@ import { restoreElements } from "../data/restore";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
-import { UI } from "./helpers/ui";
+import { Pointer, UI } from "./helpers/ui";
 import { act, render } from "./test-utils";
 
 const { h } = window;
@@ -205,6 +205,19 @@ describe("css prop", () => {
       thinning: 0.2,
       taper: 4,
     });
+  });
+
+  it("keeps the theme's constant pen when a stylus first draws", async () => {
+    await render(
+      <Excalidraw css=":scope { --element-freedraw-variability: constant; }" />,
+    );
+    UI.clickTool("freedraw");
+    const pen = new Pointer("pen");
+    pen.downAt(10, 10);
+    pen.moveTo(60, 40);
+    pen.upAt(60, 40);
+
+    expect(h.state.currentItemStrokeVariability).toBe("constant");
   });
 
   it("restores a pen's options and adds none to strokes without them", () => {
