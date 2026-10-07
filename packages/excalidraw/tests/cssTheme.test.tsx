@@ -1,7 +1,12 @@
 import { FONT_FAMILY, THEME } from "@excalidraw/common";
-import { isFreeDrawElement } from "@excalidraw/element";
+import {
+  getFreedrawOutlinePoints,
+  isFreeDrawElement,
+} from "@excalidraw/element";
+import { pointFrom } from "@excalidraw/math";
 
 import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
+import type { LocalPoint } from "@excalidraw/math";
 
 import { readCssTheme } from "../cssTheme";
 import { restoreElements } from "../data/restore";
@@ -242,6 +247,30 @@ describe("css prop", () => {
     expect(
       Object.keys((plain as ExcalidrawFreeDrawElement).strokeOptions),
     ).toEqual(["variability", "streamline"]);
+  });
+
+  it("draws a pen's taper as a stroke that narrows to its ends", () => {
+    const stroke = (taper?: number) =>
+      API.createElement({
+        type: "freedraw",
+        strokeWidth: 2,
+        simulatePressure: false,
+        points: Array.from({ length: 21 }, (_, i) =>
+          pointFrom<LocalPoint>(i * 5, 0),
+        ),
+        pressures: Array.from({ length: 21 }, () => 0.5),
+        strokeOptions: { variability: "variable", streamline: 0.5, taper },
+      }) as ExcalidrawFreeDrawElement;
+    const halfWidthAtStart = (element: ExcalidrawFreeDrawElement) =>
+      Math.max(
+        ...getFreedrawOutlinePoints(element)
+          .filter(([x]) => x < 5)
+          .map(([, y]) => Math.abs(y)),
+      );
+
+    expect(halfWidthAtStart(stroke(4))).toBeLessThan(
+      halfWidthAtStart(stroke()) / 2,
+    );
   });
 
   it("leaves existing elements alone", async () => {

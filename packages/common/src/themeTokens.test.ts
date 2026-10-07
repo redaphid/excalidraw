@@ -103,6 +103,20 @@ describe("generateThemeCss", () => {
     );
   });
 
+  it("pales a palette wash until ink labels read on it, and says so", () => {
+    const ink = "#4a4a4a";
+    const { warnings } = generateThemeCss({
+      ...tokens,
+      ink,
+      palette: ["#000000", ...tokens.palette.slice(1)],
+    });
+    const wash = warnings.find(({ token }) => token === "palette[0]");
+
+    expect(wash).toBeDefined();
+    expect(contrastRatio(ink, wash!.from)).toBeLessThan(4.5);
+    expect(contrastRatio(ink, wash!.to)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("is deterministic", () => {
     expect(generateThemeCss(tokens).css).toBe(generateThemeCss(tokens).css);
   });
