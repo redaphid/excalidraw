@@ -903,11 +903,11 @@ export interface ExcalidrawProps {
   /**
    * CSS for this editor, scoped to it with `@scope`: `:scope` matches the
    * editor root and each of its portals. Besides restyling the UI, it can
-   * set the custom properties
-   * listed in docs/theming.md: the canvas colors (`--canvas-background`,
-   * `--canvas-grid-color`, ...) and the defaults for new elements
-   * (`--element-stroke-width`, `--element-roughness`, ...). They are read
-   * when this prop or the theme changes.
+   * set the custom properties listed in docs/theming.md: the canvas colors
+   * (`--canvas-background`, `--canvas-grid-color`, ...), the defaults for
+   * new elements (`--element-stroke-width`, `--element-roughness`, ...) and
+   * the color picker's swatches. They are read when this prop or the theme
+   * changes, never per frame.
    */
   css?: string;
   /**

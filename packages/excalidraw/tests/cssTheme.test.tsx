@@ -292,6 +292,17 @@ describe("css prop", () => {
     expect(swatches).not.toContain("#ffffff");
   });
 
+  it("reads the dark mode values of an editor that starts dark", async () => {
+    await render(
+      <Excalidraw
+        theme={THEME.DARK}
+        css=":scope { --canvas-grid-color: #111111; } :scope.theme--dark { --canvas-grid-color: #222222; }"
+      />,
+    );
+
+    expect(h.app.cssTheme.canvas.gridColor).toBe("#222222");
+  });
+
   it("applies a changed css prop", async () => {
     const { rerender } = await render(<Excalidraw css={THEME_CSS} />);
 
