@@ -19,6 +19,7 @@ import type {
   SocketId,
   PendingExcalidrawElements,
 } from "../types";
+import type { CanvasTheme } from "../cssTheme";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Drawable } from "roughjs/bin/core";
 
@@ -45,6 +46,8 @@ export type StaticCanvasRenderConfig = {
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
   elementRenderOverrides?: ElementRenderOverrides;
+  /** editor chrome colors from the `css` prop; absent when exporting */
+  canvasTheme?: CanvasTheme;
 };
 
 export type SVGRenderConfig = {
@@ -75,6 +78,7 @@ export type InteractiveCanvasRenderConfig = {
   remotePointerUsernames: Map<SocketId, string>;
   remotePointerButton: Map<SocketId, string | undefined>;
   selectionColor: string;
+  canvasTheme: CanvasTheme;
   lastViewportPosition: { x: number; y: number };
   // extra options passed to the renderer
   // ---------------------------------------------------------------------------

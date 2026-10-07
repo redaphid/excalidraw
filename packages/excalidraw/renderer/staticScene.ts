@@ -1,5 +1,6 @@
 import {
   applyDarkModeFilter,
+  COLOR_PALETTE,
   COLOR_WHITE,
   FRAME_STYLE,
   THEME,
@@ -79,7 +80,12 @@ const strokeGrid = (
   width: number,
   height: number,
   scale: number,
+  canvasTheme: StaticCanvasRenderConfig["canvasTheme"],
 ) => {
+  const boldColor = canvasTheme?.gridBoldColor ?? GridLineColor[theme].bold;
+  const regularColor = canvasTheme?.gridColor ?? GridLineColor[theme].regular;
+  const dashed = canvasTheme?.gridStyle !== "solid";
+
   const offsetX = (scrollX % gridSize) - gridSize;
   const offsetY = (scrollY % gridSize) - gridSize;
 
@@ -131,10 +137,8 @@ const strokeGrid = (
     const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
 
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
+    context.setLineDash(isBold || !dashed ? [] : lineDash);
+    context.strokeStyle = isBold ? boldColor : regularColor;
     context.moveTo(position, offsetY - gridSize);
     context.lineTo(position, Math.ceil(offsetY + height + gridSize * 2));
     context.stroke();
@@ -152,10 +156,8 @@ const strokeGrid = (
     const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
 
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
+    context.setLineDash(isBold || !dashed ? [] : lineDash);
+    context.strokeStyle = isBold ? boldColor : regularColor;
     context.moveTo(offsetX - gridSize, position);
     context.lineTo(Math.ceil(offsetX + width + gridSize * 2), position);
     context.stroke();
@@ -305,6 +307,12 @@ const _renderStaticScene = ({
     theme: appState.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
+    // a theme restyles the default canvas only, not a background the user
+    // picked
+    themeBackgroundColor:
+      appState.viewBackgroundColor === COLOR_PALETTE.white
+        ? renderConfig.canvasTheme?.background
+        : undefined,
   });
 
   // Apply zoom
@@ -323,6 +331,7 @@ const _renderStaticScene = ({
       normalizedWidth / appState.zoom.value,
       normalizedHeight / appState.zoom.value,
       scale,
+      renderConfig.canvasTheme,
     );
   }
 

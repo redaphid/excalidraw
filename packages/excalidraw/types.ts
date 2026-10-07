@@ -901,6 +901,15 @@ export interface ExcalidrawProps {
    */
   authoringUnits?: AuthoringUnits;
   /**
+   * CSS for this editor, scoped to it with `@scope` where the browser
+   * supports it. Besides restyling the UI, it can set the custom properties
+   * listed in docs/theming.md: the canvas colors (`--canvas-background`,
+   * `--canvas-grid-color`, ...) and the defaults for new elements
+   * (`--element-stroke-width`, `--element-roughness`, ...). They are read
+   * when this prop or the theme changes.
+   */
+  css?: string;
+  /**
    * The freedraw tool's stroke width, in `authoringUnits`, in place of the
    * named widths, which are hidden while the tool is out.
    */
@@ -1229,6 +1238,7 @@ export type AppClassProperties = {
   interactiveCanvas: HTMLCanvasElement | null;
   /** static canvas */
   canvas: HTMLCanvasElement;
+  cssTheme: App["cssTheme"];
   focusContainer(): void;
   library: Library;
   imageCache: Map<
