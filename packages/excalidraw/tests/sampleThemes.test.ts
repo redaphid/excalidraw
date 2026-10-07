@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import Ajv2020 from "ajv/dist/2020";
+
 import { THEME_TOKENS_SCHEMA, generateThemeCss } from "@excalidraw/common";
 
 import catalog from "../themes/index.json";
@@ -62,6 +64,33 @@ describe("the sample themes index", () => {
     "describes $name in one or two sentences",
     ({ description }) => {
       expect(description.match(/[.!?](\s|$)/g)?.length).toBeLessThanOrEqual(2);
+    },
+  );
+
+  it.each(catalog.themes.filter(({ generated }) => generated))(
+    "has $name's tokens valid against the schema",
+    ({ name }) => {
+      const validate = new Ajv2020().compile(THEME_TOKENS_SCHEMA);
+      expect(
+        validate(JSON.parse(read(`${name}.tokens.json`)))
+          ? []
+          : validate.errors,
+      ).toEqual([]);
+    },
+  );
+
+  it.each(catalog.themes.filter(({ generated }) => generated))(
+    "reads $name's tokens without a complaint about the document",
+    ({ name }) => {
+      expect(
+        generateThemeCss(
+          JSON.parse(read(`${name}.tokens.json`)),
+        ).warnings.filter(({ reason }) =>
+          /not a |names no token|no \$type|not supported|alpha|read as|using Excalidraw/.test(
+            reason,
+          ),
+        ),
+      ).toEqual([]);
     },
   );
 

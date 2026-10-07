@@ -6,7 +6,8 @@
  * and a stroke style at known paths, and the choices only this editor has
  * under `$extensions["com.hypnodroid.draw"]`. A designer's export without the
  * profile works too: each role is found by name, anything missing falls back
- * to Excalidraw's own look, and every such decision is reported.
+ * to Excalidraw's own look, and every role found by name, missing color role,
+ * unreadable value and dropped alpha is reported.
  *
  * Pure and isomorphic, like the generator.
  */
@@ -139,7 +140,7 @@ const DEFAULTS = {
 
 /** the names a designer's export may give each role */
 const ROLE_NAMES = {
-  canvas: ["canvas", "background", "bg", "paper", "surface", "base"],
+  canvas: ["canvas", "background", "bg", "paper", "surface"],
   ink: ["ink", "text", "foreground", "fg", "onbackground", "onsurface"],
   accent: ["accent", "primary", "brand", "highlight", "selection"],
   ui: ["ui", "body", "sans", "base", "text", "default", "primary"],
@@ -147,6 +148,22 @@ const ROLE_NAMES = {
   fontSize: ["size", "body", "base", "default", "md", "medium"],
   typography: ["body", "base", "text", "default", "paragraph", "regular"],
 };
+const COLOR_ROLE_NAMES = [
+  ...ROLE_NAMES.canvas,
+  ...ROLE_NAMES.ink,
+  ...ROLE_NAMES.accent,
+];
+/** the entry of a scale that stands for the whole group: `text.primary`, `blue.500` */
+const DEFAULT_LEAVES = [
+  "default",
+  "base",
+  "main",
+  "primary",
+  "normal",
+  "regular",
+  "root",
+  "500",
+];
 
 const PALETTE_SIZE = { min: 4, max: 12 };
 
@@ -189,12 +206,13 @@ const inRange =
 const text: Parse<string> = (value) =>
   typeof value === "string" ? value : undefined;
 
+/** `#rgb`, `#rrggbb`, or the drafts' `#rrggbbaa` without its alpha */
 const toHex: Parse<string> = (value) => {
   if (typeof value !== "string") {
     return undefined;
   }
-  if (/^#[0-9a-f]{6}$/i.test(value)) {
-    return value.toLowerCase();
+  if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(value)) {
+    return value.slice(0, 7).toLowerCase();
   }
   return /^#[0-9a-f]{3}$/i.test(value)
     ? `#${[...value.slice(1)]
@@ -206,34 +224,41 @@ const toHex: Parse<string> = (value) => {
 /**
  * An sRGB color value, or another color space's `hex` fallback. A plain hex
  * string, the form of the drafts before 2025.10, is read too. Alpha is
- * ignored: the generator works with opaque colors.
+ * dropped (see {@link alphaOf}): the generator works with opaque colors.
  */
 const readColor: Parse<string> = (value) => {
   if (!isRecord(value)) {
     return toHex(value);
   }
   const { colorSpace, components } = value;
-  if (
-    colorSpace === "srgb" &&
-    Array.isArray(components) &&
+  if (colorSpace !== "srgb") {
+    return toHex(value.hex);
+  }
+  return Array.isArray(components) &&
     components.length === 3 &&
     components.every(
       (component) =>
         component === "none" ||
-        (typeof component === "number" && Number.isFinite(component)),
+        (typeof component === "number" && component >= 0 && component <= 1),
     )
-  ) {
-    return `#${components
-      .map((component) =>
-        Math.round(
-          Math.max(0, Math.min(1, component === "none" ? 0 : component)) * 255,
+    ? `#${components
+        .map((component) =>
+          Math.round((component === "none" ? 0 : component) * 255)
+            .toString(16)
+            .padStart(2, "0"),
         )
-          .toString(16)
-          .padStart(2, "0"),
-      )
-      .join("")}`;
-  }
-  return toHex(value.hex);
+        .join("")}`
+    : undefined;
+};
+
+/** a color's alpha when it is not opaque */
+const alphaOf = (value: unknown) => {
+  const alpha = isRecord(value)
+    ? value.alpha
+    : typeof value === "string" && /^#[0-9a-f]{8}$/i.test(value)
+    ? parseInt(value.slice(7), 16) / 255
+    : undefined;
+  return typeof alpha === "number" && alpha < 1 ? alpha : undefined;
 };
 
 /** in px; a rem is 16px. The "16px" strings of earlier drafts are read too. */
@@ -274,21 +299,34 @@ const readGridStyle: Parse<"solid" | "dashed"> = (value) =>
 type Entry = { node: Record<string, unknown>; groupType?: string };
 type Resolved = { type?: string; value: unknown } | { error: string };
 
-/** every token in the document, by dotted path, in document order */
+const isToken = (node: Record<string, unknown>) =>
+  "$value" in node ||
+  ("$ref" in node && Object.keys(node).every((key) => key.startsWith("$")));
+
+/**
+ * Every token in the document, by dotted path, in document order (JSON
+ * parsers put integer-like names such as "100" first). A group's `$root`
+ * token is `group.$root`. Groups that `$extends` another, or carry a `$ref`,
+ * are listed: their inherited tokens are not read.
+ */
 const collectTokens = (document: Record<string, unknown>) => {
   const tokens = new Map<string, Entry>();
+  const extending: string[] = [];
   const walk = (
     group: Record<string, unknown>,
     path: string[],
     groupType: string | undefined,
   ) => {
+    if (path.length && ("$extends" in group || "$ref" in group)) {
+      extending.push(path.join("."));
+    }
     for (const [name, child] of Object.entries(group)) {
-      if (name.startsWith("$") || !isRecord(child)) {
+      if ((name.startsWith("$") && name !== "$root") || !isRecord(child)) {
         continue;
       }
-      if ("$value" in child || "$ref" in child) {
+      if (isToken(child)) {
         tokens.set([...path, name].join("."), { node: child, groupType });
-      } else {
+      } else if (name !== "$root") {
         walk(
           child,
           [...path, name],
@@ -302,7 +340,7 @@ const collectTokens = (document: Record<string, unknown>) => {
     [],
     typeof document.$type === "string" ? document.$type : undefined,
   );
-  return tokens;
+  return { tokens, extending };
 };
 
 /**
@@ -344,27 +382,24 @@ const createResolver = (
     }
     if (isRecord(raw) && typeof raw.$ref === "string") {
       const ref = raw.$ref;
-      const whole = /^#\/(.+)\/\$value$/.exec(ref);
-      if (whole) {
-        return resolveToken(
-          whole[1].split("/").map(unescapePointer).join("."),
-          seen,
-        );
-      }
       if (!ref.startsWith("#/") || seen.includes(ref)) {
         return { error: `cannot follow $ref ${ref}` };
       }
-      const target = ref
-        .slice(2)
-        .split("/")
-        .map(unescapePointer)
-        .reduce<unknown>(
-          (at, key) =>
-            isRecord(at) || Array.isArray(at)
-              ? (at as Record<string, unknown>)[key]
-              : undefined,
-          document,
-        );
+      const keys = ref.slice(2).split("/").map(unescapePointer);
+      // a pointer to a token, or to its $value, is a reference to the token
+      const tokenPath = (
+        keys[keys.length - 1] === "$value" ? keys.slice(0, -1) : keys
+      ).join(".");
+      if (tokens.has(tokenPath)) {
+        return resolveToken(tokenPath, seen);
+      }
+      const target = keys.reduce<unknown>(
+        (at, key) =>
+          isRecord(at) || Array.isArray(at)
+            ? (at as Record<string, unknown>)[key]
+            : undefined,
+        document,
+      );
       if (target === undefined) {
         return { error: `$ref ${ref} points at nothing` };
       }
@@ -410,8 +445,14 @@ export const readThemeTokens = (
   if (!isRecord(document)) {
     throw new TypeError("theme tokens must be a design tokens JSON object");
   }
-  const warnings: ThemeWarning[] = [];
-  const tokens = collectTokens(document);
+  const { tokens, extending } = collectTokens(document);
+  const warnings: ThemeWarning[] = extending.map((path) => ({
+    token: path,
+    from: "$extends",
+    to: "",
+    reason:
+      "extending groups ($extends, or a group's $ref) is not supported: only this group's own tokens are read",
+  }));
   const resolve = createResolver(document, tokens);
   const claimed = new Set<string>();
 
@@ -434,6 +475,18 @@ export const readThemeTokens = (
         : parse(resolved.value);
     if (value !== undefined) {
       claimed.add(path);
+      const alpha =
+        type === "color" && !("error" in resolved)
+          ? alphaOf(resolved.value)
+          : undefined;
+      if (alpha !== undefined) {
+        warnings.push({
+          token: path,
+          from: `alpha ${alpha}`,
+          to: "alpha 1",
+          reason: "theme colors are opaque: the alpha is dropped",
+        });
+      }
       return value;
     }
     const { node } = tokens.get(path)!;
@@ -453,27 +506,62 @@ export const readThemeTokens = (
     return fallback;
   };
 
-  /** the profile's path, else the first unclaimed token of `type` named one of `names` */
+  /** the profile's token at `path`, or the `$root` token of a group there */
+  const profile = (path: string) =>
+    tokens.has(path)
+      ? path
+      : tokens.has(`${path}.$root`)
+      ? `${path}.$root`
+      : undefined;
+
+  /**
+   * The profile's token, else the best unclaimed token of `type` by name:
+   * one named for the role (`color.background`), unless its group names
+   * another color role (`text.primary` is not the accent), then the default
+   * entry of a group named for it (`text.primary`, `primary.500`), shallower
+   * paths first.
+   */
   const locate = (
     path: string,
     type: string,
     names: readonly string[],
     accept: (path: string) => boolean = () => true,
-  ) =>
-    tokens.has(path)
-      ? path
-      : [...tokens.keys()].find(
-          (candidate) =>
-            !claimed.has(candidate) &&
-            accept(candidate) &&
-            candidate
-              .split(".")
-              .some((segment) => names.includes(normalize(segment))) &&
-            typeOf(candidate) === type,
-        );
+  ) => {
+    const own = profile(path);
+    if (own) {
+      return own;
+    }
+    const otherRoles = COLOR_ROLE_NAMES.filter((name) => !names.includes(name));
+    return [...tokens.keys()]
+      .filter(
+        (candidate) =>
+          !claimed.has(candidate) &&
+          !candidate.startsWith("color.palette.") &&
+          accept(candidate) &&
+          typeOf(candidate) === type,
+      )
+      .map((candidate) => {
+        const segments = candidate
+          .split(".")
+          .filter((segment) => segment !== "$root")
+          .map(normalize);
+        const leaf = segments[segments.length - 1];
+        const parent = segments[segments.length - 2] ?? "";
+        const tier =
+          names.includes(leaf) &&
+          !(type === "color" && otherRoles.includes(parent))
+            ? 1
+            : names.includes(parent) && DEFAULT_LEAVES.includes(leaf)
+            ? 2
+            : 0;
+        return { candidate, rank: tier * 100 + segments.length };
+      })
+      .filter(({ rank }) => rank >= 100)
+      .sort((a, b) => a.rank - b.rank)[0]?.candidate;
+  };
 
   const notice = (path: string, profilePath: string, role: string) => {
-    if (path !== profilePath) {
+    if (path !== profilePath && path !== `${profilePath}.$root`) {
       warnings.push({
         token: path,
         from: "",
@@ -501,17 +589,20 @@ export const readThemeTokens = (
     return { value: read(path, "color", readColor, DEFAULTS[name]), path };
   };
 
-  const ifPresent = <T>(path: string, type: string, parse: Parse<T>) =>
-    tokens.has(path)
-      ? read<T | undefined>(path, type, parse, undefined)
-      : undefined;
+  const ifPresent = <T>(path: string, type: string, parse: Parse<T>) => {
+    const own = profile(path);
+    return own ? read<T | undefined>(own, type, parse, undefined) : undefined;
+  };
 
   const orDefault = <T>(
     path: string,
     type: string,
     parse: Parse<T>,
     fallback: T,
-  ) => (tokens.has(path) ? read(path, type, parse, fallback) : fallback);
+  ) => {
+    const own = profile(path);
+    return own ? read(own, type, parse, fallback) : fallback;
+  };
 
   const extensions = isRecord(document.$extensions)
     ? document.$extensions[THEME_TOKENS_VENDOR]
@@ -551,8 +642,9 @@ export const readThemeTokens = (
   const active = ifPresent("color.active", "color", readColor);
   const gridColor = ifPresent("color.grid", "color", readColor) ?? ink.value;
 
+  const PALETTE = "color.palette.";
   const paletteGroup = [...tokens.keys()].filter(
-    (path) => path.startsWith("color.palette.") && path.split(".").length === 3,
+    (path) => path.startsWith(PALETTE) && !claimed.has(path),
   );
   const paletteSource = paletteGroup.length
     ? paletteGroup
@@ -610,7 +702,7 @@ export const readThemeTokens = (
     });
     palette.push(...added.map((color) => ({ path: "color.palette", color })));
   }
-  const paletteNames = palette.map(({ path }) => path.split(".").pop());
+  const paletteNames = palette.map(({ path }) => path.slice(PALETTE.length));
 
   // a designer's typography token supplies the font when no fontFamily does
   const typographyPath = locate(
@@ -662,8 +754,11 @@ export const readThemeTokens = (
     "font.size",
     "dimension",
     ROLE_NAMES.fontSize,
-    (path) => /font|type|text/i.test(path),
+    (path) => /font|typ|text/i.test(path),
   );
+  if (sizePath) {
+    notice(sizePath, "font.size", "font size");
+  }
   const fontSize = readDimension({ aboveMin: true });
   const size = sizePath
     ? read(sizePath, "dimension", fontSize, DEFAULTS.fontSize)
@@ -802,7 +897,7 @@ export const readThemeTokens = (
 
 const ALIAS_VALUE = {
   type: "string",
-  pattern: "^{[^{}]+}$",
+  pattern: "^\\{[^{}]+\\}$",
   description: "an alias, {group.token}",
 } as const;
 const REF_VALUE = {
@@ -855,6 +950,7 @@ const FONT_FAMILY_VALUE = {
   ],
 } as const;
 
+/** a token whose $value, when it has one, is `value`; a group passes too */
 const token = (description: string, value: object) => ({
   type: "object",
   description,
@@ -866,7 +962,6 @@ const token = (description: string, value: object) => ({
     $extensions: { type: "object" },
     $deprecated: { type: ["boolean", "string"] },
   },
-  anyOf: [{ required: ["$value"] }, { required: ["$ref"] }],
 });
 const number = (description: string, minimum: number, maximum?: number) =>
   token(description, {
@@ -980,7 +1075,7 @@ export const THEME_TOKENS_SCHEMA = {
         description:
           "element colors in order: the first four are the stroke swatches, and each also gives a background wash",
         patternProperties: {
-          "^[^${}.][^{}.]*$": color("an element color"),
+          "^[^${}.][^{}.]*$": color("an element color, or a group of them"),
         },
       },
     }),

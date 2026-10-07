@@ -64,7 +64,7 @@
                     { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -73,8 +73,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "ink": {
           "type": "object",
@@ -97,7 +96,7 @@
                     { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -106,8 +105,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "accent": {
           "type": "object",
@@ -130,7 +128,7 @@
                     { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -139,8 +137,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "panel": {
           "type": "object",
@@ -163,7 +160,7 @@
                     { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -172,8 +169,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "active": {
           "type": "object",
@@ -196,7 +192,7 @@
                     { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -205,8 +201,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "grid": {
           "type": "object",
@@ -229,7 +224,7 @@
                     { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -238,8 +233,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "palette": {
           "type": "object",
@@ -247,7 +241,7 @@
           "patternProperties": {
             "^[^${}.][^{}.]*$": {
               "type": "object",
-              "description": "an element color",
+              "description": "an element color, or a group of them",
               "properties": {
                 "$value": {
                   "anyOf": [
@@ -266,7 +260,7 @@
                         { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
                       ]
                     },
-                    { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                    { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                     { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
                   ]
                 },
@@ -275,8 +269,7 @@
                 "$description": { "type": "string" },
                 "$extensions": { "type": "object" },
                 "$deprecated": { "type": ["boolean", "string"] }
-              },
-              "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+              }
             }
           }
         }
@@ -301,7 +294,7 @@
                     { "type": "array", "items": { "type": "string" }, "minItems": 1 }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -310,8 +303,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "canvas": {
           "type": "object",
@@ -325,7 +317,7 @@
                     { "type": "array", "items": { "type": "string" }, "minItems": 1 }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -334,8 +326,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "size": {
           "type": "object",
@@ -349,7 +340,7 @@
                     { "type": "string", "pattern": "^-?[0-9.]+(px|rem)$" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -358,8 +349,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         }
       }
     },
@@ -377,7 +367,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": 0, "maximum": 1 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -386,8 +376,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "major": {
           "type": "object",
@@ -396,7 +385,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": 0, "maximum": 1 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -405,8 +394,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "style": {
           "type": "object",
@@ -415,7 +403,7 @@
             "$value": {
               "anyOf": [
                 { "anyOf": [{ "enum": ["solid", "dashed", "dotted", "double", "groove", "ridge", "outset", "inset"] }, { "type": "object" }] },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -424,8 +412,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         }
       }
     },
@@ -443,7 +430,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": 0, "maximum": 2 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -452,8 +439,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         }
       }
     },
@@ -471,7 +457,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": 0, "maximum": 4 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -480,8 +466,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "thinning": {
           "type": "object",
@@ -490,7 +475,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": -1, "maximum": 1 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -499,8 +484,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "taper": {
           "type": "object",
@@ -509,7 +493,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": 0 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -518,8 +502,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "streamline": {
           "type": "object",
@@ -528,7 +511,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": 0, "maximum": 1 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -537,8 +520,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         }
       }
     },
@@ -561,7 +543,7 @@
                     { "type": "string", "pattern": "^-?[0-9.]+(px|rem)$" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -570,8 +552,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         }
       }
     },
@@ -594,7 +575,7 @@
                     { "type": "string", "pattern": "^-?[0-9.]+(px|rem)$" }
                   ]
                 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -603,8 +584,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         },
         "alpha": {
           "type": "object",
@@ -613,7 +593,7 @@
             "$value": {
               "anyOf": [
                 { "type": "number", "minimum": 0, "maximum": 1 },
-                { "type": "string", "pattern": "^{[^{}]+}$", "description": "an alias, {group.token}" },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
                 { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
               ]
             },
@@ -622,8 +602,7 @@
             "$description": { "type": "string" },
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
-          },
-          "anyOf": [{ "required": ["$value"] }, { "required": ["$ref"] }]
+          }
         }
       }
     }

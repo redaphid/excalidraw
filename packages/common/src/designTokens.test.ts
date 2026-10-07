@@ -1,4 +1,7 @@
+import Ajv2020 from "ajv/dist/2020";
+
 import {
+  THEME_TOKENS_SCHEMA,
   THEME_TOKENS_VENDOR,
   contrastRatio,
   generateThemeCss,
@@ -107,6 +110,11 @@ describe("a designer's design tokens export", () => {
     );
   });
 
+  it("is valid against the profile's schema", () => {
+    const validate = new Ajv2020().compile(THEME_TOKENS_SCHEMA);
+    expect(validate(DESIGNER_EXPORT) ? [] : validate.errors).toEqual([]);
+  });
+
   it("names a token path in every warning", () => {
     expect(
       warnings.filter(({ token }) => !/^(color|font)\./.test(token)),
@@ -187,5 +195,174 @@ describe("reading design tokens", () => {
 
   it("rejects a document that is not an object", () => {
     expect(() => generateThemeCss([] as never)).toThrow(TypeError);
+  });
+});
+
+/** a designer's export shaped like a scale: Tailwind or Material style */
+const SCALE_EXPORT = {
+  color: {
+    $type: "color",
+    base: { black: { $value: "#000000" }, white: { $value: "#ffffff" } },
+    primary: {
+      "50": { $value: "#eef2ff" },
+      "500": { $value: "#4f46e5" },
+      "900": { $value: "#312e81" },
+    },
+    gray: {
+      "50": { $value: "#f9fafb" },
+      "500": { $value: "#6b7280" },
+      "900": { $value: "#111827" },
+    },
+    background: {
+      default: { $value: "{color.gray.50}" },
+      inverse: { $value: "{color.gray.900}" },
+    },
+    text: {
+      disabled: { $value: "{color.gray.500}" },
+      primary: { $value: "{color.gray.900}" },
+    },
+  },
+  font: {
+    size: {
+      $type: "dimension",
+      xs: { $value: { value: 12, unit: "px" } },
+      base: { $value: { value: 16, unit: "px" } },
+      lg: { $value: { value: 18, unit: "px" } },
+    },
+    body: {
+      "letter-spacing": {
+        $type: "dimension",
+        $value: { value: 0.5, unit: "px" },
+      },
+    },
+  },
+};
+
+describe("a designer's export shaped like scales", () => {
+  const { css } = generateThemeCss(SCALE_EXPORT);
+
+  it("takes each role from the default entry of its group", () => {
+    expect({
+      canvas: property(css, "--canvas-background"),
+      selection: property(css, "--color-selection"),
+      stroke: property(css, "--element-stroke-color"),
+      size: property(css, "--element-font-size"),
+    }).toEqual({
+      canvas: "#f9fafb",
+      selection: "#4f46e5",
+      stroke: "#111827",
+      size: "16",
+    });
+  });
+});
+
+describe("reading the spec's other forms", () => {
+  const probe = (document: Record<string, unknown>) =>
+    generateThemeCss({
+      $extensions: { [THEME_TOKENS_VENDOR]: { name: "Probe" } },
+      ...document,
+    });
+
+  it("reads a group's $root token as the group", () => {
+    const { css } = probe({
+      color: {
+        $type: "color",
+        canvas: { $value: "#ffffff" },
+        ink: { $value: "#222222" },
+        accent: {
+          $root: { $value: "#0f62fe" },
+          light: { $value: "#a6c8ff" },
+        },
+      },
+    });
+
+    expect(property(css, "--color-selection")).toBe("#0f62fe");
+  });
+
+  it("follows a $ref that points at a token rather than its $value", () => {
+    const { css } = probe({
+      base: { blue: { $type: "color", $value: "#0f62fe" } },
+      color: {
+        $type: "color",
+        canvas: { $value: "#ffffff" },
+        ink: { $value: "#222222" },
+        accent: { $ref: "#/base/blue" },
+      },
+    });
+
+    expect(property(css, "--color-selection")).toBe("#0f62fe");
+  });
+
+  it("reads #rrggbbaa and reports the alpha it drops", () => {
+    const { css, warnings } = probe({
+      color: {
+        $type: "color",
+        canvas: { $value: "#ffffff" },
+        ink: { $value: "#111111cc" },
+      },
+    });
+
+    expect({
+      stroke: property(css, "--element-stroke-color"),
+      warned: warnings.some(
+        ({ token, reason }) =>
+          token === "color.ink" && reason.includes("alpha"),
+      ),
+    }).toEqual({ stroke: "#111111", warned: true });
+  });
+
+  it("rejects sRGB components written as 0 to 255, and says so", () => {
+    const { warnings } = probe({
+      color: {
+        $type: "color",
+        canvas: { $value: "#ffffff" },
+        ink: { $value: { colorSpace: "srgb", components: [17, 17, 17] } },
+      },
+    });
+
+    expect(warnings).toContainEqual(
+      expect.objectContaining({ token: "color.ink", to: "#1e1e1e" }),
+    );
+  });
+
+  it("reports a group that $extends another", () => {
+    const { warnings } = probe({
+      color: {
+        $type: "color",
+        canvas: { $value: "#ffffff" },
+        dark: { $extends: "{color}" },
+      },
+    });
+
+    expect(warnings).toContainEqual(
+      expect.objectContaining({
+        token: "color.dark",
+        reason: expect.stringContaining("not supported"),
+      }),
+    );
+  });
+
+  it("reads a palette nested in groups, without calling it missing", () => {
+    const { css, warnings } = probe({
+      color: {
+        $type: "color",
+        canvas: { $value: "#ffffff" },
+        ink: { $value: "#222222" },
+        palette: {
+          red: { deep: { $value: "#c92a2a" } },
+          green: { deep: { $value: "#2b8a3e" } },
+          blue: { deep: { $value: "#1864ab" } },
+          orange: { deep: { $value: "#d9480f" } },
+        },
+      },
+    });
+
+    expect({
+      picks: property(css, "--color-picks-stroke")?.split(" ").slice(1),
+      missing: warnings.filter(({ token }) => token === "color.palette"),
+    }).toEqual({
+      picks: ["#c92a2a", "#2b8a3e", "#1864ab", "#d9480f"],
+      missing: [],
+    });
   });
 });
