@@ -7,8 +7,8 @@ const asConsumerBundles = (config) => ({
   external: [...config.external, "*.woff2"],
 });
 
-// Limits sit just above the sizes measured on master at 467c7a95
-// (2,022,020 and 24,976 bytes brotli). Raise one only in the change that
+// Limits sit just above the sizes measured on master at 63de718d
+// (2,023,165 and 24,976 bytes brotli). Raise one only in the change that
 // grows the bundle, and say why in that change.
 module.exports = [
   {
