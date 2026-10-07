@@ -5116,9 +5116,7 @@ class App extends React.Component<AppProps, AppState> {
         this.setState(appState as Pick<AppState, K> | null);
         // a host that zoomed with the bitmaps stretched gets them redrawn
         // crisp on the same settle as a zoom tick
-        if (
-          (appState as Partial<AppState>).shouldCacheIgnoreZoom === true
-        ) {
+        if ((appState as Partial<AppState>).shouldCacheIgnoreZoom === true) {
           this.resetShouldCacheIgnoreZoomDebounced();
         }
       }
