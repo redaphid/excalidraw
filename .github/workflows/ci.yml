@@ -128,7 +128,7 @@ jobs:
           node -e '
             console.log("| Check | Brotli bytes | Limit | Result |\n| --- | ---: | ---: | --- |");
             for (const c of require(process.argv[1])) {
-              console.log(`| ${c.name} | ${c.size} | ${c.sizeLimit} | ${c.passed ? "pass" : "OVER"} |`);
+              console.log(["", c.name, c.size, c.sizeLimit, c.passed ? "pass" : "OVER", ""].join(" | ").trim());
             }
           ' "$RUNNER_TEMP/size.json" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "$status"
