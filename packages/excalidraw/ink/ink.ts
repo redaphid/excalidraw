@@ -214,14 +214,10 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
       tail.push(a.stroke.tip({ ...toScene(p), pressure: a.tip.pressure }));
     }
     renderer.draw(viewOf(state, scale()), tail);
-    try {
-      presenter?.updateInkTrailStartPoint(e, {
-        color: a.color,
-        diameter: 2 * tip.r * state.zoom.value,
-      });
-    } catch {
-      presenter = null;
-    }
+    presenter?.updateInkTrailStartPoint(e, {
+      color: a.color,
+      diameter: 2 * tip.r * state.zoom.value,
+    });
   };
 
   const pointer = (a: Drawing, button: "up" | "down") =>
@@ -315,6 +311,8 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
       return;
     }
     hide(e);
+    // A ResizeObserver misses a move to a screen of another pixel density.
+    fit();
     if (e.pointerType === "pen" && !state.penDetected) {
       app.setState({
         penMode: true,

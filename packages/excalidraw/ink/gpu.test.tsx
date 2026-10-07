@@ -119,6 +119,24 @@ describe("the ink layer's GPU", () => {
     });
   });
 
+  describe("when the window moves to a screen of another pixel density", () => {
+    beforeEach(async () => {
+      await render(<Excalidraw freedrawRenderer="webgl" />);
+      Object.defineProperties(gpu.canvases[0], {
+        clientWidth: { value: 400 },
+        clientHeight: { value: 300 },
+      });
+      vi.stubGlobal("devicePixelRatio", 2);
+      draw();
+    });
+
+    it("should size the canvas for that density by the next stroke", () => {
+      expect([gpu.canvases[0].width, gpu.canvases[0].height]).toEqual([
+        800, 600,
+      ]);
+    });
+  });
+
   describe("when WebGL runs in software, without a GPU", () => {
     beforeEach(async () => {
       uninstallWebGL2();
