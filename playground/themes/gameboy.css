@@ -98,3 +98,8 @@
 :scope .frame-breadcrumb {
   border-radius: 0;
 }
+
+/* help dialog keycaps sit on --color-primary-light */
+:scope .HelpDialog__key {
+  color: #9bbc0f;
+}

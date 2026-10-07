@@ -106,3 +106,8 @@
   animation-duration: 0s !important;
   animation-delay: 0s !important;
 }
+
+/* help dialog keycaps sit on --color-primary-light */
+:scope .HelpDialog__key {
+  color: #ffffff;
+}
