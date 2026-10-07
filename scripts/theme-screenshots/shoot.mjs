@@ -130,6 +130,11 @@ const drawPen = async (page, { realtime }) => {
   await page.evaluate(() =>
     window.excalidrawAPI.setActiveTool({ type: "freedraw" }),
   );
+  // a stroke sent before the tool commits becomes a selection drag
+  await page.waitForFunction(
+    () => window.excalidrawAPI.getAppState().activeTool.type === "freedraw",
+  );
+  await settle(page);
   const send = (type, point, buttons) =>
     cdp.send("Input.dispatchMouseEvent", {
       type,
@@ -160,19 +165,25 @@ const drawPen = async (page, { realtime }) => {
     api.updateScene({ appState: { selectedElementIds: {} } });
   });
   await cdp.detach();
+  const drawn = await page.evaluate(
+    () => window.excalidrawAPI.getSceneElements().length,
+  );
+  if (drawn !== penStrokes().length) {
+    throw new Error(`drew ${penStrokes().length} strokes, got ${drawn}`);
+  }
 };
 
-/** 2.5x onto the cursive, the first stroke */
-const zoomOnCursive = (page) =>
+/** 2.5x onto the handwriting, the first stroke */
+const zoomOnHandwriting = (page) =>
   page.evaluate((viewport) => {
     const api = window.excalidrawAPI;
-    const [cursive] = api.getSceneElements();
+    const [word] = api.getSceneElements();
     const width = viewport.width / 2.5;
     const height = viewport.height / 2.5;
     api.setViewport({
       target: {
-        x: cursive.x + cursive.width / 2 - width / 2,
-        y: cursive.y + cursive.height / 2 - height / 2,
+        x: word.x + word.width / 2 - width / 2,
+        y: word.y + word.height / 2 - height / 2,
         width,
         height,
       },
@@ -343,7 +354,7 @@ const shootOne = async (
   await STATES[state](page);
   await capture(page, path.join(dir, `${viewport}-${state}.png`));
   if (pen) {
-    await zoomOnCursive(page);
+    await zoomOnHandwriting(page);
     await capture(page, path.join(dir, `${viewport}-penzoom.png`));
   }
   await page.close();

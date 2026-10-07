@@ -1321,13 +1321,20 @@ const getVariableWidthFreedrawOutline = (
       )
     : [[0, 0, 0.5]];
 
+  const size = element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR;
+  const taper = element.strokeOptions?.taper;
   return getStroke(inputPoints as number[][], {
     simulatePressure: element.simulatePressure,
-    size: element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR,
-    thinning: VARIABLE_WIDTH_FREEDRAW.THINNING,
+    size,
+    thinning:
+      element.strokeOptions?.thinning ?? VARIABLE_WIDTH_FREEDRAW.THINNING,
     smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
     streamline: getFreedrawStreamline(element),
     easing: (t) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
+    ...(taper && {
+      start: { taper: taper * size },
+      end: { taper: taper * size },
+    }),
     last: true,
   }) as [number, number][];
 };

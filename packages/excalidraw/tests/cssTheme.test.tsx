@@ -1,6 +1,9 @@
 import { FONT_FAMILY, THEME } from "@excalidraw/common";
 
+import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
+
 import { readCssTheme } from "../cssTheme";
+import { restoreElements } from "../data/restore";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
@@ -84,7 +87,12 @@ describe("readCssTheme", () => {
       }),
     );
 
-    expect(theme).toEqual({ canvas: {}, appState: {}, palettes: {} });
+    expect(theme).toEqual({
+      canvas: {},
+      appState: {},
+      pen: {},
+      palettes: {},
+    });
   });
 
   it("parses palettes of single colors and five-shade entries", () => {
@@ -107,6 +115,20 @@ describe("readCssTheme", () => {
     expect(theme.canvas.frameWidth).toBe(1);
   });
 
+  it("parses the pen, ignoring thinning outside -1..1", () => {
+    expect(
+      readCssTheme(
+        styleOf({
+          "--element-freedraw-thinning": "0.2",
+          "--element-freedraw-taper": "4",
+        }),
+      ).pen,
+    ).toEqual({ thinning: 0.2, taper: 4 });
+    expect(
+      readCssTheme(styleOf({ "--element-freedraw-thinning": "3" })).pen,
+    ).toEqual({});
+  });
+
   it("drops a palette with a malformed entry", () => {
     const theme = readCssTheme(
       styleOf({ "--color-palette-stroke": "#111, #222 #333" }),
@@ -118,6 +140,7 @@ describe("readCssTheme", () => {
     expect(readCssTheme(styleOf({}))).toEqual({
       canvas: {},
       appState: {},
+      pen: {},
       palettes: {},
     });
   });
@@ -169,6 +192,38 @@ describe("css prop", () => {
 
     const arrow = UI.createElement("arrow", { width: 80, height: 0 });
     expect(arrow.endArrowhead).toBe("triangle");
+  });
+
+  it("gives new freedraw strokes the theme's pen", async () => {
+    await render(
+      <Excalidraw css=":scope { --element-freedraw-thinning: 0.2; --element-freedraw-taper: 4; }" />,
+    );
+    const stroke = UI.createElement("freedraw", { width: 40, height: 40 });
+    expect(stroke.strokeOptions).toMatchObject({ thinning: 0.2, taper: 4 });
+  });
+
+  it("restores a pen's options and adds none to strokes without them", () => {
+    const [themed, plain] = restoreElements(
+      [
+        API.createElement({
+          type: "freedraw",
+          strokeOptions: {
+            variability: "variable",
+            streamline: 0.5,
+            thinning: 0.2,
+            taper: 4,
+          },
+        }),
+        API.createElement({ type: "freedraw" }),
+      ],
+      null,
+    );
+    expect(themed).toMatchObject({
+      strokeOptions: { thinning: 0.2, taper: 4 },
+    });
+    expect(
+      Object.keys((plain as ExcalidrawFreeDrawElement).strokeOptions),
+    ).toEqual(["variability", "streamline"]);
   });
 
   it("leaves existing elements alone", async () => {

@@ -6,9 +6,11 @@
  */
 :scope,
 :scope.theme--dark {
+  --element-freedraw-taper: 4;
+  --element-freedraw-thinning: 0.3;
   --canvas-background: transparent;
   --canvas-grid-color: rgba(70, 82, 92, 0);
-  --canvas-grid-bold-color: rgba(70, 82, 92, 0.16);
+  --canvas-grid-bold-color: rgba(70, 82, 92, 0.12);
   --canvas-grid-style: solid;
   --canvas-handle-fill: #f3eee4;
   --canvas-frame-color: rgba(22, 26, 32, 0.45);
@@ -26,8 +28,8 @@
   --element-end-arrowhead: arrow;
   --element-font-family: "Liberation Sans";
   --element-font-size: 16;
-  --element-freedraw-variability: constant;
-  --element-freedraw-width: 0.125;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.25;
   --color-picks-stroke: #101317 #9e3a33 #3d5c48 #101317 #8a5a1c;
   --color-picks-background: transparent #9ebdd1 #b3ccbd #86ae90 #d9a05a;
   --color-palette-stroke: #c5c0b7 #9a9892 #6f6f6d #414345 #161a20,
@@ -117,10 +119,11 @@
 :scope {
   background: linear-gradient(
     100deg,
-    #f4ddb2 0%,
-    #ece2cf 38%,
-    #dfe3e1 72%,
-    #cfdae0 100%
+    #f2d29c 0%,
+    #eddcbd 30%,
+    #e2e1da 55%,
+    #c9d6de 82%,
+    #b7c9d4 100%
   );
 }
 

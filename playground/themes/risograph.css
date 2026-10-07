@@ -5,6 +5,8 @@
  */
 :scope,
 :scope.theme--dark {
+  --element-freedraw-taper: 2;
+  --element-freedraw-thinning: 0.5;
   --canvas-background: #f6efe2;
   --canvas-grid-color: rgba(0, 120, 191, 0.08);
   --canvas-grid-bold-color: rgba(0, 120, 191, 0.2);
@@ -26,7 +28,7 @@
   --element-font-family: Nunito;
   --element-font-size: 18;
   --element-freedraw-variability: variable;
-  --element-freedraw-width: 0.25;
+  --element-freedraw-width: 0.4;
   --color-picks-stroke: #1b3a6b #0078bf #ff48b0 #00a95c #ff6c2f;
   --color-picks-background: transparent #a7c9d7 #f9bad2 #a7d9b7 #f9ed9a;
   --color-palette-stroke: #cfcecd #a3aab5 #77869d #475e83 #1b3a6b,
