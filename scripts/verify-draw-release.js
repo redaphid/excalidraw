@@ -57,57 +57,62 @@ const npmInstall = (dir, specs) =>
     { cwd: dir, stdio: "inherit" },
   );
 
-const expected = PACKAGES.map((name) => path.basename(tarball(name))).sort();
-const found = fs
-  .readdirSync(releaseDir)
-  .filter((file) => file.endsWith(".tgz"))
-  .sort();
-if (JSON.stringify(found) !== JSON.stringify(expected)) {
-  fail(
-    `expected ${expected.join(", ")} in ${releaseDir}, found ${
-      found.join(", ") || "no tarballs"
-    }`,
-  );
-}
+const verifyTarballNames = () => {
+  const expected = PACKAGES.map((name) => path.basename(tarball(name))).sort();
+  const found = fs
+    .readdirSync(releaseDir)
+    .filter((file) => file.endsWith(".tgz"))
+    .sort();
+  if (JSON.stringify(found) !== JSON.stringify(expected)) {
+    fail(
+      `expected ${expected.join(", ")} in ${releaseDir}, found ${
+        found.join(", ") || "no tarballs"
+      }`,
+    );
+  }
+};
 
-// The draw app installs only the excalidraw tarball, by URL. Its sibling
-// packages are never on npm, so they must come bundled inside it.
-const app = consumerProject();
-npmInstall(app, [tarball("excalidraw"), "react@19", "react-dom@19"]);
-const installed = JSON.parse(
-  fs.readFileSync(
-    path.join(app, "node_modules/@excalidraw/excalidraw/package.json"),
-    "utf-8",
-  ),
-);
-if (installed.version !== version) {
-  fail(`installed @excalidraw/excalidraw is ${installed.version}`);
-}
-fs.writeFileSync(
-  path.join(app, "entry.js"),
-  'import { Excalidraw } from "@excalidraw/excalidraw";\nconsole.log(Excalidraw);\n',
-);
-try {
-  buildSync({
-    absWorkingDir: app,
-    entryPoints: ["entry.js"],
-    bundle: true,
-    format: "esm",
-    outdir: "out",
-    loader: { ".woff2": "file" },
-    define: { "import.meta.env.DEV": "false", "import.meta.env.PROD": "true" },
-    logLevel: "error",
-  });
-} catch {
-  fail(
-    `a bundler cannot resolve every import of excalidraw-excalidraw-${version}.tgz`,
+const verifyExcalidrawInstallsAlone = () => {
+  const drawApp = consumerProject();
+  npmInstall(drawApp, [tarball("excalidraw"), "react@19", "react-dom@19"]);
+  const installed = JSON.parse(
+    fs.readFileSync(
+      path.join(drawApp, "node_modules/@excalidraw/excalidraw/package.json"),
+      "utf-8",
+    ),
   );
-}
-console.info(
-  `verify-draw-release: a bundler resolves every import of the installed excalidraw-excalidraw-${version}.tgz`,
-);
+  if (installed.version !== version) {
+    fail(`installed @excalidraw/excalidraw is ${installed.version}`);
+  }
+  fs.writeFileSync(
+    path.join(drawApp, "entry.js"),
+    'import { Excalidraw } from "@excalidraw/excalidraw";\nconsole.log(Excalidraw);\n',
+  );
+  try {
+    buildSync({
+      absWorkingDir: drawApp,
+      entryPoints: ["entry.js"],
+      bundle: true,
+      format: "esm",
+      outdir: "out",
+      loader: { ".woff2": "file" },
+      define: {
+        "import.meta.env.DEV": "false",
+        "import.meta.env.PROD": "true",
+      },
+      logLevel: "error",
+    });
+  } catch {
+    fail(
+      `a bundler cannot resolve every import of excalidraw-excalidraw-${version}.tgz installed alone`,
+    );
+  }
+  console.info(
+    `verify-draw-release: a bundler resolves every import of excalidraw-excalidraw-${version}.tgz installed alone`,
+  );
+};
 
-for (const packageName of NODE_LOADABLE) {
+const verifyLoadsAloneInNode = (packageName) => {
   const project = consumerProject();
   npmInstall(project, [tarball(packageName)]);
   try {
@@ -121,4 +126,8 @@ for (const packageName of NODE_LOADABLE) {
   console.info(
     `verify-draw-release: @excalidraw/${packageName} loads on its own in Node`,
   );
-}
+};
+
+verifyTarballNames();
+verifyExcalidrawInstallsAlone();
+NODE_LOADABLE.forEach(verifyLoadsAloneInNode);

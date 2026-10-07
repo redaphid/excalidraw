@@ -44,8 +44,6 @@ const watchLongTasks = (thresholdMs: number) => {
     ).observe({ type: "longtask" });
     return;
   }
-  // Firefox and WebKit have no Long Tasks API. A gap that long between
-  // animation frames means the main thread was blocked for it.
   window.smokeLongTaskSource = "frame-gap";
   let last = performance.now();
   const onFrame = (now: number) => {
@@ -88,7 +86,7 @@ const inkedPixels = (page: Page) =>
     return inked;
   });
 
-const drag = async (page: Page, [start, ...rest]: Point[]) => {
+const mouseDrag = async (page: Page, [start, ...rest]: Point[]) => {
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   for (const { x, y } of rest) {
@@ -96,6 +94,8 @@ const drag = async (page: Page, [start, ...rest]: Point[]) => {
   }
   await page.mouse.up();
 };
+
+const focusEditor = (page: Page, { x, y }: Point) => page.mouse.click(x, y);
 
 test.afterEach(async ({ page }, testInfo) => {
   const { tasks, source } = await page.evaluate(() => ({
@@ -122,10 +122,6 @@ test.afterEach(async ({ page }, testInfo) => {
   }
 });
 
-// Touch contexts place text with a real tap. Drags, pans and zooms use the
-// mouse in every context: Playwright's touchscreen can only tap, and
-// synthetic touch pointers are rejected by Firefox's setPointerCapture and
-// open WebKit's long-press menu. Pinch and touch drags need a real device.
 test("draws, pans and zooms with no console errors", async ({
   page,
 }, testInfo) => {
@@ -154,14 +150,13 @@ test("draws, pans and zooms with no console errors", async ({
   const blankPixels = await inkedPixels(page);
 
   await setPhase(page, "draw");
-  // The editor takes shortcuts only once focus is inside it.
-  await page.mouse.click(at(0.5, 0.8).x, at(0.5, 0.8).y);
+  await focusEditor(page, at(0.5, 0.8));
   await page.keyboard.press("r");
-  await drag(page, [at(0.3, 0.3), at(0.55, 0.4)]);
+  await mouseDrag(page, [at(0.3, 0.3), at(0.55, 0.4)]);
   await page.keyboard.press("a");
-  await drag(page, [at(0.6, 0.3), at(0.85, 0.4)]);
+  await mouseDrag(page, [at(0.6, 0.3), at(0.85, 0.4)]);
   await page.keyboard.press("p");
-  await drag(page, [
+  await mouseDrag(page, [
     at(0.3, 0.5),
     at(0.45, 0.56),
     at(0.6, 0.5),

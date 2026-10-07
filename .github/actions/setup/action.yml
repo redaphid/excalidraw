@@ -16,8 +16,8 @@ runs:
           examples/*/node_modules
         key: node-modules-${{ runner.os }}-node22-${{ hashFiles('yarn.lock') }}
         restore-keys: node-modules-${{ runner.os }}-node22-
-    # Runs even on a cache hit, where it takes seconds. A plain install plus a
-    # diff, because --frozen-lockfile misses entries a workspace never locked.
+    # A plain install plus a diff, because --frozen-lockfile misses entries a
+    # workspace never locked.
     - shell: bash
       run: |
         yarn install --prefer-offline
