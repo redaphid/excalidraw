@@ -84,7 +84,9 @@ Line caps and joins are fixed (round). Do not promise a theme butt caps.
 - The picker grid shows shade 4 of each stroke entry and shade 1 of each background entry when nothing is selected. Put the ink at index 4 and the wash at index 1.
 - A palette entry the same color as the panel disappears from the grid. Every entry needs contrast against `--island-bg-color`.
 - Popovers, the color picker and dialogs use `--island-bg-color` and `--popup-bg-color`. On a dark canvas, check the menu and help dialog: dialog text uses `--text-primary-color`, and secondary text uses `--color-gray-60` and `--keybinding-color`.
-- The canvas-background swatch in the main menu shows the scene's own background. Check the menu state for a mismatch with the painted canvas.
+- The help dialog's keycaps sit on `--color-primary-light` with inherited text. A theme that makes `--color-primary-light` a strong selection color must set `:scope .HelpDialog__key { color: … }`. In pass 2, High Contrast's keycaps were white on yellow and Swiss's black on black.
+- A translucent `--popup-bg-color` lets the scene show through the color picker. Keep popovers at 0.9 alpha or more, even in a glass theme.
+- Never write `animation: none` in a theme. Dialogs fade in from opacity 0 with `animation-fill-mode: forwards`, so removing the animation leaves them invisible. Set `animation-duration: 0s` and `transition-duration: 0s` instead. E-ink's help dialog vanished this way in pass 2.
 
 ## Dark themes and the element filter
 
