@@ -15,9 +15,9 @@ Colors are 2025.10 color objects, `{ "colorSpace": "srgb", "components": [r, g, 
 | `color.accent` | `color` | the color for anything live | selection, handles, focus; mixed into the selected-tool background |
 | `color.panel`, `color.active` | `color` | optional panel and selected-state colors | derived from canvas and accent when absent |
 | `color.grid` | `color` | grid lines | defaults to the ink |
-| `color.palette.<name>` | `color` | 4 to 12 element colors besides ink, in document order | stroke and fill palettes with 5 shades each, quick swatches |
+| `color.palette.<name>` | `color` | 4 to 12 element colors besides ink, in document order (integer names such as `100` sort first) | stroke and fill palettes with 5 shades each, quick swatches |
 | `font.ui` | `fontFamily` | UI font, or a fallback list | `--ui-font` |
-| `font.canvas` | `fontFamily` | the font new text is drawn in, one the editor has | element font family |
+| `font.canvas` | `fontFamily` | the font new text is drawn in, one the editor has; without it, the first editor font in `font.ui`, else Excalifont | element font family |
 | `font.size` | `dimension` | `{ "value": 16, "unit": "px" }` | element font size |
 | `grid.minor`, `grid.major` | `number` | grid line alpha, 0 to 1 | the canvas grid |
 | `grid.style` | `strokeStyle` | `solid` or `dashed` | the minor lines |

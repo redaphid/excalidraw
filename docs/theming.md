@@ -139,9 +139,9 @@ Values with a plain meaning are standard tokens at known paths. Every token is o
 | `color.accent` | `color` | selection and focus | `#6965db` |
 | `color.panel`, `color.active` | `color` | panels and the selected state | derived |
 | `color.grid` | `color` | grid lines | the ink |
-| `color.palette.*` | `color` | element colors in document order: the first four are the stroke swatches, and each also gives a background wash | Excalidraw's red, green, blue and orange |
+| `color.palette.*` | `color` | element colors in document order (JSON parsers put integer names such as `100` first): the first four are the stroke swatches, and each also gives a background wash | Excalidraw's red, green, blue and orange |
 | `font.ui` | `fontFamily` | the UI font; a list is written as a CSS fallback list | Assistant |
-| `font.canvas` | `fontFamily` | the font new text is drawn in, the first the editor has | Excalifont |
+| `font.canvas` | `fontFamily` | the font new text is drawn in: the first family the editor has | the first editor font in `font.ui`, else Excalifont |
 | `font.size` | `dimension` | the font size of new text | 20px |
 | `grid.minor`, `grid.major` | `number` | grid line opacity, 0 to 1 | 0.06, 0.14 |
 | `grid.style` | `strokeStyle` | `solid`; any other style draws dashed | dashed |
@@ -152,7 +152,7 @@ Values with a plain meaning are standard tokens at known paths. Every token is o
 
 The choices only this editor has live in `$extensions["com.hypnodroid.draw"]`: `name`, `mode` (light or dark; by default dark when the canvas is dark), `stroke` (`width`, `roundness`, `arrowhead`, `arrowType`, `fill`), `pen.pressure`, `surface` (`border`, `shadow`), `washes` (four palette token names for the background swatches), `backdrop` and `extra` CSS. The spec asks that extensions hold only data that is not crucial to a token's value, so each one has a default. The root `$description` is the theme's description.
 
-Aliases (`{color.accent}`) and `$ref` JSON pointers resolve anywhere, and a token's type comes from its own `$type`, its alias's, or its closest group's, as the spec says. Colors are read in sRGB. Another color space is read through its `hex` fallback, and the hex strings of drafts before 2025.10 are accepted. Alpha is ignored, and `$extends` is not supported.
+Aliases (`{color.accent}`) and `$ref` JSON pointers resolve anywhere, a pointer to a token reads as that token, a group's `$root` token stands for the group, and a token's type comes from its own `$type`, its alias's, or its closest group's, as the spec says. Colors are read in sRGB, with components from 0 to 1. Another color space is read through its `hex` fallback, and the hex strings of drafts before 2025.10 (`#rgb`, `#rrggbb`, `#rrggbbaa`) are accepted. Theme colors are opaque, so alpha is dropped with a warning. `$extends` is not supported: a group that extends another gets a warning, and only its own tokens are read.
 
 ### A designer's export
 
