@@ -81,8 +81,6 @@
     "fix:code": "yarn test:code --fix",
     "fix:other": "yarn prettier --write",
     "fix": "yarn fix:other && yarn fix:code",
-    "locales-coverage": "node scripts/build-locales-coverage.js",
-    "locales-coverage:description": "node scripts/locales-coverage-description.js",
     "prepare": "husky install",
     "prettier": "prettier \"**/*.{css,scss,json,md,html,yml}\" --ignore-path=.eslintignore",
     "release": "node scripts/release.js",

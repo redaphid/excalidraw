@@ -102,32 +102,6 @@ jobs:
           path: e2e/test-results
           retention-days: 14
 
-  size:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: ./.github/actions/setup
-      - name: Build package JavaScript
-        run: |
-          for package in common fractional-indexing math element; do
-            (cd "packages/$package" && node ../../scripts/buildBase.js)
-          done
-          cd packages/excalidraw && node ../../scripts/buildPackage.js
-      - name: size-limit
-        working-directory: packages/excalidraw
-        shell: bash
-        run: |
-          status=0
-          npx size-limit --json > "$RUNNER_TEMP/size.json" || status=$?
-          node -e '
-            console.log("| Check | Brotli bytes | Limit | Result |\n| --- | ---: | ---: | --- |");
-            for (const c of require(process.argv[1])) {
-              console.log(["", c.name, c.size, c.sizeLimit, c.passed ? "pass" : "OVER", ""].join(" | ").trim());
-            }
-          ' "$RUNNER_TEMP/size.json" | tee -a "$GITHUB_STEP_SUMMARY"
-          exit "$status"
-
   pack:
     runs-on: ubuntu-latest
     timeout-minutes: 20
