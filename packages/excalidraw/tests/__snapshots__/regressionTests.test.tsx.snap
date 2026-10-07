@@ -15235,7 +15235,7 @@ exports[`regression tests > two-finger scroll works > [end of test] appState 1`]
   "selectedGroupIds": {},
   "selectedLinearElement": null,
   "selectionElement": null,
-  "shouldCacheIgnoreZoom": true,
+  "shouldCacheIgnoreZoom": false,
   "showHints": true,
   "showHyperlinkPopup": false,
   "showWelcomeScreen": true,
@@ -15260,7 +15260,7 @@ exports[`regression tests > two-finger scroll works > [end of test] appState 1`]
 
 exports[`regression tests > two-finger scroll works > [end of test] number of elements 1`] = `0`;
 
-exports[`regression tests > two-finger scroll works > [end of test] number of renders 1`] = `8`;
+exports[`regression tests > two-finger scroll works > [end of test] number of renders 1`] = `10`;
 
 exports[`regression tests > two-finger scroll works > [end of test] redo stack 1`] = `[]`;
 

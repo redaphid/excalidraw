@@ -48,6 +48,7 @@ import {
   THEME,
   TOUCH_CTX_MENU_TIMEOUT,
   YOUTUBE_STATES,
+  ZOOM_SETTLE_TIMEOUT,
   POINTER_EVENTS,
   TOOL_TYPE,
   DEFAULT_COLLISION_THRESHOLD,
@@ -4857,6 +4858,11 @@ class App extends React.Component<AppProps, AppState> {
     const wasMultiTouchGesture = gesture.pointers.size >= 2;
     gesture.pointers.delete(event.pointerId);
 
+    // a lifted finger ends the pinch: redraw crisp now, not after a pause
+    if (wasMultiTouchGesture && gesture.pointers.size < 2) {
+      this.resetShouldCacheIgnoreZoomDebounced.flush();
+    }
+
     // the multi-touch viewport gesture just disengaged: release the
     // rubberband that was withheld while it was active
     // (see `snapBackToScrollConstraints`)
@@ -5111,6 +5117,11 @@ class App extends React.Component<AppProps, AppState> {
 
       if (appState) {
         this.setState(appState as Pick<AppState, K> | null);
+        // a host that zoomed with the bitmaps stretched gets them redrawn
+        // crisp on the same settle as a zoom tick
+        if ((appState as Partial<AppState>).shouldCacheIgnoreZoom === true) {
+          this.resetShouldCacheIgnoreZoomDebounced();
+        }
       }
 
       if (elements) {
@@ -12980,11 +12991,15 @@ class App extends React.Component<AppProps, AppState> {
     });
   };
 
+  // flushed, so the crisp frame is drawn before this timer returns, ahead of
+  // the next paint (onChange fires first, mid-flush, before the redraw)
   public resetShouldCacheIgnoreZoomDebounced = debounce(() => {
     if (!this.unmounted) {
-      this.setState({ shouldCacheIgnoreZoom: false });
+      flushSync(() => {
+        this.setState({ shouldCacheIgnoreZoom: false });
+      });
     }
-  }, 300);
+  }, ZOOM_SETTLE_TIMEOUT);
 
   private updateDOMRect = (cb?: () => void) => {
     if (this.excalidrawContainerRef?.current) {

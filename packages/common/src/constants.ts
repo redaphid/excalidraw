@@ -361,6 +361,8 @@ export const TOUCH_CTX_MENU_TIMEOUT = 500;
 export const TITLE_TIMEOUT = 10000;
 export const VERSION_TIMEOUT = 30000;
 export const SCROLL_TIMEOUT = 100;
+/** how long the zoom is idle before its scaled bitmaps are redrawn crisp */
+export const ZOOM_SETTLE_TIMEOUT = 100;
 export const ZEN_MODE_TRANSITION_DURATION = 250;
 export const ZOOM_STEP = 0.1;
 export const MIN_ZOOM = 0.1;
