@@ -345,8 +345,7 @@ const ids = args.includes("--all")
       .map((file) => file.replace(/\.json$/, ""))
   : args;
 if (!ids.length) {
-  process.stderr.write("usage: yarn theme:gen <id>... | --all
-");
+  process.stderr.write("usage: yarn theme:gen <id>... | --all\n");
   process.exit(1);
 }
 for (const id of ids) {
@@ -356,10 +355,8 @@ for (const id of ids) {
   );
   const css = generate(id, tokens);
   fs.writeFileSync(path.join(themesDir, `${id}.css`), css);
-  process.stdout.write(`playground/themes/${id}.css
-`);
+  process.stdout.write(`playground/themes/${id}.css\n`);
   for (const change of changes) {
-    process.stdout.write(`  contrast: ${change}
-`);
+    process.stdout.write(`  contrast: ${change}\n`);
   }
 }
