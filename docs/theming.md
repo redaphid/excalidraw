@@ -73,40 +73,96 @@ The draw MCP server will serve the same files as resources, so an agent can read
 
 ## Generate a theme from tokens
 
-Writing every variable by hand is optional. `@excalidraw/common` exports a generator that turns a small JSON description of a theme into the full stylesheet:
+Writing every variable by hand is optional. `@excalidraw/common` exports a generator that turns a theme's design tokens into the full stylesheet. The tokens are a [W3C Design Tokens Format Module 2025.10](https://www.w3.org/community/reports/design-tokens/CG-FINAL-format-20251028/) document, the format design tools such as Tokens Studio and Style Dictionary export, saved as `<name>.tokens.json`:
 
 ```ts
-import { generateThemeCss, THEME_TOKENS_SCHEMA } from "@excalidraw/common";
+import { generateThemeCss } from "@excalidraw/common";
+
+const srgb = (hex: string) => ({
+  $value: {
+    colorSpace: "srgb",
+    components: [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255),
+    hex,
+  },
+});
 
 const { css, warnings } = generateThemeCss({
-  name: "Drafting",
-  mode: "light",
-  description: "Warm paper, graphite ink, one bronze accent.",
-  canvas: "#ebe4d6",
-  ink: "#1b2129",
-  accent: "#a8732f",
-  palette: ["#9e3a33", "#5a7a6a", "#4f7088", "#a8732f"],
-  grid: { color: "#547691", minor: 0.2, major: 0.48, style: "solid" },
-  type: { ui: "Liberation Sans", canvas: "Liberation Sans", size: 16 },
-  stroke: {
-    width: "thin",
-    roughness: 0,
-    roundness: "sharp",
-    arrowhead: "arrow",
-    arrowType: "sharp",
-    fill: "solid",
+  $description: "Warm paper, graphite ink, one bronze accent.",
+  $extensions: {
+    "com.hypnodroid.draw": {
+      name: "Drafting",
+      stroke: { width: "thin", roundness: "sharp", arrowType: "sharp" },
+      surface: { border: "hairline", shadow: "none" },
+    },
   },
-  pen: { pressure: true, width: 0.2, thinning: 0.2, taper: 4 },
-  surface: { radius: 2, border: "hairline", shadow: "none" },
-  frame: { width: 1, alpha: 0.42 },
+  color: {
+    $type: "color",
+    canvas: srgb("#ebe4d6"),
+    ink: srgb("#1b2129"),
+    accent: srgb("#a8732f"),
+    grid: srgb("#547691"),
+    palette: {
+      oxblood: srgb("#9e3a33"),
+      sage: srgb("#5a7a6a"),
+      slate: srgb("#4f7088"),
+      bronze: { $value: "{color.accent}" },
+    },
+  },
+  font: {
+    ui: { $type: "fontFamily", $value: "Liberation Sans" },
+    canvas: { $type: "fontFamily", $value: "Liberation Sans" },
+    size: { $type: "dimension", $value: { value: 16, unit: "px" } },
+  },
+  grid: {
+    $type: "number",
+    minor: { $value: 0.2 },
+    major: { $value: 0.48 },
+    style: { $type: "strokeStyle", $value: "solid" },
+  },
+  stroke: { roughness: { $type: "number", $value: 0 } },
+  pen: { $type: "number", width: { $value: 0.2 }, taper: { $value: 4 } },
 });
 
 <Excalidraw css={css} theme="light" />;
 ```
 
-It derives panels, hover and selected states, borders, shadows, five-shade palettes, the quick swatches and the dialog keycaps, and stores a dark theme's element colors so dark mode displays them as written. It checks WCAG contrast on every text and surface pair it writes. When a token makes text illegible, it moves the color until it passes and returns a warning, `{ token, from, to, reason }`.
+It derives panels, hover and selected states, borders, shadows, five-shade palettes, the quick swatches and the dialog keycaps, and stores a dark theme's element colors so dark mode displays them as written. It checks WCAG contrast on every text and surface pair it writes. When a token makes text illegible, it moves the color until it passes and returns a warning.
 
-The generator is pure: no DOM, no Node built-ins, no editor code. A server, a Cloudflare Worker or an MCP tool can import it from `@excalidraw/common` without the editor. `THEME_TOKENS_SCHEMA` is the tokens' JSON Schema, for validating tokens an agent wrote. The sample themes marked `generated` in `themes/index.json` are generated this way from `themes/<name>.tokens.json` (`yarn theme:gen <name>`).
+### The profile
+
+Values with a plain meaning are standard tokens at known paths. Every token is optional.
+
+| Path | `$type` | Meaning | Default |
+| --- | --- | --- | --- |
+| `color.canvas` | `color` | the board | `#ffffff` |
+| `color.ink` | `color` | UI text and the default element stroke | `#1e1e1e` |
+| `color.accent` | `color` | selection and focus | `#6965db` |
+| `color.panel`, `color.active` | `color` | panels and the selected state | derived |
+| `color.grid` | `color` | grid lines | the ink |
+| `color.palette.*` | `color` | element colors in document order: the first four are the stroke swatches, and each also gives a background wash | Excalidraw's red, green, blue and orange |
+| `font.ui` | `fontFamily` | the UI font; a list is written as a CSS fallback list | Assistant |
+| `font.canvas` | `fontFamily` | the font new text is drawn in, the first the editor has | Excalifont |
+| `font.size` | `dimension` | the font size of new text | 20px |
+| `grid.minor`, `grid.major` | `number` | grid line opacity, 0 to 1 | 0.06, 0.14 |
+| `grid.style` | `strokeStyle` | `solid`; any other style draws dashed | dashed |
+| `stroke.roughness` | `number` | 0 architect, 1 artist, 2 cartoonist | 1 |
+| `pen.width`, `pen.thinning`, `pen.taper`, `pen.streamline` | `number` | the freehand pen | the editor's pen |
+| `surface.radius` | `dimension` | panel corner radius | 8px |
+| `frame.width`, `frame.alpha` | `dimension`, `number` | frame outlines | 1px, 0.35 |
+
+The choices only this editor has live in `$extensions["com.hypnodroid.draw"]`: `name`, `mode` (light or dark; by default dark when the canvas is dark), `stroke` (`width`, `roundness`, `arrowhead`, `arrowType`, `fill`), `pen.pressure`, `surface` (`border`, `shadow`), `washes` (four palette token names for the background swatches), `backdrop` and `extra` CSS. The spec asks that extensions hold only data that is not crucial to a token's value, so each one has a default. The root `$description` is the theme's description.
+
+Aliases (`{color.accent}`) and `$ref` JSON pointers resolve anywhere, and a token's type comes from its own `$type`, its alias's, or its closest group's, as the spec says. Colors are read in sRGB. Another color space is read through its `hex` fallback, and the hex strings of drafts before 2025.10 are accepted. Alpha is ignored, and `$extends` is not supported.
+
+### A designer's export
+
+A file without this profile still makes a theme. Each role is found by name when its path is missing: `color.background` or `bg` for the canvas, `text` or `foreground` for the ink, `primary` or `brand` for the accent, a `body` or `sans` font family or a `typography` token for the fonts. The file's other colors, in order and without the canvas and ink, become the palette. Everything else takes the defaults above.
+
+### Warnings
+
+Each warning is `{ token, from, to, reason }`, and `token` is the DTCG path behind it: `color.ink` for ink the generator darkened, `color.palette.sage` for a wash it paled, `color.background` for a role it found by name, `$extensions["com.hypnodroid.draw"].mode` for a mode that disagrees with the canvas. Values it cannot read fall back to the default and say why.
+
+The generator is pure: no DOM, no Node built-ins, no editor code. A server, a Cloudflare Worker or an MCP tool can import it from `@excalidraw/common` without the editor. `THEME_TOKENS_SCHEMA` is the profile's JSON Schema, for validating tokens an agent wrote; the package ships it as `themes/tokens.schema.json`. The sample themes marked `generated` in `themes/index.json` are generated from `themes/<name>.tokens.json` (`yarn theme:gen <name>`).
 
 ## How the css prop is applied
 

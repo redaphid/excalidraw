@@ -33,11 +33,11 @@ describe("a theme generated from tokens", () => {
       font: h.state.currentItemFontFamily,
       pen: h.app.cssTheme.pen,
     }).toEqual({
-      background: tokens.canvas,
-      gridStyle: tokens.grid.style,
-      roughness: tokens.stroke.roughness,
+      background: "#ebe4d6",
+      gridStyle: "solid",
+      roughness: 0,
       font: FONT_FAMILY["Liberation Sans"],
-      pen: { thinning: tokens.pen.thinning, taper: tokens.pen.taper },
+      pen: { thinning: 0.2, taper: 4 },
     });
   });
 });

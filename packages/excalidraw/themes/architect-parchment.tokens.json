@@ -1,46 +1,188 @@
 {
   "$schema": "./tokens.schema.json",
-  "name": "Architect Parchment",
-  "mode": "light",
-  "description": "Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.",
-  "canvas": "#ebe4d6",
-  "ink": "#1b2129",
-  "accent": "#a8732f",
-  "palette": ["#9e3a33", "#5a7a6a", "#4f7088", "#a8732f", "#a38327", "#7e4a6e", "#a85f2c", "#6b6459"],
-  "grid": {
-    "color": "#547691",
-    "minor": 0.2,
-    "major": 0.48,
-    "style": "solid"
+  "$description": "Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.",
+  "$extensions": {
+    "com.hypnodroid.draw": {
+      "name": "Architect Parchment",
+      "mode": "light",
+      "stroke": {
+        "width": "thin",
+        "roundness": "sharp",
+        "arrowhead": "arrow",
+        "arrowType": "sharp",
+        "fill": "solid"
+      },
+      "pen": {
+        "pressure": true
+      },
+      "surface": {
+        "border": "hairline",
+        "shadow": "none"
+      },
+      "extra": ":scope .frame-breadcrumb {\n  border-radius: 2px;\n  background: transparent;\n  box-shadow: none;\n  letter-spacing: 0.04em;\n}"
+    }
   },
-  "type": {
-    "ui": "Liberation Sans",
-    "canvas": "Liberation Sans",
-    "size": 16
+  "color": {
+    "$type": "color",
+    "canvas": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.9216, 0.8941, 0.8392],
+        "hex": "#ebe4d6"
+      }
+    },
+    "ink": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.1059, 0.1294, 0.1608],
+        "hex": "#1b2129"
+      }
+    },
+    "accent": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.6588, 0.451, 0.1843],
+        "hex": "#a8732f"
+      }
+    },
+    "panel": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.9451, 0.9216, 0.8745],
+        "hex": "#f1ebdf"
+      }
+    },
+    "grid": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.3294, 0.4627, 0.5686],
+        "hex": "#547691"
+      }
+    },
+    "palette": {
+      "oxblood": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.6196, 0.2275, 0.2],
+          "hex": "#9e3a33"
+        }
+      },
+      "sage": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.3529, 0.4784, 0.4157],
+          "hex": "#5a7a6a"
+        }
+      },
+      "slate": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.3098, 0.4392, 0.5333],
+          "hex": "#4f7088"
+        }
+      },
+      "bronze": {
+        "$value": "{color.accent}"
+      },
+      "ochre": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.6392, 0.5137, 0.1529],
+          "hex": "#a38327"
+        }
+      },
+      "plum": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.4941, 0.2902, 0.4314],
+          "hex": "#7e4a6e"
+        }
+      },
+      "rust": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.6588, 0.3725, 0.1725],
+          "hex": "#a85f2c"
+        }
+      },
+      "umber": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.4196, 0.3922, 0.349],
+          "hex": "#6b6459"
+        }
+      }
+    }
+  },
+  "font": {
+    "ui": {
+      "$type": "fontFamily",
+      "$value": "Liberation Sans"
+    },
+    "canvas": {
+      "$type": "fontFamily",
+      "$value": "Liberation Sans"
+    },
+    "size": {
+      "$type": "dimension",
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    }
+  },
+  "grid": {
+    "minor": {
+      "$type": "number",
+      "$value": 0.2
+    },
+    "major": {
+      "$type": "number",
+      "$value": 0.48
+    },
+    "style": {
+      "$type": "strokeStyle",
+      "$value": "solid"
+    }
   },
   "stroke": {
-    "width": "thin",
-    "roughness": 0,
-    "roundness": "sharp",
-    "arrowhead": "arrow",
-    "arrowType": "sharp",
-    "fill": "solid"
+    "roughness": {
+      "$type": "number",
+      "$value": 0
+    }
   },
   "pen": {
-    "pressure": true,
-    "width": 0.2,
-    "thinning": 0.2,
-    "taper": 4
+    "$type": "number",
+    "width": {
+      "$value": 0.2
+    },
+    "thinning": {
+      "$value": 0.2
+    },
+    "taper": {
+      "$value": 4
+    }
   },
   "surface": {
-    "radius": 2,
-    "border": "hairline",
-    "shadow": "none",
-    "panel": "#f1ebdf"
+    "radius": {
+      "$type": "dimension",
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      }
+    }
   },
   "frame": {
-    "width": 1,
-    "alpha": 0.42
-  },
-  "extra": ":scope .frame-breadcrumb {\n  border-radius: 2px;\n  background: transparent;\n  box-shadow: none;\n  letter-spacing: 0.04em;\n}"
+    "width": {
+      "$type": "dimension",
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      }
+    },
+    "alpha": {
+      "$type": "number",
+      "$value": 0.42
+    }
+  }
 }

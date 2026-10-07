@@ -11,6 +11,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import prettier from "prettier";
+
 import { THEME_TOKENS_SCHEMA, generateThemeCss } from "@excalidraw/common";
 
 import type { ThemeTokens } from "@excalidraw/common";
@@ -27,9 +29,13 @@ const themesDir = path.resolve(
 const args = process.argv.slice(2).filter((arg) => arg !== "--");
 
 if (args.includes("--schema")) {
+  const file = path.join(themesDir, "tokens.schema.json");
   fs.writeFileSync(
-    path.join(themesDir, "tokens.schema.json"),
-    `${JSON.stringify(THEME_TOKENS_SCHEMA, null, 2)}\n`,
+    file,
+    prettier.format(JSON.stringify(THEME_TOKENS_SCHEMA), {
+      ...prettier.resolveConfig.sync(file),
+      parser: "json",
+    }),
   );
   process.stdout.write(`${THEMES}/tokens.schema.json\n`);
 }
