@@ -48,6 +48,12 @@ import {
   getNormalizedCanvasDimensions,
   snapScrollToDevicePixels,
 } from "./helpers";
+import {
+  releaseUnderlay,
+  rememberUnderlay,
+  restoreUnderlay,
+  underlayKey,
+} from "./newElementUnderlay";
 
 import type {
   StaticCanvasRenderConfig,
@@ -272,6 +278,36 @@ const renderLinkIcon = (
     context.restore();
   }
 };
+export const getRelevantAppStateProps = (
+  appState: StaticCanvasAppState,
+): StaticCanvasAppState => ({
+  zoom: appState.zoom,
+  scrollX: appState.scrollX,
+  scrollY: appState.scrollY,
+  width: appState.width,
+  height: appState.height,
+  viewModeEnabled: appState.viewModeEnabled,
+  openDialog: appState.openDialog,
+  hoveredElementIds: appState.hoveredElementIds,
+  offsetLeft: appState.offsetLeft,
+  offsetTop: appState.offsetTop,
+  theme: appState.theme,
+  shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
+  viewBackgroundColor: appState.viewBackgroundColor,
+  exportScale: appState.exportScale,
+  selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
+  gridSize: appState.gridSize,
+  gridStep: appState.gridStep,
+  frameRendering: appState.frameRendering,
+  selectedElementIds: appState.selectedElementIds,
+  frameToHighlight: appState.frameToHighlight,
+  editingGroupId: appState.editingGroupId,
+  currentHoveredFontFamily: appState.currentHoveredFontFamily,
+  croppingElementId: appState.croppingElementId,
+  suggestedBinding: appState.suggestedBinding,
+  newElement: appState.newElement,
+});
+
 const _renderStaticScene = ({
   canvas,
   rc,
@@ -297,6 +333,34 @@ const _renderStaticScene = ({
     scale,
   );
 
+  const paintedElements = visibleElements.filter(
+    (el) => !isIframeLikeElement(el),
+  );
+  const { newElement } = unsnappedAppState;
+  const { sceneNonce } = renderConfig;
+  const firstAbove =
+    isExporting || !newElement || sceneNonce === undefined
+      ? 0
+      : Math.max(
+          paintedElements.findIndex((el) => el.id === newElement.id),
+          0,
+        );
+  const underlay =
+    sceneNonce !== undefined && firstAbove > 0
+      ? underlayKey(
+          canvas,
+          scale,
+          sceneNonce,
+          getRelevantAppStateProps(unsnappedAppState),
+          renderConfig,
+          paintedElements.slice(0, firstAbove),
+        )
+      : null;
+  if (!underlay) {
+    releaseUnderlay(canvas);
+  }
+  const restored = !!underlay && restoreUnderlay(canvas, underlay);
+
   const context = bootstrapCanvas({
     canvas,
     scale,
@@ -305,13 +369,14 @@ const _renderStaticScene = ({
     theme: appState.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
+    paintBackground: !restored,
   });
 
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
 
   // Grid
-  if (renderGrid) {
+  if (renderGrid && !restored) {
     strokeGrid(
       context,
       renderConfig.gridSize ?? appState.gridSize,
@@ -393,64 +458,70 @@ const _renderStaticScene = ({
     }
   };
 
-  // Paint visible elements
-  visibleElements
-    .filter((el) => !isIframeLikeElement(el))
-    .forEach((element) => {
-      try {
-        if (
-          isTextElement(element) &&
-          element.containerId &&
-          elementsMap.has(element.containerId)
-        ) {
-          // will be rendered with the container
-          return;
-        }
+  const paintElement = (element: NonDeletedExcalidrawElement) => {
+    try {
+      if (
+        isTextElement(element) &&
+        element.containerId &&
+        elementsMap.has(element.containerId)
+      ) {
+        // will be rendered with the container
+        return;
+      }
 
-        context.save();
-        const boundTextElement = getBoundTextElement(element, elementsMap);
+      context.save();
+      const boundTextElement = getBoundTextElement(element, elementsMap);
 
-        const renderState = getRenderState(element);
-        clipElementToFrame(element, renderState);
+      const renderState = getRenderState(element);
+      clipElementToFrame(element, renderState);
+      renderElement(
+        element,
+        elementsMap,
+        allElementsMap,
+        rc,
+        context,
+        renderConfig,
+        appState,
+        renderState,
+      );
+
+      if (boundTextElement) {
         renderElement(
-          element,
+          boundTextElement,
           elementsMap,
           allElementsMap,
           rc,
           context,
           renderConfig,
           appState,
-          renderState,
-        );
-
-        if (boundTextElement) {
-          renderElement(
-            boundTextElement,
-            elementsMap,
-            allElementsMap,
-            rc,
-            context,
-            renderConfig,
-            appState,
-          );
-        }
-
-        context.restore();
-
-        if (!isExporting && renderConfig.renderLinks !== false) {
-          renderLinkIcon(element, context, appState, elementsMap, renderState);
-        }
-      } catch (error: any) {
-        console.error(
-          error,
-          element.id,
-          element.x,
-          element.y,
-          element.width,
-          element.height,
         );
       }
-    });
+
+      context.restore();
+
+      if (!isExporting && renderConfig.renderLinks !== false) {
+        renderLinkIcon(element, context, appState, elementsMap, renderState);
+      }
+    } catch (error: any) {
+      console.error(
+        error,
+        element.id,
+        element.x,
+        element.y,
+        element.width,
+        element.height,
+      );
+    }
+  };
+
+  // Paint visible elements
+  if (!restored) {
+    paintedElements.slice(0, firstAbove).forEach(paintElement);
+    if (underlay) {
+      rememberUnderlay(canvas, underlay);
+    }
+  }
+  paintedElements.slice(firstAbove).forEach(paintElement);
 
   // render embeddables on top
   visibleElements

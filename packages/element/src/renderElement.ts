@@ -1179,6 +1179,10 @@ const scheduleSettledBuild = (delay: number) => {
   }
 };
 
+let settledBitmapGeneration = 0;
+
+export const getSettledBitmapGeneration = () => settledBitmapGeneration;
+
 const buildSettledBitmaps = (hasTime: () => boolean) => {
   const build = settledBuild;
   if (!build) {
@@ -1209,6 +1213,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     // a bitmap larger than the screen costs more memory than it saves time
     if (scale === appState.zoom.value && width * height <= screenArea) {
       generateElementWithCanvas(element, elementsMap, renderConfig, appState);
+      settledBitmapGeneration++;
     }
   }
   if (build.next < elements.length) {
