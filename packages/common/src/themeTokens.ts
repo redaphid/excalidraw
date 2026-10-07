@@ -341,7 +341,8 @@ export const generateThemeCss = (
 
   // a board keeps ink drawn under other themes: a canvas of the opposite
   // lightness to the mode can hide all of it
-  if (luminance(canvas) < 0.18 !== dark) {
+  const canvasIsDark = luminance(canvas) < 0.18;
+  if (canvasIsDark !== dark) {
     warnings.push({
       token: "mode",
       from: tokens.mode,
