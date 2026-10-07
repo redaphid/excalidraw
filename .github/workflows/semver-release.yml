@@ -1,0 +1,157 @@
+name: Semver release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, such as 1.2.0. Leave empty to compute it from the commits since the last release.
+        required: false
+        default: ""
+      dry_run:
+        description: Plan, build and verify, but publish nothing.
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - scripts/semver/**
+      - scripts/pack-draw-release.js
+      - scripts/verify-draw-release.js
+      - scripts/buildBase.js
+      - .github/workflows/semver-release.yml
+
+# Releases queue behind release.yml's. Pull request dry runs get their own
+# group, because a newer pending run cancels the pending one in its group,
+# and a pushed commit must never cancel a queued release.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('semver-dry-run-{0}', github.ref) || 'release' }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      action: ${{ steps.plan.outputs.action }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      sha: ${{ steps.plan.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          args=(--head="$GITHUB_SHA" --out="$RUNNER_TEMP/plan" --github-output="$GITHUB_OUTPUT")
+          if [ -n "$INPUT_VERSION" ]; then
+            args+=(--version="$INPUT_VERSION")
+          fi
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            args+=(--offline)
+          fi
+          node scripts/semver/plan.js "${args[@]}"
+          if [ -f "$RUNNER_TEMP/plan/notes.md" ]; then
+            cat "$RUNNER_TEMP/plan/notes.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - if: steps.plan.outputs.action != 'nothing'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: semver-notes
+          path: ${{ runner.temp }}/plan/notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  build:
+    needs: plan
+    if: needs.plan.outputs.action != 'nothing'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: node scripts/semver/pack.js --version="$VERSION"
+      - run: node scripts/verify-draw-release.js --version="$VERSION"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: semver-release
+          path: release/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [plan, build]
+    if: github.event_name == 'workflow_dispatch' && !inputs.dry_run && github.ref == 'refs/heads/master' && needs.plan.outputs.action != 'nothing'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.x
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: semver-release
+          path: release
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: semver-notes
+          path: ${{ runner.temp }}
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/semver/publish.js --dir=release --notes="$RUNNER_TEMP/notes.md"
+
+  smoke:
+    needs: [plan, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/verify-draw-release.js --version="$VERSION" --registry=https://npm.pkg.github.com
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          userconfig="$RUNNER_TEMP/smoke.npmrc"
+          printf '%s\n' \
+            "//npm.pkg.github.com/:_authToken=\${GITHUB_TOKEN}" \
+            "@redaphid:registry=https://npm.pkg.github.com" > "$userconfig"
+          {
+            echo "### npm view @redaphid/excalidraw@$VERSION"
+            echo '```'
+            npm view "@redaphid/excalidraw@$VERSION" --userconfig="$userconfig" --registry=https://npm.pkg.github.com
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

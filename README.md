@@ -1,6 +1,6 @@
 # redaphid/excalidraw
 
-This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [draw](https://draw.hypnodroid.com), a pen-first whiteboard that zooms far past upstream's 30x. It is upstream `master` at [`5a406e518`](https://github.com/excalidraw/excalidraw/commit/5a406e51875157bece389b9bc92d41ff241d5f3d) plus the fork's commits on this repo's `master`. It is not an upstream release and is not published to npm. Releases are tarballs attached to this repo's GitHub releases.
+This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [draw](https://draw.hypnodroid.com), a pen-first whiteboard that zooms far past upstream's 30x. It is upstream `master` at [`5a406e518`](https://github.com/excalidraw/excalidraw/commit/5a406e51875157bece389b9bc92d41ff241d5f3d) plus the fork's commits on this repo's `master`. It is not an upstream release. Its packages are published to GitHub Packages as `@redaphid/excalidraw` and four siblings, versioned with semver from 1.0.0 (see [Install](#install)). Nothing is published to npmjs.
 
 **[Try it](https://redaphid.github.io/excalidraw/)**: the fork's editor on a static page, with `authoringUnits="screen"`. The drawing stays in your browser's localStorage: there is no collaboration, sharing, AI or analytics, and the only requests are for the page's own scripts, styles and fonts. It redeploys on every push to `master` ([`playground/`](playground), [`playground.yml`](.github/workflows/playground.yml)); `yarn build:playground` builds it locally.
 
@@ -24,7 +24,24 @@ For everything else, see [upstream's README](https://github.com/excalidraw/excal
 
 ## Install
 
-Each release attaches one tarball per package. From `0.19.0-draw.7` on, the `@excalidraw/excalidraw` tarball bundles `@excalidraw/common`, `element`, `math` and `fractional-indexing`, so it installs from its URL alone, with no package-manager overrides ([`eb9bcc33`](https://github.com/redaphid/excalidraw/commit/eb9bcc33)). From `0.19.0-draw.17` on, the `math` and `element` tarballs bundle their `@excalidraw/*` siblings the same way (`math` bundles `common`; `element` bundles `common`, `math` and `fractional-indexing`), so every tarball installs from its URL alone, including under pnpm's `blockExoticSubdeps`. From `0.19.0-draw.18` on, `common` bundles `math` too, since it imports it, so the standalone `common` tarball also loads in Node. The GIFs above were recorded from a page that installs `0.19.0-draw.10` with pnpm this way:
+The packages are public on GitHub Packages, which still needs a token for every install. Add an `.npmrc` beside your `package.json` and set `NODE_AUTH_TOKEN` to a personal access token (classic) with the `read:packages` scope:
+
+```ini
+@redaphid:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+Then depend on the fork under upstream's name, so your imports stay `@excalidraw/excalidraw`:
+
+```json
+"@excalidraw/excalidraw": "npm:@redaphid/excalidraw@^1.0.0"
+```
+
+[docs/releasing.md](docs/releasing.md) covers installs in GitHub Actions, the other four packages, and how releases are cut and versioned.
+
+### Install from a release tarball
+
+Each release also attaches one tarball per package, which installs from its URL with no token. From `0.19.0-draw.7` on, the `@excalidraw/excalidraw` tarball bundles `@excalidraw/common`, `element`, `math` and `fractional-indexing`, so it installs from its URL alone, with no package-manager overrides ([`eb9bcc33`](https://github.com/redaphid/excalidraw/commit/eb9bcc33)). From `0.19.0-draw.17` on, the `math` and `element` tarballs bundle their `@excalidraw/*` siblings the same way (`math` bundles `common`; `element` bundles `common`, `math` and `fractional-indexing`), so every tarball installs from its URL alone, including under pnpm's `blockExoticSubdeps`. From `0.19.0-draw.18` on, `common` bundles `math` too, since it imports it, so the standalone `common` tarball also loads in Node. The GIFs above were recorded from a page that installs `0.19.0-draw.10` with pnpm this way:
 
 ```json
 "@excalidraw/excalidraw": "https://github.com/redaphid/excalidraw/releases/download/v0.19.0-draw.N/excalidraw-excalidraw-0.19.0-draw.N.tgz"
@@ -129,6 +146,14 @@ const canvas = await exportToCanvas({
 ```
 
 ## Releasing
+
+```sh
+gh workflow run semver-release.yml -R redaphid/excalidraw
+```
+
+The **Semver release** workflow picks the next version from the pull request titles merged since the last release (`feat` is minor, `!` or `BREAKING CHANGE` is major, anything else is patch), tags it, publishes the five packages to GitHub Packages, and attaches the tarballs to a GitHub release. A rerun finishes a failed release instead of starting another. [docs/releasing.md](docs/releasing.md) has the details.
+
+The `0.19.0-draw.N` releases keep working until the draw app moves to the registry:
 
 ```sh
 node scripts/pack-draw-release.js --version=0.19.0-draw.N
