@@ -183,8 +183,13 @@ const zoomOnHandwriting = (page) =>
     const ys = word.points.map(([, y]) => word.y + y);
     const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
     const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-    const width = viewport.width / 2.5;
-    const height = viewport.height / 2.5;
+    // 2.5x, or less where the word would not fit (phones)
+    const zoom = Math.min(
+      2.5,
+      viewport.width / ((Math.max(...xs) - Math.min(...xs)) * 1.15),
+    );
+    const width = viewport.width / zoom;
+    const height = viewport.height / zoom;
     api.setViewport({
       target: { x: cx - width / 2, y: cy - height / 2, width, height },
       fit: "contain",
@@ -273,7 +278,7 @@ const openTheme = async (context, baseUrl, theme, scene) => {
   }, scene);
   await page.goto(`${baseUrl}?theme=${theme}&switcher=0`);
   await page.waitForFunction(() => !!window.excalidrawAPI, null, {
-    timeout: 180_000,
+    timeout: 600_000,
   });
   await page.waitForFunction(
     () => !window.excalidrawAPI.getAppState().isLoading,
@@ -344,7 +349,9 @@ const shootOne = async (
     context,
     baseUrl,
     theme,
-    pen ? BLANK_SCENE : JSON.stringify(buildScene(style)),
+    pen
+      ? BLANK_SCENE
+      : JSON.stringify(buildScene(style, { stacked: viewport === "phone" })),
   );
   await settle(page);
   if (!pen) {
@@ -352,9 +359,15 @@ const shootOne = async (
     await settle(page);
   }
   await STATES[state](page);
+  if (pen) {
+    // fresh strokes are redrawn crisp from cache a moment after drawing
+    await page.waitForTimeout(1500);
+  }
   await capture(page, path.join(dir, `${viewport}-${state}.png`));
   if (pen) {
     await zoomOnHandwriting(page);
+    // after a zoom the editor redraws cached strokes crisp, a moment later
+    await page.waitForTimeout(1500);
     await capture(page, path.join(dir, `${viewport}-penzoom.png`));
   }
   await page.close();
