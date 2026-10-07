@@ -62,3 +62,5 @@ export const toggleBookmark = (
   storage.setItem(BOOKMARKS_KEY, JSON.stringify(next));
   return next;
 };
+
+export const ciFailProofTypeError: number = "not a number";
