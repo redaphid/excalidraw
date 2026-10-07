@@ -7,7 +7,7 @@
  *   node scripts/theme-gen/palette-from-image.mjs <image> [--colors 8] [--name "Theme Name"]
  *
  * Runs k-means in the preinstalled Chromium (no image libraries), merges
- * clusters closer than a just-visible difference and drops any under 1.5%
+ * clusters closer than a just-visible difference and drops any under 1%
  * of the image. Roles are a first guess: the most common color is the
  * canvas, the darkest real color is the ink, the most saturated is the
  * accent. Look at the image and correct them.
@@ -52,7 +52,7 @@ const clusters = await page.evaluate(
     const img = new Image();
     img.src = src;
     await img.decode();
-    const scale = 160 / Math.max(img.width, img.height);
+    const scale = 240 / Math.max(img.width, img.height);
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(img.width * scale);
     canvas.height = Math.round(img.height * scale);
@@ -124,7 +124,7 @@ for (const cluster of clusters.sort((a, b) => b.share - a.share)) {
   }
 }
 const colors = merged
-  .filter((c) => c.share >= 0.015)
+  .filter((c) => c.share >= 0.01)
   .sort((a, b) => b.share - a.share)
   .map((c) => ({
     hex: hex(c.rgb),
@@ -140,7 +140,7 @@ const accent = [...colors]
   .sort((a, b) => b.saturation - a.saturation)[0];
 const rest = colors.filter((c) => ![canvas, ink, accent].includes(c));
 
-console.log(`${path.basename(image)}: ${colors.length} colors over 1.5%`);
+console.log(`${path.basename(image)}: ${colors.length} colors over 1%`);
 for (const c of colors) {
   const role =
     c === canvas
@@ -159,7 +159,44 @@ for (const c of colors) {
   );
 }
 const dark = canvas.lightness < 0.35;
+
+// starters that pass the generator's checks: ink 7:1, lines 3:1
+const channels = (hex) =>
+  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const luminance = (hex) => {
+  const [r, g, b] = channels(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const ratio = (a, b) => {
+  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (high + 0.05) / (low + 0.05);
+};
+const toward = (color, target, t) =>
+  hex(channels(color).map((v, i) => v + (channels(target)[i] - v) * t));
+const legible = (color, minimum) => {
+  const target = dark ? "#ffffff" : "#000000";
+  let result = color;
+  for (let t = 0.05; ratio(result, canvas.hex) < minimum && t <= 1; t += 0.05) {
+    result = toward(color, target, t);
+  }
+  return result;
+};
+const inkColor = legible(
+  (dark ? [...colors].sort((a, b) => b.lightness - a.lightness)[0] : ink).hex,
+  7,
+);
+const lines = [accent, ...rest].filter(Boolean).map((c) => legible(c.hex, 3));
+while (lines.length < 4) {
+  lines.push(toward(lines[lines.length - 1] ?? inkColor, inkColor, 0.35));
+}
+
 console.log("\nstarter tokens (judge them against the image before using):");
+console.log(
+  "fills are each palette color at about 32% over the canvas: pick hues deeper than the image's fills\n",
+);
 console.log(
   JSON.stringify(
     {
@@ -167,9 +204,9 @@ console.log(
       mode: dark ? "dark" : "light",
       description: "",
       canvas: canvas.hex,
-      ink: ink.lightness < 0.25 || dark ? ink.hex : "#1b2129",
-      accent: accent?.hex ?? ink.hex,
-      palette: [accent, ...rest].filter(Boolean).map((c) => c.hex),
+      ink: inkColor,
+      accent: lines[0],
+      palette: lines,
       grid: { color: ink.hex, minor: 0.12, major: 0.3, style: "solid" },
       type: { ui: "Liberation Sans", canvas: "Liberation Sans", size: 16 },
       stroke: {

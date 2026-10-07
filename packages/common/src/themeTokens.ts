@@ -314,6 +314,8 @@ export const generateThemeCss = (
     4.5,
     "secondary text on panels",
   );
+  // the hint under the toolbar sits on the canvas, not a panel
+  const hint = legible(null, mix(ink, canvas, 0.45), canvas, 4.5, "hint text");
   const hover = mix(panel, ink, 0.06);
   const active = surface.active ?? mix(panel, tokens.accent, dark ? 0.3 : 0.22);
   // the selected tool's icon, and the help dialog's keycaps (same surface)
@@ -337,12 +339,48 @@ export const generateThemeCss = (
   );
   const primary = dark ? accent : ink;
 
+  // a board keeps ink drawn under other themes: a canvas of the opposite
+  // lightness to the mode can hide all of it
+  if (luminance(canvas) < 0.18 !== dark) {
+    warnings.push({
+      token: "mode",
+      from: tokens.mode,
+      to: tokens.mode,
+      reason: dark
+        ? "dark mode on a light canvas: ink drawn under other themes displays light and may be invisible"
+        : "light mode on a dark canvas: ink drawn under other themes (black by default) may be invisible",
+    });
+  }
+
   const elementInk = legible("ink", tokens.ink, canvas, 7, "ink on the canvas");
   const inkShown = shown(store(elementInk));
+  // the first four palette colors are the stroke swatches: their lines must
+  // show. Only the stroke shades move; fills keep the token's hue.
+  const lineColors = tokens.palette.map((color, i) =>
+    i < 4
+      ? legible(`palette[${i}]`, color, canvas, 3, "lines on the canvas")
+      : color,
+  );
   const hues = [elementInk, ...tokens.palette];
+  const lineHues = [elementInk, ...lineColors];
+  if (dark) {
+    hues.forEach((color, i) => {
+      const displayed = shown(store(color));
+      const [a, b] = [rgb(color), rgb(displayed)];
+      if (Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > 40) {
+        warnings.push({
+          token: i ? `palette[${i - 1}]` : "ink",
+          from: color,
+          to: displayed,
+          reason:
+            "dark mode's color filter cannot display this color; elements show it as the `to` color",
+        });
+      }
+    });
+  }
   const ramp = (color: string, steps: number[]) =>
     steps.map((t) => store(mix(color, canvas, t)));
-  const strokeEntries = hues.map((hue) => ramp(hue, STROKE_SHADES));
+  const strokeEntries = lineHues.map((hue) => ramp(hue, STROKE_SHADES));
   // shade 1 is the wash under ink labels: paled until the label reads
   const fillEntries = hues.map((hue, i) => {
     let wash = FILL_WASH;
@@ -482,6 +520,10 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --overlay-bg-color: ${rgba(canvas, 0.72)};
   --color-slider-track: ${border};
   --color-slider-thumb: ${primary};
+}
+
+:scope .HintViewer {
+  --color-gray-40: ${hint};
 }
 
 :scope .HelpDialog__key {

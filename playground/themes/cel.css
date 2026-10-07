@@ -1,0 +1,127 @@
+/* Cel. mode: light */
+/*
+ * Flat cel illustration on warm grey board: one even slate outline around
+ * every shape, rounded forms, muted apricot, sage and slate-blue fills, no
+ * shading.
+ *
+ * Generated from theme tokens; edit the tokens, not this file.
+ */
+:scope,
+:scope.theme--dark {
+  --canvas-background: #c1beb8;
+  --canvas-grid-color: rgba(39, 48, 58, 0.07);
+  --canvas-grid-bold-color: rgba(39, 48, 58, 0.16);
+  --canvas-grid-style: solid;
+  --canvas-handle-fill: #d7d5d1;
+  --canvas-frame-color: rgba(39, 48, 58, 0.5);
+  --canvas-frame-width: 1.5;
+  --canvas-frame-name-color: #595c5f;
+  --color-selection: #9a522e;
+
+  --element-stroke-color: #27303a;
+  --element-background-color: transparent;
+  --element-fill-style: solid;
+  --element-stroke-width: medium;
+  --element-roughness: 0;
+  --element-roundness: round;
+  --element-arrow-type: round;
+  --element-start-arrowhead: none;
+  --element-end-arrowhead: arrow;
+  --element-font-family: "Nunito";
+  --element-font-size: 16;
+  --element-freedraw-variability: variable;
+  --element-freedraw-width: 0.5;
+  --element-freedraw-thinning: 0.1;
+  --color-picks-stroke: #27303a #8c5730 #2f7450 #346c9c #9a522e;
+  --color-picks-background: transparent #c8ac95 #97b29f #96a8b4 #b59b8c;
+  --color-palette-stroke: #a5a4a1 #868888 #686c6f #464c53 #27303a,
+    #b7aba0 #ad9784 #a28269 #976c4b #8c5730,
+    #a7b1a5 #8aa290 #6c937c #4c8365 #2f7450,
+    #a8afb3 #8b9fad #6f8ea8 #507ca2 #346c9c,
+    #baab9f #b29584 #aa7f68 #a2684a #9a522e,
+    #aaafa7 #909e94 #768e81 #597c6d #3f6b5a,
+    #b1b0ad #9ea1a0 #8c9194 #788086 #66717a;
+  --color-palette-background: transparent,
+    #c4b6a9 #c8ac95 #cda17f #d29364 #d8864a,
+    #afb9ad #97b29f #7dab8f #5ea37d #3f9a6a,
+    #aeb4b6 #96a8b4 #7b9ab2 #5a89b0 #3a78ad,
+    #bcafa5 #b59b8c #ad8670 #a36c4f #9a522e,
+    #afb2ab #97a39a #7d9387 #5e7f71 #3f6b5a,
+    #b4b3af #a4a5a4 #929698 #7c8389 #66717a;
+
+  --ui-font: "Nunito", system-ui, sans-serif;
+  --text-primary-color: #27303a;
+  --color-on-surface: #27303a;
+  --icon-fill-color: #27303a;
+  --popup-text-color: #27303a;
+  --keybinding-color: #595c5f;
+  --color-gray-60: #595c5f;
+  --input-label-color: #595c5f;
+
+  --island-bg-color: #d7d5d1;
+  --island-bg-color-alt: #d7d5d1;
+  --popup-bg-color: #d7d5d1;
+  --sidebar-bg-color: #d7d5d1;
+  --default-bg-color: #d7d5d1;
+  --popup-secondary-bg-color: #cccbc8;
+  --input-bg-color: #e5e4e1;
+  --input-border-color: #27303a;
+  --input-hover-bg-color: #cccbc8;
+
+  --color-surface-lowest: #e5e4e1;
+  --color-surface-low: #cccbc8;
+  --color-surface-mid: #cccbc8;
+  --color-surface-high: #cccbc8;
+  --color-surface-primary-container: #cab8ad;
+  --color-on-primary-container: #27303a;
+
+  --color-primary: #27303a;
+  --color-primary-darker: #27303a;
+  --color-primary-darkest: #27303a;
+  --color-primary-hover: #27303a;
+  --color-primary-light: #cab8ad;
+  --color-primary-light-darker: #cab8ad;
+  --color-brand-hover: #27303a;
+  --color-brand-active: #27303a;
+  --select-highlight-color: #9a522e;
+  --focus-highlight-color: #9a522e;
+
+  --button-hover-bg: #cccbc8;
+  --button-active-bg: #cab8ad;
+  --button-active-border: #27303a;
+  --button-gray-1: #cccbc8;
+  --button-gray-2: #cccbc8;
+  --button-gray-3: #cab8ad;
+  --default-border-color: #27303a;
+  --dialog-border-color: #27303a;
+  --sidebar-border-color: #27303a;
+  --color-border-outline: #595c5f;
+  --color-border-outline-variant: #27303a;
+
+  --border-radius-md: 12px;
+  --border-radius-lg: 12px;
+  --shadow-island: 0 0 0 2px #27303a;
+  --shadow-island-stronger: 0 0 0 2px #27303a;
+  --modal-shadow: 0 0 0 2px #27303a;
+  --sidebar-shadow: 0 0 0 2px #27303a;
+  --library-dropdown-shadow: 0 0 0 2px #27303a;
+  --overlay-bg-color: rgba(193, 190, 184, 0.72);
+  --color-slider-track: #27303a;
+  --color-slider-thumb: #27303a;
+}
+
+:scope .HintViewer {
+  --color-gray-40: #4c4e51;
+}
+
+:scope .HelpDialog__key {
+  color: #27303a;
+}
+
+:scope [data-radix-popper-content-wrapper] .Island {
+  background: #d7d5d1;
+}
+
+:scope .HintViewer {
+  --color-gray-40: #454c53;
+}

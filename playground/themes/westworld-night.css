@@ -1,7 +1,8 @@
 /* Westworld Night. mode: dark */
 /*
- * White-on-black stencil: deep graphite ground, a barely-there grid,
- * hairline bone ink, bronze for anything live. Machined, unhurried.
+ * White-on-black stencil: near-black ground, a barely-there grid, crisp
+ * bone linework and labels, hollow graphite fills, bronze for anything
+ * live. Machined, unhurried.
  *
  * Generated from theme tokens; edit the tokens, not this file.
  */
@@ -12,7 +13,7 @@
   --canvas-grid-bold-color: rgba(240, 238, 232, 0.11);
   --canvas-grid-style: solid;
   --canvas-handle-fill: #121316;
-  --canvas-frame-color: rgba(236, 232, 224, 0.55);
+  --canvas-frame-color: rgba(236, 232, 224, 0.8);
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #8a8885;
   --color-selection: #c89a5a;
@@ -32,28 +33,26 @@
   --element-freedraw-width: 0.2;
   --element-freedraw-thinning: 0.25;
   --element-freedraw-taper: 5;
-  --color-picks-stroke: #090500 #8b550b #eb8479 #405b70 #455d49;
-  --color-picks-background: transparent #deceb8 #eff0f3 #e8e9ed #c6cfd7;
+  --color-picks-stroke: #090500 #8b550b #221c10 #090500 #494e56;
+  --color-picks-background: transparent #f8f9fc #f3f4f9 #c6cfd7 #deceb8;
   --color-palette-stroke: #d7d7d7 #a5a4a2 #73716c #3d3932 #090500,
     #ede5da #d6c2a8 #bf9f76 #a2783d #8b550b,
+    #dcdcdc #afadaa #817f79 #4f4b41 #221c10,
+    #d7d7d7 #a5a4a2 #73716c #3d3932 #090500,
+    #e2e4e8 #bec0c5 #999ca2 #6f7279 #494e56,
     #ffefef #fad4d0 #f6bab4 #f19e96 #eb8479,
-    #e1e6ec #b9c5ce #94a3b1 #697e8f #405b70,
-    #e2e8e6 #bdc6c0 #96a49a #6b7f70 #455d49,
-    #ebe8f0 #cfc6d6 #b2a4bb #937f9e #775d84,
-    #e3dfd1 #bfb697 #9a8c5c #715d1a #4d3300,
-    #f4e8e1 #e4c7b6 #d3a589 #bf8057 #ad5e2b,
-    #f9fafe #ebecf1 #dddee3 #cfd0d7 #c1c2c9,
-    #f4f6f9 #e2e3e8 #cfd0d5 #bbbdc2 #a9aab1;
+    #feffff #f6f7fb #edeff4 #e4e5eb #dcdde4,
+    #fbfcff #f0f1f6 #e5e6ec #d8dae1 #cdced6,
+    #e1e6ec #b9c5ce #94a3b1 #697e8f #405b70;
   --color-palette-background: transparent,
     #f3ede5 #deceb8 #c5aa85 #a87f47 #8b550b,
+    #e5e5e5 #bdbbb9 #8f8d88 #59544c #221c10,
+    #e2e2e2 #b6b4b3 #84817e #46423d #090500,
+    #ebecf0 #c8cace #a3a6ab #767980 #494e56,
     #fff3f3 #fcdcda #f8c2be #f1a39c #eb8479,
-    #e9eff3 #c6cfd7 #9fadb9 #708595 #405b70,
-    #eaefed #c8d0cc #a2afa5 #728677 #455d49,
-    #f2eff7 #d7d0de #bbafc4 #9986a3 #775d84,
-    #ece9df #cac2aa #a5996d #7a6728 #4d3300,
-    #f9efea #e9d0c1 #d7af95 #c28761 #ad5e2b,
-    #fbfcff #eff0f3 #e2e3e8 #d1d3d8 #c1c2c9,
-    #f8f9fc #e8e9ed #d5d6db #bfc0c6 #a9aab1;
+    #ffffff #f8f9fc #f0f1f6 #e5e6ec #dcdde4,
+    #fcfeff #f3f4f9 #e9eaf0 #dbdce3 #cdced6,
+    #e9eff3 #c6cfd7 #9fadb9 #708595 #405b70;
 
   --ui-font: "Liberation Sans", system-ui, sans-serif;
   --text-primary-color: #ece8e0;
@@ -114,6 +113,10 @@
   --overlay-bg-color: rgba(11, 12, 14, 0.72);
   --color-slider-track: #353536;
   --color-slider-thumb: #c89a5a;
+}
+
+:scope .HintViewer {
+  --color-gray-40: #878582;
 }
 
 :scope .HelpDialog__key {

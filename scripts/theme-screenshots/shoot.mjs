@@ -280,7 +280,9 @@ const openTheme = async (context, baseUrl, theme, scene) => {
     localStorage.clear();
     localStorage.setItem("excalidraw-playground-scene", scene);
   }, scene);
-  await page.goto(`${baseUrl}?theme=${theme}&switcher=0`);
+  await page.goto(`${baseUrl}?theme=${theme}&switcher=0`, {
+    timeout: 600_000,
+  });
   await page.waitForFunction(() => !!window.excalidrawAPI, null, {
     timeout: 600_000,
   });

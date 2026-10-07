@@ -1,0 +1,44 @@
+{
+  "$schema": "./schema.json",
+  "name": "Cel",
+  "mode": "light",
+  "description": "Flat cel illustration on warm grey board: one even slate outline around every shape, rounded forms, muted apricot, sage and slate-blue fills, no shading.",
+  "canvas": "#c1beb8",
+  "ink": "#27303a",
+  "accent": "#9a522e",
+  "palette": ["#d8864a", "#3f9a6a", "#3a78ad", "#9a522e", "#3f6b5a", "#66717a"],
+  "grid": {
+    "color": "#27303a",
+    "minor": 0.07,
+    "major": 0.16,
+    "style": "solid"
+  },
+  "type": {
+    "ui": "Nunito",
+    "canvas": "Nunito",
+    "size": 16
+  },
+  "stroke": {
+    "width": "medium",
+    "roughness": 0,
+    "roundness": "round",
+    "arrowhead": "arrow",
+    "arrowType": "round",
+    "fill": "solid"
+  },
+  "pen": {
+    "pressure": true,
+    "width": 0.5,
+    "thinning": 0.1
+  },
+  "surface": {
+    "radius": 12,
+    "border": "bold",
+    "shadow": "none"
+  },
+  "frame": {
+    "width": 1.5,
+    "alpha": 0.5
+  },
+  "extra": ":scope .HintViewer {\n  --color-gray-40: #454c53;\n}"
+}
