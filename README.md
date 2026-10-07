@@ -6,13 +6,14 @@ This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [dr
 
 **[Benchmark it](https://redaphid.github.io/excalidraw/?bench)**: the same page with `?bench` loads three generated boards instead of your drawing and, on **run**, scripts a pan, a wheel zoom, a two-finger pinch and a pen stroke on each. It reports the median, 95th-percentile and mean time between animation frames per gesture, with the device pixel ratio and user agent, and **copy JSON** puts the report on the clipboard. `?bench=auto` starts on load, `&only=mixed/pan,deep/zoom` picks gestures, and `&counters` adds draw-call and work counts per frame (these slow the frames, so time without them). It never touches the saved drawing ([`playground/bench/`](playground/bench)).
 
-The fork changes five things:
+The fork changes six things:
 
 - **Deep zoom.** The editor zooms from 0.1x to 1,000,000x, and the wheel and trackpad zoom by the same ratio per tick at any depth.
 - **Rendering at depth.** Freehand strokes and text stay sharp at any zoom, including during animated camera moves, and zooming does not stall on rebuilding per-element bitmaps.
 - **Zoom-relative authoring.** An opt-in mode where new work is sized in screen pixels, so a pen stroke or a rectangle made at 10,000x looks the same on screen as one made at 1x.
 - **Pen size.** A continuous pen-size slider replaces the three freehand presets, and the presets that remain are thinner.
 - **Frame navigation.** An opt-in frames drawer, breadcrumb, arrow-key stepping between frames and bookmark keys.
+- **Themes.** A `css` prop restyles one editor: its UI, its canvas (background, grid, selection, frames) and the stroke character of new elements, from a stylesheet or from JSON tokens through `generateThemeCss`. See [docs/theming.md](docs/theming.md).
 
 For everything else, see [upstream's README](https://github.com/excalidraw/excalidraw/blob/master/README.md) (or [the copy at the fork point](https://github.com/excalidraw/excalidraw/blob/5a406e51875157bece389b9bc92d41ff241d5f3d/README.md)).
 
