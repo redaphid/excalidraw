@@ -2,7 +2,7 @@
 
 The fork's `<Excalidraw>` takes a `css` prop: a stylesheet for that editor. It can restyle any part of the UI, and it can set custom properties that the editor reads to paint its canvas and to pick the defaults for new elements. With no `css`, the editor renders exactly as before.
 
-![The same scene in twelve of the sample themes](theming/contact-desktop.png)
+![The same scene in every sample theme](theming/contact-desktop.webp)
 
 ## Theme an editor
 
@@ -236,6 +236,116 @@ Make the canvas transparent and give the root a background. The browser composit
 A theme adds no work per frame. The custom properties are read only at the moments listed above, and the renderers get the parsed object by reference.
 
 The CSS itself can still be slow. `backdrop-filter` over the canvas re-blurs on every repaint, and a large animated gradient repaints the screen. The sample Glass theme gets its frosted look from translucency and a bright edge, not from a blur.
+
+## Sample themes
+
+The playground ships these themes. Each is one CSS file that sets the canvas, the stroke character of new elements, the swatches and the UI. The screenshots come from `scripts/theme-screenshots`.
+
+### Drafting family
+
+**Architect Parchment** ([`architect-parchment.css`](../playground/themes/architect-parchment.css), light mode). Flat warm drafting paper, a graph-paper grid (blue-gray majors, fine minors), thin graphite ink, pale sage and blue-gray washes, one bronze accent. No textures and no soft shadows: restraint carries it.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Architect Parchment: the sample scene with a selection](theming/architect-parchment-desktop-selected.webp) | ![Architect Parchment: handwriting at 2.5x](theming/architect-parchment-desktop-penzoom.webp) |
+
+**CAD Debug** ([`cad-debug.css`](../playground/themes/cad-debug.css), light mode). A CAD viewport: blue-gray ground, white construction grid, graphite edges and the bright debug palette. Solid warm fills mean added material, dashed cool or red outlines mean voids.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![CAD Debug: the sample scene with a selection](theming/cad-debug-desktop-selected.webp) | ![CAD Debug: handwriting at 2.5x](theming/cad-debug-desktop-penzoom.webp) |
+
+**Locked Profile** ([`locked-profile.css`](../playground/themes/locked-profile.css), light mode). The quietest plate: graphite on cool white, no grid at all, hairline ink, one bronze accent for anything live. Panels are almost not there.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Locked Profile: the sample scene with a selection](theming/locked-profile-desktop-selected.webp) | ![Locked Profile: handwriting at 2.5x](theming/locked-profile-desktop-penzoom.webp) |
+
+**Raking Light** ([`raking-light.css`](../playground/themes/raking-light.css), light mode). Low warm key light from the left, cool fill from the right: the paper is a single quiet gradient and the panels cast one long shadow away from the light. Medium graphite outlines, sage and bronze bodies.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Raking Light: the sample scene with a selection](theming/raking-light-desktop-selected.webp) | ![Raking Light: handwriting at 2.5x](theming/raking-light-desktop-penzoom.webp) |
+
+**Westworld Night** ([`westworld-night.css`](../playground/themes/westworld-night.css), dark mode). White-on-black stencil: deep graphite ground, a barely-there grid, hairline ivory ink, bronze for anything live. Machined, unhurried.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Westworld Night: the sample scene with a selection](theming/westworld-night-desktop-selected.webp) | ![Westworld Night: handwriting at 2.5x](theming/westworld-night-desktop-penzoom.webp) |
+
+### Wide set
+
+**Blueprint** ([`blueprint.css`](../playground/themes/blueprint.css), dark mode). Cyanotype: deep cobalt paper, a white construction grid, chalk-white linework and monospace annotations.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Blueprint: the sample scene with a selection](theming/blueprint-desktop-selected.webp) | ![Blueprint: handwriting at 2.5x](theming/blueprint-desktop-penzoom.webp) |
+
+**Brutalist** ([`brutalist.css`](../playground/themes/brutalist.css), light mode). Raw and loud: hard black borders, offset block shadows, monospace, acid accents, no softness anywhere.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Brutalist: the sample scene with a selection](theming/brutalist-desktop-selected.webp) | ![Brutalist: handwriting at 2.5x](theming/brutalist-desktop-penzoom.webp) |
+
+**E-ink** ([`e-ink.css`](../playground/themes/e-ink.css), light mode). For e-paper tablets: pure black on white, no gray fills behind text, no shadows and no motion, so the panel never ghosts.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![E-ink: the sample scene with a selection](theming/e-ink-desktop-selected.webp) | ![E-ink: handwriting at 2.5x](theming/e-ink-desktop-penzoom.webp) |
+
+**Game Boy** ([`gameboy.css`](../playground/themes/gameboy.css), light mode). Four shades of green and nothing else: DMG palette, chunky borders, monospace.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Game Boy: the sample scene with a selection](theming/gameboy-desktop-selected.webp) | ![Game Boy: handwriting at 2.5x](theming/gameboy-desktop-penzoom.webp) |
+
+**Glass** ([`glass.css`](../playground/themes/glass.css), light mode). Frosted panels over a pale aurora. The frost is translucency and a bright edge, not backdrop-filter, so the canvas never pays for a blur.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Glass: the sample scene with a selection](theming/glass-desktop-selected.webp) | ![Glass: handwriting at 2.5x](theming/glass-desktop-penzoom.webp) |
+
+**High Contrast** ([`high-contrast.css`](../playground/themes/high-contrast.css), dark mode). For low vision: black ground, white text and 2px white edges, yellow for focus and selection, bold strokes and larger text.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![High Contrast: the sample scene with a selection](theming/high-contrast-desktop-selected.webp) | ![High Contrast: handwriting at 2.5x](theming/high-contrast-desktop-penzoom.webp) |
+
+**Risograph** ([`risograph.css`](../playground/themes/risograph.css), light mode). Two-drum riso print: blue and fluorescent pink on warm stock, panels printed slightly off register.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Risograph: the sample scene with a selection](theming/risograph-desktop-selected.webp) | ![Risograph: handwriting at 2.5x](theming/risograph-desktop-penzoom.webp) |
+
+**Sketchbook** ([`sketchbook.css`](../playground/themes/sketchbook.css), light mode). A cream sketchbook page with faint ruled lines, soft graphite, colored pencils and hachure. Loose and hand-drawn on purpose.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Sketchbook: the sample scene with a selection](theming/sketchbook-desktop-selected.webp) | ![Sketchbook: handwriting at 2.5x](theming/sketchbook-desktop-penzoom.webp) |
+
+**Swiss** ([`swiss.css`](../playground/themes/swiss.css), light mode). International typographic style: white space, Helvetica, a strict faint grid, black hairlines and one red.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Swiss: the sample scene with a selection](theming/swiss-desktop-selected.webp) | ![Swiss: handwriting at 2.5x](theming/swiss-desktop-penzoom.webp) |
+
+**Synthwave** ([`synthwave.css`](../playground/themes/synthwave.css), dark mode). 1986 at midnight: violet night, magenta and cyan neon grid, glowing panel edges, rounded type.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Synthwave: the sample scene with a selection](theming/synthwave-desktop-selected.webp) | ![Synthwave: handwriting at 2.5x](theming/synthwave-desktop-penzoom.webp) |
+
+**Terminal** ([`terminal.css`](../playground/themes/terminal.css), dark mode). Green phosphor on black: monospace everything, square corners, a dim glow on text and nothing else lit.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Terminal: the sample scene with a selection](theming/terminal-desktop-selected.webp) | ![Terminal: handwriting at 2.5x](theming/terminal-desktop-penzoom.webp) |
+
+**Windows 95** ([`win95.css`](../playground/themes/win95.css), light mode). Teal desktop, silver beveled chrome, navy title bars and 1-pixel black ink, like it is 1995.
+
+| Scene | Pen at 2.5x |
+| --- | --- |
+| ![Windows 95: the sample scene with a selection](theming/win95-desktop-selected.webp) | ![Windows 95: handwriting at 2.5x](theming/win95-desktop-penzoom.webp) |
 
 ## Screenshots
 
