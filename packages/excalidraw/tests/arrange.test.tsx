@@ -17,7 +17,9 @@ import {
 import type { GlobalPoint, LocalPoint } from "@excalidraw/math";
 import type { ArrangeOutcome, LayoutEngine } from "@excalidraw/element";
 import type {
+  ElementsMap,
   ExcalidrawElement,
+  ExcalidrawTextElementWithContainer,
   FixedPointBinding,
 } from "@excalidraw/element/types";
 
@@ -420,7 +422,12 @@ const sceneOf = ({ shapes, joins, dangles = [], frames = [] }: Scenario) => {
         containerId: shape.id,
         frameId: shape.frame ?? null,
       });
-      return [container, label];
+      const placed = computeBoundTextPosition(
+        container,
+        label as ExcalidrawTextElementWithContainer,
+        new Map([[container.id, container]]) as ElementsMap,
+      );
+      return [container, { ...label, ...placed }];
     }),
     ...joins.map(([from, to]) => {
       const start = boxOf(from);
@@ -471,6 +478,10 @@ const shapesOf = (scenario: Scenario) =>
 
 const requestOf = (scenario: Scenario) =>
   scenario.arranges === "everything" ? undefined : scenario.arranges;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 const load = async (scenario?: Scenario) => {
   await render(<Excalidraw handleKeyboardGlobally={true} />);

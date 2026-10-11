@@ -80,7 +80,10 @@ export const actionArrangeElements = register({
   keywords: ["layout", "tidy", "graph", "flowchart", "elk"],
   icon: ArrangeIcon,
   trackEvent: { category: "element" },
-  predicate: (elements) => elements.some((element) => !element.isDeleted),
+  predicate: (elements, appState, _, app) =>
+    app.scene.getSelectedElements(appState).length
+      ? arrangeActionPredicate(appState, app)
+      : elements.filter((element) => !element.isDeleted).length > 1,
   perform: async (elements, appState, _, app) => {
     const outcome = await arrangeScene(app.scene, appState, {
       elementIds: app.scene

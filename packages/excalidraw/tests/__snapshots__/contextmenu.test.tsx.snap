@@ -443,6 +443,61 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
           "category": "element",
         },
       },
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M10 3h4v4h-4z"
+            />
+            <path
+              d="M3 17h4v4h-4z"
+            />
+            <path
+              d="M17 17h4v4h-4z"
+            />
+            <path
+              d="M7 17l5 -4l5 4"
+            />
+            <path
+              d="M12 7l0 6"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "keywords": [
+          "layout",
+          "tidy",
+          "graph",
+          "flowchart",
+          "elk",
+        ],
+        "label": "labels.arrangeElements",
+        "name": "arrangeElements",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
       "separator",
       {
         "label": "labels.addToLibrary",
@@ -5314,6 +5369,61 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
           "category": "element",
         },
       },
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M10 3h4v4h-4z"
+            />
+            <path
+              d="M3 17h4v4h-4z"
+            />
+            <path
+              d="M17 17h4v4h-4z"
+            />
+            <path
+              d="M7 17l5 -4l5 4"
+            />
+            <path
+              d="M12 7l0 6"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "keywords": [
+          "layout",
+          "tidy",
+          "graph",
+          "flowchart",
+          "elk",
+        ],
+        "label": "labels.arrangeElements",
+        "name": "arrangeElements",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
       "separator",
       {
         "label": "labels.addToLibrary",
@@ -6544,6 +6654,61 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         "keyTest": [Function],
         "label": "labels.ungroup",
         "name": "ungroup",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M10 3h4v4h-4z"
+            />
+            <path
+              d="M3 17h4v4h-4z"
+            />
+            <path
+              d="M17 17h4v4h-4z"
+            />
+            <path
+              d="M7 17l5 -4l5 4"
+            />
+            <path
+              d="M12 7l0 6"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "keywords": [
+          "layout",
+          "tidy",
+          "graph",
+          "flowchart",
+          "elk",
+        ],
+        "label": "labels.arrangeElements",
+        "name": "arrangeElements",
         "perform": [Function],
         "predicate": [Function],
         "trackEvent": {
@@ -8541,6 +8706,61 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
           "category": "element",
         },
       },
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M10 3h4v4h-4z"
+            />
+            <path
+              d="M3 17h4v4h-4z"
+            />
+            <path
+              d="M17 17h4v4h-4z"
+            />
+            <path
+              d="M7 17l5 -4l5 4"
+            />
+            <path
+              d="M12 7l0 6"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "keywords": [
+          "layout",
+          "tidy",
+          "graph",
+          "flowchart",
+          "elk",
+        ],
+        "label": "labels.arrangeElements",
+        "name": "arrangeElements",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
       "separator",
       {
         "label": "labels.addToLibrary",
@@ -9541,6 +9761,61 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "keyTest": [Function],
         "label": "labels.ungroup",
         "name": "ungroup",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "element",
+        },
+      },
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.50000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M10 3h4v4h-4z"
+            />
+            <path
+              d="M3 17h4v4h-4z"
+            />
+            <path
+              d="M17 17h4v4h-4z"
+            />
+            <path
+              d="M7 17l5 -4l5 4"
+            />
+            <path
+              d="M12 7l0 6"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "keywords": [
+          "layout",
+          "tidy",
+          "graph",
+          "flowchart",
+          "elk",
+        ],
+        "label": "labels.arrangeElements",
+        "name": "arrangeElements",
         "perform": [Function],
         "predicate": [Function],
         "trackEvent": {

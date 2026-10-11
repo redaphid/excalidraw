@@ -89,7 +89,7 @@ const elkOptionsOf = ({
   spacing,
   elkOptions,
 }: LayoutOptions): Record<string, string> => ({
-  "elk.algorithm": `org.eclipse.elk.${algorithm}`,
+  "elk.algorithm": algorithm,
   "elk.direction": direction.toUpperCase(),
   "elk.spacing.nodeNode": String(spacing.node),
   "elk.layered.spacing.nodeNodeBetweenLayers": String(spacing.rank),

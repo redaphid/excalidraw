@@ -43,7 +43,7 @@ export type LayoutEdge = {
   readonly target: string;
 };
 
-/** nodes are given in reading order (by current y, then x) so model-order-aware engines keep a stable arrangement */
+/** nodes are given in scene order, so arranging what is already arranged changes nothing */
 export type LayoutGraph = {
   readonly nodes: readonly LayoutNode[];
   readonly edges: readonly LayoutEdge[];
@@ -137,6 +137,12 @@ const boxOf = (
 ): Box => {
   const [minX, minY, maxX, maxY] = getCommonBounds(elements, elementsMap);
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+};
+
+/** how far to move from `from` to `to`, snapped to whole pixels; float noise is no move */
+const shift = (to: number, from: number) => {
+  const delta = Math.round(to) - from;
+  return Math.abs(delta) < 1e-6 ? 0 : delta;
 };
 
 const overlap = (a: Box, b: Box) =>
@@ -335,9 +341,7 @@ export const planArrange = async (
     versions.set(element.id, element.version);
 
   const jobs = laidOut.map(([frameId, { units, arrows }]) => {
-    const nodes = [...units].sort(
-      (a, b) => a.box.y - b.box.y || a.box.x - b.box.x,
-    );
+    const nodes = [...units];
     for (const unit of nodes) {
       for (const member of unit.members) {
         read(member);
@@ -405,8 +409,8 @@ export const planArrange = async (
       };
     }
     for (const unit of nodes) {
-      const dx = origin.x + at(unit).x - unit.box.x;
-      const dy = origin.y + at(unit).y - unit.box.y;
+      const dx = shift(origin.x + at(unit).x, unit.box.x);
+      const dy = shift(origin.y + at(unit).y, unit.box.y);
       unit.members.forEach((member) => translations.set(member.id, { dx, dy }));
     }
   });
