@@ -80,6 +80,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onInitialize,
     isCollaborating = false,
     authoringUnits,
+    css,
     freedrawStrokeWidth,
     onPointerUpdate,
     renderTopLeftUI,
@@ -225,6 +226,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           onInitialize={onInitialize}
           isCollaborating={isCollaborating}
           authoringUnits={authoringUnits}
+          css={css}
           freedrawStrokeWidth={freedrawStrokeWidth}
           onPointerUpdate={onPointerUpdate}
           renderTopLeftUI={renderTopLeftUI}
