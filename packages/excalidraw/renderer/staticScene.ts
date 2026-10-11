@@ -515,7 +515,7 @@ const _renderStaticScene = ({
     scale,
     normalizedWidth,
     normalizedHeight,
-    theme: appState.theme,
+    theme: renderConfig.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
     // a theme restyles the default canvas only, not a background the user
