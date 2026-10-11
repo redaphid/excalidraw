@@ -1,0 +1,160 @@
+{
+  "$schema": "./tokens.schema.json",
+  "$description": "Flat cel illustration on warm grey board: one even slate outline around every shape, rounded forms, muted apricot, sage and slate-blue fills, no shading.",
+  "$extensions": {
+    "com.hypnodroid.draw": {
+      "name": "Cel",
+      "mode": "light",
+      "stroke": {
+        "width": "medium",
+        "roundness": "round",
+        "arrowhead": "arrow",
+        "arrowType": "round",
+        "fill": "solid"
+      },
+      "pen": {
+        "pressure": true
+      },
+      "surface": {
+        "border": "bold",
+        "shadow": "none"
+      },
+      "extra": ":scope .HintViewer {\n  --color-gray-40: #454c53;\n}"
+    }
+  },
+  "color": {
+    "$type": "color",
+    "canvas": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.7569, 0.7451, 0.7216],
+        "hex": "#c1beb8"
+      }
+    },
+    "ink": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.1529, 0.1882, 0.2275],
+        "hex": "#27303a"
+      }
+    },
+    "accent": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.6039, 0.3216, 0.1804],
+        "hex": "#9a522e"
+      }
+    },
+    "grid": {
+      "$value": "{color.ink}"
+    },
+    "palette": {
+      "apricot": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.8471, 0.5255, 0.2902],
+          "hex": "#d8864a"
+        }
+      },
+      "green": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.2471, 0.6039, 0.4157],
+          "hex": "#3f9a6a"
+        }
+      },
+      "blue": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.2275, 0.4706, 0.6784],
+          "hex": "#3a78ad"
+        }
+      },
+      "brick": {
+        "$value": "{color.accent}"
+      },
+      "pine": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.2471, 0.4196, 0.3529],
+          "hex": "#3f6b5a"
+        }
+      },
+      "slate": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.4, 0.4431, 0.4784],
+          "hex": "#66717a"
+        }
+      }
+    }
+  },
+  "font": {
+    "ui": {
+      "$type": "fontFamily",
+      "$value": "Nunito"
+    },
+    "canvas": {
+      "$type": "fontFamily",
+      "$value": "Nunito"
+    },
+    "size": {
+      "$type": "dimension",
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    }
+  },
+  "grid": {
+    "minor": {
+      "$type": "number",
+      "$value": 0.07
+    },
+    "major": {
+      "$type": "number",
+      "$value": 0.16
+    },
+    "style": {
+      "$type": "strokeStyle",
+      "$value": "solid"
+    }
+  },
+  "stroke": {
+    "roughness": {
+      "$type": "number",
+      "$value": 0
+    }
+  },
+  "pen": {
+    "$type": "number",
+    "width": {
+      "$value": 0.5
+    },
+    "thinning": {
+      "$value": 0.1
+    }
+  },
+  "surface": {
+    "radius": {
+      "$type": "dimension",
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    }
+  },
+  "frame": {
+    "width": {
+      "$type": "dimension",
+      "$value": {
+        "value": 1.5,
+        "unit": "px"
+      }
+    },
+    "alpha": {
+      "$type": "number",
+      "$value": 0.5
+    }
+  }
+}
