@@ -1190,6 +1190,11 @@ let settledBuild: {
   appState: StaticCanvasAppState;
 } | null = null;
 let settledBuildScheduled = false;
+let settledBitmapCount = 0;
+
+/** How many settled bitmaps have been built, for a canvas that holds still
+ * across frames to repaint once they land. */
+export const getSettledBitmapCount = () => settledBitmapCount;
 
 const scheduleSettledBuild = (delay: number) => {
   if (delay > 0) {
@@ -1237,6 +1242,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     // a bitmap larger than the screen costs more memory than it saves time
     if (scale === appState.zoom.value && width * height <= screenArea) {
       generateElementWithCanvas(element, elementsMap, renderConfig, appState);
+      settledBitmapCount++;
     }
   }
   if (build.next < elements.length) {
