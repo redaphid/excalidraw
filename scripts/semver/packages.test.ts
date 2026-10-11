@@ -2,7 +2,6 @@ import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 const {
-  consumerNpmrc,
   declarationTarget,
   GITHUB_REGISTRY,
   registryManifest,
@@ -180,19 +179,6 @@ describe("urlManifest", () => {
       ...packed["fractional-indexing"],
       version: "1.0.0",
     });
-  });
-});
-
-describe("consumerNpmrc", () => {
-  // Defect: an auth line keyed to any other host and path sends no token, so
-  // every install 401s; an inlined token would put a secret in the docs.
-  it("scopes @redaphid to the registry and reads the token from the environment", () => {
-    expect(consumerNpmrc(GITHUB_REGISTRY)).toBe(
-      `@redaphid:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=\${NODE_AUTH_TOKEN}\n`,
-    );
-    expect(consumerNpmrc("http://127.0.0.1:4873/")).toBe(
-      `@redaphid:registry=http://127.0.0.1:4873/\n//127.0.0.1:4873/:_authToken=\${NODE_AUTH_TOKEN}\n`,
-    );
   });
 });
 

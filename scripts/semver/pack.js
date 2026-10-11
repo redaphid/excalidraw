@@ -1,4 +1,3 @@
-const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -10,7 +9,6 @@ const {
   declarationTarget,
   LOCKSTEP,
   registryManifest,
-  registryName,
   siblingClosure,
   sourceName,
   urlManifest,
@@ -29,9 +27,6 @@ const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf-8"));
 
 const writeJson = (file, value) =>
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, "utf-8");
-
-const sha512 = (file) =>
-  crypto.createHash("sha512").update(fs.readFileSync(file)).digest("base64");
 
 // macOS tar otherwise adds an AppleDouble ._ file beside every packed file.
 const ENV = { ...process.env, COPYFILE_DISABLE: "1" };
@@ -81,6 +76,15 @@ const localizeDeclarations = (dir, id, manifest) => {
 };
 
 const pack = ({ version }) => {
+  const unversioned = LOCKSTEP.filter(
+    (id) =>
+      readJson(path.join(PACKAGES_DIR, id, "package.json")).version !== version,
+  );
+  if (unversioned.length > 0) {
+    throw new Error(
+      `${unversioned.join(", ")} not at ${version}. Run node scripts/semver/bump.js ${version} and commit it first.`,
+    );
+  }
   const sha = execSync("git rev-parse HEAD", {
     cwd: ROOT,
     encoding: "utf-8",
@@ -166,21 +170,6 @@ const pack = ({ version }) => {
   }
   fs.rmSync(work, { recursive: true, force: true });
 
-  const asset = (file) => ({
-    file,
-    size: fs.statSync(path.join(OUT_DIR, file)).size,
-    sha512: sha512(path.join(OUT_DIR, file)),
-  });
-  writeJson(path.join(OUT_DIR, "artifact.json"), {
-    version,
-    sha,
-    assets: LOCKSTEP.map((id) => ({ id, ...asset(urlTarball(id, version)) })),
-    registry: LOCKSTEP.map((id) => ({
-      id,
-      name: registryName(id),
-      ...asset(`registry/${registryTarball(id, version)}`),
-    })),
-  });
 };
 
 if (require.main === module) {

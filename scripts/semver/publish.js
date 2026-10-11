@@ -1,9 +1,7 @@
 const { spawnSync } = require("child_process");
-const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { isDeepStrictEqual, parseArgs } = require("util");
 
 const {
   GITHUB_REGISTRY,
@@ -12,22 +10,8 @@ const {
   registryName,
   sourceName,
 } = require("./packages");
-const { compareVersions, parseVersion, tagMessage } = require("./version");
 
-const MAX_STEPS = 12;
-const SETTLE_LOOKS = 6;
-const SETTLE_MS = 10_000;
-const DEPENDENCY_FIELDS = [
-  "dependencies",
-  "optionalDependencies",
-  "peerDependencies",
-];
-const TAGGER = {
-  name: "github-actions[bot]",
-  email: "41898282+github-actions[bot]@users.noreply.github.com",
-};
-
-const publishViolations = (manifest, { id, version, sha }) => {
+const publishViolations = (manifest, { id, version }) => {
   const violations = [];
   const expect = (ok, problem) => ok || violations.push(problem);
   expect(
@@ -39,10 +23,6 @@ const publishViolations = (manifest, { id, version, sha }) => {
     `version is ${manifest.version}, not ${version}`,
   );
   expect(
-    manifest.gitHead === sha,
-    `gitHead is ${manifest.gitHead}, not ${sha}`,
-  );
-  expect(
     manifest.publishConfig?.registry === GITHUB_REGISTRY,
     `publishConfig.registry is ${manifest.publishConfig?.registry}, not ${GITHUB_REGISTRY}`,
   );
@@ -50,22 +30,15 @@ const publishViolations = (manifest, { id, version, sha }) => {
     !manifest.bundleDependencies && !manifest.bundledDependencies,
     "it bundles dependencies",
   );
-  for (const field of DEPENDENCY_FIELDS) {
-    for (const [dependency, spec] of Object.entries(manifest[field] ?? {})) {
-      const sibling = LOCKSTEP.find(
-        (other) => sourceName(other) === dependency,
-      );
-      const alias = sibling && `npm:${registryName(sibling)}@${version}`;
-      expect(
-        !sibling || spec === alias,
-        `${field}.${dependency} is ${spec}, not ${alias}`,
-      );
-      expect(
-        !String(spec).startsWith("npm:") ||
-          String(spec).startsWith("npm:@redaphid/"),
-        `${field}.${dependency} aliases ${spec}, outside @redaphid`,
-      );
-    }
+  for (const [dependency, spec] of Object.entries(
+    manifest.dependencies ?? {},
+  )) {
+    const sibling = LOCKSTEP.find((other) => sourceName(other) === dependency);
+    const alias = sibling && `npm:${registryName(sibling)}@${version}`;
+    expect(
+      !sibling || spec === alias,
+      `dependencies.${dependency} is ${spec}, not ${alias}`,
+    );
   }
   return violations;
 };
@@ -81,76 +54,6 @@ const assertPublishable = (manifest, expected) => {
   }
 };
 
-const registryEntry = (artifact, id) =>
-  artifact.registry.find((entry) => entry.id === id);
-
-const isOurs = (observed, entry, sha) =>
-  observed.integrity === `sha512-${entry.sha512}` || observed.gitHead === sha;
-
-const conflict = (reason) => ({ kind: "conflict", reason });
-
-const nextStep = (observed, artifact) => {
-  const { version, sha } = artifact;
-  const tag = `v${version}`;
-  const present = PUBLISH_ORDER.filter((id) => observed.packages[id]);
-  if (observed.tag && observed.tag.sha !== sha) {
-    return conflict(`${tag} is claimed by ${observed.tag.sha}, not ${sha}.`);
-  }
-  if (observed.release && !observed.release.draft) {
-    return { kind: "done" };
-  }
-  if (!observed.tag && (present.length > 0 || observed.release)) {
-    const leftovers = present.map((id) => `${registryName(id)}@${version}`);
-    if (observed.release) {
-      leftovers.push(`a draft ${tag} release`);
-    }
-    return conflict(
-      `${tag} is not claimed, yet ${leftovers.join(
-        ", ",
-      )} exist. Delete them, or release another version.`,
-    );
-  }
-  const newer = observed.releases.filter(
-    (other) => compareVersions(other, version) > 0,
-  );
-  if (!observed.tag) {
-    return newer.length > 0
-      ? conflict(
-          `v${newer.at(-1)} is newer than ${tag}. Release a version above it.`,
-        )
-      : { kind: "claim" };
-  }
-  const stranger = present.find(
-    (id) => !isOurs(observed.packages[id], registryEntry(artifact, id), sha),
-  );
-  if (stranger) {
-    return conflict(
-      `${registryName(stranger)}@${version} was not built from ${sha}.`,
-    );
-  }
-  const missing = PUBLISH_ORDER.find((id) => !observed.packages[id]);
-  if (missing) {
-    return { kind: "publish", id: missing };
-  }
-  if (!observed.release) {
-    return { kind: "draft" };
-  }
-  const files = artifact.assets
-    .filter(
-      (asset) =>
-        !observed.release.assets.some(
-          (uploaded) =>
-            uploaded.name === path.basename(asset.file) &&
-            uploaded.size === asset.size,
-        ),
-    )
-    .map((asset) => asset.file);
-  if (files.length > 0) {
-    return { kind: "upload", files };
-  }
-  return { kind: "undraft", latest: newer.length === 0 };
-};
-
 const failed = (what, result) =>
   new Error(
     `${what} failed (exit ${result.status}): ${
@@ -158,397 +61,65 @@ const failed = (what, result) =>
     }`,
   );
 
-const parseJson = (text) => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-};
-
-const gh = (ctx, args, input) => {
-  const result = ctx.io.run("gh", args, { input });
-  if (result.status !== 0) {
-    throw failed(`gh ${args.slice(0, 3).join(" ")}`, result);
-  }
-  return parseJson(result.stdout);
-};
-
-const npm = (ctx, args) =>
-  ctx.io.run(
-    "npm",
-    [
-      ...args,
-      `--registry=${GITHUB_REGISTRY}`,
-      `--@redaphid:registry=${GITHUB_REGISTRY}`,
-      `--userconfig=${ctx.userconfig}`,
-      "--ignore-scripts",
-    ],
-    {
-      cwd: ctx.workdir,
-      env: Object.fromEntries(
-        Object.entries(ctx.io.env).filter(
-          ([key]) =>
-            !/^npm_config_/i.test(key) &&
-            key !== "NODE_AUTH_TOKEN" &&
-            key !== "NPM_TOKEN",
-        ),
-      ),
-    },
-  );
-
-const observeTag = (ctx) => {
-  const result = ctx.io.run("gh", [
-    "api",
-    `repos/${ctx.repo}/git/ref/tags/${ctx.tag}`,
-  ]);
-  if (result.status !== 0) {
-    if (/HTTP 404/.test(result.stderr)) {
-      return null;
-    }
-    throw failed(`Looking up ${ctx.tag}`, result);
-  }
-  const { object } = JSON.parse(result.stdout);
-  if (object.type !== "tag") {
-    return { sha: object.sha };
-  }
-  return {
-    sha: gh(ctx, ["api", `repos/${ctx.repo}/git/tags/${object.sha}`]).object
-      .sha,
-  };
-};
-
-const observePackage = (ctx, id) => {
-  const spec = `${registryName(id)}@${ctx.artifact.version}`;
-  // The whole manifest, because `npm view <spec> a b` prints a bare value
-  // instead of an object when one of the two fields is missing.
-  const result = npm(ctx, ["view", spec, "--json"]);
-  const view = parseJson(result.stdout);
-  if (result.status === 0 && view?.version === ctx.artifact.version) {
-    return {
-      integrity: view.dist?.integrity ?? null,
-      gitHead: view.gitHead ?? null,
-    };
-  }
-  if (result.status !== 0 && view?.error?.code === "E404") {
-    return null;
-  }
-  throw failed(`npm view ${spec}`, result);
-};
-
-const observeReleases = (ctx) => {
-  const result = ctx.io.run("gh", [
-    "api",
-    "--paginate",
-    `repos/${ctx.repo}/git/matching-refs/tags/v`,
-    "--jq",
-    ".[].ref",
-  ]);
-  if (result.status !== 0) {
-    throw failed("Listing the release tags", result);
-  }
-  return result.stdout
-    .split("\n")
-    .map((ref) => /^refs\/tags\/v([1-9]\d*\.\d+\.\d+)$/.exec(ref.trim()))
-    .filter(Boolean)
-    .map((match) => match[1])
-    .sort(compareVersions);
-};
-
-const observeRelease = (ctx) => {
-  const result = ctx.io.run("gh", [
-    "release",
-    "view",
-    ctx.tag,
-    "--repo",
-    ctx.repo,
-    "--json",
-    "isDraft,assets",
-  ]);
-  if (result.status !== 0) {
-    if (/release not found/.test(result.stderr)) {
-      return null;
-    }
-    throw failed(`gh release view ${ctx.tag}`, result);
-  }
-  const release = JSON.parse(result.stdout);
-  return {
-    draft: release.isDraft,
-    assets: release.assets
-      .map(({ name, size }) => ({ name, size }))
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  };
-};
-
-const observe = (ctx) => ({
-  tag: observeTag(ctx),
-  packages: Object.fromEntries(
-    PUBLISH_ORDER.map((id) => [id, observePackage(ctx, id)]),
-  ),
-  release: observeRelease(ctx),
-  releases: observeReleases(ctx),
-});
-
-const EXECUTE = {
-  claim: (ctx) => {
-    const { sha } = ctx.artifact;
-    const tagObject = gh(
-      ctx,
-      ["api", `repos/${ctx.repo}/git/tags`, "--method", "POST", "--input", "-"],
-      JSON.stringify({
-        tag: ctx.tag,
-        message: tagMessage(ctx.notes),
-        object: sha,
-        type: "commit",
-        tagger: TAGGER,
-      }),
-    );
-    const ref = ctx.io.run(
-      "gh",
-      ["api", `repos/${ctx.repo}/git/refs`, "--method", "POST", "--input", "-"],
-      {
-        input: JSON.stringify({
-          ref: `refs/tags/${ctx.tag}`,
-          sha: tagObject.sha,
-        }),
-      },
-    );
-    // Another run created the ref first. The next observation decides whether
-    // that claim is ours.
-    if (ref.status !== 0 && !/Reference already exists/.test(ref.stderr)) {
-      throw failed(`Creating refs/tags/${ctx.tag}`, ref);
-    }
-    return `Claimed ${ctx.tag} at ${sha}.`;
-  },
-  publish: (ctx, step) => {
-    const entry = registryEntry(ctx.artifact, step.id);
-    const result = npm(ctx, ["publish", path.join(ctx.dir, entry.file)]);
+// Checks all five tarballs before publishing any, publishes in dependency
+// order, and skips a version the registry already has, so a rerun after a
+// failure publishes only what is missing.
+const publish = ({ version, dir, run }) => {
+  const tarball = (id) =>
+    path.join(dir, `redaphid-excalidraw-${id}-${version}.tgz`);
+  for (const id of PUBLISH_ORDER) {
+    const result = run("tar", ["-xzOf", tarball(id), "package/package.json"]);
     if (result.status !== 0) {
-      throw failed(`Publishing ${entry.file}`, result);
+      throw failed(`Reading the manifest in ${tarball(id)}`, result);
     }
-    return `Published ${registryName(step.id)}@${ctx.artifact.version}.`;
-  },
-  draft: (ctx) => {
-    gh(ctx, [
-      "release",
-      "create",
-      ctx.tag,
-      "--repo",
-      ctx.repo,
-      "--draft",
-      "--verify-tag",
-      "--title",
-      ctx.artifact.version,
-      "--notes-file",
-      ctx.notesFile,
-    ]);
-    return `Drafted the ${ctx.tag} release.`;
-  },
-  upload: (ctx, step) => {
-    gh(ctx, [
-      "release",
-      "upload",
-      ctx.tag,
-      "--repo",
-      ctx.repo,
-      "--clobber",
-      ...step.files.map((file) => path.join(ctx.dir, file)),
-    ]);
-    return `Attached ${step.files
-      .map((file) => path.basename(file))
-      .join(", ")}.`;
-  },
-  undraft: (ctx, step) => {
-    gh(ctx, [
-      "release",
-      "edit",
-      ctx.tag,
-      "--repo",
-      ctx.repo,
-      "--draft=false",
-      `--latest=${step.latest}`,
-    ]);
-    return `Published the ${ctx.tag} release.`;
-  },
-};
+    assertPublishable(JSON.parse(result.stdout), { id, version });
+  }
 
-const sha512Of = (file) =>
-  crypto.createHash("sha512").update(fs.readFileSync(file)).digest("base64");
-
-const loadArtifact = (dir) => {
-  const artifact = JSON.parse(
-    fs.readFileSync(path.join(dir, "artifact.json"), "utf8"),
+  const userconfig = path.join(
+    fs.mkdtempSync(path.join(os.tmpdir(), "publish-")),
+    "npmrc",
   );
-  parseVersion(artifact.version);
-  const problems = [];
-  if (!/^[0-9a-f]{40}$/.test(artifact.sha)) {
-    problems.push(`sha ${artifact.sha} is not a full commit sha`);
-  }
-  const ids = artifact.registry.map((entry) => entry.id);
-  if ([...ids].sort().join() !== [...LOCKSTEP].sort().join()) {
-    problems.push(`the registry tarballs are for ${ids.join(", ")}`);
-  }
-  for (const entry of artifact.assets) {
-    if (fs.statSync(path.join(dir, entry.file)).size !== entry.size) {
-      problems.push(`${entry.file} is not ${entry.size} bytes`);
-    }
-  }
-  for (const entry of [...artifact.assets, ...artifact.registry]) {
-    if (sha512Of(path.join(dir, entry.file)) !== entry.sha512) {
-      problems.push(`${entry.file} does not match its sha512`);
-    }
-  }
-  if (problems.length > 0) {
-    throw new Error(`Refusing ${dir}/artifact.json: ${problems.join("; ")}.`);
-  }
-  return artifact;
-};
-
-const readManifest = (io, file) => {
-  const result = io.run("tar", ["-xzOf", file, "package/package.json"]);
-  if (result.status !== 0) {
-    throw failed(`Reading the manifest in ${file}`, result);
-  }
-  return JSON.parse(result.stdout);
-};
-
-const main = (io) => {
-  const { values } = parseArgs({
-    args: io.argv,
-    options: {
-      dir: { type: "string", default: "release" },
-      notes: { type: "string" },
-      "dry-run": { type: "boolean", default: false },
-    },
-  });
-  const dryRun = values["dry-run"];
-  const repo = io.env.GITHUB_REPOSITORY;
-  if (!dryRun && (!values.notes || !repo || !io.env.GITHUB_TOKEN)) {
-    throw new Error(
-      "Usage: GITHUB_TOKEN=<token> GITHUB_REPOSITORY=<owner/repo> node scripts/semver/publish.js --dir=release --notes=<file> [--dry-run]",
-    );
-  }
-  const dir = path.resolve(values.dir);
-  const artifact = loadArtifact(dir);
-  for (const entry of artifact.registry) {
-    assertPublishable(readManifest(io, path.join(dir, entry.file)), {
-      id: entry.id,
-      version: artifact.version,
-      sha: artifact.sha,
-    });
-  }
-
-  const workdir = fs.mkdtempSync(path.join(os.tmpdir(), "semver-publish-"));
-  const userconfig = path.join(workdir, "npmrc");
   fs.writeFileSync(
     userconfig,
-    dryRun
-      ? ""
-      : `//${new URL(GITHUB_REGISTRY).host}/:_authToken=\${GITHUB_TOKEN}\n`,
+    `//${new URL(GITHUB_REGISTRY).host}/:_authToken=\${GITHUB_TOKEN}\n`,
   );
-  if (dryRun) {
-    try {
-      for (const id of PUBLISH_ORDER) {
-        const entry = registryEntry(artifact, id);
-        const result = npm({ io, workdir, userconfig }, [
-          "publish",
-          path.join(dir, entry.file),
-          "--dry-run",
-        ]);
-        if (result.status !== 0) {
-          throw failed(`Dry-run publishing ${entry.file}`, result);
-        }
-        console.info(
-          `Would publish ${registryName(id)}@${
-            artifact.version
-          } to ${GITHUB_REGISTRY}.`,
-        );
-      }
-    } finally {
-      fs.rmSync(workdir, { recursive: true, force: true });
-    }
-    return;
-  }
-  const ctx = {
-    io,
-    repo,
-    dir,
-    artifact,
-    tag: `v${artifact.version}`,
-    notes: fs.readFileSync(values.notes, "utf8").trim(),
-    notesFile: path.resolve(values.notes),
-    workdir,
-    userconfig,
-  };
-  const report = (line) => {
-    console.info(line);
-    if (io.env.GITHUB_STEP_SUMMARY) {
-      fs.appendFileSync(io.env.GITHUB_STEP_SUMMARY, `- ${line}\n`);
-    }
-  };
+  const npm = (args) =>
+    run("npm", [
+      ...args,
+      `--registry=${GITHUB_REGISTRY}`,
+      `--userconfig=${userconfig}`,
+    ]);
 
-  const observeAfter = (previous) => {
-    for (let look = 1; ; look++) {
-      const observed = observe(ctx);
-      if (!previous || !isDeepStrictEqual(observed, previous.observed)) {
-        return observed;
-      }
-      if (look === SETTLE_LOOKS) {
-        throw new Error(
-          `The ${previous.step.kind} step did not take effect: nothing changed after ${SETTLE_LOOKS} looks.`,
-        );
-      }
-      io.sleep(SETTLE_MS);
+  for (const id of PUBLISH_ORDER) {
+    const spec = `${registryName(id)}@${version}`;
+    if (npm(["view", spec, "version"]).stdout.trim() === version) {
+      console.info(`${spec} is already published.`);
+      continue;
     }
-  };
-
-  try {
-    let previous = null;
-    for (let attempt = 0; attempt < MAX_STEPS; attempt++) {
-      const observed = observeAfter(previous);
-      const step = nextStep(observed, artifact);
-      if (step.kind === "done") {
-        report(`${ctx.tag} is released.`);
-        return;
-      }
-      if (step.kind === "conflict") {
-        throw new Error(step.reason);
-      }
-      report(EXECUTE[step.kind](ctx, step));
-      previous = { observed, step };
+    const result = npm(["publish", tarball(id)]);
+    if (result.status !== 0) {
+      throw failed(`Publishing ${spec}`, result);
     }
-    throw new Error(`${ctx.tag} did not finish within ${MAX_STEPS} steps.`);
-  } finally {
-    fs.rmSync(workdir, { recursive: true, force: true });
+    console.info(`Published ${spec}.`);
   }
-};
-
-const spawnRunner = (command, args, { input, cwd, env } = {}) => {
-  const result = spawnSync(command, args, {
-    input,
-    cwd,
-    env,
-    encoding: "utf8",
-    maxBuffer: 1 << 26,
-  });
-  if (result.error) {
-    throw result.error;
-  }
-  return {
-    status: result.status,
-    stdout: result.stdout,
-    stderr: result.stderr,
-  };
 };
 
 if (require.main === module) {
+  const version = process.argv
+    .find((argument) => argument.startsWith("--version="))
+    ?.split("=")[1];
+  if (!version || !process.env.GITHUB_TOKEN) {
+    console.error(
+      "Usage: GITHUB_TOKEN=<token> node scripts/semver/publish.js --version=1.0.0",
+    );
+    process.exit(1);
+  }
   try {
-    main({
-      argv: process.argv.slice(2),
-      env: process.env,
-      run: spawnRunner,
-      sleep: (ms) =>
-        spawnSync(process.execPath, ["-e", `setTimeout(() => {}, ${ms})`]),
+    publish({
+      version,
+      dir: path.resolve(__dirname, "../../release/registry"),
+      run: (command, args) =>
+        spawnSync(command, args, { encoding: "utf8", maxBuffer: 1 << 26 }),
     });
   } catch (error) {
     console.error(`::error::${error.message}`);
@@ -556,4 +127,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { assertPublishable, main, nextStep };
+module.exports = { assertPublishable, publish };

@@ -123,14 +123,8 @@ const declarationTarget = (specifier, id, declared) => {
   return `${target === "excalidraw" ? target : `${target}/src`}${subpath}`;
 };
 
-const consumerNpmrc = (registryUrl) => {
-  const { host, pathname } = new URL(registryUrl);
-  return `@redaphid:registry=${registryUrl}\n//${host}${pathname}:_authToken=\${NODE_AUTH_TOKEN}\n`;
-};
-
 module.exports = {
   atVersion,
-  consumerNpmrc,
   declarationTarget,
   GITHUB_REGISTRY,
   LOCKSTEP,
