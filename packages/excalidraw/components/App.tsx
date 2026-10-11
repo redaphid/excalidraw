@@ -9997,6 +9997,9 @@ class App extends React.Component<AppProps, AppState> {
             // NOTE: Optimize setState calls because it
             // affects history and performance
             if (
+              // a new element's points move without informing the scene, so
+              // this render is what repaints it
+              this.state.newElement?.id === linearElementEditor.elementId ||
               newState.suggestedBinding !== this.state.suggestedBinding ||
               !isShallowEqual(
                 newState.selectedLinearElement?.selectedPointsIndices ?? [],
