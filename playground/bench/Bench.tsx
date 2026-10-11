@@ -24,6 +24,7 @@ type Counters = {
   mapSets: number;
   mapGets: number;
   boundingRectReads: number;
+  staticRepaints: number;
 };
 
 type ScenarioResult = {
@@ -48,9 +49,12 @@ export type BenchReport = {
 
 type Mounted = { name: SceneName; scene: BenchScene };
 
+type FreedrawRenderer = NonNullable<Scenario["freedrawRenderer"]>;
+
 type BenchUi = {
   status: (text: string) => void;
   mount: (mounted: Mounted) => Promise<ExcalidrawImperativeAPI>;
+  setFreedrawRenderer: (renderer: FreedrawRenderer) => void;
 };
 
 declare global {
@@ -120,6 +124,7 @@ const counters: Counters = {
   mapSets: 0,
   mapGets: 0,
   boundingRectReads: 0,
+  staticRepaints: 0,
 };
 
 const wrap = <T extends object>(
@@ -141,6 +146,15 @@ const installCounters = () => {
   wrap(context, "fill", () => counters.fill++);
   wrap(context, "stroke", () => counters.stroke++);
   wrap(context, "fillText", () => counters.fillText++);
+  // bootstrapCanvas resets the transform once per paint of the static canvas
+  wrap(context, "setTransform", (self: CanvasRenderingContext2D, args) => {
+    if (
+      self.canvas.classList.contains("static") &&
+      args.join() === "1,0,0,1,0,0"
+    ) {
+      counters.staticRepaints++;
+    }
+  });
   wrap(context, "drawImage", (self: CanvasRenderingContext2D, args) => {
     const { a, b, c, d } = self.getTransform();
     const [w, h] =
@@ -189,17 +203,41 @@ const takeCounters = (steps: number): Counters => {
   return taken;
 };
 
+const switchFreedrawRenderer = async (
+  ui: BenchUi,
+  api: ExcalidrawImperativeAPI,
+  renderer: FreedrawRenderer,
+) => {
+  ui.setFreedrawRenderer(renderer);
+  for (let frame = 0; frame < 60; frame++) {
+    if ((api.getInkStatus() !== null) === (renderer === "webgl")) {
+      return;
+    }
+    await nextFrame();
+  }
+  throw new Error(`freedrawRenderer="${renderer}" never took effect`);
+};
+
 const runScenario = async (
+  ui: BenchUi,
   scenario: Scenario,
   api: ExcalidrawImperativeAPI,
   scene: BenchScene,
 ): Promise<ScenarioResult> => {
+  const renderer = scenario.freedrawRenderer ?? "canvas";
+  await switchFreedrawRenderer(ui, api, renderer);
   api.updateScene({
     appState: {
       ...scene.view,
       selectedElementIds: {},
       theme: "light",
       viewBackgroundColor: "#fff",
+      // the ink layer only takes variable-width strokes
+      ...(renderer === "webgl"
+        ? {
+            currentItemStrokeVariability: "variable" as const,
+          }
+        : {}),
     },
   });
   await wait(VIEW_RESET_MS);
@@ -210,6 +248,9 @@ const runScenario = async (
   await flushTasks();
   reseed(1);
   scenario.begin(api, canvas);
+  if (renderer === "webgl" && !api.getInkStatus()?.inking) {
+    throw new Error(`${scenario.id}: the ink layer did not take the stroke`);
+  }
   await flushTasks();
   takeCounters(1);
 
@@ -280,7 +321,7 @@ const runBench = async (ui: BenchUi): Promise<BenchReport> => {
     mountMs[name] = round(performance.now() - start);
     for (const scenario of selected.filter((s) => s.scene === name)) {
       ui.status(`running ${scenario.id}`);
-      results.push(await runScenario(scenario, api, scene));
+      results.push(await runScenario(ui, scenario, api, scene));
     }
   }
   const memory = (performance as any).memory;
@@ -299,6 +340,8 @@ let benchRun: Promise<BenchReport> | null = null;
 
 export const Bench = () => {
   const [mounted, setMounted] = useState<Mounted | null>(null);
+  const [freedrawRenderer, setFreedrawRenderer] =
+    useState<FreedrawRenderer>("canvas");
   const [started, setStarted] = useState(auto);
   const [status, setStatus] = useState(auto ? "starting" : "idle");
   const [report, setReport] = useState<BenchReport | null>(null);
@@ -315,6 +358,7 @@ export const Bench = () => {
           apiResolver.current = resolve;
           setMounted(next);
         }),
+      setFreedrawRenderer,
     });
     benchRun.then(
       (done) => {
@@ -335,6 +379,7 @@ export const Bench = () => {
         <Excalidraw
           key={mounted.name}
           authoringUnits="screen"
+          freedrawRenderer={freedrawRenderer}
           initialData={{
             elements: mounted.scene.elements,
             files: mounted.scene.files,

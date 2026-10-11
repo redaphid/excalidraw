@@ -11,6 +11,8 @@ export type Scenario = {
   scene: SceneName;
   steps: number;
   tool: "hand" | "selection" | "freedraw" | "rectangle" | "arrow";
+  /** what the editor draws freedraw with, "canvas" by default */
+  freedrawRenderer?: "canvas" | "webgl";
   begin: (api: ExcalidrawImperativeAPI, canvas: HTMLCanvasElement) => void;
   midway?: (
     api: ExcalidrawImperativeAPI,
@@ -231,6 +233,11 @@ export const SCENARIOS: Scenario[] = [
   zoom("mixed", 60, 120, 3, (_, canvas) => center(canvas)),
   pinch("mixed", 160),
   freedraw("mixed", 240),
+  {
+    ...freedraw("mixed", 240),
+    id: "mixed/freedraw-webgl",
+    freedrawRenderer: "webgl",
+  },
   pan("freedraw", 200),
   zoom("freedraw", 40, 100, 3, (_, canvas) => center(canvas)),
   pinch("freedraw", 160),
