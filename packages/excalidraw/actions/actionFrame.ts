@@ -20,7 +20,7 @@ import { getSelectedElements } from "../scene";
 
 import { register } from "./register";
 
-import type { AppClassProperties, UIAppState } from "../types";
+import type { AppClassProperties, AppState, UIAppState } from "../types";
 
 const isSingleFrameSelected = (
   appState: UIAppState,
@@ -101,25 +101,32 @@ export const actionRemoveAllElementsFromFrame = register({
     isSingleFrameSelected(appState, app),
 });
 
-export const actionupdateFrameRendering = register({
-  name: "updateFrameRendering",
-  label: "labels.updateFrameRendering",
+export const areFramesShown = ({
+  frameRendering,
+}: Pick<AppState, "frameRendering">) =>
+  frameRendering.outline && frameRendering.name;
+
+export const actionToggleFrameChrome = register({
+  name: "toggleFrameChrome",
+  label: "labels.showFrames",
   viewMode: true,
   trackEvent: { category: "canvas" },
   perform: (elements, appState) => {
+    const show = !areFramesShown(appState);
     return {
       elements,
       appState: {
         ...appState,
         frameRendering: {
           ...appState.frameRendering,
-          enabled: !appState.frameRendering.enabled,
+          outline: show,
+          name: show,
         },
       },
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
   },
-  checked: (appState) => appState.frameRendering.enabled,
+  checked: areFramesShown,
 });
 
 export const actionWrapSelectionInFrame = register({

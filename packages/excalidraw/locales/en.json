@@ -199,6 +199,7 @@
     "arrowBinding": "Arrow binding",
     "midpointSnapping": "Snap to midpoints",
     "showHints": "Show hints",
+    "showFrames": "Show frames",
     "inputDevice": "Input",
     "inputDeviceTrackpad": "Trackpad",
     "inputDeviceMouse": "Mouse"
