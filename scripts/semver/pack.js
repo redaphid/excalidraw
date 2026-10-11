@@ -110,7 +110,7 @@ const pack = ({ version }) => {
       stdio: "inherit",
     });
     fs.mkdirSync(unpacked(id), { recursive: true });
-    tar(`-xzf ${id}.tgz --strip-components=1 -C ${unpacked(id)}`, work);
+    tar(`-xzf ${id}.tgz --strip-components=1 -C packed/${id}`, work);
     localizeDeclarations(
       unpacked(id),
       id,
@@ -148,9 +148,10 @@ const pack = ({ version }) => {
         atVersion(packed[sibling], version),
       );
     }
-    tar(
-      `-czf ${urlTarball(id, version)} -C ${path.dirname(urlStaging)} package`,
-      OUT_DIR,
+    tar(`-czf ${urlTarball(id, version)} package`, path.dirname(urlStaging));
+    fs.copyFileSync(
+      path.join(path.dirname(urlStaging), urlTarball(id, version)),
+      path.join(OUT_DIR, urlTarball(id, version)),
     );
 
     const registryStaging = path.join(work, "registry", id);
