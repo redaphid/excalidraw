@@ -88,6 +88,6 @@ The sample scene outlines each shape in its palette color. A theme built on one 
 
 ## Dark themes
 
-In dark mode the editor shows element colors through a lightness-inverting filter, so scenes stay portable between modes. Use dark mode (it follows a dark canvas unless the extension's `mode` says otherwise) and give displayed colors: the generator stores their inverse and warns about any it cannot display (white tops out at `#ededed`, no bright yellow, cyan turns teal, green stops at `#6fc76f`). UI and canvas colors are not filtered, so neon belongs there.
+In dark mode the editor shows element colors through a lightness-inverting filter, so scenes stay portable between modes. Use dark mode (it follows a dark canvas unless the extension's `mode` says otherwise; the stylesheet declares it as `--canvas-mode`, so the canvas paints in it whatever the host's `theme` prop says) and give displayed colors: the generator stores their inverse and warns about any it cannot display (white tops out at `#ededed`, no bright yellow, cyan turns teal, green stops at `#6fc76f`). UI and canvas colors are not filtered, so neon belongs there.
 
 A dark canvas needs dark mode. Leave `mode` out and it follows the canvas. A board is shared, and ink drawn under other themes is black by default: on a dark canvas in light mode it is invisible. The generator warns on `mode` whenever the canvas and the mode disagree. Terminal accepts dark mode's `#6fc76f` for its element greens and keeps full phosphor in its UI text for this reason.
