@@ -567,7 +567,13 @@ const _renderStaticScene = ({
     renderConfig,
   });
 
-  cacheSettledBitmaps(visibleElements, allElementsMap, renderConfig, appState);
+  cacheSettledBitmaps(
+    canvas,
+    visibleElements,
+    allElementsMap,
+    renderConfig,
+    appState,
+  );
 };
 
 /** throttled to animation framerate */
