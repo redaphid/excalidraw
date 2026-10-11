@@ -174,20 +174,6 @@ describe("a shape's cached bitmap while the zoom animates", () => {
     expect(bitmapZoom(element)).toBe(5);
   });
 
-  it("is redrawn a few per frame when many are blown up at once", () => {
-    const [first, second] = [shape(), shape()];
-    draw(first, 0.2);
-    draw(second, 0.2);
-    // each read of the clock is 5 ms after the last, past the frame budget
-    let now = 1e12;
-    vi.spyOn(performance, "now").mockImplementation(() => (now += 5));
-    draw(first, 6, animating);
-    draw(second, 6, animating);
-    expect([bitmapZoom(first), bitmapZoom(second)]).toEqual([6, 0.2]);
-    draw(second, 7, animating);
-    expect(bitmapZoom(second)).toBe(7);
-  });
-
   it("is redrawn at the new zoom once the zoom settles", () => {
     const element = shape();
     draw(element, 0.2);

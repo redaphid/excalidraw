@@ -48,6 +48,9 @@ export type StaticCanvasRenderConfig = {
   /** while the static canvas holds still under a new element, repaints it
    * once settled bitmaps land, as the per-move repaint otherwise would */
   settledBitmapCount?: number;
+  /** elements to draw directly this frame instead of building their bitmap
+   * on the spot; the scene builds a few per frame (`buildSceneBitmaps`) */
+  elementsWithoutBitmap?: ReadonlySet<ExcalidrawElement>;
 };
 
 export type SVGRenderConfig = {
