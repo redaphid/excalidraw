@@ -1,5 +1,5 @@
 import { invariant, viewportCoordsToSceneCoords } from "@excalidraw/common";
-import { CaptureUpdateAction, newElementWith } from "@excalidraw/element";
+import { newElementWith } from "@excalidraw/element";
 
 import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 
@@ -245,10 +245,14 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
       }
     }
     const element = freedrawThrough(a.element, a.stroke.samples());
-    app.updateScene({
-      elements: [...app.scene.getElementsIncludingDeleted(), element],
-      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-    });
+    // As the editor's own pointerup commits a stroke: one scene update, put
+    // on the undo stack when the editor next commits to the store.
+    // updateScene would also re-index and snapshot the whole scene here.
+    app.scene.replaceAllElements([
+      ...app.scene.getElementsIncludingDeleted(),
+      element,
+    ]);
+    app.store.scheduleCapture();
     pointer(a, "up");
     // Keep the ink up until the editor has painted the committed stroke
     // beneath it, so the hand-off never flickers.
