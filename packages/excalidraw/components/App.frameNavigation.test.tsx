@@ -5,6 +5,7 @@ import { DEFAULT_SIDEBAR, FRAMES_SIDEBAR_TAB, KEYS } from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
+import { frameModel, slideOrder } from "../frameNavigation";
 import { Excalidraw } from "../index";
 import { API } from "../tests/helpers/api";
 import {
@@ -24,7 +25,7 @@ import App from "./App";
 
 import type { MockInstance } from "vitest";
 
-import type { FrameNavigation } from "../types";
+import type { FrameNavigation, Slide } from "../types";
 
 const { h } = window;
 const mouse = new Pointer("mouse");
@@ -514,6 +515,57 @@ describe("bookmark keys", () => {
   });
 });
 
+describe("slideOrder", () => {
+  const model = frameModel([
+    frame("frame-valley-of-the-sun", 0, 0),
+    frame("frame-the-lair", 600, 0),
+    frame("frame-thunderwrench", 0, 600),
+  ]);
+  const cases: [string, Slide[], Slide[]][] = [
+    [
+      "keep the host's order and what it skips",
+      [
+        { frameId: "frame-thunderwrench", included: true },
+        { frameId: "frame-valley-of-the-sun", included: false },
+        { frameId: "frame-the-lair", included: true },
+      ],
+      [
+        { frameId: "frame-thunderwrench", included: true },
+        { frameId: "frame-valley-of-the-sun", included: false },
+        { frameId: "frame-the-lair", included: true },
+      ],
+    ],
+    [
+      "drop a frame no longer on the board and a repeat",
+      [
+        { frameId: "frame-the-lair", included: false },
+        { frameId: "frame-ghost-town", included: true },
+        { frameId: "frame-the-lair", included: true },
+        { frameId: "frame-valley-of-the-sun", included: true },
+        { frameId: "frame-thunderwrench", included: true },
+      ],
+      [
+        { frameId: "frame-the-lair", included: false },
+        { frameId: "frame-valley-of-the-sun", included: true },
+        { frameId: "frame-thunderwrench", included: true },
+      ],
+    ],
+    [
+      "append the frames it lacks in scene order, included",
+      [{ frameId: "frame-thunderwrench", included: false }],
+      [
+        { frameId: "frame-thunderwrench", included: false },
+        { frameId: "frame-valley-of-the-sun", included: true },
+        { frameId: "frame-the-lair", included: true },
+      ],
+    ],
+  ];
+
+  it.each(cases)("should %s", (_, order, expected) => {
+    expect(slideOrder(model, order)).toEqual(expected);
+  });
+});
+
 describe("the drawer key", () => {
   const board = [
     frame("frame-valley-of-the-sun", 0, 0),
@@ -746,9 +798,19 @@ describe("cost", () => {
 
     beforeEach(async () => {
       const onBookmarkChange = () => {};
+      const onChange = () => {};
+      const onPresent = () => {};
       const Host = () => (
         <Excalidraw
-          frameNavigation={{ bookmarks: ["frame-the-lair"], onBookmarkChange }}
+          frameNavigation={{
+            bookmarks: ["frame-the-lair"],
+            onBookmarkChange,
+            slides: {
+              order: [{ frameId: "frame-the-lair", included: true }],
+              onChange,
+              onPresent,
+            },
+          }}
         />
       );
       const { rerender } = await render(<Host />);

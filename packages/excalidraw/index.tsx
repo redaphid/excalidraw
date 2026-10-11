@@ -355,10 +355,24 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     return false;
   }
 
-  // compare `frameNavigation` by its bookmarks and callback so that hosts
-  // inlining the object don't bust the memo every render
+  // compare `frameNavigation` by its bookmarks, slides and callbacks so that
+  // hosts inlining the object don't bust the memo every render
   const prevBookmarks = prevFrameNavigation?.bookmarks ?? [];
   const nextBookmarks = nextFrameNavigation?.bookmarks ?? [];
+  const prevSlides = prevFrameNavigation?.slides;
+  const nextSlides = nextFrameNavigation?.slides;
+  const isSlidesSame =
+    prevSlides === nextSlides ||
+    (!!prevSlides &&
+      !!nextSlides &&
+      prevSlides.onChange === nextSlides.onChange &&
+      prevSlides.onPresent === nextSlides.onPresent &&
+      prevSlides.order.length === nextSlides.order.length &&
+      prevSlides.order.every(
+        (slide, i) =>
+          slide.frameId === nextSlides.order[i].frameId &&
+          slide.included === nextSlides.order[i].included,
+      ));
   const isFrameNavigationSame =
     prevFrameNavigation === nextFrameNavigation ||
     (!!prevFrameNavigation &&
@@ -366,7 +380,8 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
       prevFrameNavigation.onBookmarkChange ===
         nextFrameNavigation.onBookmarkChange &&
       prevBookmarks.length === nextBookmarks.length &&
-      prevBookmarks.every((id, i) => id === nextBookmarks[i]));
+      prevBookmarks.every((id, i) => id === nextBookmarks[i]) &&
+      isSlidesSame);
 
   if (!isFrameNavigationSame) {
     return false;
@@ -522,6 +537,7 @@ export type {
 export type {
   ViewportStatusFrame,
   FrameNavigation,
+  Slide,
   ElementRenderOverride,
   ElementRenderOverrides,
 } from "./types";
