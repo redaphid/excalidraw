@@ -1302,8 +1302,35 @@ const CONSTANT_WIDTH_FREEDRAW = {
   COLLISION_SIMPLIFY_TOLERANCE: 0.2,
 } as const;
 
-const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
-  element.strokeOptions?.streamline ?? DEFAULT_STROKE_STREAMLINE;
+const getFreedrawStreamline = (
+  element: Partial<Pick<ExcalidrawFreeDrawElement, "strokeOptions">>,
+) => element.strokeOptions?.streamline ?? DEFAULT_STROKE_STREAMLINE;
+
+/**
+ * The perfect-freehand options a pressure-sensitive (variable width) freedraw
+ * stroke is drawn with, while it is drawn and once it is done.
+ */
+export const getVariableWidthFreedrawStrokeOptions = (
+  element: Pick<ExcalidrawFreeDrawElement, "strokeWidth" | "simulatePressure"> &
+    Partial<Pick<ExcalidrawFreeDrawElement, "strokeOptions">>,
+) => {
+  const size = element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR;
+  const taper = element.strokeOptions?.taper;
+  return {
+    simulatePressure: element.simulatePressure,
+    size,
+    thinning:
+      element.strokeOptions?.thinning ?? VARIABLE_WIDTH_FREEDRAW.THINNING,
+    smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
+    streamline: getFreedrawStreamline(element),
+    easing: (t: number) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
+    ...(taper && {
+      start: { taper: taper * size },
+      end: { taper: taper * size },
+    }),
+    last: true,
+  };
+};
 
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
@@ -1321,22 +1348,10 @@ const getVariableWidthFreedrawOutline = (
       )
     : [[0, 0, 0.5]];
 
-  const size = element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR;
-  const taper = element.strokeOptions?.taper;
-  return getStroke(inputPoints as number[][], {
-    simulatePressure: element.simulatePressure,
-    size,
-    thinning:
-      element.strokeOptions?.thinning ?? VARIABLE_WIDTH_FREEDRAW.THINNING,
-    smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
-    streamline: getFreedrawStreamline(element),
-    easing: (t) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
-    ...(taper && {
-      start: { taper: taper * size },
-      end: { taper: taper * size },
-    }),
-    last: true,
-  }) as [number, number][];
+  return getStroke(
+    inputPoints as number[][],
+    getVariableWidthFreedrawStrokeOptions(element),
+  ) as [number, number][];
 };
 
 const createLaserPointer = (element: ExcalidrawFreeDrawElement) =>

@@ -82,6 +82,10 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     authoringUnits,
     css,
     freedrawStrokeWidth,
+    freedrawRenderer,
+    onFreedrawProgress,
+    cameraLayer,
+    penBarrelSelects,
     onPointerUpdate,
     renderTopLeftUI,
     renderTopRightUI,
@@ -228,6 +232,10 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           authoringUnits={authoringUnits}
           css={css}
           freedrawStrokeWidth={freedrawStrokeWidth}
+          freedrawRenderer={freedrawRenderer}
+          onFreedrawProgress={onFreedrawProgress}
+          cameraLayer={cameraLayer}
+          penBarrelSelects={penBarrelSelects}
           onPointerUpdate={onPointerUpdate}
           renderTopLeftUI={renderTopLeftUI}
           renderTopRightUI={renderTopRightUI}
@@ -287,6 +295,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     interaction: prevInteraction,
     ui: prevUI,
     activeTool: prevActiveTool,
+    cameraLayer: prevCameraLayer,
     frameNavigation: prevFrameNavigation,
     ...prev
   } = prevProps;
@@ -297,6 +306,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     interaction: nextInteraction,
     ui: nextUI,
     activeTool: nextActiveTool,
+    cameraLayer: nextCameraLayer,
     frameNavigation: nextFrameNavigation,
     ...next
   } = nextProps;
@@ -310,6 +320,12 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
         (nextActiveTool?.type === "custom" ? nextActiveTool.customType : null));
 
   if (!isActiveToolSame) {
+    return false;
+  }
+
+  // `cameraLayer`'s functions are called at each press, so only whether there
+  // is one matters: hosts inlining it don't bust the memo every render
+  if (!prevCameraLayer !== !nextCameraLayer) {
     return false;
   }
 
