@@ -43,11 +43,16 @@ const mountEditor = async () => {
   await settle();
   return {
     unmount,
-    /** zooms to a scale the stroke has no bitmap for, so a build is pending */
+    /** zooms to a scale the stroke has no bitmap for, so a build is pending;
+     * jsdom lays the editor out at 0x0, where no bitmap fits the screen */
     zoomTo: (zoom: number) =>
       act(() => {
         api!.updateScene({
-          appState: { zoom: { value: getNormalizedZoom(zoom) } },
+          appState: {
+            width: 500,
+            height: 500,
+            zoom: { value: getNormalizedZoom(zoom) },
+          },
         });
       }),
   };
