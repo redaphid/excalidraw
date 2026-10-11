@@ -33,6 +33,13 @@ jobs:
           scopes: |
             app
             editor
+            element
+            common
+            math
+            playground
+            frame
+            utils
+            ci
             packages/excalidraw
             packages/utils
             docker
@@ -73,7 +80,10 @@ jobs:
               labels.add("s-app");
             } else if (scope === "editor") {
               labels.add("s-editor");
-            } else if (scope.startsWith("packages/")) {
+            } else if (
+              scope.startsWith("packages/") ||
+              ["element", "common", "math", "utils"].includes(scope)
+            ) {
               labels.add("s-package");
             }
           }

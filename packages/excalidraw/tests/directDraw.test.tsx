@@ -217,6 +217,26 @@ describe("freedraw once the zoom settles", () => {
     ).not.toHaveBeenCalled();
   });
 
+  it("gets no bitmap while it is still being drawn", async () => {
+    const frame = API.createElement({
+      type: "frame",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 200,
+    });
+    const element = API.createElement({
+      type: "freedraw",
+      x: 10,
+      y: 10,
+      frameId: frame.id,
+      points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(40, 10)],
+    });
+    drawScene([element, frame], 2, { newElement: element });
+    await settle();
+    expect(elementWithCanvasCache.get(element)).toBeUndefined();
+  });
+
   it("draws directly at a zoom it has no bitmap for", async () => {
     const element = stroke();
     draw(element, 2);

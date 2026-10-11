@@ -120,6 +120,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     showDeprecatedFonts,
     renderScrollbars,
     viewportStatusFrame,
+    frameNavigation,
     currentUserControls,
     imageOptions,
   } = props;
@@ -268,6 +269,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           showDeprecatedFonts={showDeprecatedFonts}
           renderScrollbars={renderScrollbars}
           viewportStatusFrame={viewportStatusFrame}
+          frameNavigation={frameNavigation}
           currentUserControls={currentUserControls}
           imageOptions={normalizedImageOptions}
         >
@@ -292,6 +294,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     ui: prevUI,
     activeTool: prevActiveTool,
     cameraLayer: prevCameraLayer,
+    frameNavigation: prevFrameNavigation,
     ...prev
   } = prevProps;
   const {
@@ -302,6 +305,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     ui: nextUI,
     activeTool: nextActiveTool,
     cameraLayer: nextCameraLayer,
+    frameNavigation: nextFrameNavigation,
     ...next
   } = nextProps;
 
@@ -362,6 +366,23 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
         !!nextUI.enabled?.scrollBackToContent);
 
   if (!isUISame) {
+    return false;
+  }
+
+  // compare `frameNavigation` by its bookmarks and callback so that hosts
+  // inlining the object don't bust the memo every render
+  const prevBookmarks = prevFrameNavigation?.bookmarks ?? [];
+  const nextBookmarks = nextFrameNavigation?.bookmarks ?? [];
+  const isFrameNavigationSame =
+    prevFrameNavigation === nextFrameNavigation ||
+    (!!prevFrameNavigation &&
+      !!nextFrameNavigation &&
+      prevFrameNavigation.onBookmarkChange ===
+        nextFrameNavigation.onBookmarkChange &&
+      prevBookmarks.length === nextBookmarks.length &&
+      prevBookmarks.every((id, i) => id === nextBookmarks[i]));
+
+  if (!isFrameNavigationSame) {
     return false;
   }
 
@@ -469,6 +490,7 @@ export {
   viewportCoordsToSceneCoords,
   getFormFactor,
   throttleRAF,
+  FRAMES_SIDEBAR_TAB,
 } from "@excalidraw/common";
 
 export {
@@ -513,6 +535,7 @@ export type {
 
 export type {
   ViewportStatusFrame,
+  FrameNavigation,
   ElementRenderOverride,
   ElementRenderOverrides,
 } from "./types";

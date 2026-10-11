@@ -219,6 +219,17 @@
       "clearSearch": "Clear search"
     }
   },
+  "frameNavigation": {
+    "title": "Frames",
+    "bookmarks": "Bookmarks",
+    "allFrames": "All frames",
+    "bookmark": "Bookmark {{name}}",
+    "removeBookmark": "Remove bookmark {{name}}",
+    "breadcrumb": "Current frame",
+    "hint": "↵ into · Esc out · {{bookmarks}} bookmarks · M close",
+    "stepHelp": "Step between frames",
+    "bookmarkHelp": "Fly to a bookmarked frame"
+  },
   "search": {
     "title": "Find on canvas",
     "noMatch": "No matches found...",

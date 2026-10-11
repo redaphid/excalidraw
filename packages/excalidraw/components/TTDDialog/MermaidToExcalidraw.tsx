@@ -120,7 +120,9 @@ const MermaidToExcalidraw = ({
     };
 
     if (isActive) {
-      doRender();
+      if (mermaidToExcalidrawLib.loaded) {
+        doRender();
+      }
       debouncedSaveMermaidDefinition(deferredText);
     }
   }, [deferredText, mermaidToExcalidrawLib, isActive, theme]);

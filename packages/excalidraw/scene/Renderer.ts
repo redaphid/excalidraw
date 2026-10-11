@@ -3,6 +3,7 @@ import {
   getFrameChildrenInsertionIndex,
   getContainerElement,
   isElementInViewport,
+  isIframeLikeElement,
   isTextElement,
 } from "@excalidraw/element";
 
@@ -37,6 +38,20 @@ type GetRenderableElementsOpts = {
   selectedElements: readonly NonDeletedExcalidrawElement[];
   selectedElementsAreBeingDragged: AppState["selectedElementsAreBeingDragged"];
   frameToHighlight: AppState["frameToHighlight"];
+};
+
+/**
+ * The static canvas' elements split around a new element drawn inside a
+ * frame, which keeps its z-order among the frame's children instead of going
+ * on top like an unframed one. The static canvas paints what lies below it
+ * and holds still while the new-element canvas repaints the rest each move.
+ */
+export type NewElementSplit = {
+  /** painted elements z-ordered below the new element */
+  below: readonly NonDeletedExcalidrawElement[];
+  /** the new element and the painted elements above it, then the
+   * iframe-like ones, which the static scene paints over all the others */
+  above: readonly NonDeletedExcalidrawElement[];
 };
 
 export class Renderer {
@@ -199,6 +214,7 @@ export class Renderer {
 
   private getVisibleCanvasElements({
     elementsMap,
+    newElement,
     zoom,
     offsetLeft,
     offsetTop,
@@ -208,6 +224,7 @@ export class Renderer {
     width,
   }: {
     elementsMap: NonDeletedElementsMap;
+    newElement: AppState["newElement"];
     zoom: AppState["zoom"];
     offsetLeft: AppState["offsetLeft"];
     offsetTop: AppState["offsetTop"];
@@ -218,7 +235,10 @@ export class Renderer {
   }): readonly NonDeletedExcalidrawElement[] {
     const visibleElements: NonDeletedExcalidrawElement[] = [];
     for (const element of elementsMap.values()) {
+      // a new element in the map (drawn inside a frame) grows without a new
+      // cull, and the split around it needs its z-order even off screen
       if (
+        element.id === newElement?.id ||
         isElementInViewport(
           element,
           width,
@@ -239,35 +259,40 @@ export class Renderer {
     return visibleElements;
   }
 
-  private getRenderableElementsMap({
-    elements,
-    editingTextElement,
-    newElement,
-  }: {
-    elements: readonly NonDeletedExcalidrawElement[];
-    editingTextElement: AppState["editingTextElement"];
-    newElement: AppState["newElement"];
-  }) {
-    const elementsMap = toBrandedType<RenderableElementsMap>(new Map());
-    const newElementCanvasElement = newElement?.frameId ? null : newElement;
+  // keyed on what decides its entries, so pan, zoom and in-frame drawing
+  // frames reuse the map
+  private getRenderableElementsMap = memoize(
+    ({
+      elements,
+      editingTextElement,
+      newElement,
+    }: {
+      newElementFrameId: string | null;
+      elements: readonly NonDeletedExcalidrawElement[];
+      editingTextElement: AppState["editingTextElement"];
+      newElement: AppState["newElement"];
+    }) => {
+      const elementsMap = toBrandedType<RenderableElementsMap>(new Map());
+      const newElementCanvasElement = newElement?.frameId ? null : newElement;
 
-    for (const element of elements) {
-      if (newElementCanvasElement?.id === element.id) {
-        continue;
-      }
+      for (const element of elements) {
+        if (newElementCanvasElement?.id === element.id) {
+          continue;
+        }
 
-      // we don't want to render text element that's being currently edited
-      // (it's rendered on remote only)
-      if (
-        !editingTextElement ||
-        editingTextElement.type !== "text" ||
-        element.id !== editingTextElement.id
-      ) {
-        elementsMap.set(element.id, element);
+        // we don't want to render text element that's being currently edited
+        // (it's rendered on remote only)
+        if (
+          !editingTextElement ||
+          editingTextElement.type !== "text" ||
+          element.id !== editingTextElement.id
+        ) {
+          elementsMap.set(element.id, element);
+        }
       }
-    }
-    return { elementsMap, newElementCanvasElement };
-  }
+      return { elementsMap, newElementCanvasElement };
+    },
+  );
 
   private sortSelectedElementsIntoHighlightedFrame<
     T extends ExcalidrawElement,
@@ -309,9 +334,10 @@ export class Renderer {
     ] as readonly T[];
   }
 
+  // A new element being drawn is mutated in place without informing the
+  // scene, and the cull keeps it wherever it is, so its moves need no re-cull
   private _getRenderableElements = memoize(
     ({
-      canvasNonce,
       zoom,
       offsetLeft,
       offsetTop,
@@ -327,12 +353,14 @@ export class Renderer {
       | "selectedElementsAreBeingDragged"
       | "frameToHighlight"
     > & {
-      canvasNonce: string;
+      sceneNonce: number | undefined;
+      newElementFrameId: string | null;
     }) => {
       const elements = this.scene.getNonDeletedElements();
 
       const { elementsMap, newElementCanvasElement } =
         this.getRenderableElementsMap({
+          newElementFrameId: newElement?.frameId ?? null,
           elements,
           editingTextElement,
           newElement,
@@ -340,6 +368,7 @@ export class Renderer {
 
       const visibleElements = this.getVisibleCanvasElements({
         elementsMap,
+        newElement,
         zoom,
         offsetLeft,
         offsetTop,
@@ -353,7 +382,6 @@ export class Renderer {
         elementsMap,
         visibleElements,
         newElementCanvasElement,
-        canvasNonce,
       };
     },
   );
@@ -361,32 +389,34 @@ export class Renderer {
   public getRenderableElements = (opts: GetRenderableElementsOpts) => {
     const { newElement } = opts;
     // A new element being drag-sized is mutated in place without informing
-    // the scene, so `sceneNonce` doesn't move. Fold the element's own nonce
-    // in where a canvas draws it from the live element but memoizes on this
-    // nonce: a framed new element stays in the static canvas' element map
-    // (see getRenderableElementsMap), and a new text gets its dashed text box
-    // drawn by the interactive canvas (it doubles as `editingTextElement`).
+    // the scene, so `sceneNonce` doesn't move. A new text gets its dashed text
+    // box drawn by the interactive canvas from the live element (it doubles
+    // as `editingTextElement`), so its own nonce is folded in. A framed new
+    // element stays in the static canvas' element map, but the new-element
+    // canvas draws it (see splitAtNewElement), so the static canvas holds.
     const canvasNonce = `${this.scene.getSceneNonce()}${
-      newElement?.frameId || isTextElement(newElement)
-        ? `:${newElement.versionNonce}`
-        : ""
+      isTextElement(newElement) ? `:${newElement.versionNonce}` : ""
     }`;
 
-    const ret = this._getRenderableElements({
+    const ret = {
+      ...this._getRenderableElements({
+        sceneNonce: this.scene.getSceneNonce(),
+        newElementFrameId: newElement?.frameId ?? null,
+
+        // don't spread `opts` because we don't want to memoize on some props
+
+        zoom: opts.zoom,
+        offsetLeft: opts.offsetLeft,
+        offsetTop: opts.offsetTop,
+        scrollX: opts.scrollX,
+        scrollY: opts.scrollY,
+        height: opts.height,
+        width: opts.width,
+        editingTextElement: opts.editingTextElement,
+        newElement: opts.newElement,
+      }),
       canvasNonce,
-
-      // don't spread `opts` because we don't want to memoize on some props
-
-      zoom: opts.zoom,
-      offsetLeft: opts.offsetLeft,
-      offsetTop: opts.offsetTop,
-      scrollX: opts.scrollX,
-      scrollY: opts.scrollY,
-      height: opts.height,
-      width: opts.width,
-      editingTextElement: opts.editingTextElement,
-      newElement: opts.newElement,
-    });
+    };
 
     // if we're dragging elements over a frame, reorder the selected elements
     // inside the frame during render (we don't set the `element.frameId` until
@@ -414,11 +444,51 @@ export class Renderer {
     return ret;
   };
 
+  /**
+   * Splits the static canvas' elements around the new element when it is
+   * among them, which only a new element drawn inside a frame can be.
+   */
+  public splitAtNewElement = (
+    visibleElements: readonly NonDeletedExcalidrawElement[],
+    newElement: AppState["newElement"],
+  ) =>
+    newElement?.frameId
+      ? this._splitAtNewElement({
+          visibleElements,
+          newElementId: newElement.id,
+        })
+      : null;
+
+  private _splitAtNewElement = memoize(
+    ({
+      visibleElements,
+      newElementId,
+    }: {
+      visibleElements: readonly NonDeletedExcalidrawElement[];
+      newElementId: string;
+    }): NewElementSplit | null => {
+      const below: NonDeletedExcalidrawElement[] = [];
+      const above: NonDeletedExcalidrawElement[] = [];
+      const iframeLikes: NonDeletedExcalidrawElement[] = [];
+      let found = false;
+      for (const element of visibleElements) {
+        found ||= element.id === newElementId;
+        if (isIframeLikeElement(element)) {
+          iframeLikes.push(element);
+        } else {
+          (found ? above : below).push(element);
+        }
+      }
+      return found ? { below, above: [...above, ...iframeLikes] } : null;
+    },
+  );
+
   // NOTE Doesn't destroy everything (scene, rc, etc.) because it may not be
   // safe to break TS contract here (for upstream cases)
   public destroy() {
     renderStaticSceneThrottled.cancel();
     this._getRenderableElements.clear();
     this._getVisibleElementsWithRenderOffsets.clear();
+    this._splitAtNewElement.clear();
   }
 }

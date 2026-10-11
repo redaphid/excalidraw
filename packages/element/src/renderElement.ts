@@ -282,10 +282,6 @@ const generateElementCanvas = (
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
 ): ExcalidrawElementWithCanvas | null => {
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d")!;
-  const padding = getCanvasPadding(element);
-
   const { width, height, scale } = cappedElementCanvasSize(
     element,
     elementsMap,
@@ -296,6 +292,9 @@ const generateElementCanvas = (
     return null;
   }
 
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d")!;
+  const padding = getCanvasPadding(element);
   canvas.width = width;
   canvas.height = height;
 
@@ -849,22 +848,23 @@ const visibleBitmapRect = (
     return null;
   }
   const { width, height } = context.canvas;
-  const corners = [
-    [0, 0],
-    [width, 0],
-    [0, height],
-    [width, height],
-  ].map(([x, y]) => [
-    ((d * (x - e) - c * (y - f)) / det - drawX) * scale,
-    ((a * (y - f) - b * (x - e)) / det - drawY) * scale,
-  ]);
-  const xs = corners.map(([x]) => x);
-  const ys = corners.map(([, y]) => y);
+  // the canvas corners in bitmap pixels, written out to allocate nothing on
+  // a path that runs for every bitmap on every frame
+  const x0 = ((d * (0 - e) - c * (0 - f)) / det - drawX) * scale;
+  const x1 = ((d * (width - e) - c * (0 - f)) / det - drawX) * scale;
+  const x2 = ((d * (0 - e) - c * (height - f)) / det - drawX) * scale;
+  const x3 = ((d * (width - e) - c * (height - f)) / det - drawX) * scale;
+  const y0 = ((a * (0 - f) - b * (0 - e)) / det - drawY) * scale;
+  const y1 = ((a * (0 - f) - b * (width - e)) / det - drawY) * scale;
+  const y2 = ((a * (height - f) - b * (0 - e)) / det - drawY) * scale;
+  const y3 = ((a * (height - f) - b * (width - e)) / det - drawY) * scale;
   // a pixel to spare on each side, for smoothing that samples past the edge
-  const sx = clamp(Math.floor(Math.min(...xs)) - 1, 0, bitmap.width);
-  const sy = clamp(Math.floor(Math.min(...ys)) - 1, 0, bitmap.height);
-  const sw = clamp(Math.ceil(Math.max(...xs)) + 1, 0, bitmap.width) - sx;
-  const sh = clamp(Math.ceil(Math.max(...ys)) + 1, 0, bitmap.height) - sy;
+  const sx = clamp(Math.floor(Math.min(x0, x1, x2, x3)) - 1, 0, bitmap.width);
+  const sy = clamp(Math.floor(Math.min(y0, y1, y2, y3)) - 1, 0, bitmap.height);
+  const sw =
+    clamp(Math.ceil(Math.max(x0, x1, x2, x3)) + 1, 0, bitmap.width) - sx;
+  const sh =
+    clamp(Math.ceil(Math.max(y0, y1, y2, y3)) + 1, 0, bitmap.height) - sy;
   if (sw <= 0 || sh <= 0) {
     return null;
   }
@@ -1164,6 +1164,11 @@ let settledBuild: {
   appState: StaticCanvasAppState;
 } | null = null;
 let settledBuildScheduled = false;
+let settledBitmapCount = 0;
+
+/** How many settled bitmaps have been built, for a canvas that holds still
+ * across frames to repaint once they land. */
+export const getSettledBitmapCount = () => settledBitmapCount;
 
 const scheduleSettledBuild = (delay: number) => {
   if (delay > 0) {
@@ -1197,6 +1202,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
   while (build.next < elements.length && hasTime()) {
     const element = elements[build.next++];
     if (
+      element.id === appState.newElement?.id ||
       !shouldDrawDirectly(element, elementsMap, appState) ||
       settledElementCanvas(element, elementsMap, appState)
     ) {
@@ -1210,6 +1216,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     // a bitmap larger than the screen costs more memory than it saves time
     if (scale === appState.zoom.value && width * height <= screenArea) {
       generateElementWithCanvas(element, elementsMap, renderConfig, appState);
+      settledBitmapCount++;
     }
   }
   if (build.next < elements.length) {

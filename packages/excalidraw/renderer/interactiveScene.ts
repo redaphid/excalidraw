@@ -1875,8 +1875,12 @@ const _renderInteractiveScene = ({
       const locallySelectedIds = arrayToMap(selectedElements);
 
       const selections: ElementSelectionBorder[] = [];
+      const candidates =
+        selectedElements.length || renderConfig.remoteSelectedElementIds.size
+          ? elementsMap.values()
+          : [];
 
-      for (const element of elementsMap.values()) {
+      for (const element of candidates) {
         const selectionColors = [];
         const remoteClients = renderConfig.remoteSelectedElementIds.get(
           element.id,

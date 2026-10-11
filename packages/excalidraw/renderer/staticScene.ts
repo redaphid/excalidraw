@@ -272,6 +272,217 @@ const renderLinkIcon = (
     context.restore();
   }
 };
+/**
+ * Paints elements as the static scene does: the painted ones in order, then
+ * the iframe-like ones over all of them, then pending flowchart nodes.
+ */
+export const renderSceneElements = ({
+  context,
+  rc,
+  elements: visibleElements,
+  elementsMap,
+  allElementsMap,
+  appState,
+  renderConfig,
+}: {
+  context: CanvasRenderingContext2D;
+  rc: StaticSceneRenderConfig["rc"];
+  elements: readonly NonDeletedExcalidrawElement[];
+  elementsMap: StaticSceneRenderConfig["elementsMap"];
+  allElementsMap: StaticSceneRenderConfig["allElementsMap"];
+  appState: StaticCanvasAppState;
+  renderConfig: StaticCanvasRenderConfig;
+}) => {
+  const { isExporting } = renderConfig;
+
+  const inFrameGroupsMap = new Map<string, boolean>();
+
+  const getRenderState = (element: ExcalidrawElement) =>
+    resolveElementRenderState(
+      element,
+      elementsMap,
+      renderConfig,
+      allElementsMap,
+    );
+
+  const clipElementToFrame = (
+    element: NonDeletedExcalidrawElement,
+    renderState: ElementRenderState,
+  ) => {
+    if (
+      !(element.frameId || appState.frameToHighlight?.id) ||
+      !appState.frameRendering.enabled ||
+      !appState.frameRendering.clip
+    ) {
+      return;
+    }
+    const targetFrame = getTargetFrame(element, elementsMap, appState);
+    if (!targetFrame) {
+      return;
+    }
+    const frameState = getRenderState(targetFrame);
+    const frame = getRenderElementWithPositionOverride(
+      targetFrame,
+      frameState.offset,
+    );
+    const isTranslated = (state: ElementRenderState) =>
+      state.offset.x !== 0 || state.offset.y !== 0;
+    if (
+      (element.frameId === frame.id &&
+        (isTranslated(renderState) || isTranslated(frameState))) ||
+      shouldApplyFrameClip(
+        getRenderElementWithPositionOverride(element, renderState.offset),
+        frame,
+        appState,
+        elementsMap,
+        inFrameGroupsMap,
+      )
+    ) {
+      frameClip(frame, context, renderConfig, appState);
+    }
+  };
+
+  // Paint visible elements
+  visibleElements
+    .filter((el) => !isIframeLikeElement(el))
+    .forEach((element) => {
+      try {
+        if (
+          isTextElement(element) &&
+          element.containerId &&
+          elementsMap.has(element.containerId)
+        ) {
+          // will be rendered with the container
+          return;
+        }
+
+        const renderState = getRenderState(element);
+        context.save();
+        try {
+          const boundTextElement = getBoundTextElement(element, elementsMap);
+          clipElementToFrame(element, renderState);
+          renderElement(
+            element,
+            elementsMap,
+            allElementsMap,
+            rc,
+            context,
+            renderConfig,
+            appState,
+            renderState,
+          );
+
+          if (boundTextElement) {
+            renderElement(
+              boundTextElement,
+              elementsMap,
+              allElementsMap,
+              rc,
+              context,
+              renderConfig,
+              appState,
+            );
+          }
+        } finally {
+          context.restore();
+        }
+
+        if (!isExporting && renderConfig.renderLinks !== false) {
+          renderLinkIcon(element, context, appState, elementsMap, renderState);
+        }
+      } catch (error: any) {
+        console.error(
+          error,
+          element.id,
+          element.x,
+          element.y,
+          element.width,
+          element.height,
+        );
+      }
+    });
+
+  // render embeddables on top
+  visibleElements
+    .filter((el) => isIframeLikeElement(el))
+    .forEach((element) => {
+      try {
+        const renderState = getRenderState(element);
+        context.save();
+        try {
+          clipElementToFrame(element, renderState);
+          renderElement(
+            element,
+            elementsMap,
+            allElementsMap,
+            rc,
+            context,
+            renderConfig,
+            appState,
+            renderState,
+          );
+
+          if (
+            isIframeLikeElement(element) &&
+            (isExporting ||
+              (isEmbeddableElement(element) &&
+                renderConfig.embedsValidationStatus.get(element.id) !==
+                  true)) &&
+            element.width &&
+            element.height
+          ) {
+            const label = {
+              ...createPlaceholderEmbeddableLabel(element),
+              // Synthetic visual: resolve overrides and frame opacity through
+              // its owner, without creating another animation target.
+              id: element.id,
+              frameId: element.frameId,
+            };
+            renderElement(
+              label,
+              elementsMap,
+              allElementsMap,
+              rc,
+              context,
+              renderConfig,
+              appState,
+            );
+          }
+          if (!isExporting && renderConfig.renderLinks !== false) {
+            renderLinkIcon(
+              element,
+              context,
+              appState,
+              elementsMap,
+              renderState,
+            );
+          }
+        } finally {
+          context.restore();
+        }
+      } catch (error: any) {
+        console.error(error);
+      }
+    });
+
+  // render pending nodes for flowcharts
+  renderConfig.pendingFlowchartNodes?.forEach((element) => {
+    try {
+      renderElement(
+        element,
+        elementsMap,
+        allElementsMap,
+        rc,
+        context,
+        renderConfig,
+        appState,
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  });
+};
+
 const _renderStaticScene = ({
   canvas,
   rc,
@@ -346,180 +557,14 @@ const _renderStaticScene = ({
     }
   });
 
-  const inFrameGroupsMap = new Map<string, boolean>();
-
-  const getRenderState = (element: ExcalidrawElement) =>
-    resolveElementRenderState(
-      element,
-      elementsMap,
-      renderConfig,
-      allElementsMap,
-    );
-
-  const clipElementToFrame = (
-    element: NonDeletedExcalidrawElement,
-    renderState: ElementRenderState,
-  ) => {
-    if (
-      !(element.frameId || appState.frameToHighlight?.id) ||
-      !appState.frameRendering.enabled ||
-      !appState.frameRendering.clip
-    ) {
-      return;
-    }
-    const targetFrame = getTargetFrame(element, elementsMap, appState);
-    if (!targetFrame) {
-      return;
-    }
-    const frameState = getRenderState(targetFrame);
-    const frame = getRenderElementWithPositionOverride(
-      targetFrame,
-      frameState.offset,
-    );
-    const isTranslated = (state: ElementRenderState) =>
-      state.offset.x !== 0 || state.offset.y !== 0;
-    if (
-      (element.frameId === frame.id &&
-        (isTranslated(renderState) || isTranslated(frameState))) ||
-      shouldApplyFrameClip(
-        getRenderElementWithPositionOverride(element, renderState.offset),
-        frame,
-        appState,
-        elementsMap,
-        inFrameGroupsMap,
-      )
-    ) {
-      frameClip(frame, context, renderConfig, appState);
-    }
-  };
-
-  // Paint visible elements
-  visibleElements
-    .filter((el) => !isIframeLikeElement(el))
-    .forEach((element) => {
-      try {
-        if (
-          isTextElement(element) &&
-          element.containerId &&
-          elementsMap.has(element.containerId)
-        ) {
-          // will be rendered with the container
-          return;
-        }
-
-        context.save();
-        const boundTextElement = getBoundTextElement(element, elementsMap);
-
-        const renderState = getRenderState(element);
-        clipElementToFrame(element, renderState);
-        renderElement(
-          element,
-          elementsMap,
-          allElementsMap,
-          rc,
-          context,
-          renderConfig,
-          appState,
-          renderState,
-        );
-
-        if (boundTextElement) {
-          renderElement(
-            boundTextElement,
-            elementsMap,
-            allElementsMap,
-            rc,
-            context,
-            renderConfig,
-            appState,
-          );
-        }
-
-        context.restore();
-
-        if (!isExporting && renderConfig.renderLinks !== false) {
-          renderLinkIcon(element, context, appState, elementsMap, renderState);
-        }
-      } catch (error: any) {
-        console.error(
-          error,
-          element.id,
-          element.x,
-          element.y,
-          element.width,
-          element.height,
-        );
-      }
-    });
-
-  // render embeddables on top
-  visibleElements
-    .filter((el) => isIframeLikeElement(el))
-    .forEach((element) => {
-      try {
-        const renderState = getRenderState(element);
-        context.save();
-        clipElementToFrame(element, renderState);
-        renderElement(
-          element,
-          elementsMap,
-          allElementsMap,
-          rc,
-          context,
-          renderConfig,
-          appState,
-          renderState,
-        );
-
-        if (
-          isIframeLikeElement(element) &&
-          (isExporting ||
-            (isEmbeddableElement(element) &&
-              renderConfig.embedsValidationStatus.get(element.id) !== true)) &&
-          element.width &&
-          element.height
-        ) {
-          const label = {
-            ...createPlaceholderEmbeddableLabel(element),
-            // Synthetic visual: resolve overrides and frame opacity through
-            // its owner, without creating another animation target.
-            id: element.id,
-            frameId: element.frameId,
-          };
-          renderElement(
-            label,
-            elementsMap,
-            allElementsMap,
-            rc,
-            context,
-            renderConfig,
-            appState,
-          );
-        }
-        if (!isExporting && renderConfig.renderLinks !== false) {
-          renderLinkIcon(element, context, appState, elementsMap, renderState);
-        }
-        context.restore();
-      } catch (error: any) {
-        console.error(error);
-      }
-    });
-
-  // render pending nodes for flowcharts
-  renderConfig.pendingFlowchartNodes?.forEach((element) => {
-    try {
-      renderElement(
-        element,
-        elementsMap,
-        allElementsMap,
-        rc,
-        context,
-        renderConfig,
-        appState,
-      );
-    } catch (error) {
-      console.error(error);
-    }
+  renderSceneElements({
+    context,
+    rc,
+    elements: visibleElements,
+    elementsMap,
+    allElementsMap,
+    appState,
+    renderConfig,
   });
 
   cacheSettledBitmaps(visibleElements, allElementsMap, renderConfig, appState);

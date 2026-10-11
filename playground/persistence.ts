@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import {
   getNonDeletedElements,
   isInitializedImageElement,
@@ -41,4 +43,22 @@ export const saveScene = (
       ),
     }),
   );
+};
+
+const BOOKMARKS_KEY = "excalidraw-playground-bookmarks";
+
+const Bookmarks = z.array(z.string());
+
+export const loadBookmarks = (storage: Storage) =>
+  Bookmarks.parse(JSON.parse(storage.getItem(BOOKMARKS_KEY) ?? "[]"));
+
+export const toggleBookmark = (
+  storage: Storage,
+  frameId: string,
+  bookmarked: boolean,
+) => {
+  const others = loadBookmarks(storage).filter((id) => id !== frameId);
+  const next = bookmarked ? [...others, frameId] : others;
+  storage.setItem(BOOKMARKS_KEY, JSON.stringify(next));
+  return next;
 };

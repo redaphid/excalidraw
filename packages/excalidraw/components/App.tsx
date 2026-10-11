@@ -46,6 +46,7 @@ import {
   THEME,
   TOUCH_CTX_MENU_TIMEOUT,
   YOUTUBE_STATES,
+  ZOOM_SETTLE_TIMEOUT,
   POINTER_EVENTS,
   TOOL_TYPE,
   DEFAULT_COLLISION_THRESHOLD,
@@ -73,6 +74,7 @@ import {
   updateActiveTool,
   isTransparent,
   muteFSAbortError,
+  memoize,
   isTestEnv,
   isDevEnv,
   updateStable,
@@ -164,6 +166,7 @@ import {
   getBoundTextElement,
   getContainerCenter,
   getContainerElement,
+  getSettledBitmapCount,
   getColorUpdate,
   getStickyNoteMinSize,
   isValidTextContainer,
@@ -426,6 +429,7 @@ import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
 import { AppFlowchart } from "./App.flowchart";
 import { AppBarrel } from "./App.barrel";
+import { AppFrameNavigation } from "./App.frameNavigation";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -691,6 +695,7 @@ class App extends React.Component<AppProps, AppState> {
   public duplicate: AppDuplicate = new AppDuplicate(this);
   public toolDrag: AppToolDrag = new AppToolDrag(this);
   public flowchart: AppFlowchart = new AppFlowchart(this);
+  public frameNavigation: AppFrameNavigation = new AppFrameNavigation(this);
   public cursor: AppCursor = new AppCursor(this);
   public arrowText: AppArrowText = new AppArrowText(this);
   public pan: AppPan = new AppPan(this, {
@@ -1772,11 +1777,19 @@ class App extends React.Component<AppProps, AppState> {
     ShapeCache.delete(element);
   };
 
+  // filtered once per elements array, not on every render and update
+  private getIframeLikeElements = memoize(
+    ({ elements }: { elements: readonly NonDeletedExcalidrawElement[] }) =>
+      elements.filter(isIframeLikeElement),
+  );
+
   private updateEmbeddables = () => {
     const iframeLikes = new Set<ExcalidrawIframeLikeElement["id"]>();
 
     let updated = false;
-    this.scene.getNonDeletedElements().filter((element) => {
+    this.getIframeLikeElements({
+      elements: this.scene.getNonDeletedElements(),
+    }).forEach((element) => {
       if (isEmbeddableElement(element)) {
         iframeLikes.add(element.id);
         if (!this.embedsValidationStatus.has(element.id)) {
@@ -1792,7 +1805,6 @@ class App extends React.Component<AppProps, AppState> {
       } else if (isIframeElement(element)) {
         iframeLikes.add(element.id);
       }
-      return false;
     });
 
     if (updated) {
@@ -1812,14 +1824,14 @@ class App extends React.Component<AppProps, AppState> {
     const normalizedWidth = this.state.width;
     const normalizedHeight = this.state.height;
 
-    const embeddableElements = this.scene
-      .getNonDeletedElements()
-      .filter(
-        (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
-          (isEmbeddableElement(el) &&
-            this.embedsValidationStatus.get(el.id) === true) ||
-          isIframeElement(el),
-      );
+    const embeddableElements = this.getIframeLikeElements({
+      elements: this.scene.getNonDeletedElements(),
+    }).filter(
+      (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
+        (isEmbeddableElement(el) &&
+          this.embedsValidationStatus.get(el.id) === true) ||
+        isIframeElement(el),
+    );
 
     return (
       <>
@@ -2479,6 +2491,22 @@ class App extends React.Component<AppProps, AppState> {
     // (it is not in the scene until dropped)
     const previewElement = newElementCanvasElement ?? this.toolDrag.preview;
 
+    const staticVisibleElements = this.elementRenderOffsets.size
+      ? this.renderer.getVisibleElementsWithRenderOffsets(
+          visibleElements,
+          renderableElementsMap,
+          this.state,
+          this.elementRenderOffsets,
+        )
+      : visibleElements;
+    const newElementSplit = this.renderer.splitAtNewElement(
+      staticVisibleElements,
+      this.state.newElement,
+    );
+    const newElementLayer = newElementSplit
+      ? { elementsAbove: newElementSplit.above }
+      : previewElement && { element: previewElement };
+
     const shouldBlockPointerEvents =
       // default back to `--ui-pointerEvents` flow if setPointerCapture
       // not supported
@@ -2741,14 +2769,7 @@ class App extends React.Component<AppProps, AppState> {
                             elementsMap={renderableElementsMap}
                             allElementsMap={allElementsMap}
                             visibleElements={
-                              this.elementRenderOffsets.size
-                                ? this.renderer.getVisibleElementsWithRenderOffsets(
-                                    visibleElements,
-                                    renderableElementsMap,
-                                    this.state,
-                                    this.elementRenderOffsets,
-                                  )
-                                : visibleElements
+                              newElementSplit?.below ?? staticVisibleElements
                             }
                             canvasNonce={canvasNonce}
                             selectionNonce={
@@ -2768,16 +2789,20 @@ class App extends React.Component<AppProps, AppState> {
                                 this.embedsValidationStatus,
                               elementsPendingErasure:
                                 this.elementsPendingErasure,
-                              pendingFlowchartNodes:
-                                this.flowchart.pendingNodes,
+                              pendingFlowchartNodes: newElementSplit
+                                ? null
+                                : this.flowchart.pendingNodes,
                               theme: this.state.theme,
                               ...this.getRenderOverrideConfig(),
+                              settledBitmapCount: newElementSplit
+                                ? getSettledBitmapCount()
+                                : undefined,
                             }}
                           />
-                          {previewElement && (
+                          {newElementLayer && (
                             <NewElementCanvas
                               appState={this.state}
-                              newElement={previewElement}
+                              layer={newElementLayer}
                               scale={this.ownerWindow.devicePixelRatio}
                               rc={this.rc}
                               elementsMap={renderableElementsMap}
@@ -2792,7 +2817,9 @@ class App extends React.Component<AppProps, AppState> {
                                   this.embedsValidationStatus,
                                 elementsPendingErasure:
                                   this.elementsPendingErasure,
-                                pendingFlowchartNodes: null,
+                                pendingFlowchartNodes: newElementSplit
+                                  ? this.flowchart.pendingNodes
+                                  : null,
                                 theme: this.state.theme,
                                 ...this.getRenderOverrideConfig(),
                               }}
@@ -3968,6 +3995,7 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.scene.onUpdate(this.triggerRender);
+    this.scene.onUpdate(() => this.frameNavigation.sceneUpdated.trigger());
     this.addEventListeners();
 
     if (this.props.autoFocus && this.excalidrawContainerRef.current) {
@@ -4868,6 +4896,11 @@ class App extends React.Component<AppProps, AppState> {
     const wasMultiTouchGesture = gesture.pointers.size >= 2;
     gesture.pointers.delete(event.pointerId);
 
+    // a lifted finger ends the pinch: redraw crisp now, not after a pause
+    if (wasMultiTouchGesture && gesture.pointers.size < 2) {
+      this.resetShouldCacheIgnoreZoomDebounced.flush();
+    }
+
     // the multi-touch viewport gesture just disengaged: release the
     // rubberband that was withheld while it was active
     // (see `snapBackToScrollConstraints`)
@@ -5122,6 +5155,11 @@ class App extends React.Component<AppProps, AppState> {
 
       if (appState) {
         this.setState(appState as Pick<AppState, K> | null);
+        // a host that zoomed with the bitmaps stretched gets them redrawn
+        // crisp on the same settle as a zoom tick
+        if ((appState as Partial<AppState>).shouldCacheIgnoreZoom === true) {
+          this.resetShouldCacheIgnoreZoomDebounced();
+        }
       }
 
       if (elements) {
@@ -5415,6 +5453,10 @@ class App extends React.Component<AppProps, AppState> {
         } else {
           maybeHandleArrowPointlikeDrag({ app: this, event });
         }
+      }
+
+      if (this.frameNavigation.handleKeyDown(event)) {
+        return;
       }
 
       if (this.actionManager.handleKeyDown(event)) {
@@ -12950,11 +12992,15 @@ class App extends React.Component<AppProps, AppState> {
     });
   };
 
+  // flushed, so the crisp frame is drawn before this timer returns, ahead of
+  // the next paint (onChange fires first, mid-flush, before the redraw)
   public resetShouldCacheIgnoreZoomDebounced = debounce(() => {
     if (!this.unmounted) {
-      this.setState({ shouldCacheIgnoreZoom: false });
+      flushSync(() => {
+        this.setState({ shouldCacheIgnoreZoom: false });
+      });
     }
-  }, 300);
+  }, ZOOM_SETTLE_TIMEOUT);
 
   private updateDOMRect = (cb?: () => void) => {
     if (this.excalidrawContainerRef?.current) {

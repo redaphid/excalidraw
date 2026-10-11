@@ -240,6 +240,28 @@ export class ElementBounds {
   }
 }
 
+type AbsoluteCoords = [number, number, number, number, number, number];
+
+// Freehand and curved line bounds are computed from every point or curve,
+// and rendering asks for them several times per element per frame
+const absoluteCoordsCache = new WeakMap<
+  ExcalidrawElement,
+  { version: ExcalidrawElement["version"]; coords: AbsoluteCoords }
+>();
+
+const cachedCoords = (
+  element: ExcalidrawElement,
+  compute: () => AbsoluteCoords,
+) => {
+  const cached = absoluteCoordsCache.get(element);
+  if (cached && cached.version === element.version) {
+    return cached.coords;
+  }
+  const coords = compute();
+  absoluteCoordsCache.set(element, { version: element.version, coords });
+  return coords;
+};
+
 // Scene -> Scene coords, but in x1,x2,y1,y2 format.
 //
 // If the element is created from right to left, the width is going to be negative
@@ -248,15 +270,21 @@ export const getElementAbsoluteCoords = (
   element: ExcalidrawElement,
   elementsMap: ElementsMap,
   includeBoundText: boolean = false,
-): [number, number, number, number, number, number] => {
+): AbsoluteCoords => {
   if (isFreeDrawElement(element)) {
-    return getFreeDrawElementAbsoluteCoords(element);
-  } else if (isLinearElement(element)) {
-    return LinearElementEditor.getElementAbsoluteCoords(
-      element,
-      elementsMap,
-      includeBoundText,
+    return cachedCoords(element, () =>
+      getFreeDrawElementAbsoluteCoords(element),
     );
+  } else if (isLinearElement(element)) {
+    return includeBoundText
+      ? LinearElementEditor.getElementAbsoluteCoords(element, elementsMap, true)
+      : cachedCoords(element, () =>
+          LinearElementEditor.getElementAbsoluteCoords(
+            element,
+            elementsMap,
+            false,
+          ),
+        );
   } else if (isTextElement(element)) {
     const container = elementsMap
       ? getContainerElement(element, elementsMap)

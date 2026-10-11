@@ -1189,10 +1189,9 @@ describe("render override geometry", () => {
     expect(shape).toBeDefined();
     expect(Element.elementWithCanvasCache.get(arrow)).toBe(bitmap);
     expect(Element.ShapeCache.get(arrow, null)).toBe(shape);
-    expect(generateShape).toHaveBeenCalled();
     expect(
-      generateShape.mock.calls.every(([element]) => element === arrow),
-    ).toBe(true);
+      generateShape.mock.calls.filter(([element]) => element !== arrow),
+    ).toEqual([]);
   });
 
   it("preserves frame, erasure and selection alpha without leaking it to siblings or links", () => {

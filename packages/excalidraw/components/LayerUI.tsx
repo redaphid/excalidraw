@@ -48,6 +48,7 @@ import { useAppProps, useEditorInterface, useStylesPanelMode } from "./App";
 import { OverwriteConfirmDialog } from "./OverwriteConfirm/OverwriteConfirm";
 import { sidebarRightIcon } from "./icons";
 import { DefaultSidebar } from "./DefaultSidebar";
+import { FrameBreadcrumb } from "./FrameBreadcrumb";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
 import { Stats } from "./Stats";
 import ElementLinkDialog from "./ElementLinkDialog";
@@ -665,7 +666,8 @@ const LayerUI = ({
             />
             {(appState.toast ||
               (scrollBackToContentUIEnabled && appState.scrolledOutside) ||
-              appProps.viewportStatusFrame?.label) && (
+              appProps.viewportStatusFrame?.label ||
+              appProps.frameNavigation) && (
               <div className="floating-status-stack">
                 {appState.toast && (
                   <Toast
@@ -696,6 +698,7 @@ const LayerUI = ({
                     border={appProps.viewportStatusFrame.border}
                   />
                 )}
+                {appProps.frameNavigation && <FrameBreadcrumb />}
               </div>
             )}
           </div>
