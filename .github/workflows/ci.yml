@@ -113,6 +113,10 @@ jobs:
       - env:
           VERSION: ${{ steps.version.outputs.version }}
         run: node scripts/semver/pack.js --version="$VERSION"
+      - name: Typecheck a consumer of the tarballs
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: node scripts/semver/typecheck-consumer.js --version="$VERSION"
       - name: Publish dry run
         env:
           VERSION: ${{ steps.version.outputs.version }}
