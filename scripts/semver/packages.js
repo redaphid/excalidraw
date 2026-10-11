@@ -108,16 +108,17 @@ const registryManifest = (packed, id, version, sha, siblings) => {
 
 // Each package's dist/types holds declarations for every source file it
 // reaches, including other packages'. Upstream's declarations import their own
-// package name and packages they never declare, such as @excalidraw/utils, or
-// @excalidraw/excalidraw from element. A strict install resolves those to
-// nothing and their types to any, so they point at the local copy instead.
-const declarationTarget = (specifier, id, declared) => {
+// package name and @excalidraw/utils, which is never published, so those point
+// at the local copy. Every other package stays a package import, declared or
+// not: a local copy of excalidraw's types inside element is a second AppState
+// that a consumer importing both packages cannot pass between them.
+const declarationTarget = (specifier, id) => {
   const match = /^@excalidraw\/([a-z-]+)(\/.+)?$/.exec(specifier);
   if (!match) {
     return null;
   }
   const [, target, subpath = "/index"] = match;
-  if (target !== id && declared.includes(sourceName(target))) {
+  if (target !== id && target !== "utils") {
     return null;
   }
   return `${target === "excalidraw" ? target : `${target}/src`}${subpath}`;
