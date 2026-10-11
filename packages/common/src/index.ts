@@ -5,6 +5,7 @@ export * from "./constants";
 export * from "./font-metadata";
 export * from "./queue";
 export * from "./keys";
+export * from "./packedRTree";
 export * from "./points";
 export * from "./promise-pool";
 export * from "./random";
