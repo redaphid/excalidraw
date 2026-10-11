@@ -301,6 +301,7 @@ const runScenario = async (
       selectedElementIds: {},
       theme: "light",
       viewBackgroundColor: "#fff",
+      currentItemStrokeVariability: scenario.variability ?? "constant",
     },
   });
   await wait(VIEW_RESET_MS);
