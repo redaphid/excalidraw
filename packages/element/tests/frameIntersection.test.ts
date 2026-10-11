@@ -32,6 +32,20 @@ describe("isElementIntersectingFrame", () => {
     expect(isElementIntersectingFrame(element, frame, elementsMap)).toBe(false);
   });
 
+  it("follows a frame a collaborator replaced at the same version", () => {
+    const { frame, element, elementsMap } = setup();
+    mutateElement(element, elementsMap, { x: 20 });
+    expect(isElementIntersectingFrame(element, frame, elementsMap)).toBe(false);
+    const remoteFrame = {
+      ...frame,
+      width: 60,
+      versionNonce: frame.versionNonce + 1,
+    };
+    expect(isElementIntersectingFrame(element, remoteFrame, elementsMap)).toBe(
+      true,
+    );
+  });
+
   it("follows the frame as its edge moves", () => {
     const { frame, element, elementsMap } = setup();
     mutateElement(element, elementsMap, { x: 20 });
