@@ -150,6 +150,30 @@ export class AppFrameNavigation {
     });
   };
 
+  /** Picking the frame tool, by any path, opens the drawer beside it so each
+   * frame drawn shows up in the list. Not on a phone, where it would cover
+   * the canvas; it stays open after the tool changes. */
+  handleToolChange = (prevState: AppState) => {
+    if (
+      this.enabled &&
+      this.app.state.activeTool.type === "frame" &&
+      prevState.activeTool.type !== "frame" &&
+      !this.isDrawerOpen() &&
+      this.app.editorInterface.formFactor !== "phone"
+    ) {
+      this.app.toggleSidebar({
+        name: DEFAULT_SIDEBAR.name,
+        tab: FRAMES_SIDEBAR_TAB,
+        force: true,
+      });
+    }
+  };
+
+  /** An undocked drawer closes on a press outside it, and starting a frame
+   * on the canvas is one: with the frame tool in hand it stays open. */
+  keepsDrawerOpen = () =>
+    this.isDrawerOpen() && this.app.state.activeTool.type === "frame";
+
   private step = (direction: Direction) => {
     const model = this.model();
     const heading = this.heading;

@@ -1,7 +1,12 @@
 import React from "react";
 import { vi } from "vitest";
 
-import { DEFAULT_SIDEBAR, FRAMES_SIDEBAR_TAB, KEYS } from "@excalidraw/common";
+import {
+  DEFAULT_SIDEBAR,
+  FRAMES_SIDEBAR_TAB,
+  KEYS,
+  LIBRARY_SIDEBAR_TAB,
+} from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
@@ -19,7 +24,7 @@ import {
   showView,
 } from "../tests/helpers/frames";
 import { Keyboard, Pointer, UI } from "../tests/helpers/ui";
-import { act, fireEvent, render } from "../tests/test-utils";
+import { act, fireEvent, render, waitFor } from "../tests/test-utils";
 
 import App from "./App";
 
@@ -616,13 +621,10 @@ describe("the drawer key", () => {
     });
   });
 
-  describe.each([
-    ["M with cmd held", { key: "m", metaKey: true }],
-    ["the frame tool key", { key: "f" }],
-  ])("when %s is pressed", (_, init) => {
+  describe("when M is pressed with cmd held", () => {
     beforeEach(async () => {
       await mount(board);
-      fireEvent.keyDown(document, init);
+      fireEvent.keyDown(document, { key: "m", metaKey: true });
     });
 
     it("should leave the sidebar closed", () => {
@@ -654,6 +656,136 @@ describe("the drawer key", () => {
       expect(document.querySelector(".HelpDialog")?.textContent).toContain(
         "FramesM",
       );
+    });
+  });
+});
+
+describe("the frame tool", () => {
+  const board = [
+    frame("frame-valley-of-the-sun", 0, 0),
+    frame("frame-the-lair", 600, 0),
+  ];
+  const drawer = { name: DEFAULT_SIDEBAR.name, tab: FRAMES_SIDEBAR_TAB };
+
+  describe.each([
+    ["from the toolbar", () => UI.clickExtraTool("frame")],
+    ["with F", () => Keyboard.keyPress("f")],
+  ])("when it is picked %s", (_, pick) => {
+    let focused: Element | null;
+
+    beforeEach(async () => {
+      await mount(board);
+      focused = document.activeElement;
+      pick();
+    });
+
+    it("should open the Frames drawer", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+
+    it("should keep the frame tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should leave focus where it was", () => {
+      expect(document.activeElement).toBe(focused);
+    });
+  });
+
+  describe("when it is picked with the library open", () => {
+    beforeEach(async () => {
+      await mount(board);
+      act(() => {
+        h.app.toggleSidebar({
+          name: DEFAULT_SIDEBAR.name,
+          tab: LIBRARY_SIDEBAR_TAB,
+        });
+      });
+      Keyboard.keyPress("f");
+    });
+
+    it("should switch the sidebar to the Frames drawer", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+  });
+
+  describe("when a frame is drawn on the canvas with the drawer it opened", () => {
+    beforeEach(async () => {
+      await mount(board);
+      Keyboard.keyPress("f");
+      mouse.reset();
+      mouse.downAt(100, 400);
+      mouse.moveTo(300, 550);
+      mouse.up();
+    });
+
+    it("should keep the drawer open", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+
+    it("should list the new frame", () => {
+      const drawn = h.elements.find(
+        (element) =>
+          element.type === "frame" &&
+          !board.some((listed) => listed.id === element.id),
+      )!;
+      expect(
+        document.querySelector(`.frames-menu [data-frame="${drawn.id}"]`),
+      ).not.toBeNull();
+    });
+  });
+
+  describe("when another tool is picked after it", () => {
+    beforeEach(async () => {
+      await mount(board);
+      Keyboard.keyPress("f");
+      Keyboard.keyPress("r");
+    });
+
+    it("should leave the drawer open", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+  });
+
+  describe("when it is picked with frameNavigation off", () => {
+    beforeEach(async () => {
+      await mount(board, null);
+      Keyboard.keyPress("f");
+    });
+
+    it("should pick the tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should leave the sidebar closed", () => {
+      expect(h.state.openSidebar).toBeNull();
+    });
+  });
+
+  describe("when it is picked on a phone", () => {
+    beforeEach(async () => {
+      await render(
+        <Excalidraw
+          handleKeyboardGlobally
+          frameNavigation={{}}
+          UIOptions={{ getFormFactor: () => "phone" }}
+        />,
+      );
+      fireEvent.resize(window);
+      await waitFor(() =>
+        expect(h.app.editorInterface.formFactor).toBe("phone"),
+      );
+      fakeClock();
+      API.setElements(board);
+      Keyboard.keyPress("f");
+    });
+
+    it("should pick the tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should leave the sidebar closed, off the canvas", () => {
+      expect(h.state.openSidebar).toBeNull();
     });
   });
 });
