@@ -249,8 +249,10 @@ test("arranges a scattered chain picked and arranged with the pointer alone, lay
   ]);
 
   const arrange = page.getByRole("button", { name: "Auto-arrange" });
+  const actions = page.getByTitle("Actions").first();
+  await expect(arrange.or(actions).first()).toBeVisible();
   if (!(await arrange.isVisible())) {
-    await press(page.getByTitle("Actions").first(), hasTouch);
+    await press(actions, hasTouch);
   }
   await press(arrange, hasTouch);
 

@@ -1049,7 +1049,16 @@ describe("arranging with the pointer alone", () => {
   beforeEach(async () => {
     await load(scenario);
     before = snapshot();
-    mouse.select(pick(before, ids));
+    const picked = pick(before, ids);
+    const left = Math.min(...picked.map((shape) => shape.x)) - 20;
+    const top = Math.min(...picked.map((shape) => shape.y)) - 20;
+    const right = Math.max(...picked.map((shape) => shape.x + shape.width));
+    const bottom = Math.max(...picked.map((shape) => shape.y + shape.height));
+    mouse.reset();
+    mouse.downAt(left, top);
+    mouse.moveTo(right + 20, bottom + 20);
+    mouse.upAt(right + 20, bottom + 20);
+    expect(ids.every((id) => h.state.selectedElementIds[id])).toBe(true);
   });
 
   it("should arrange the picked shapes from the Auto-arrange button", async () => {
