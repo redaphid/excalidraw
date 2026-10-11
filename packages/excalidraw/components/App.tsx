@@ -170,6 +170,7 @@ import {
   getContainerCenter,
   getContainerElement,
   getSettledBitmapCount,
+  cancelSettledBitmaps,
   getColorUpdate,
   getStickyNoteMinSize,
   isValidTextContainer,
@@ -4074,6 +4075,7 @@ class App extends React.Component<AppProps, AppState> {
 
     (this.ownerWindow as any).launchQueue?.setConsumer(() => {});
 
+    cancelSettledBitmaps(this.canvas);
     this.renderer.destroy();
     this.scene.destroy();
     this.scene = new Scene();
