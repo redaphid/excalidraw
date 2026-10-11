@@ -57,7 +57,7 @@ The tag runs `.github/workflows/release.yml`. It builds and packs the packages a
 
 If a run fails, rerun it. It skips the packages that are already published.
 
-GitHub creates each new package as private. After the first release, make the five packages public in each package's settings if consumers outside this account need them.
+The packages take the repository's public visibility. A tag that is not on `master` fails before anything is built, and a rerun replaces a draft release that a failed run left behind.
 
 The release tarballs install from their URL with no token:
 
