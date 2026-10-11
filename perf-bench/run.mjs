@@ -12,6 +12,7 @@ const { values: opts } = parseArgs({
     builds: { type: "string" },
     runs: { type: "string", default: "5" },
     engine: { type: "string", default: "chromium" },
+    channel: { type: "string", default: "chromium" },
     throttle: { type: "string", default: "4" },
     device: { type: "string", default: "laptop" },
     only: { type: "string" },
@@ -22,7 +23,7 @@ const { values: opts } = parseArgs({
 
 if (!opts.builds) {
   console.error(
-    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name]",
+    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--channel chromium|chrome|msedge] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name]",
   );
   process.exit(2);
 }
@@ -68,8 +69,11 @@ const serve = () =>
 
 const launch = () => {
   if (opts.engine === "chromium") {
+    // Any channel but Playwright's own Chromium runs headed: an installed
+    // browser on the machine's GPU, the way the editor is used.
     return chromium.launch({
-      channel: "chromium",
+      channel: opts.channel,
+      headless: opts.channel === "chromium",
       args: ["--disable-gpu-vsync", "--disable-frame-rate-limit"],
     });
   }
@@ -130,6 +134,12 @@ const main = async () => {
       console.error(`run ${run + 1}/${runs} ${build} ${((Date.now() - started) / 1000).toFixed(0)}s`);
     }
   }
+  // Read after the runs: it says software until the GPU process is up.
+  const gpuCompositing =
+    opts.engine === "chromium"
+      ? (await (await browser.newBrowserCDPSession()).send("SystemInfo.getInfo")).gpu
+          .featureStatus.gpu_compositing
+      : "n/a";
   await browser.close();
   server.close();
 
@@ -163,12 +173,14 @@ const main = async () => {
   const file = path.join(out, `${stamp}-${opts.label}.json`);
   writeFileSync(
     file,
-    JSON.stringify({ opts, userAgent: first.userAgent, summary, mount, reports }, null, 1),
+    JSON.stringify({ opts, userAgent: first.userAgent, gpuCompositing, summary, mount, reports }, null, 1),
   );
 
   const [base, ...others] = builds;
   const pct = (a, b) => `${(((b - a) / a) * 100).toFixed(1)}%`;
-  console.log(`${opts.engine} ${opts.device} throttle ${throttle}x, ${runs} runs, ${first.userAgent}`);
+  console.log(
+    `${opts.engine} ${opts.channel} ${opts.device} throttle ${throttle}x, ${runs} runs, gpu compositing ${gpuCompositing}, ${first.userAgent}`,
+  );
   console.log(`mount ms: ${JSON.stringify(mount)}`);
   for (const [id, byBuild] of Object.entries(summary)) {
     const b = byBuild[base];
