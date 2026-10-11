@@ -5,6 +5,7 @@
  */
 :scope,
 :scope.theme--dark {
+  --canvas-mode: dark;
   --element-freedraw-taper: 2;
   --element-freedraw-thinning: 0.1;
   --canvas-background: #0f3a6e;

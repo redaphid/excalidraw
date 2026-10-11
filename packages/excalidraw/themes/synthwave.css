@@ -5,6 +5,7 @@
  */
 :scope,
 :scope.theme--dark {
+  --canvas-mode: dark;
   --canvas-background: #1b0b33;
   --canvas-grid-color: rgba(255, 79, 216, 0.14);
   --canvas-grid-bold-color: rgba(63, 240, 255, 0.42);
