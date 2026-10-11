@@ -1,0 +1,2 @@
+time	id	hypothesis	change	before	after	delta	tests	verdict	note
+2026-10-11T04:16:47Z	baseline	master 4f9a5bed counters, chromium 1x, soul	-	mixed/arrow drawImage 205/move walked 33784 mapSets 1711; pan drawImage 204.7 walked 2587; zoom drawImage 428 walked 5958 canvasesCreated 44.5	-	-	-	baseline	results/2026-10-11T04-16-17-379Z-base.json in ~/Projects/excalidraw-hc2/perf-bench
