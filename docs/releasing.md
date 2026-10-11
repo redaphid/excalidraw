@@ -16,7 +16,7 @@ Nothing is published to registry.npmjs.org. `scripts/check-no-npm-publish.sh` fa
 
 ## Install the packages
 
-The five packages are public. GitHub Packages still requires a token for every npm install, public packages included, so every consumer needs a token with the `read:packages` scope. Only the container registry allows anonymous pulls.
+GitHub creates each new package as private. After the first release an admin makes the five packages public in each package's settings, which cannot be undone, and the release's `smoke` job fails until then. GitHub Packages still requires a token for every npm install, public packages included, so every consumer needs a token with the `read:packages` scope. Only the container registry allows anonymous pulls.
 
 1. Add an `.npmrc` next to your `package.json`:
 
@@ -89,9 +89,9 @@ gh workflow run semver-release.yml -R redaphid/excalidraw
 The workflow computes the version, builds and verifies the packages, then publishes. Its jobs run in this order:
 
 1. `plan` picks the version and writes the release notes (see [How the version is chosen](#how-the-version-is-chosen)).
-2. `build` packs the five packages at that version and installs them into scratch projects with npm and with pnpm (`hoist=false`), from a local registry that serves them the way GitHub Packages does. It writes nothing outside the runner.
+2. `build` packs the five packages at that version. It installs the release tarballs by path, and the registry packages into scratch projects with npm and with pnpm (`hoist=false`) from a local registry that serves them the way GitHub Packages does. Each scratch project bundles `import { Excalidraw }` and type-checks against the package's declarations. Then `publish.js --dry-run` runs the publish guard and `npm publish --dry-run` on each package. It writes nothing outside the runner.
 3. `publish` creates the annotated tag `vX.Y.Z`, publishes the five packages to GitHub Packages, and creates the GitHub release with the five release tarballs attached. The tag is created first. It records which commit the version belongs to, and every later run finishes that release instead of computing a new one.
-4. `smoke` installs the published packages from GitHub Packages and bundles `import { Excalidraw }`.
+4. `smoke` checks that the five packages are public, then runs the same install, bundle and type checks against GitHub Packages.
 
 To preview a release without writing anything, run it as a dry run:
 
@@ -125,11 +125,11 @@ The workflow reads every commit in `git log --no-merges <last tag>..HEAD`. On `m
 | A body line that starts with `BREAKING CHANGE:` or `BREAKING-CHANGE:` | major |
 | `feat`, as in `feat(editor): frames drawer` | minor |
 | Any other subject, including `fix`, `perf`, `docs`, `ci` and subjects that are not conventional | patch |
-| `chore: version the packages 0.19.0-draw.N` | none |
+| `chore: version the packages 0.19.0-draw.N`, with or without a ` (#N)` suffix | none |
 
 The release takes the largest bump among its commits. A minor bump resets the patch number, and a major bump resets both. With no release yet, the version is 1.0.0. If the only commits since the last release are draw version commits, there is nothing to release.
 
-A tag that exists without a published GitHub release is an unfinished release. The next run finishes it at the commit the tag points at, even if `master` has moved, and refuses a `version` input that differs from it.
+A tag that exists without a published GitHub release is an unfinished release. The next run finishes it at the commit the tag points at, even if `master` has moved, and refuses a `version` input that differs from it. A run never claims a version below an existing release tag, and only the highest release is marked as GitHub's latest.
 
 ## Recover from a failed release
 
@@ -139,7 +139,8 @@ Every step checks what already exists before it acts, so you can rerun the faile
 - If `publish` fails after the tag exists, rerun it or dispatch again. The run publishes the packages that are missing, then creates or finishes the GitHub release.
 - If a run stops with `vX.Y.Z is claimed by <sha>`, someone created the tag by hand at another commit. Check that tag before you change anything. Never move it.
 - If the tag exists but no package was published and the build at that commit keeps failing, delete the tag and dispatch again: `git push origin :refs/tags/vX.Y.Z`. Do this only while no package exists at that version, because GitHub Packages never accepts the same version twice.
-- If `smoke` fails, the release is already published. Fix the problem in a new pull request and release a patch.
+- If some packages were published and the version can never finish, abandon it. Delete the tag (`git push origin :refs/tags/vX.Y.Z`) and any draft release, then dispatch with the next patch version (`-f version=X.Y.Z+1`). Delete the stray package versions in each package's settings. GitHub Packages never accepts a deleted version again, so `vX.Y.Z` stays unused.
+- If `smoke` fails because a package is private, make it public, then rerun `smoke`. For any other `smoke` failure, the release is already published. Fix the problem in a new pull request and release a patch.
 
 ## The 0.19.0-draw.N releases
 

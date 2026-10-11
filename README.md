@@ -24,7 +24,7 @@ For everything else, see [upstream's README](https://github.com/excalidraw/excal
 
 ## Install
 
-The packages are public on GitHub Packages, which still needs a token for every install. Add an `.npmrc` beside your `package.json` and set `NODE_AUTH_TOKEN` to a personal access token (classic) with the `read:packages` scope:
+GitHub Packages needs a token for every install, public packages included. Add an `.npmrc` beside your `package.json` and set `NODE_AUTH_TOKEN` to a personal access token (classic) with the `read:packages` scope:
 
 ```ini
 @redaphid:registry=https://npm.pkg.github.com

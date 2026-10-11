@@ -16,14 +16,15 @@ on:
       - scripts/semver/**
       - scripts/pack-draw-release.js
       - scripts/verify-draw-release.js
+      - .github/actions/setup/**
       - scripts/buildBase.js
       - .github/workflows/semver-release.yml
 
-# Releases queue behind release.yml's. Pull request dry runs get their own
-# group, because a newer pending run cancels the pending one in its group,
-# and a pushed commit must never cancel a queued release.
+# A run that can publish queues in release.yml's group. Every other run gets
+# a group of its own, because a newer pending run cancels the pending one in
+# its group, and a dry run must never cancel a queued release.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('semver-dry-run-{0}', github.ref) || 'release' }}
+  group: ${{ github.event_name == 'workflow_dispatch' && !inputs.dry_run && github.ref == 'refs/heads/master' && 'release' || format('semver-dry-run-{0}', github.run_id) }}
   cancel-in-progress: false
 
 permissions: {}
@@ -89,6 +90,8 @@ jobs:
       - uses: ./.github/actions/setup
       - run: node scripts/semver/pack.js --version="$VERSION"
       - run: node scripts/verify-draw-release.js --version="$VERSION"
+      - run: node scripts/semver/verify.js --version="$VERSION"
+      - run: node scripts/semver/publish.js --dir=release --dry-run
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: semver-release
@@ -138,9 +141,23 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      - name: Every package is public
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          not_public=()
+          for name in $(node -p 'const p = require("./scripts/semver/packages"); p.LOCKSTEP.map((id) => p.registryName(id).split("/")[1]).join(" ")'); do
+            visibility=$(gh api "users/$OWNER/packages/npm/$name" --jq .visibility)
+            [ "$visibility" = public ] || not_public+=("@$OWNER/$name is $visibility")
+          done
+          if [ "${#not_public[@]}" -gt 0 ]; then
+            echo "::error::${not_public[*]}. Make each package public in its settings on GitHub, which cannot be undone, then rerun this job."
+            exit 1
+          fi
       - env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/verify-draw-release.js --version="$VERSION" --registry=https://npm.pkg.github.com
+        run: node scripts/semver/verify.js --version="$VERSION" --registry=https://npm.pkg.github.com
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
