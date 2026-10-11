@@ -64,7 +64,7 @@ const failed = (what, result) =>
 // Checks all five tarballs before publishing any, publishes in dependency
 // order, and skips a version the registry already has, so a rerun after a
 // failure publishes only what is missing.
-const publish = ({ version, dir, run }) => {
+const publish = ({ version, dir, run, dryRun = false }) => {
   const tarball = (id) =>
     path.join(dir, `redaphid-excalidraw-${id}-${version}.tgz`);
   for (const id of PUBLISH_ORDER) {
@@ -92,6 +92,14 @@ const publish = ({ version, dir, run }) => {
 
   for (const id of PUBLISH_ORDER) {
     const spec = `${registryName(id)}@${version}`;
+    if (dryRun) {
+      const result = npm(["publish", tarball(id), "--dry-run"]);
+      if (result.status !== 0) {
+        throw failed(`Dry-run publishing ${spec}`, result);
+      }
+      console.info(`Would publish ${spec}.`);
+      continue;
+    }
     if (npm(["view", spec, "version"]).stdout.trim() === version) {
       console.info(`${spec} is already published.`);
       continue;
@@ -108,9 +116,10 @@ if (require.main === module) {
   const version = process.argv
     .find((argument) => argument.startsWith("--version="))
     ?.split("=")[1];
-  if (!version || !process.env.GITHUB_TOKEN) {
+  const dryRun = process.argv.includes("--dry-run");
+  if (!version || (!dryRun && !process.env.GITHUB_TOKEN)) {
     console.error(
-      "Usage: GITHUB_TOKEN=<token> node scripts/semver/publish.js --version=1.0.0",
+      "Usage: GITHUB_TOKEN=<token> node scripts/semver/publish.js --version=1.0.0 [--dry-run]",
     );
     process.exit(1);
   }
@@ -118,6 +127,7 @@ if (require.main === module) {
     publish({
       version,
       dir: path.resolve(__dirname, "../../release/registry"),
+      dryRun,
       run: (command, args) =>
         spawnSync(command, args, { encoding: "utf8", maxBuffer: 1 << 26 }),
     });

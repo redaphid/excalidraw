@@ -116,18 +116,7 @@ jobs:
       - name: Publish dry run
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          node -e '
-            const { execFileSync } = require("child_process");
-            const { assertPublishable } = require("./scripts/semver/publish");
-            const { PUBLISH_ORDER } = require("./scripts/semver/packages");
-            const version = process.env.VERSION;
-            for (const id of PUBLISH_ORDER) {
-              const tarball = `release/registry/redaphid-excalidraw-${id}-${version}.tgz`;
-              const manifest = JSON.parse(execFileSync("tar", ["-xzOf", tarball, "package/package.json"], { encoding: "utf8" }));
-              assertPublishable(manifest, { id, version });
-              execFileSync("npm", ["publish", tarball, "--dry-run", "--registry=https://npm.pkg.github.com"], { stdio: "inherit" });
-            }'
+        run: node scripts/semver/publish.js --version="$VERSION" --dry-run
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-${{ steps.version.outputs.version }}

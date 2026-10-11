@@ -138,6 +138,20 @@ describe("publish", () => {
     );
   });
 
+  it("dry-runs every package without checking or writing the registry", () => {
+    // Defect: the CI dry run publishes for real, or skips a package.
+    const { run, calls } = registry([registryName("math")]);
+    publish({ version: VERSION, dir: "release/registry", run, dryRun: true });
+
+    const npmCalls = calls.filter(([cmd]) => cmd === "npm");
+    expect(npmCalls.map((call) => call[1])).toEqual(
+      PUBLISH_ORDER.map(() => "publish"),
+    );
+    for (const call of npmCalls) {
+      expect(call).toContain("--dry-run");
+    }
+  });
+
   it("publishes nothing when one tarball targets npmjs", () => {
     // Defect: the guard runs after the first publish.
     const math = manifestFor("math");
