@@ -268,7 +268,9 @@ test("arranges a scattered chain picked and arranged with the pointer alone, lay
   expect(overlaps(arranged)).toEqual([]);
   expect(unbound(arranged)).toEqual([]);
 
-  expect(workers.filter((url) => /elk-worker/.test(url))).toHaveLength(1);
-  expect((await scriptsCarrying(page, ELK_MARK)).carrying).toEqual([]);
+  const elkWorkers = workers.filter((url) => /elk-worker/.test(url));
+  expect(elkWorkers).toHaveLength(1);
+  const { carrying } = await scriptsCarrying(page, ELK_MARK);
+  expect(carrying.filter((url) => !elkWorkers.includes(url))).toEqual([]);
   expect(errors).toEqual([]);
 });

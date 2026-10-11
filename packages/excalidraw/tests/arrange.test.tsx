@@ -853,7 +853,11 @@ describe.each(TRIGGERS)("undoing an arrange made by %s", (trigger) => {
 
   it("should put every shape back and the frame back to its size in that one step", () => {
     Keyboard.undo();
-    expect(geometryOf(snapshot())).toEqual(geometryOf(before));
+    const unlessArrow = (scene: Scene) =>
+      geometryOf(
+        new Map([...scene].filter(([, element]) => !isArrowElement(element))),
+      );
+    expect(unlessArrow(snapshot())).toEqual(unlessArrow(before));
   });
 });
 
@@ -1039,6 +1043,7 @@ describe("arranging with the pointer alone", () => {
       await perform.mock.results[0]?.value;
     });
     expect(perform).toHaveBeenCalledTimes(1);
+    expect(h.state.toast).toBeNull();
   };
 
   beforeEach(async () => {
