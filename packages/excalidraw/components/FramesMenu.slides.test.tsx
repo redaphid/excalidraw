@@ -15,7 +15,7 @@ import {
   settle,
   showView,
 } from "../tests/helpers/frames";
-import { fireEvent, render, screen } from "../tests/test-utils";
+import { act, fireEvent, render, screen } from "../tests/test-utils";
 
 import type { Mock } from "vitest";
 
@@ -53,10 +53,13 @@ const talk = [
 
 let onChange: Mock<(order: Slide[]) => void>;
 let onPresent: Mock<() => void>;
+/** the host changing its talk on its own, as a sync from another device */
+let reorder: (order: Slide[]) => void;
 
 /** a host that keeps the order it is handed back, as a real one would */
 const Host = ({ initial }: { initial: Slide[] }) => {
   const [order, setOrder] = useState(initial);
+  reorder = setOrder;
   return (
     <Excalidraw
       frameNavigation={{
@@ -122,13 +125,29 @@ const layOut = () =>
 /** the middle of the nth row, from 0 */
 const middle = (n: number) => n * ROW_PX + ROW_PX / 2;
 
+const pen = { pointerId: 7, pointerType: "pen", isPrimary: true };
+
+/** press a grip and carry it, leaving the pen down */
+const hold = (target: HTMLElement, from: number, to: number) => {
+  fireEvent.pointerDown(target, { ...pen, clientY: from });
+  fireEvent.pointerMove(target, { ...pen, clientY: to });
+};
+
+const sorting = () =>
+  document.querySelector(".frames-menu__slides.is-sorting") !== null;
+
+const removeFrame = (id: string) =>
+  act(() => {
+    API.setElements(board.filter((element) => element.id !== id));
+  });
+
 const stroke = (
   target: HTMLElement,
   pointerType: string,
   ys: number[],
   end: "up" | "cancel" = "up",
 ) => {
-  const pointer = { pointerId: 7, pointerType, isPrimary: true };
+  const pointer = { ...pen, pointerType };
   const [first, ...rest] = ys;
   fireEvent.pointerDown(target, { ...pointer, clientY: first });
   for (const y of rest) {
@@ -279,10 +298,8 @@ describe("the Frames drawer with a talk", () => {
     beforeEach(async () => {
       await mount(talk);
       layOut();
-      const pen = { pointerId: 7, pointerType: "pen" };
       const target = grip("frame-the-lair");
-      fireEvent.pointerDown(target, { ...pen, clientY: middle(0) });
-      fireEvent.pointerMove(target, { ...pen, clientY: middle(2) + 10 });
+      hold(target, middle(0), middle(2) + 10);
       fireEvent.keyDown(document, { key: KEYS.ESCAPE });
       fireEvent.pointerUp(target, { ...pen, clientY: middle(2) + 10 });
     });
@@ -313,7 +330,214 @@ describe("the Frames drawer with a talk", () => {
     });
   });
 
-  describe("when a slide is held at the bottom of a list too long for the drawer", () => {
+  describe("when a frame above the held slide is deleted mid-drag", () => {
+    beforeEach(async () => {
+      await mount(talk);
+      layOut();
+      hold(grip("frame-registry"), middle(3), 2);
+      // a collaborator, an agent or an undo takes the first slide's frame
+      removeFrame("frame-the-lair");
+      fireEvent.pointerUp(grip("frame-registry"), { ...pen, clientY: 2 });
+    });
+
+    it("should leave the order alone", () => {
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should stop sorting", () => {
+      expect(sorting()).toBe(false);
+    });
+
+    it("should list the frames still on the board", () => {
+      expect(rows()).toEqual([
+        "frame-valley-of-the-sun",
+        "frame-thunderwrench",
+        "frame-registry",
+      ]);
+    });
+
+    describe("and the slide is dragged again", () => {
+      beforeEach(() => {
+        layOut();
+        stroke(grip("frame-registry"), "pen", [middle(2), 2]);
+      });
+
+      it("should hand the host only the frames on the board", () => {
+        expect(onChange.mock.calls).toEqual([
+          [
+            [
+              slide("frame-registry"),
+              slide("frame-valley-of-the-sun"),
+              slide("frame-thunderwrench"),
+            ],
+          ],
+        ]);
+      });
+    });
+  });
+
+  describe("when the host reorders the talk mid-drag", () => {
+    beforeEach(async () => {
+      await mount(talk);
+      layOut();
+      hold(grip("frame-valley-of-the-sun"), middle(1), middle(3) + 10);
+      act(() => {
+        reorder([
+          slide("frame-valley-of-the-sun"),
+          slide("frame-the-lair"),
+          slide("frame-thunderwrench"),
+          slide("frame-registry"),
+        ]);
+      });
+      fireEvent.pointerUp(grip("frame-valley-of-the-sun"), {
+        ...pen,
+        clientY: middle(3) + 10,
+      });
+    });
+
+    it("should drop the drag rather than move another slide", () => {
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should show the host's order", () => {
+      expect(rows()).toEqual([
+        "frame-valley-of-the-sun",
+        "frame-the-lair",
+        "frame-thunderwrench",
+        "frame-registry",
+      ]);
+    });
+
+    describe("and the slide is dragged again", () => {
+      beforeEach(() => {
+        layOut();
+        stroke(grip("frame-valley-of-the-sun"), "pen", [
+          middle(0),
+          middle(3) + 10,
+        ]);
+      });
+
+      it("should move the slide the pen holds", () => {
+        expect(onChange.mock.calls).toEqual([
+          [
+            [
+              slide("frame-the-lair"),
+              slide("frame-thunderwrench"),
+              slide("frame-registry"),
+              slide("frame-valley-of-the-sun"),
+            ],
+          ],
+        ]);
+      });
+    });
+  });
+
+  describe("when the host skips another slide mid-drag", () => {
+    beforeEach(async () => {
+      await mount(talk);
+      layOut();
+      hold(grip("frame-the-lair"), middle(0), middle(2) + 10);
+      act(() => {
+        reorder([
+          slide("frame-the-lair"),
+          slide("frame-valley-of-the-sun"),
+          slide("frame-thunderwrench", false),
+          slide("frame-registry"),
+        ]);
+      });
+      fireEvent.pointerUp(grip("frame-the-lair"), {
+        ...pen,
+        clientY: middle(2) + 10,
+      });
+    });
+
+    it("should still move the held slide, keeping the skip", () => {
+      expect(onChange.mock.calls).toEqual([
+        [
+          [
+            slide("frame-valley-of-the-sun"),
+            slide("frame-thunderwrench", false),
+            slide("frame-the-lair"),
+            slide("frame-registry"),
+          ],
+        ],
+      ]);
+    });
+  });
+
+  describe("when the held slide's frame is deleted mid-drag and the pen lifts off the list", () => {
+    beforeEach(async () => {
+      await mount(talk);
+      layOut();
+      hold(grip("frame-registry"), middle(3), middle(2));
+      removeFrame("frame-registry");
+      // the grip went with its frame, so the lift lands on the canvas
+      fireEvent.pointerUp(document.body, { ...pen, clientY: 900 });
+    });
+
+    it("should stop sorting", () => {
+      expect(sorting()).toBe(false);
+    });
+
+    it("should leave the order alone", () => {
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    describe("and another slide is dragged", () => {
+      beforeEach(() => {
+        layOut();
+        stroke(grip("frame-the-lair"), "pen", [middle(0), middle(2) + 10]);
+      });
+
+      it("should move it", () => {
+        expect(onChange.mock.calls).toEqual([
+          [
+            [
+              slide("frame-valley-of-the-sun"),
+              slide("frame-thunderwrench"),
+              slide("frame-the-lair"),
+            ],
+          ],
+        ]);
+      });
+    });
+  });
+
+  describe("when the grip loses the pen mid-drag", () => {
+    beforeEach(async () => {
+      await mount(talk);
+      layOut();
+      const target = grip("frame-the-lair");
+      hold(target, middle(0), middle(2) + 10);
+      fireEvent.lostPointerCapture(target, pen);
+      fireEvent.pointerUp(document.body, { ...pen, clientY: middle(2) + 10 });
+    });
+
+    it("should stop sorting", () => {
+      expect(sorting()).toBe(false);
+    });
+
+    it("should leave the order alone", () => {
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    describe("and another slide is dragged", () => {
+      beforeEach(() => {
+        stroke(grip("frame-thunderwrench"), "pen", [middle(2), middle(1) - 10]);
+      });
+
+      it("should move that one", () => {
+        expect(rows()).toEqual([
+          "frame-the-lair",
+          "frame-thunderwrench",
+          "frame-valley-of-the-sun",
+          "frame-registry",
+        ]);
+      });
+    });
+  });
+
+  describe("when a slide is held still at the bottom of a list too long for the drawer", () => {
     let scrollTop: number;
 
     beforeEach(async () => {
@@ -327,20 +551,23 @@ describe("the Frames drawer with a talk", () => {
         scrollTop: {
           get: () => scrollTop,
           set: (value: number) => {
-            scrollTop = value;
+            scrollTop = Math.min(Math.max(value, 0), ROW_PX);
           },
         },
       });
       list.getBoundingClientRect = () => box(0, 3 * ROW_PX);
       const bottom = 3 * ROW_PX - 5;
-      stroke(grip("frame-the-lair"), "pen", [
-        middle(0),
-        ...Array(20).fill(bottom),
-      ]);
+      const target = grip("frame-the-lair");
+      hold(target, middle(0), bottom);
+      // the pen rests at the edge for a moment, sending no moves
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      fireEvent.pointerUp(target, { ...pen, clientY: bottom });
     });
 
-    it("should scroll the list", () => {
-      expect(scrollTop).toBeGreaterThan(0);
+    it("should scroll the list to its end", () => {
+      expect(scrollTop).toBe(ROW_PX);
     });
 
     it("should carry the slide past the rows scrolled into view", () => {
