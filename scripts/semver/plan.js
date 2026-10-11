@@ -88,11 +88,13 @@ const main = (argv) => {
 
   const head = git("rev-parse", "--verify", `${values.head}^{commit}`).trim();
   const tags = releaseTags(readTags());
-  const complete = new Set(
-    tags
-      .filter((tag) => values.offline || isPublished(tag.tag))
-      .map((tag) => tag.tag),
-  );
+  // A claim is only ever made above the newest tag, so only the newest can be
+  // unfinished.
+  const newest = tags.at(-1);
+  const complete = new Set(tags.slice(0, -1).map((tag) => tag.tag));
+  if (newest && (values.offline || isPublished(newest.tag))) {
+    complete.add(newest.tag);
+  }
   const since = tags.at(-1)?.tag ?? newestDrawTag(head);
   const plan = planRelease({
     head,
