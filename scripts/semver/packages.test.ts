@@ -183,38 +183,30 @@ describe("urlManifest", () => {
 });
 
 describe("declarationTarget", () => {
-  const elementDeclares = [
-    "@excalidraw/common",
-    "@excalidraw/math",
-    "@excalidraw/fractional-indexing",
-  ];
-
   it.each([
     ["@excalidraw/element", "element/src/index"],
     ["@excalidraw/element/types", "element/src/types"],
-    ["@excalidraw/excalidraw/types", "excalidraw/types"],
     ["@excalidraw/utils/shape", "utils/src/shape"],
   ])("points element's %s at its own copy, %s", (specifier, target) => {
-    // Defect: a self import or an undeclared package stays bare, and a strict
-    // install turns its types into any.
-    expect(declarationTarget(specifier, "element", elementDeclares)).toBe(
-      target,
-    );
+    // Defect: a self import or an unpublished package stays bare, and a
+    // strict install turns its types into any.
+    expect(declarationTarget(specifier, "element")).toBe(target);
   });
 
   it.each([
     "@excalidraw/common",
     "@excalidraw/common/utility-types",
     "@excalidraw/math",
+    "@excalidraw/excalidraw/types",
     "react",
-  ])("leaves element's %s to resolve through its dependencies", (specifier) => {
-    // Defect: a declared sibling's types are copied, so two copies of one
-    // type no longer match.
-    expect(declarationTarget(specifier, "element", elementDeclares)).toBe(null);
+  ])("leaves element's %s to resolve as a package", (specifier) => {
+    // Defect: another published package's types are copied, so a consumer
+    // holding both packages sees two unrelated AppStates.
+    expect(declarationTarget(specifier, "element")).toBe(null);
   });
 
   it("points excalidraw's own name at its root", () => {
-    expect(declarationTarget("@excalidraw/excalidraw", "excalidraw", [])).toBe(
+    expect(declarationTarget("@excalidraw/excalidraw", "excalidraw")).toBe(
       "excalidraw/index",
     );
   });
