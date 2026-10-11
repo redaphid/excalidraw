@@ -22,7 +22,10 @@ const isCompositeValue = (node: Node) =>
   ("color" in node && "width" in node && "style" in node);
 
 const isGroup = (value: unknown): value is Node =>
-  isRecord(value) && !isToken(value) && !isCompositeValue(value);
+  isRecord(value) &&
+  !isToken(value) &&
+  (!isCompositeValue(value) ||
+    Object.values(value).some((child) => isRecord(child) && isToken(child)));
 
 /** what a token keeps of the one it replaces */
 const DESCRIBING = ["$type", "$description", "$extensions", "$deprecated"];

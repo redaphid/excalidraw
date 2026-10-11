@@ -64,6 +64,26 @@ describe("mergeThemeTokens", () => {
     });
   });
 
+  it("reads a group whose tokens are named like a composite's fields as a group", () => {
+    const merged = mergeThemeTokens(
+      {},
+      {
+        border: {
+          color: { $value: "#000000" },
+          width: { $value: "1px" },
+          style: { $value: "solid" },
+        },
+      },
+    );
+    expect(merged).toEqual({
+      border: {
+        color: { $value: "#000000" },
+        width: { $value: "1px" },
+        style: { $value: "solid" },
+      },
+    });
+  });
+
   it("replaces a group given a value, dropping its tokens", () => {
     const merged = mergeThemeTokens(BASE, { color: { palette: "#ffffff" } });
     expect((merged.color as any).palette).toEqual({ $value: "#ffffff" });
