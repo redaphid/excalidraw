@@ -70,7 +70,7 @@ const FILL_WASH = 0.68;
 
 const generate = (
   tokens: ThemeSpec,
-): { css: string; warnings: ThemeWarning[] } => {
+): { css: string; warnings: ThemeWarning[]; mode: "light" | "dark" } => {
   const warnings: ThemeWarning[] = [];
   const mode =
     tokens.mode ?? (luminance(tokens.canvas) < 0.18 ? "dark" : "light");
@@ -360,7 +360,7 @@ ${
     : ""
 }${tokens.extra ? `\n${tokens.extra.trim()}\n` : ""}`;
 
-  return { css, warnings };
+  return { css, warnings, mode };
 };
 
 /**
@@ -368,15 +368,17 @@ ${
  * `css` prop. Derives panels, states, borders, shadows, shade ramps, swatches
  * and palettes, and moves any color that would make text or ink illegible
  * until it passes WCAG contrast. Each warning names the token path behind
- * it: a color it moved, a value it could not read, or a role it filled.
+ * it: a color it moved, a value it could not read, a role it filled or a
+ * token it ignored. `mode` is the mode it painted in.
  */
 export const generateThemeCss = (
   tokens: ThemeTokens,
-): { css: string; warnings: ThemeWarning[] } => {
+): { css: string; warnings: ThemeWarning[]; mode: "light" | "dark" } => {
   const { spec, paths, warnings } = readThemeTokens(tokens);
   const generated = generate(spec);
   return {
     css: generated.css,
+    mode: generated.mode,
     warnings: [
       ...warnings,
       ...generated.warnings.map((warning) => ({

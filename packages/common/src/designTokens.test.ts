@@ -193,6 +193,70 @@ describe("reading design tokens", () => {
     }).toEqual({ header: "/* Probe. mode: dark */", modeWarnings: [] });
   });
 
+  it("reports a token of the profile's groups that it ignores, with the path meant", () => {
+    const { warnings } = theme({
+      canvas: { $value: "#ffffff" },
+      ink: { $value: "#222222" },
+      acent: { $value: "#0f62fe" },
+      palette: { red: { $value: "#da1e28" } },
+    });
+
+    expect(warnings).toContainEqual(
+      expect.objectContaining({
+        token: "color.acent",
+        reason: expect.stringContaining("color.accent"),
+      }),
+    );
+  });
+
+  it("reports a profile token it cannot read once, not also as ignored", () => {
+    const { warnings } = theme({ canvas: { $value: "not a color" } });
+
+    expect(warnings.filter(({ token }) => token === "color.canvas")).toEqual([
+      expect.objectContaining({ reason: "not a color this field takes" }),
+    ]);
+  });
+
+  it("does not call a typography token it reads the fonts from ignored", () => {
+    const { warnings } = generateThemeCss({
+      font: {
+        typography: {
+          $type: "typography",
+          $value: {
+            fontFamily: "Inter",
+            fontSize: { value: 16, unit: "px" },
+            fontWeight: 400,
+            letterSpacing: { value: 0, unit: "px" },
+            lineHeight: 1.4,
+          },
+        },
+      },
+    });
+
+    expect(warnings.map(({ reason }) => reason)).not.toContainEqual(
+      expect.stringContaining("ignored"),
+    );
+  });
+
+  it("reads a profile token without a $type as the profile's type", () => {
+    const { css, warnings } = generateThemeCss({
+      color: { canvas: { $value: "#0b2b2b" } },
+      font: { size: { $value: "20px" } },
+    });
+
+    expect({
+      background: property(css, "--canvas-background"),
+      warned: warnings.filter(({ token }) =>
+        ["color.canvas", "font.size"].includes(token),
+      ),
+    }).toEqual({ background: "#0b2b2b", warned: [] });
+  });
+
+  it("returns the mode it painted in", () => {
+    expect(theme({ canvas: { $value: "#0b0c0e" } }).mode).toBe("dark");
+    expect(theme({ canvas: { $value: "#fbfaf7" } }).mode).toBe("light");
+  });
+
   it("rejects a document that is not an object", () => {
     expect(() => generateThemeCss([] as never)).toThrow(TypeError);
   });

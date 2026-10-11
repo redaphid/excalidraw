@@ -299,7 +299,41 @@ const readGridStyle: Parse<"solid" | "dashed"> = (value) =>
 type Entry = { node: Record<string, unknown>; groupType?: string };
 type Resolved = { type?: string; value: unknown } | { error: string };
 
-const isToken = (node: Record<string, unknown>) =>
+/** The `$type` of each token the profile reads; `color.palette.*` are colors. */
+const PROFILE_TYPES: Readonly<Record<string, string>> = {
+  "color.canvas": "color",
+  "color.ink": "color",
+  "color.accent": "color",
+  "color.panel": "color",
+  "color.active": "color",
+  "color.grid": "color",
+  "font.ui": "fontFamily",
+  "font.canvas": "fontFamily",
+  "font.size": "dimension",
+  "grid.minor": "number",
+  "grid.major": "number",
+  "grid.style": "strokeStyle",
+  "stroke.roughness": "number",
+  "pen.width": "number",
+  "pen.thinning": "number",
+  "pen.taper": "number",
+  "pen.streamline": "number",
+  "surface.radius": "dimension",
+  "frame.width": "dimension",
+  "frame.alpha": "number",
+};
+
+/** the `$type` the profile gives a token path, if it reads one there */
+export const profileTypeOf = (path: string): string | undefined =>
+  PROFILE_TYPES[path] ??
+  (path.startsWith("color.palette.") ? "color" : undefined);
+
+/** The profile's top-level groups: a token under one is meant for the theme. */
+const PROFILE_GROUPS = new Set(
+  Object.keys(PROFILE_TYPES).map((path) => path.split(".")[0]),
+);
+
+export const isToken = (node: Record<string, unknown>) =>
   "$value" in node ||
   ("$ref" in node && Object.keys(node).every((key) => key.startsWith("$")));
 
@@ -469,12 +503,13 @@ export const readThemeTokens = (
     fallback: T,
   ): T => {
     const resolved = resolve(path);
+    claimed.add(path);
+    // the profile gives each path it reads a type, so a token there may leave it out
     const value =
-      "error" in resolved || resolved.type !== type
+      "error" in resolved || (resolved.type ?? type) !== type
         ? undefined
         : parse(resolved.value);
     if (value !== undefined) {
-      claimed.add(path);
       const alpha =
         type === "color" && !("error" in resolved)
           ? alphaOf(resolved.value)
@@ -497,9 +532,7 @@ export const readThemeTokens = (
       reason:
         "error" in resolved
           ? resolved.error
-          : resolved.type === undefined
-          ? "no $type on the token or its groups"
-          : resolved.type !== type
+          : resolved.type !== undefined && resolved.type !== type
           ? `a ${resolved.type} token where a ${type} belongs`
           : `not a ${type} this field takes`,
     });
@@ -710,6 +743,9 @@ export const readThemeTokens = (
     "typography",
     ROLE_NAMES.typography,
   );
+  if (typographyPath) {
+    claimed.add(typographyPath);
+  }
   const typographyValue = typographyPath && resolve(typographyPath);
   const typography =
     typographyValue &&
@@ -880,6 +916,8 @@ export const readThemeTokens = (
     }),
   };
 
+  warnings.push(...ignoredTokens(document, tokens, claimed));
+
   return {
     spec,
     paths: {
@@ -893,6 +931,74 @@ export const readThemeTokens = (
     },
     warnings,
   };
+};
+
+/** edits to turn `a` into `b`: inserts, deletes and substitutions */
+const editDistance = (a: string, b: string) => {
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(
+        previous[j] + 1,
+        row[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = row;
+  }
+  return previous[b.length];
+};
+
+/**
+ * Tokens under the profile's own groups (`color`, `font`, ...) that no role
+ * read and no alias points at: most often a misspelled path. A designer's
+ * other groups, such as `spacing`, are left alone.
+ */
+const ignoredTokens = (
+  document: Record<string, unknown>,
+  tokens: Map<string, Entry>,
+  claimed: Set<string>,
+): ThemeWarning[] => {
+  const known = [...Object.keys(PROFILE_TYPES), "color.palette"];
+  const referenced = new Set(
+    [...JSON.stringify(document).matchAll(/\{([^{}"]+)\}|"#\/([^"]+)"/g)].map(
+      ([, alias, pointer]) =>
+        alias ??
+        pointer
+          .split("/")
+          .filter((key) => !key.startsWith("$"))
+          .map(unescapePointer)
+          .join("."),
+    ),
+  );
+  return [...tokens.entries()]
+    .filter(
+      ([path]) =>
+        PROFILE_GROUPS.has(path.split(".")[0]) &&
+        !claimed.has(path) &&
+        !referenced.has(path),
+    )
+    .map(([path, { node }]) => {
+      const [meant] = known
+        .map((candidate) => ({
+          candidate,
+          distance: editDistance(path, candidate),
+        }))
+        .sort((a, b) => a.distance - b.distance);
+      const group = path.split(".")[0];
+      return {
+        token: path,
+        from: show(node.$value ?? node),
+        to: "",
+        reason:
+          meant && meant.distance <= 3
+            ? `not a theme token, so it is ignored: did you mean ${meant.candidate}?`
+            : `not a theme token, so it is ignored: ${group} takes ${known
+                .filter((candidate) => candidate.startsWith(`${group}.`))
+                .join(", ")}`,
+      };
+    });
 };
 
 const ALIAS_VALUE = {
