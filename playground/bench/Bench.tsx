@@ -34,6 +34,12 @@ type ScenarioResult = {
   settleMaxFrameMs: number;
   countersPerFrame?: Counters;
   countersAtRelease?: Counters;
+  /** the longest frame from the gesture's start to the end of its settle
+   * window, and the most of each counter spent in any one of those frames */
+  frameMaxMs: number;
+  countersMaxFrame?: Counters;
+  /** frames that created a canvas, i.e. (re)drew some element's bitmap */
+  canvasFrames?: number;
 };
 
 export type BenchReport = {
@@ -180,13 +186,62 @@ const installCounters = () => {
   });
 };
 
+/** what `takeCounters` has reset so far, for the frame sampler's totals */
+const banked = { ...counters };
+
 const takeCounters = (steps: number): Counters => {
   const taken = { ...counters };
   for (const key of Object.keys(counters) as (keyof Counters)[]) {
     taken[key] = round(counters[key] / steps);
+    banked[key] += counters[key];
     counters[key] = 0;
   }
   return taken;
+};
+
+const totals = (): Counters => {
+  const sum = { ...counters };
+  for (const key of Object.keys(sum) as (keyof Counters)[]) {
+    sum[key] += banked[key];
+  }
+  return sum;
+};
+
+/** samples every animation frame until stopped: how long it took and what
+ * the counters did in it, wherever the work ran (input, timers, rAF) */
+const sampleFrames = () => {
+  const frames: { ms: number; counters: Counters }[] = [];
+  let running = true;
+  let lastAt = performance.now();
+  let lastTotals = totals();
+  const tick = (at: number) => {
+    if (!running) {
+      return;
+    }
+    const now = totals();
+    const delta = { ...now };
+    for (const key of Object.keys(delta) as (keyof Counters)[]) {
+      delta[key] = round(now[key] - lastTotals[key]);
+    }
+    frames.push({ ms: at - lastAt, counters: delta });
+    lastAt = at;
+    lastTotals = now;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  return () => {
+    running = false;
+    const max = { ...counters };
+    for (const key of Object.keys(max) as (keyof Counters)[]) {
+      max[key] = Math.max(0, ...frames.map((frame) => frame.counters[key]));
+    }
+    return {
+      frameMaxMs: round(Math.max(0, ...frames.map((frame) => frame.ms))),
+      countersMaxFrame: max,
+      canvasFrames: frames.filter((frame) => frame.counters.canvasesCreated)
+        .length,
+    };
+  };
 };
 
 const runScenario = async (
@@ -212,6 +267,7 @@ const runScenario = async (
   scenario.begin(api, canvas);
   await flushTasks();
   takeCounters(1);
+  const stopSampling = sampleFrames();
 
   await window.profilerHook?.(scenario.id, "start");
   const frames: number[] = [];
@@ -244,6 +300,7 @@ const runScenario = async (
     settleMaxFrameMs = Math.max(settleMaxFrameMs, next - last);
     last = next;
   }
+  const sampled = stopSampling();
 
   return {
     id: scenario.id,
@@ -253,6 +310,11 @@ const runScenario = async (
     settleMaxFrameMs: round(settleMaxFrameMs),
     countersPerFrame,
     countersAtRelease,
+    frameMaxMs: sampled.frameMaxMs,
+    ...(counting && {
+      countersMaxFrame: sampled.countersMaxFrame,
+      canvasFrames: sampled.canvasFrames,
+    }),
   };
 };
 
