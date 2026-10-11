@@ -106,6 +106,23 @@ const registryManifest = (packed, id, version, sha, siblings) => {
   };
 };
 
+// Each package's dist/types holds declarations for every source file it
+// reaches, including other packages'. Upstream's declarations import their own
+// package name and packages they never declare, such as @excalidraw/utils, or
+// @excalidraw/excalidraw from element. A strict install resolves those to
+// nothing and their types to any, so they point at the local copy instead.
+const declarationTarget = (specifier, id, declared) => {
+  const match = /^@excalidraw\/([a-z-]+)(\/.+)?$/.exec(specifier);
+  if (!match) {
+    return null;
+  }
+  const [, target, subpath = "/index"] = match;
+  if (target !== id && declared.includes(sourceName(target))) {
+    return null;
+  }
+  return `${target === "excalidraw" ? target : `${target}/src`}${subpath}`;
+};
+
 const consumerNpmrc = (registryUrl) => {
   const { host, pathname } = new URL(registryUrl);
   return `@redaphid:registry=${registryUrl}\n//${host}${pathname}:_authToken=\${NODE_AUTH_TOKEN}\n`;
@@ -114,6 +131,7 @@ const consumerNpmrc = (registryUrl) => {
 module.exports = {
   atVersion,
   consumerNpmrc,
+  declarationTarget,
   GITHUB_REGISTRY,
   LOCKSTEP,
   PUBLISH_ORDER,

@@ -3,6 +3,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const {
   consumerNpmrc,
+  declarationTarget,
   GITHUB_REGISTRY,
   registryManifest,
   siblingClosure,
@@ -191,6 +192,44 @@ describe("consumerNpmrc", () => {
     );
     expect(consumerNpmrc("http://127.0.0.1:4873/")).toBe(
       `@redaphid:registry=http://127.0.0.1:4873/\n//127.0.0.1:4873/:_authToken=\${NODE_AUTH_TOKEN}\n`,
+    );
+  });
+});
+
+describe("declarationTarget", () => {
+  const elementDeclares = [
+    "@excalidraw/common",
+    "@excalidraw/math",
+    "@excalidraw/fractional-indexing",
+  ];
+
+  it.each([
+    ["@excalidraw/element", "element/src/index"],
+    ["@excalidraw/element/types", "element/src/types"],
+    ["@excalidraw/excalidraw/types", "excalidraw/types"],
+    ["@excalidraw/utils/shape", "utils/src/shape"],
+  ])("points element's %s at its own copy, %s", (specifier, target) => {
+    // Defect: a self import or an undeclared package stays bare, and a strict
+    // install turns its types into any.
+    expect(declarationTarget(specifier, "element", elementDeclares)).toBe(
+      target,
+    );
+  });
+
+  it.each([
+    "@excalidraw/common",
+    "@excalidraw/common/utility-types",
+    "@excalidraw/math",
+    "react",
+  ])("leaves element's %s to resolve through its dependencies", (specifier) => {
+    // Defect: a declared sibling's types are copied, so two copies of one
+    // type no longer match.
+    expect(declarationTarget(specifier, "element", elementDeclares)).toBe(null);
+  });
+
+  it("points excalidraw's own name at its root", () => {
+    expect(declarationTarget("@excalidraw/excalidraw", "excalidraw", [])).toBe(
+      "excalidraw/index",
     );
   });
 });

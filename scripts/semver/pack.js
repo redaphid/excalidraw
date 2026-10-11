@@ -7,6 +7,7 @@ const { execSync } = require("child_process");
 
 const {
   atVersion,
+  declarationTarget,
   LOCKSTEP,
   registryManifest,
   registryName,
@@ -32,27 +33,62 @@ const writeJson = (file, value) =>
 const sha512 = (file) =>
   crypto.createHash("sha512").update(fs.readFileSync(file)).digest("base64");
 
+// macOS tar otherwise adds an AppleDouble ._ file beside every packed file.
+const ENV = { ...process.env, COPYFILE_DISABLE: "1" };
+
 // tar only ever sees relative archive names: Git for Windows' GNU tar reads
 // "D:\..." as a remote host.
-const tar = (args, cwd) => execSync(`tar ${args}`, { cwd });
+const tar = (args, cwd) => execSync(`tar ${args}`, { cwd, env: ENV });
+
+const SPECIFIER = /(\bfrom\s+|\bimport\(\s*)"(@excalidraw\/[^"]+)"/g;
+
+const declarationFiles = (dir) =>
+  fs
+    .readdirSync(dir, { recursive: true })
+    .filter((file) => file.endsWith(".d.ts"))
+    .map((file) => path.join(dir, file));
+
+const localizeDeclarations = (dir, id, manifest) => {
+  const types = path.join(dir, "dist", "types");
+  const declared = Object.keys({
+    ...manifest.dependencies,
+    ...manifest.peerDependencies,
+  });
+  const resolve = (target) =>
+    [`${target}.d.ts`, `${target}/index.d.ts`]
+      .map((candidate) => path.join(types, candidate))
+      .find((file) => fs.existsSync(file));
+  for (const file of declarationFiles(types)) {
+    const source = fs.readFileSync(file, "utf-8");
+    const localized = source.replace(SPECIFIER, (whole, prefix, specifier) => {
+      const target = declarationTarget(specifier, id, declared);
+      const resolved = target && resolve(target);
+      if (!resolved) {
+        return whole;
+      }
+      const relative = path
+        .relative(path.dirname(file), resolved.replace(/\.d\.ts$/, ""))
+        .split(path.sep)
+        .join("/");
+      return `${prefix}"${relative.startsWith(".") ? relative : `./${relative}`}"`;
+    });
+    if (localized !== source) {
+      fs.writeFileSync(file, localized);
+    }
+  }
+};
 
 const pack = ({ version }) => {
   const sha = execSync("git rev-parse HEAD", {
     cwd: ROOT,
     encoding: "utf-8",
   }).trim();
-  // macOS tar otherwise adds an AppleDouble ._ file beside every packed file.
-  const env = {
-    ...process.env,
-    COPYFILE_DISABLE: "1",
-    EXCALIDRAW_RELEASE_VERSION: version,
-  };
 
-  execSync("yarn rm:build", { cwd: ROOT, env, stdio: "inherit" });
+  execSync("yarn rm:build", { cwd: ROOT, env: ENV, stdio: "inherit" });
   for (const id of LOCKSTEP) {
     execSync("yarn run build:esm", {
       cwd: path.join(PACKAGES_DIR, id),
-      env,
+      env: ENV,
       stdio: "inherit",
     });
   }
@@ -62,11 +98,16 @@ const pack = ({ version }) => {
   for (const id of LOCKSTEP) {
     execSync(`yarn pack --filename ${path.join(work, `${id}.tgz`)}`, {
       cwd: path.join(PACKAGES_DIR, id),
-      env,
+      env: ENV,
       stdio: "inherit",
     });
     fs.mkdirSync(unpacked(id), { recursive: true });
     tar(`-xzf ${id}.tgz --strip-components=1 -C ${unpacked(id)}`, work);
+    localizeDeclarations(
+      unpacked(id),
+      id,
+      readJson(path.join(unpacked(id), "package.json")),
+    );
   }
   const packed = Object.fromEntries(
     LOCKSTEP.map((id) => [
@@ -113,7 +154,7 @@ const pack = ({ version }) => {
     const [{ filename }] = JSON.parse(
       execSync(
         `npm pack ${registryStaging} --pack-destination ${REGISTRY_DIR} --ignore-scripts --json`,
-        { env, encoding: "utf-8" },
+        { env: ENV, encoding: "utf-8" },
       ),
     );
     fs.renameSync(
@@ -125,6 +166,7 @@ const pack = ({ version }) => {
 
   const asset = (file) => ({
     file,
+    size: fs.statSync(path.join(OUT_DIR, file)).size,
     sha512: sha512(path.join(OUT_DIR, file)),
   });
   writeJson(path.join(OUT_DIR, "artifact.json"), {
