@@ -261,6 +261,35 @@ const sampleFrames = () => {
   };
 };
 
+/** canvases created so far, counted whether or not `counters` is set */
+let canvasesMade = 0;
+const createElement = document.createElement;
+document.createElement = function (
+  this: Document,
+  ...args: Parameters<Document["createElement"]>
+) {
+  if (String(args[0]).toLowerCase() === "canvas") {
+    canvasesMade++;
+  }
+  return createElement.apply(this, args);
+} as Document["createElement"];
+
+const QUIET_FRAMES = 10;
+const QUIET_TIMEOUT_MS = 30_000;
+
+/** waits until the editor stops building bitmaps, so a build that builds
+ * them a few per frame starts the gesture from the same state as one that
+ * builds them all at once */
+const canvasesQuiet = async () => {
+  const until = performance.now() + QUIET_TIMEOUT_MS;
+  let quiet = 0;
+  while (quiet < QUIET_FRAMES && performance.now() < until) {
+    const before = canvasesMade;
+    await nextFrame();
+    quiet = canvasesMade === before ? quiet + 1 : 0;
+  }
+};
+
 const runScenario = async (
   scenario: Scenario,
   api: ExcalidrawImperativeAPI,
@@ -275,6 +304,7 @@ const runScenario = async (
     },
   });
   await wait(VIEW_RESET_MS);
+  await canvasesQuiet();
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
