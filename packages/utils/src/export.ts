@@ -126,6 +126,8 @@ export const exportToBlob = async (
     mimeType?: string;
     quality?: number;
     exportPadding?: number;
+    /** passed to exportToCanvas */
+    restoreElements?: boolean;
   },
 ): Promise<Blob> => {
   let { mimeType = MIME_TYPES.png, quality } = opts;
