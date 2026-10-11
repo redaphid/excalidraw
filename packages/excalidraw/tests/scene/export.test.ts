@@ -697,3 +697,79 @@ describe("exporting frames", () => {
     });
   });
 });
+
+describe("exporting a region", () => {
+  // Two frames 200 apart, each with a child running past the edge that faces
+  // the other, and a region between them that holds only those overflows.
+  const frameA = API.createElement({
+    type: "frame",
+    id: "frame-a",
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+  });
+  const frameB = API.createElement({
+    type: "frame",
+    id: "frame-b",
+    x: 300,
+    y: 0,
+    width: 100,
+    height: 100,
+  });
+  const childA = API.createElement({
+    type: "rectangle",
+    x: 50,
+    y: 25,
+    width: 100,
+    height: 50,
+    frameId: frameA.id,
+  });
+  const childB = API.createElement({
+    type: "rectangle",
+    x: 250,
+    y: 25,
+    width: 100,
+    height: 50,
+    frameId: frameB.id,
+  });
+  const region = { x: 120, y: 0, width: 160, height: 100 };
+
+  const exportRegion = () =>
+    exportToCanvas({
+      elements: [childA, frameA, childB, frameB],
+      files: null,
+      appState: {
+        frameRendering: {
+          enabled: true,
+          clip: true,
+          outline: false,
+          name: false,
+        },
+      },
+      region,
+    });
+
+  it("sizes the canvas to the region", async () => {
+    const canvas = await exportRegion();
+    expect([canvas.width, canvas.height]).toEqual([160, 100]);
+  });
+
+  it("clips every frame's children to their frame, placed relative to the region", async () => {
+    const canvas = await exportRegion();
+    const events = (canvas.getContext("2d") as any).__getEvents();
+    const clippedAt = events.flatMap((event: any, i: number) =>
+      event.type === "clip"
+        ? events
+            .slice(0, i)
+            .filter((e: any) => e.type === "translate")
+            .slice(-1)
+            .map((e: any) => [e.props.x, e.props.y])
+        : [],
+    );
+    expect(clippedAt).toEqual([
+      [frameA.x - region.x, frameA.y - region.y],
+      [frameB.x - region.x, frameB.y - region.y],
+    ]);
+  });
+});
