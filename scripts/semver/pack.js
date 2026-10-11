@@ -70,7 +70,9 @@ const localizeDeclarations = (dir, id, manifest) => {
         .relative(path.dirname(file), resolved.replace(/\.d\.ts$/, ""))
         .split(path.sep)
         .join("/");
-      return `${prefix}"${relative.startsWith(".") ? relative : `./${relative}`}"`;
+      return `${prefix}"${
+        relative.startsWith(".") ? relative : `./${relative}`
+      }"`;
     });
     if (localized !== source) {
       fs.writeFileSync(file, localized);

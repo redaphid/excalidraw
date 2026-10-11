@@ -115,7 +115,9 @@ const nextStep = (observed, artifact) => {
   );
   if (!observed.tag) {
     return newer.length > 0
-      ? conflict(`v${newer.at(-1)} is newer than ${tag}. Release a version above it.`)
+      ? conflict(
+          `v${newer.at(-1)} is newer than ${tag}. Release a version above it.`,
+        )
       : { kind: "claim" };
   }
   const stranger = present.find(
@@ -457,7 +459,9 @@ const main = (io) => {
           throw failed(`Dry-run publishing ${entry.file}`, result);
         }
         console.info(
-          `Would publish ${registryName(id)}@${artifact.version} to ${GITHUB_REGISTRY}.`,
+          `Would publish ${registryName(id)}@${
+            artifact.version
+          } to ${GITHUB_REGISTRY}.`,
         );
       }
     } finally {

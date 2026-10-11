@@ -579,7 +579,9 @@ describe("main", () => {
     const { calls, io } = setup({ math });
     io.argv = [...io.argv, "--dry-run"];
 
-    expect(() => main(io)).toThrow(/Refusing to publish @redaphid\/excalidraw-math/);
+    expect(() => main(io)).toThrow(
+      /Refusing to publish @redaphid\/excalidraw-math/,
+    );
     expect(calls.filter(isPublishCall)).toEqual([]);
   });
 

@@ -67,6 +67,9 @@ describe("classify", () => {
     expect(
       classify(commit("chore(repo): version the packages 0.19.0-draw.23")),
     ).toBe(null);
+    expect(
+      classify(commit("chore: version the packages 0.19.0-draw.24 (#41)")),
+    ).toBe(null);
   });
 });
 
@@ -142,6 +145,21 @@ describe("planRelease", () => {
     expect(result.notes).toBe(
       "First semver release. Changes since v0.19.0-draw.21.\n\n## Features\n\n- feat(editor): add lasso (#12) (bbbbbbb)",
     );
+  });
+
+  it("keeps the notes under GitHub's release body limit", () => {
+    // Defect: an upstream merge with thousands of commits fails the release.
+    const commits = Array.from({ length: 5000 }, (_, i) =>
+      commit(`fix(editor): change number ${i} ${"x".repeat(40)}`),
+    );
+    const { notes } = plan({ commits });
+    expect(notes.length).toBeLessThan(125_000);
+    expect(notes).toMatch(
+      /\n\n\d+ more changes are not listed\. Compare v0\.19\.0-draw\.21\.\.\.v1\.0\.0 for all of them\.$/,
+    );
+    const listed = notes.split("\n- ").length - 1;
+    const omitted = Number(/(\d+) more changes/.exec(notes)![1]);
+    expect(listed + omitted).toBe(5000);
   });
 
   it("bumps by the highest change since the last release", () => {

@@ -1,8 +1,7 @@
 const TRAILER = "Release-Of: redaphid/excalidraw";
 const RELEASE_TAG = /^v(\d+)\.(\d+)\.(\d+)$/;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-const BOOKKEEPING =
-  /^chore(\([^)]*\))?: version the packages \S+( \(#\d+\))?$/;
+const BOOKKEEPING = /^chore(\([^)]*\))?: version the packages \S+( \(#\d+\))?$/;
 // GitHub refuses a release body over 125,000 characters.
 const MAX_NOTES = 100_000;
 const CONVENTIONAL = /^(\w+)(\([^)]*\))?(!)?:/;
@@ -114,7 +113,12 @@ const renderNotes = (plan) => {
   }
   const cut = notes.lastIndexOf("\n- ", MAX_NOTES);
   const omitted = notes.slice(cut).split("\n- ").length - 1;
-  return `${notes.slice(0, cut)}\n\n${omitted} more changes are not listed. Compare ${plan.since}...${plan.tag} for all of them.`;
+  return `${notes.slice(
+    0,
+    cut,
+  )}\n\n${omitted} more changes are not listed. Compare ${plan.since}...${
+    plan.tag
+  } for all of them.`;
 };
 
 const planRelease = ({ head, tags, isComplete, override, commits, since }) => {
