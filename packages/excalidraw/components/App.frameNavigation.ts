@@ -14,6 +14,8 @@ import {
   viewBounds,
 } from "../frameNavigation";
 
+import { TOGGLE_TOOLS } from "./Tools";
+
 import type { Direction, FrameModel } from "../frameNavigation";
 import type { AnimationOptions } from "../viewport";
 import type { AppState, ViewportOffsetsOptions } from "../types";
@@ -150,16 +152,25 @@ export class AppFrameNavigation {
     });
   };
 
+  /** the drawer can sit beside the canvas; on a phone it would cover it */
+  private besideCanvas = () =>
+    this.enabled && this.app.editorInterface.formFactor !== "phone";
+
   /** Picking the frame tool, by any path, opens the drawer beside it so each
-   * frame drawn shows up in the list. Not on a phone, where it would cover
-   * the canvas; it stays open after the tool changes. */
+   * frame drawn shows up in the list; it stays open after the tool changes.
+   * Coming back to the frame tool from the eraser or the hand (the pen's
+   * eraser end, E or H again, Escape) is no pick, so a drawer closed
+   * meanwhile stays closed. */
   handleToolChange = (prevState: AppState) => {
+    const prev = prevState.activeTool;
+    const back =
+      TOGGLE_TOOLS.includes(prev.type) && prev.lastActiveTool?.type === "frame";
     if (
-      this.enabled &&
+      this.besideCanvas() &&
       this.app.state.activeTool.type === "frame" &&
-      prevState.activeTool.type !== "frame" &&
-      !this.isDrawerOpen() &&
-      this.app.editorInterface.formFactor !== "phone"
+      prev.type !== "frame" &&
+      !back &&
+      !this.isDrawerOpen()
     ) {
       this.app.toggleSidebar({
         name: DEFAULT_SIDEBAR.name,
@@ -172,7 +183,9 @@ export class AppFrameNavigation {
   /** An undocked drawer closes on a press outside it, and starting a frame
    * on the canvas is one: with the frame tool in hand it stays open. */
   keepsDrawerOpen = () =>
-    this.isDrawerOpen() && this.app.state.activeTool.type === "frame";
+    this.besideCanvas() &&
+    this.isDrawerOpen() &&
+    this.app.state.activeTool.type === "frame";
 
   private step = (direction: Direction) => {
     const model = this.model();

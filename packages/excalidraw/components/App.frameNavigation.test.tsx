@@ -6,6 +6,7 @@ import {
   FRAMES_SIDEBAR_TAB,
   KEYS,
   LIBRARY_SIDEBAR_TAB,
+  POINTER_BUTTON,
 } from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
@@ -24,7 +25,13 @@ import {
   showView,
 } from "../tests/helpers/frames";
 import { Keyboard, Pointer, UI } from "../tests/helpers/ui";
-import { act, fireEvent, render, waitFor } from "../tests/test-utils";
+import {
+  act,
+  fireEvent,
+  GlobalTestState,
+  render,
+  waitFor,
+} from "../tests/test-utils";
 
 import App from "./App";
 
@@ -667,6 +674,37 @@ describe("the frame tool", () => {
   ];
   const drawer = { name: DEFAULT_SIDEBAR.name, tab: FRAMES_SIDEBAR_TAB };
 
+  const mountOnPhone = async () => {
+    await render(
+      <Excalidraw
+        handleKeyboardGlobally
+        frameNavigation={{}}
+        UIOptions={{ getFormFactor: () => "phone" }}
+      />,
+    );
+    fireEvent.resize(window);
+    await waitFor(() => expect(h.app.editorInterface.formFactor).toBe("phone"));
+    fakeClock();
+    API.setElements(board);
+  };
+
+  const closeDrawer = () =>
+    act(() => {
+      h.app.toggleSidebar({ name: null });
+    });
+
+  /** the pen turned over, its eraser end pressed to the canvas and lifted */
+  const eraserEnd = () => {
+    const pen = {
+      button: POINTER_BUTTON.ERASER,
+      pointerType: "pen",
+      clientX: 100,
+      clientY: 400,
+    };
+    fireEvent.pointerDown(GlobalTestState.interactiveCanvas, pen);
+    fireEvent.pointerUp(GlobalTestState.interactiveCanvas, pen);
+  };
+
   describe.each([
     ["from the toolbar", () => UI.clickExtraTool("frame")],
     ["with F", () => Keyboard.keyPress("f")],
@@ -747,6 +785,54 @@ describe("the frame tool", () => {
     });
   });
 
+  describe.each([
+    ["the pen's eraser end is pressed and lifted", eraserEnd],
+    [
+      "E is pressed twice",
+      () => ["e", "e"].forEach((key) => Keyboard.keyPress(key)),
+    ],
+    [
+      "H is pressed twice",
+      () => ["h", "h"].forEach((key) => Keyboard.keyPress(key)),
+    ],
+    [
+      "E then Escape are pressed",
+      () => ["e", KEYS.ESCAPE].forEach((key) => Keyboard.keyPress(key)),
+    ],
+  ])(
+    "when the drawer is closed with the frame tool in hand and %s",
+    (_, detour) => {
+      beforeEach(async () => {
+        await mount(board);
+        Keyboard.keyPress("f");
+        closeDrawer();
+        detour();
+      });
+
+      it("should be back on the frame tool", () => {
+        expect(h.state.activeTool.type).toBe("frame");
+      });
+
+      it("should leave the drawer closed", () => {
+        expect(h.state.openSidebar).toBeNull();
+      });
+    },
+  );
+
+  describe("when the frame tool is picked from the selection tool after a turn with the eraser", () => {
+    beforeEach(async () => {
+      await mount(board);
+      Keyboard.keyPress("f");
+      closeDrawer();
+      // the selection tool keeps the frame tool as the one before the eraser
+      ["e", "v", "f"].forEach((key) => Keyboard.keyPress(key));
+    });
+
+    it("should open the drawer", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+  });
+
   describe("when it is picked with frameNavigation off", () => {
     beforeEach(async () => {
       await mount(board, null);
@@ -764,19 +850,7 @@ describe("the frame tool", () => {
 
   describe("when it is picked on a phone", () => {
     beforeEach(async () => {
-      await render(
-        <Excalidraw
-          handleKeyboardGlobally
-          frameNavigation={{}}
-          UIOptions={{ getFormFactor: () => "phone" }}
-        />,
-      );
-      fireEvent.resize(window);
-      await waitFor(() =>
-        expect(h.app.editorInterface.formFactor).toBe("phone"),
-      );
-      fakeClock();
-      API.setElements(board);
+      await mountOnPhone();
       Keyboard.keyPress("f");
     });
 
@@ -785,6 +859,23 @@ describe("the frame tool", () => {
     });
 
     it("should leave the sidebar closed, off the canvas", () => {
+      expect(h.state.openSidebar).toBeNull();
+    });
+  });
+
+  describe("when a frame is started on a phone with the drawer opened by hand", () => {
+    beforeEach(async () => {
+      await mountOnPhone();
+      act(() => {
+        h.app.toggleSidebar(drawer);
+      });
+      Keyboard.keyPress("f");
+      mouse.reset();
+      mouse.downAt(100, 400);
+      mouse.up();
+    });
+
+    it("should close the drawer, as any press outside it does", () => {
       expect(h.state.openSidebar).toBeNull();
     });
   });
