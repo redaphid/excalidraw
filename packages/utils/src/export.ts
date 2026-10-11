@@ -22,6 +22,7 @@ import type {
   NonDeleted,
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
+import type { ExportRegion } from "@excalidraw/excalidraw/scene/export";
 import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
 
 export { MIME_TYPES };
@@ -47,9 +48,11 @@ export const exportToCanvas = ({
   getDimensions,
   exportPadding,
   exportingFrame,
+  region,
   restoreElements: shouldRestoreElements = true,
 }: ExportOpts & {
   exportPadding?: number;
+  region?: ExportRegion;
   /**
    * False for elements taken straight from a scene, which has already
    * restored them, to skip copying every element on every export.
@@ -71,7 +74,13 @@ export const exportToCanvas = ({
     restoredElements,
     { ...restoredAppState, offsetTop: 0, offsetLeft: 0, width: 0, height: 0 },
     files || {},
-    { exportBackground, exportPadding, viewBackgroundColor, exportingFrame },
+    {
+      exportBackground,
+      exportPadding,
+      viewBackgroundColor,
+      exportingFrame,
+      region,
+    },
     (width: number, height: number) => {
       const canvas = document.createElement("canvas");
 
