@@ -149,6 +149,8 @@ const generate = (
     "selection on the canvas",
   );
   const primary = dark ? accent : ink;
+  // icons on a primary fill: the selected sidebar tab, the primary buttons
+  const onPrimary = legible(null, panel, primary, 4.5, "icons on primary");
 
   // a board keeps ink drawn under other themes: a canvas of the opposite
   // lightness to the mode can hide all of it
@@ -307,6 +309,7 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --color-primary-hover: ${primary};
   --color-primary-light: ${active};
   --color-primary-light-darker: ${active};
+  --color-icon-white: ${onPrimary};
   --color-brand-hover: ${primary};
   --color-brand-active: ${primary};
   --select-highlight-color: ${accent};
