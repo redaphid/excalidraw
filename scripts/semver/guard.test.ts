@@ -93,9 +93,29 @@ describe("check-no-npm-publish.sh", () => {
       ".github/workflows/release.yml:2 R3",
     ],
     [
+      ".github/workflows/smoke.test.yml",
+      "steps:\n  - run: npm publish release/x.tgz\n",
+      ".github/workflows/smoke.test.yml:2 R3",
+    ],
+    [
+      ".github/workflows/ci.yml",
+      "steps:\n  - run: pnpm -r publish --no-git-checks\n",
+      ".github/workflows/ci.yml:2 R3",
+    ],
+    [
+      "scripts/release.js",
+      'execSync("npm --workspace packages/math publish");\n',
+      "scripts/release.js:1 R3",
+    ],
+    [
       ".github/workflows/ci.yml",
       "permissions:\n  packages: write\n",
       ".github/workflows/ci.yml:2 R4",
+    ],
+    [
+      ".github/workflows/ci.yml",
+      "permissions: write-all\n",
+      ".github/workflows/ci.yml:1 R4",
     ],
   ])("rejects %s with %j", (file, content, violation) => {
     // Defect: a path to npmjs, or a second publisher, gets past lint.

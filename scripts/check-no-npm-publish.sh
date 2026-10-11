@@ -7,7 +7,7 @@ all=() github=() workflows=() not_publisher=()
 while IFS= read -r -d '' file; do
   file=${file#./}
   case "$file" in
-    *.test.* | scripts/check-no-npm-publish.sh) continue ;;
+    scripts/*.test.* | scripts/check-no-npm-publish.sh) continue ;;
   esac
   all+=("$file")
   case "$file" in
@@ -43,10 +43,10 @@ check() {
 
 check R1 'registry\.npmjs\.org|registry\.yarnpkg\.com' "${all[@]}"
 check R2 'NPM_TOKEN|NODE_AUTH_TOKEN|registry-url' "${github[@]}"
-check R3 "(npm|yarn|pnpm)[[:space:]]+publish|yarn[[:space:]]+release|[\"'\`]publish[\"'\`]" "${not_publisher[@]}"
-check R4 'packages:[[:space:]]*write' "${workflows[@]}"
+check R3 "(^|[^[:alnum:]_-])(npm|yarn|pnpm)([[:space:]][^#]*)?[[:space:]]publish([[:space:]]|$|[\"'\`])|yarn[[:space:]]+release|[\"'\`]publish[\"'\`]" "${not_publisher[@]}"
+check R4 'packages:[[:space:]]*write|write-all' "${workflows[@]}"
 
 if [ "$violations" -gt 0 ]; then
-  echo "::error::$violations line(s) could publish outside scripts/semver/publish.js or reach npmjs. R1: npmjs or yarnpkg registry URL. R2: npm token or registry-url in .github. R3: a publish command outside scripts/semver/publish.js. R4: packages: write outside semver-release.yml."
+  echo "::error::$violations line(s) could publish outside scripts/semver/publish.js or reach npmjs. R1: npmjs or yarnpkg registry URL. R2: npm token or registry-url in .github. R3: a publish command outside scripts/semver/publish.js. R4: packages: write or write-all outside semver-release.yml."
   exit 1
 fi
