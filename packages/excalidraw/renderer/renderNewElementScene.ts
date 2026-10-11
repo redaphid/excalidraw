@@ -8,6 +8,8 @@ import {
   shouldApplyFrameClip,
 } from "@excalidraw/element";
 
+import type { Bounds } from "@excalidraw/common";
+
 import { getRelevantAppStateProps } from "../components/canvases/StaticCanvas";
 
 import {
@@ -18,7 +20,6 @@ import {
 
 import { frameClip, renderSceneElements } from "./staticScene";
 
-import type { Bounds } from "@excalidraw/common";
 import type { NewElementSceneRenderConfig } from "../scene/types";
 
 /**

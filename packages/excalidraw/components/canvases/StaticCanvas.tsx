@@ -74,7 +74,9 @@ const StaticCanvas = (props: StaticCanvasProps) => {
   return <div className="excalidraw__canvas-wrapper" ref={wrapperRef} />;
 };
 
-export const getRelevantAppStateProps = (appState: AppState): StaticCanvasAppState => {
+export const getRelevantAppStateProps = (
+  appState: AppState,
+): StaticCanvasAppState => {
   const relevantAppStateProps = {
     zoom: appState.zoom,
     scrollX: appState.scrollX,

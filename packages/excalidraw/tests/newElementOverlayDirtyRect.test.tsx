@@ -3,13 +3,13 @@ import { vi } from "vitest";
 
 import { getElementPaintBounds } from "@excalidraw/element";
 
+import type { Bounds } from "@excalidraw/common";
+
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
 import { Pointer, UI } from "./helpers/ui";
 import { render, unmountComponent } from "./test-utils";
-
-import type { Bounds } from "@excalidraw/common";
 
 unmountComponent();
 
