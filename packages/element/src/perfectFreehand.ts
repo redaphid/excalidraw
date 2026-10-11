@@ -956,13 +956,14 @@ export function getStroke(
   return getStrokeOutlinePoints(getStrokePoints(points, options), options);
 }
 
-// reading past the end of a point without pressure is a slow lookup
+// Reading past the end of a point without pressure is a slow lookup. A
+// negative pressure reads as none, like a missing one does.
 const pressureOf = (
   points: readonly (readonly number[])[],
   pressures: readonly number[] | undefined,
   i: number,
-) =>
-  pressures ? pressures[i] : points[i].length > 2 ? points[i][2] : undefined;
+): number =>
+  pressures ? pressures[i] : points[i].length > 2 ? points[i][2] : -1;
 
 /**
  * `getStroke` for a stroke that grows one point at a time, as it does while

@@ -11,7 +11,10 @@ import type {
 
 import * as utils from "../src";
 
-const getStrokeSpy = vi.spyOn(perfectFreehand, "getStroke");
+const traceSpy = vi.spyOn(
+  perfectFreehand.IncrementalStroke.prototype,
+  "getOutline",
+);
 
 const stroke = () =>
   API.createElement({
@@ -28,14 +31,14 @@ const exportTile = (elements: NonDeleted<ExcalidrawFreeDrawElement>[]) =>
 
 describe("freedraw export", () => {
   beforeEach(() => {
-    getStrokeSpy.mockClear();
+    traceSpy.mockClear();
   });
 
   it("traces an unchanged stroke once across exports", async () => {
     const element = stroke();
     await exportTile([element]);
     await exportTile([element]);
-    expect(getStrokeSpy).toHaveBeenCalledTimes(1);
+    expect(traceSpy).toHaveBeenCalledTimes(1);
   });
 
   it("traces the stroke again once its version changes", async () => {
@@ -45,6 +48,6 @@ describe("freedraw export", () => {
       points: [...element.points, pointFrom<LocalPoint>(60, 10)],
     });
     await exportTile([element]);
-    expect(getStrokeSpy).toHaveBeenCalledTimes(2);
+    expect(traceSpy).toHaveBeenCalledTimes(2);
   });
 });
