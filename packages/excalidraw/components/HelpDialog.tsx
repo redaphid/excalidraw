@@ -470,6 +470,10 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Right")]}
             />
             <Shortcut
+              label={t("labels.arrangeElements")}
+              shortcuts={[getShortcutKey("Shift+Alt+A")]}
+            />
+            <Shortcut
               label={t("labels.duplicateSelection")}
               shortcuts={[
                 getShortcutKey("CtrlOrCmd+D"),

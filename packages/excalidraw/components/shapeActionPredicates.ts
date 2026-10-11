@@ -23,6 +23,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { alignActionsPredicate } from "../actions/actionAlign";
+import { arrangeActionPredicate } from "../actions/actionArrange";
 import {
   canChangeRoundness,
   canHaveArrowheads,
@@ -181,6 +182,8 @@ export const getShapeActionPredicates = (
     align:
       !isSingleElementBoundContainer && alignActionsPredicate(appState, app),
     distribute: targetElements.length > 2,
+    arrange:
+      !isSingleElementBoundContainer && arrangeActionPredicate(appState, app),
 
     // per-element actions
     // NOTE: the full panel treats a bound container as linkable; the compact /
