@@ -232,14 +232,12 @@ const runScenario = async (
       selectedElementIds: {},
       theme: "light",
       viewBackgroundColor: "#fff",
-      // the ink layer only takes variable-width strokes
-      ...(renderer === "webgl"
-        ? {
-            currentItemStrokeVariability: "variable" as const,
-          }
-        : {}),
     },
   });
+  if (renderer === "webgl") {
+    // the ink layer only takes variable-width strokes
+    api.updateScene({ appState: { currentItemStrokeVariability: "variable" } });
+  }
   await wait(VIEW_RESET_MS);
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
