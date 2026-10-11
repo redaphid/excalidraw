@@ -1,5 +1,11 @@
 import { createHash } from "crypto";
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  mkdirSync,
+} from "fs";
 import { tmpdir } from "os";
 import { basename, join } from "path";
 
@@ -42,7 +48,10 @@ const manifestFor = (id: string): Manifest => ({
 const sha512 = (bytes: Buffer | string) =>
   createHash("sha512").update(bytes).digest("base64");
 
-const artifactFor = (hash: (file: string) => string) => {
+const artifactFor = (
+  hash: (file: string) => string,
+  size: (file: string) => number,
+) => {
   const entry = (id: string, file: string) => ({
     id,
     file,
@@ -51,7 +60,10 @@ const artifactFor = (hash: (file: string) => string) => {
   return {
     version: VERSION,
     sha: SHA,
-    assets: LOCKSTEP.map((id) => entry(id, `excalidraw-${id}-${VERSION}.tgz`)),
+    assets: LOCKSTEP.map((id) => {
+      const file = `excalidraw-${id}-${VERSION}.tgz`;
+      return { ...entry(id, file), size: size(file) };
+    }),
     registry: LOCKSTEP.map((id) => ({
       ...entry(id, `registry/redaphid-excalidraw-${id}-${VERSION}.tgz`),
       name: registryName(id),
@@ -59,7 +71,10 @@ const artifactFor = (hash: (file: string) => string) => {
   };
 };
 
-const ARTIFACT = artifactFor((file) => `digest-of-${file}`);
+const ARTIFACT = artifactFor(
+  (file) => `digest-of-${file}`,
+  (file) => file.length,
+);
 const registryFile = (id: string) =>
   ARTIFACT.registry.find((entry) => entry.id === id)!.file;
 const ours = (id: string) => ({
@@ -70,16 +85,17 @@ const packages = (ids: readonly string[]) =>
   Object.fromEntries(
     PUBLISH_ORDER.map((id) => [id, ids.includes(id) ? ours(id) : null]),
   );
-const assetNames = (count: number) =>
+const uploaded = (count: number) =>
   ARTIFACT.assets
     .slice(0, count)
-    .map((asset) => asset.file)
-    .sort();
+    .map((asset) => ({ name: asset.file, size: asset.size }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
 const world = (overrides: Record<string, unknown>) => ({
   tag: null,
   packages: packages([]),
   release: null,
+  releases: [],
   ...overrides,
 });
 
@@ -145,7 +161,7 @@ describe("nextStep", () => {
       world({
         ...claimed,
         packages: packages(PUBLISH_ORDER),
-        release: { draft: true, assets: assetNames(2) },
+        release: { draft: true, assets: uploaded(2) },
       }),
       {
         kind: "upload",
@@ -157,16 +173,38 @@ describe("nextStep", () => {
       world({
         ...claimed,
         packages: packages(PUBLISH_ORDER),
-        release: { draft: true, assets: assetNames(5) },
+        release: { draft: true, assets: uploaded(5) },
       }),
-      { kind: "undraft" },
+      { kind: "undraft", latest: true },
+    ],
+    [
+      "a newer version was released meanwhile",
+      world({
+        ...claimed,
+        packages: packages(PUBLISH_ORDER),
+        release: { draft: true, assets: uploaded(5) },
+        releases: ["1.0.0", "1.1.0"],
+      }),
+      { kind: "undraft", latest: false },
+    ],
+    [
+      "an asset upload was cut short",
+      world({
+        ...claimed,
+        packages: packages(PUBLISH_ORDER),
+        release: {
+          draft: true,
+          assets: [{ ...uploaded(1)[0], size: 1 }, ...uploaded(5).slice(1)],
+        },
+      }),
+      { kind: "upload", files: [ARTIFACT.assets[0].file] },
     ],
     [
       "the release is published",
       world({
         ...claimed,
         packages: packages(PUBLISH_ORDER),
-        release: { draft: false, assets: assetNames(5) },
+        release: { draft: false, assets: uploaded(5) },
       }),
       { kind: "done" },
     ],
@@ -195,6 +233,11 @@ describe("nextStep", () => {
       "a draft exists without a claim",
       world({ release: { draft: true, assets: [] } }),
       /not claimed.*draft v1\.0\.0/,
+    ],
+    [
+      "a newer version is already released",
+      world({ releases: ["1.2.0"] }),
+      /v1\.2\.0 is newer than v1\.0\.0/,
     ],
     [
       "a package was built from another commit",
@@ -278,10 +321,13 @@ const isGitHubWrite = ({ cmd, args }: Call) =>
 const setup = (manifests: Record<string, Manifest> = {}) => {
   const dir = mkdtempSync(join(tmpdir(), "semver-publish-test-"));
   mkdirSync(join(dir, "registry"));
-  const artifact = artifactFor((file) => {
-    writeFileSync(join(dir, file), `tarball ${file}`);
-    return sha512(`tarball ${file}`);
-  });
+  const artifact = artifactFor(
+    (file) => {
+      writeFileSync(join(dir, file), `tarball ${file}`);
+      return sha512(`tarball ${file}`);
+    },
+    (file) => statSync(join(dir, file)).size,
+  );
   writeFileSync(join(dir, "artifact.json"), JSON.stringify(artifact));
   writeFileSync(join(dir, "notes.md"), "First semver release.\n");
   const manifestByFile = new Map(
@@ -296,7 +342,12 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
     tagMessage: "",
     tagObjects: new Map<string, string>(),
     packages: new Map<string, { integrity: string; gitHead: string }>(),
-    release: null as null | { draft: boolean; assets: string[] },
+    release: null as null | {
+      draft: boolean;
+      assets: { name: string; size: number }[];
+    },
+    releases: [] as string[],
+    latest: null as null | string,
     failPublish: null as null | string,
     publishIsLost: false,
     viewsBeforeVisible: 0,
@@ -338,6 +389,9 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
             JSON.stringify({ error: { code: "E404" } }),
           );
     }
+    if (cmd === "npm" && verb === "publish" && args.includes("--dry-run")) {
+      return ok();
+    }
     if (cmd === "npm" && verb === "publish") {
       const manifest = manifestByFile.get(basename(target))!;
       if (manifest.name === state.failPublish) {
@@ -351,6 +405,13 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
         });
       }
       return ok();
+    }
+    if (cmd === "gh" && verb === "api" && target === "--paginate") {
+      return {
+        status: 0,
+        stdout: state.releases.map((tag) => `refs/tags/${tag}\n`).join(""),
+        stderr: "",
+      };
     }
     if (cmd === "gh" && verb === "api") {
       const body = options.input ? JSON.parse(options.input) : null;
@@ -380,7 +441,7 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
         return state.release
           ? ok({
               isDraft: state.release.draft,
-              assets: state.release.assets.map((name) => ({ name })),
+              assets: state.release.assets,
             })
           : fail("release not found");
       }
@@ -390,11 +451,17 @@ const setup = (manifests: Record<string, Manifest> = {}) => {
       }
       if (target === "upload") {
         const files = args.filter((arg) => arg.endsWith(".tgz"));
-        state.release!.assets.push(...files.map((file) => basename(file)));
+        state.release!.assets.push(
+          ...files.map((file) => ({
+            name: basename(file),
+            size: statSync(file).size,
+          })),
+        );
         return ok();
       }
       if (target === "edit") {
         state.release!.draft = false;
+        state.latest = args.find((arg) => arg.startsWith("--latest="))!;
         return ok();
       }
     }
@@ -458,7 +525,7 @@ describe("main", () => {
 
   it("publishes in order, releases, and a re-run writes nothing", () => {
     // Defect: a re-run of a finished release publishes or tags again.
-    const { state, calls, io } = setup();
+    const { artifact, state, calls, io } = setup();
 
     main(io);
 
@@ -471,14 +538,59 @@ describe("main", () => {
     );
     expect(state.release).toEqual({
       draft: false,
-      assets: ARTIFACT.assets.map((asset) => asset.file),
+      assets: artifact.assets.map((asset) => ({
+        name: asset.file,
+        size: asset.size,
+      })),
     });
+    expect(state.latest).toBe("--latest=true");
 
     calls.length = 0;
     main(io);
     expect(
       calls.filter((call) => isPublishCall(call) || isGitHubWrite(call)),
     ).toEqual([]);
+  });
+
+  it("dry-runs every publish against GitHub Packages and writes nothing", () => {
+    // Defect: a dry run tags, releases or really publishes.
+    const { state, calls, io } = setup();
+    io.argv = [...io.argv, "--dry-run"];
+
+    main(io);
+
+    const publishes = calls.filter(isPublishCall);
+    expect(publishes.map((call) => basename(call.args[1]))).toEqual(
+      PUBLISH_ORDER.map((id) => `redaphid-excalidraw-${id}-${VERSION}.tgz`),
+    );
+    for (const { args } of publishes) {
+      expect(args).toEqual(
+        expect.arrayContaining(["--dry-run", `--registry=${GITHUB_REGISTRY}`]),
+      );
+    }
+    expect(calls.filter((call) => call.cmd === "gh")).toEqual([]);
+    expect(state.packages.size).toBe(0);
+  });
+
+  it("dry-runs nothing when one tarball targets npmjs", () => {
+    // Defect: the dry run skips the guard, so CI never exercises it.
+    const math = manifestFor("math");
+    math.publishConfig.registry = "https://registry.npmjs.org/";
+    const { calls, io } = setup({ math });
+    io.argv = [...io.argv, "--dry-run"];
+
+    expect(() => main(io)).toThrow(/Refusing to publish @redaphid\/excalidraw-math/);
+    expect(calls.filter(isPublishCall)).toEqual([]);
+  });
+
+  it("claims nothing when a newer version is already released", () => {
+    // Defect: an old version is tagged and published above a newer release.
+    const { state, calls, io } = setup();
+    state.releases = ["v1.3.0"];
+
+    expect(() => main(io)).toThrow(/v1\.3\.0 is newer than v1\.0\.0/);
+    expect(calls.filter(isPublishCall)).toEqual([]);
+    expect(calls.filter(isGitHubWrite)).toEqual([]);
   });
 
   it("resumes after a crash without publishing a package twice", () => {

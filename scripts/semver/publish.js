@@ -12,7 +12,7 @@ const {
   registryName,
   sourceName,
 } = require("./packages");
-const { parseVersion, tagMessage } = require("./version");
+const { compareVersions, parseVersion, tagMessage } = require("./version");
 
 const MAX_STEPS = 12;
 const SETTLE_LOOKS = 6;
@@ -110,8 +110,13 @@ const nextStep = (observed, artifact) => {
       )} exist. Delete them, or release another version.`,
     );
   }
+  const newer = observed.releases.filter(
+    (other) => compareVersions(other, version) > 0,
+  );
   if (!observed.tag) {
-    return { kind: "claim" };
+    return newer.length > 0
+      ? conflict(`v${newer.at(-1)} is newer than ${tag}. Release a version above it.`)
+      : { kind: "claim" };
   }
   const stranger = present.find(
     (id) => !isOurs(observed.packages[id], registryEntry(artifact, id), sha),
@@ -129,12 +134,19 @@ const nextStep = (observed, artifact) => {
     return { kind: "draft" };
   }
   const files = artifact.assets
-    .map((asset) => asset.file)
-    .filter((file) => !observed.release.assets.includes(path.basename(file)));
+    .filter(
+      (asset) =>
+        !observed.release.assets.some(
+          (uploaded) =>
+            uploaded.name === path.basename(asset.file) &&
+            uploaded.size === asset.size,
+        ),
+    )
+    .map((asset) => asset.file);
   if (files.length > 0) {
     return { kind: "upload", files };
   }
-  return { kind: "undraft" };
+  return { kind: "undraft", latest: newer.length === 0 };
 };
 
 const failed = (what, result) =>
@@ -222,6 +234,25 @@ const observePackage = (ctx, id) => {
   throw failed(`npm view ${spec}`, result);
 };
 
+const observeReleases = (ctx) => {
+  const result = ctx.io.run("gh", [
+    "api",
+    "--paginate",
+    `repos/${ctx.repo}/git/matching-refs/tags/v`,
+    "--jq",
+    ".[].ref",
+  ]);
+  if (result.status !== 0) {
+    throw failed("Listing the release tags", result);
+  }
+  return result.stdout
+    .split("\n")
+    .map((ref) => /^refs\/tags\/v([1-9]\d*\.\d+\.\d+)$/.exec(ref.trim()))
+    .filter(Boolean)
+    .map((match) => match[1])
+    .sort(compareVersions);
+};
+
 const observeRelease = (ctx) => {
   const result = ctx.io.run("gh", [
     "release",
@@ -241,7 +272,9 @@ const observeRelease = (ctx) => {
   const release = JSON.parse(result.stdout);
   return {
     draft: release.isDraft,
-    assets: release.assets.map((asset) => asset.name).sort(),
+    assets: release.assets
+      .map(({ name, size }) => ({ name, size }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
   };
 };
 
@@ -251,6 +284,7 @@ const observe = (ctx) => ({
     PUBLISH_ORDER.map((id) => [id, observePackage(ctx, id)]),
   ),
   release: observeRelease(ctx),
+  releases: observeReleases(ctx),
 });
 
 const EXECUTE = {
@@ -277,9 +311,9 @@ const EXECUTE = {
         }),
       },
     );
-    // 422: another run created the ref first. The next observation decides
-    // whether that claim is ours.
-    if (ref.status !== 0 && !/HTTP 422/.test(ref.stderr)) {
+    // Another run created the ref first. The next observation decides whether
+    // that claim is ours.
+    if (ref.status !== 0 && !/Reference already exists/.test(ref.stderr)) {
       throw failed(`Creating refs/tags/${ctx.tag}`, ref);
     }
     return `Claimed ${ctx.tag} at ${sha}.`;
@@ -322,7 +356,7 @@ const EXECUTE = {
       .map((file) => path.basename(file))
       .join(", ")}.`;
   },
-  undraft: (ctx) => {
+  undraft: (ctx, step) => {
     gh(ctx, [
       "release",
       "edit",
@@ -330,7 +364,7 @@ const EXECUTE = {
       "--repo",
       ctx.repo,
       "--draft=false",
-      "--latest",
+      `--latest=${step.latest}`,
     ]);
     return `Published the ${ctx.tag} release.`;
   },
@@ -351,6 +385,11 @@ const loadArtifact = (dir) => {
   const ids = artifact.registry.map((entry) => entry.id);
   if ([...ids].sort().join() !== [...LOCKSTEP].sort().join()) {
     problems.push(`the registry tarballs are for ${ids.join(", ")}`);
+  }
+  for (const entry of artifact.assets) {
+    if (fs.statSync(path.join(dir, entry.file)).size !== entry.size) {
+      problems.push(`${entry.file} is not ${entry.size} bytes`);
+    }
   }
   for (const entry of [...artifact.assets, ...artifact.registry]) {
     if (sha512Of(path.join(dir, entry.file)) !== entry.sha512) {
@@ -377,12 +416,14 @@ const main = (io) => {
     options: {
       dir: { type: "string", default: "release" },
       notes: { type: "string" },
+      "dry-run": { type: "boolean", default: false },
     },
   });
+  const dryRun = values["dry-run"];
   const repo = io.env.GITHUB_REPOSITORY;
-  if (!values.notes || !repo || !io.env.GITHUB_TOKEN) {
+  if (!dryRun && (!values.notes || !repo || !io.env.GITHUB_TOKEN)) {
     throw new Error(
-      "Usage: GITHUB_TOKEN=<token> GITHUB_REPOSITORY=<owner/repo> node scripts/semver/publish.js --dir=release --notes=<file>",
+      "Usage: GITHUB_TOKEN=<token> GITHUB_REPOSITORY=<owner/repo> node scripts/semver/publish.js --dir=release --notes=<file> [--dry-run]",
     );
   }
   const dir = path.resolve(values.dir);
@@ -399,8 +440,31 @@ const main = (io) => {
   const userconfig = path.join(workdir, "npmrc");
   fs.writeFileSync(
     userconfig,
-    `//${new URL(GITHUB_REGISTRY).host}/:_authToken=\${GITHUB_TOKEN}\n`,
+    dryRun
+      ? ""
+      : `//${new URL(GITHUB_REGISTRY).host}/:_authToken=\${GITHUB_TOKEN}\n`,
   );
+  if (dryRun) {
+    try {
+      for (const id of PUBLISH_ORDER) {
+        const entry = registryEntry(artifact, id);
+        const result = npm({ io, workdir, userconfig }, [
+          "publish",
+          path.join(dir, entry.file),
+          "--dry-run",
+        ]);
+        if (result.status !== 0) {
+          throw failed(`Dry-run publishing ${entry.file}`, result);
+        }
+        console.info(
+          `Would publish ${registryName(id)}@${artifact.version} to ${GITHUB_REGISTRY}.`,
+        );
+      }
+    } finally {
+      fs.rmSync(workdir, { recursive: true, force: true });
+    }
+    return;
+  }
   const ctx = {
     io,
     repo,
