@@ -80,9 +80,7 @@
       "description": "For low vision: black ground, white text and 2px white edges, yellow for focus and selection, bold strokes and larger text. The reference for an accessibility theme.",
       "pen": "Bold constant-width marker; pressure is ignored so every line stays legible.",
       "generated": false,
-      "caveats": [
-        "New elements get bold strokes and large text, and collaborators see them at that size."
-      ]
+      "caveats": ["New elements get bold strokes and large text, and collaborators see them at that size."]
     },
     {
       "name": "locked-profile",
@@ -145,9 +143,7 @@
       "description": "Green phosphor on black: monospace everything, square corners, and a dim glow on UI text with nothing else lit. For console-flavored boards.",
       "pen": "Thin constant-width phosphor trace.",
       "generated": true,
-      "caveats": [
-        "Element greens display at #6fc76f at most, the brightest green dark mode can show. Only the unfiltered UI text gets full phosphor green."
-      ]
+      "caveats": ["Element greens display at #6fc76f at most, the brightest green dark mode can show. Only the unfiltered UI text gets full phosphor green."]
     },
     {
       "name": "westworld-night",
