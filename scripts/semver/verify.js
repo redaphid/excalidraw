@@ -143,8 +143,12 @@ const registryConsumer = (label, managerName, dependencies, target) => {
 const TSC = require.resolve("typescript/bin/tsc");
 
 // A declaration import that resolves to nothing turns its types into any
-// without an error under skipLibCheck, so the check turns it off and fails on
-// any unresolved module, and on any error in the consumer's own file.
+// without an error under skipLibCheck, so the check turns it off. It fails on
+// any error in the consumer's own file, and on any unresolved module in the
+// fork's packages except upstream's JSON locale import, which tsc never emits.
+const UNRESOLVED =
+  /^(?:\S*\/)?node_modules\/(?:\S*\/)?@(?:excalidraw|redaphid)\/\S+: error TS2307: Cannot find module '(?![^']*\.json')/;
+
 const typeProblems = (dir, specifier) => {
   fs.writeFileSync(
     path.join(dir, "check.ts"),
@@ -177,7 +181,7 @@ const typeProblems = (dir, specifier) => {
   });
   return result.stdout
     .split("\n")
-    .filter((line) => /^check\.ts|error TS2307:/.test(line));
+    .filter((line) => line.startsWith("check.ts") || UNRESOLVED.test(line));
 };
 
 const resolvedSibling = (from, sibling) => {
