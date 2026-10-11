@@ -79,15 +79,20 @@ const LayersFieldset = ({
 );
 
 /**
- * The align + distribute fieldset, identical across every styles-panel layout.
- * Button order is mirrored for RTL so the leftmost button always aligns left.
+ * The align, distribute and auto-arrange fieldset, identical across every
+ * styles-panel layout. Button order is mirrored for RTL so the leftmost button
+ * always aligns left.
  */
 const AlignFieldset = ({
   renderAction,
+  showAlign,
   showDistribute,
+  showArrange,
 }: {
   renderAction: ActionManager["renderAction"];
+  showAlign: boolean;
   showDistribute: boolean;
+  showArrange: boolean;
 }) => {
   const isRTL = document.documentElement.getAttribute("dir") === "rtl";
 
@@ -95,28 +100,37 @@ const AlignFieldset = ({
     <fieldset>
       <legend>{t("labels.align")}</legend>
       <div className="buttonList align-buttons">
-        <div className="align-buttons__row">
-          {isRTL ? (
-            <>
-              {renderAction("alignRight")}
-              {renderAction("alignHorizontallyCentered")}
-              {renderAction("alignLeft")}
-            </>
-          ) : (
-            <>
-              {renderAction("alignLeft")}
-              {renderAction("alignHorizontallyCentered")}
-              {renderAction("alignRight")}
-            </>
-          )}
-          {showDistribute && renderAction("distributeHorizontally")}
-        </div>
-        <div className="align-buttons__row">
-          {renderAction("alignTop")}
-          {renderAction("alignVerticallyCentered")}
-          {renderAction("alignBottom")}
-          {showDistribute && renderAction("distributeVertically")}
-        </div>
+        {showAlign && (
+          <>
+            <div className="align-buttons__row">
+              {isRTL ? (
+                <>
+                  {renderAction("alignRight")}
+                  {renderAction("alignHorizontallyCentered")}
+                  {renderAction("alignLeft")}
+                </>
+              ) : (
+                <>
+                  {renderAction("alignLeft")}
+                  {renderAction("alignHorizontallyCentered")}
+                  {renderAction("alignRight")}
+                </>
+              )}
+              {showDistribute && renderAction("distributeHorizontally")}
+            </div>
+            <div className="align-buttons__row">
+              {renderAction("alignTop")}
+              {renderAction("alignVerticallyCentered")}
+              {renderAction("alignBottom")}
+              {showDistribute && renderAction("distributeVertically")}
+            </div>
+          </>
+        )}
+        {showArrange && (
+          <div className="align-buttons__row">
+            {renderAction("arrangeElements")}
+          </div>
+        )}
       </div>
     </fieldset>
   );
@@ -194,9 +208,11 @@ export const SelectedShapeActions = ({
 
       {predicates.layers && <LayersFieldset renderAction={renderAction} />}
 
-      {predicates.align && (
+      {(predicates.align || predicates.arrange) && (
         <AlignFieldset
           renderAction={renderAction}
+          showAlign={predicates.align}
+          showArrange={predicates.arrange}
           showDistribute={predicates.distribute}
         />
       )}
@@ -559,9 +575,11 @@ const CombinedExtraActions = ({
                 <LayersFieldset renderAction={renderAction} />
               )}
 
-              {predicates.align && (
+              {(predicates.align || predicates.arrange) && (
                 <AlignFieldset
                   renderAction={renderAction}
+                  showAlign={predicates.align}
+                  showArrange={predicates.arrange}
                   showDistribute={predicates.distribute}
                 />
               )}

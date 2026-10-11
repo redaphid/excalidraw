@@ -130,6 +130,7 @@
     "centerHorizontally": "Center horizontally",
     "distributeHorizontally": "Distribute horizontally",
     "distributeVertically": "Distribute vertically",
+    "arrangeElements": "Auto-arrange",
     "flipHorizontal": "Flip horizontal",
     "flipVertical": "Flip vertical",
     "viewMode": "View mode",
@@ -594,7 +595,11 @@
     "pasteAsSingleElement": "Use {{shortcut}} to paste as a single element,\nor paste into an existing text editor",
     "unableToEmbed": "Embedding this url is currently not allowed. Raise an issue on GitHub to request the url whitelisted",
     "unrecognizedLinkFormat": "The link you embedded does not match the expected format. Please try to paste the 'embed' string provided by the source site",
-    "elementLinkCopied": "Link copied to clipboard"
+    "elementLinkCopied": "Link copied to clipboard",
+    "nothingToArrange": "Nothing to arrange: select two or more shapes, or a frame with shapes",
+    "nothingToArrangeSkipped": "Nothing to arrange: only shapes are arranged, so {{types}} stayed where they were. Select two or more shapes, or a frame with shapes",
+    "arrangeStale": "The board changed while arranging. Try again.",
+    "arrangedIntoFrame": "Arranged. The frame grew and now overlaps {{frames}}; move it if needed"
   },
   "colors": {
     "transparent": "Transparent",
