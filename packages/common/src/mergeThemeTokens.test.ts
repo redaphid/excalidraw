@@ -43,12 +43,65 @@ describe("mergeThemeTokens", () => {
   it("reads a bare value as the token's $value", () => {
     const merged = mergeThemeTokens(BASE, {
       color: { accent: "#2dd4bf" },
-      font: { size: "20px" },
+      font: { size: { value: 20, unit: "px" } },
     });
     expect(merged).toMatchObject({
       color: { accent: { $value: "#2dd4bf" } },
-      font: { size: { $type: "dimension", $value: "20px" } },
+      font: { size: { $type: "dimension", $value: { value: 20, unit: "px" } } },
     });
+  });
+
+  it("reads a bare 2025.10 color object as one value", () => {
+    const color = {
+      colorSpace: "srgb",
+      components: [0, 0.5, 0.5],
+      hex: "#008080",
+    };
+    const merged = mergeThemeTokens(BASE, { color: { accent: color } });
+    expect((merged.color as any).accent).toEqual({
+      $type: "color",
+      $value: color,
+    });
+  });
+
+  it("replaces a group given a value, dropping its tokens", () => {
+    const merged = mergeThemeTokens(BASE, { color: { palette: "#ffffff" } });
+    expect((merged.color as any).palette).toEqual({ $value: "#ffffff" });
+  });
+
+  it("merges a dotted key and a nested key that meet in one override", () => {
+    const merged = mergeThemeTokens(BASE, {
+      "color.palette.blue": "#1971c2",
+      color: { palette: { teal: "#0c8599" } },
+    });
+    expect(Object.keys((merged.color as any).palette)).toEqual([
+      "red",
+      "green",
+      "blue",
+      "teal",
+    ]);
+  });
+
+  it("types a new token at a profile path, so the document stands alone", () => {
+    const merged = mergeThemeTokens(
+      {},
+      {
+        "color.canvas": "#0b2b2b",
+        "color.palette.teal": "#0c8599",
+        "pen.width": 2,
+      },
+    );
+    expect(merged).toEqual({
+      color: {
+        canvas: { $type: "color", $value: "#0b2b2b" },
+        palette: { teal: { $type: "color", $value: "#0c8599" } },
+      },
+      pen: { width: { $type: "number", $value: 2 } },
+    });
+  });
+
+  it("leaves nothing behind when it removes a token that is not there", () => {
+    expect(mergeThemeTokens(BASE, { "color.nope.deeper": null })).toEqual(BASE);
   });
 
   it("reads a dotted key as a token path", () => {
@@ -97,7 +150,10 @@ describe("mergeThemeTokens", () => {
       { "color.accent": "#111111" },
       { "color.accent": "#2dd4bf" },
     );
-    expect((merged.color as any).accent).toEqual({ $value: "#2dd4bf" });
+    expect((merged.color as any).accent).toEqual({
+      $type: "color",
+      $value: "#2dd4bf",
+    });
     expect(JSON.stringify(BASE)).toBe(before);
   });
 

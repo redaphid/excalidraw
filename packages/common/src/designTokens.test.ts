@@ -209,6 +209,35 @@ describe("reading design tokens", () => {
     );
   });
 
+  it("reports a profile token it cannot read once, not also as ignored", () => {
+    const { warnings } = theme({ canvas: { $value: "not a color" } });
+
+    expect(warnings.filter(({ token }) => token === "color.canvas")).toEqual([
+      expect.objectContaining({ reason: "not a color this field takes" }),
+    ]);
+  });
+
+  it("does not call a typography token it reads the fonts from ignored", () => {
+    const { warnings } = generateThemeCss({
+      font: {
+        typography: {
+          $type: "typography",
+          $value: {
+            fontFamily: "Inter",
+            fontSize: { value: 16, unit: "px" },
+            fontWeight: 400,
+            letterSpacing: { value: 0, unit: "px" },
+            lineHeight: 1.4,
+          },
+        },
+      },
+    });
+
+    expect(warnings.map(({ reason }) => reason)).not.toContainEqual(
+      expect.stringContaining("ignored"),
+    );
+  });
+
   it("reads a profile token without a $type as the profile's type", () => {
     const { css, warnings } = generateThemeCss({
       color: { canvas: { $value: "#0b2b2b" } },
