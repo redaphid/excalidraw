@@ -193,6 +193,41 @@ describe("reading design tokens", () => {
     }).toEqual({ header: "/* Probe. mode: dark */", modeWarnings: [] });
   });
 
+  it("reports a token of the profile's groups that it ignores, with the path meant", () => {
+    const { warnings } = theme({
+      canvas: { $value: "#ffffff" },
+      ink: { $value: "#222222" },
+      acent: { $value: "#0f62fe" },
+      palette: { red: { $value: "#da1e28" } },
+    });
+
+    expect(warnings).toContainEqual(
+      expect.objectContaining({
+        token: "color.acent",
+        reason: expect.stringContaining("color.accent"),
+      }),
+    );
+  });
+
+  it("reads a profile token without a $type as the profile's type", () => {
+    const { css, warnings } = generateThemeCss({
+      color: { canvas: { $value: "#0b2b2b" } },
+      font: { size: { $value: "20px" } },
+    });
+
+    expect({
+      background: property(css, "--canvas-background"),
+      warned: warnings.filter(({ token }) =>
+        ["color.canvas", "font.size"].includes(token),
+      ),
+    }).toEqual({ background: "#0b2b2b", warned: [] });
+  });
+
+  it("returns the mode it painted in", () => {
+    expect(theme({ canvas: { $value: "#0b0c0e" } }).mode).toBe("dark");
+    expect(theme({ canvas: { $value: "#fbfaf7" } }).mode).toBe("light");
+  });
+
   it("rejects a document that is not an object", () => {
     expect(() => generateThemeCss([] as never)).toThrow(TypeError);
   });

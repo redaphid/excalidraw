@@ -154,13 +154,30 @@ The choices only this editor has live in `$extensions["com.hypnodroid.draw"]`: `
 
 Aliases (`{color.accent}`) and `$ref` JSON pointers resolve anywhere, a pointer to a token reads as that token, a group's `$root` token stands for the group, and a token's type comes from its own `$type`, its alias's, or its closest group's, as the spec says. Colors are read in sRGB, with components from 0 to 1. Another color space is read through its `hex` fallback, and the hex strings of drafts before 2025.10 (`#rgb`, `#rrggbb`, `#rrggbbaa`) are accepted. Theme colors are opaque, so alpha is dropped with a warning. `$extends` is not supported: a group that extends another gets a warning, and only its own tokens are read.
 
+A token at one of these paths may leave out `$type`: the profile gives each path its type. So `{ "color": { "canvas": { "$value": "#0b2b2b" } } }` is a theme.
+
+### Layer tokens over a theme
+
+`mergeThemeTokens(base, ...overrides)` returns a new document with each override layered over the base, in order. A token is replaced whole but keeps the `$type` and `$description` of the one it replaces. A bare value is read as `{ "$value": value }`, a dotted key such as `"color.accent"` as a token path (DTCG names cannot contain dots), and `null` removes a token or group. `$extensions` merge field by field.
+
+```ts
+import { generateThemeCss, mergeThemeTokens } from "@excalidraw/common";
+import terminal from "@excalidraw/excalidraw/themes/terminal.tokens.json";
+
+const { css, mode, warnings } = generateThemeCss(
+  mergeThemeTokens(terminal, { "color.accent": "#2dd4bf" }),
+);
+```
+
+Three colors over an empty base, `mergeThemeTokens({}, { "color.canvas": "#0b2b2b", "color.ink": "#e6fffa", "color.accent": "#2dd4bf" })`, make a whole theme. `mode` is the mode the theme paints in: its `mode` field, else dark on a dark canvas.
+
 ### A designer's export
 
 A file without this profile still makes a theme. Each role is found by name when its path is missing: `color.background` or `bg` for the canvas, `text` or `foreground` for the ink, `primary` or `brand` for the accent, a `body` or `sans` font family or a `typography` token for the fonts. The file's other colors, in order and without the canvas and ink, become the palette. Everything else takes the defaults above.
 
 ### Warnings
 
-Each warning is `{ token, from, to, reason }`, and `token` is the DTCG path behind it: `color.ink` for ink the generator darkened, `color.palette.sage` for a wash it paled, `color.background` for a role it found by name, `$extensions["com.hypnodroid.draw"].mode` for a mode that disagrees with the canvas. Values it cannot read fall back to the default and say why.
+Each warning is `{ token, from, to, reason }`, and `token` is the DTCG path behind it: `color.ink` for ink the generator darkened, `color.palette.sage` for a wash it paled, `color.background` for a role it found by name, `$extensions["com.hypnodroid.draw"].mode` for a mode that disagrees with the canvas. Values it cannot read fall back to the default and say why. A token under one of the profile's groups (`color`, `font`, `grid`, `stroke`, `pen`, `surface`, `frame`) that no role reads and no alias points at is reported as ignored, with the closest profile path when one is near: `color.acent` asks whether you meant `color.accent`.
 
 The generator is pure: no DOM, no Node built-ins, no editor code. A server, a Cloudflare Worker or an MCP tool can import it from `@excalidraw/common` without the editor. `THEME_TOKENS_SCHEMA` is the profile's JSON Schema, for validating tokens an agent wrote; the package ships it as `themes/tokens.schema.json`. The sample themes marked `generated` in `themes/index.json` are generated from `themes/<name>.tokens.json` (`yarn theme:gen <name>`).
 

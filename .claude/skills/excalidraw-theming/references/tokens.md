@@ -29,6 +29,8 @@ Colors are 2025.10 color objects, `{ "colorSpace": "srgb", "components": [r, g, 
 
 The root `$description` is one or two sentences on the look. It becomes the CSS header comment.
 
+A token at a profile path may leave out `$type`. `mergeThemeTokens(base, ...overrides)` from `@excalidraw/common` layers partial documents over a theme: bare values, dotted paths (`"color.accent": "#2dd4bf"`) and `null` to remove a token. `generateThemeCss` also returns `mode`, the mode the theme paints in.
+
 ## The extension
 
 Choices that are this editor's own live in `$extensions["com.hypnodroid.draw"]`. Each one is optional.
@@ -65,7 +67,7 @@ A file a designer exported, without this profile, still makes a theme. A missing
 
 ## Warnings
 
-Each warning is `{ token, from, to, reason }`, and `token` is the DTCG path behind it: `color.ink`, `color.accent`, `color.active`, `color.palette.sage`, or `$extensions["com.hypnodroid.draw"].mode`. For a color it moved, `from` and `to` are the colors before and after, and `reason` names the surface it failed on and the ratio it needed. The reader also warns about values it could not read, roles it found by name and roles it filled with defaults. Colors the generator derives itself, such as secondary text, are fixed silently.
+Each warning is `{ token, from, to, reason }`, and `token` is the DTCG path behind it: `color.ink`, `color.accent`, `color.active`, `color.palette.sage`, or `$extensions["com.hypnodroid.draw"].mode`. For a color it moved, `from` and `to` are the colors before and after, and `reason` names the surface it failed on and the ratio it needed. The reader also warns about values it could not read, roles it found by name, roles it filled with defaults, and tokens under the profile's groups that nothing reads (a likely typo, named with the closest profile path). Colors the generator derives itself, such as secondary text, are fixed silently.
 
 ## When to hand-edit instead
 

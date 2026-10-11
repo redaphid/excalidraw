@@ -469,8 +469,9 @@ export const readThemeTokens = (
     fallback: T,
   ): T => {
     const resolved = resolve(path);
+    // the profile gives each path it reads a type, so a token there may leave it out
     const value =
-      "error" in resolved || resolved.type !== type
+      "error" in resolved || (resolved.type ?? type) !== type
         ? undefined
         : parse(resolved.value);
     if (value !== undefined) {
@@ -880,6 +881,8 @@ export const readThemeTokens = (
     }),
   };
 
+  warnings.push(...ignoredTokens(document, tokens, claimed));
+
   return {
     spec,
     paths: {
@@ -893,6 +896,82 @@ export const readThemeTokens = (
     },
     warnings,
   };
+};
+
+/** edits to turn `a` into `b`: inserts, deletes and substitutions */
+const editDistance = (a: string, b: string) => {
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(
+        previous[j] + 1,
+        row[j - 1] + 1,
+        previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    previous = row;
+  }
+  return previous[b.length];
+};
+
+/**
+ * Tokens under the profile's own groups (`color`, `font`, ...) that no role
+ * read and no alias points at: most often a misspelled path. A designer's
+ * other groups, such as `spacing`, are left alone.
+ */
+const ignoredTokens = (
+  document: Record<string, unknown>,
+  tokens: Map<string, Entry>,
+  claimed: Set<string>,
+): ThemeWarning[] => {
+  const groups = THEME_TOKENS_SCHEMA.properties;
+  const known = Object.entries(groups).flatMap(([group, schema]) =>
+    group.startsWith("$") || !("properties" in schema)
+      ? []
+      : Object.keys(schema.properties)
+          .filter((name) => !name.startsWith("$"))
+          .map((name) => `${group}.${name}`),
+  );
+  const referenced = new Set(
+    [...JSON.stringify(document).matchAll(/\{([^{}"]+)\}|"#\/([^"]+)"/g)].map(
+      ([, alias, pointer]) =>
+        alias ??
+        pointer
+          .split("/")
+          .filter((key) => !key.startsWith("$"))
+          .map(unescapePointer)
+          .join("."),
+    ),
+  );
+  return [...tokens.entries()]
+    .filter(
+      ([path]) =>
+        path.split(".")[0] in groups &&
+        !path.startsWith("$") &&
+        !claimed.has(path) &&
+        !referenced.has(path),
+    )
+    .map(([path, { node }]) => {
+      const meant = known
+        .map((candidate) => ({
+          candidate,
+          distance: editDistance(path, candidate),
+        }))
+        .sort((a, b) => a.distance - b.distance)[0];
+      const group = path.split(".")[0];
+      return {
+        token: path,
+        from: show(node.$value ?? node),
+        to: "",
+        reason:
+          meant && meant.distance <= 3
+            ? `not a theme token, so it is ignored: did you mean ${meant.candidate}?`
+            : `not a theme token, so it is ignored: ${group} takes ${known
+                .filter((candidate) => candidate.startsWith(`${group}.`))
+                .join(", ")}`,
+      };
+    });
 };
 
 const ALIAS_VALUE = {
