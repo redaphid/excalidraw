@@ -46,7 +46,11 @@ import type {
 } from "@excalidraw/excalidraw/scene/types";
 
 import { getElementDetailScale } from "./authoring";
-import { getStroke, getStrokePoints } from "./perfectFreehand";
+import {
+  getStroke,
+  getStrokePoints,
+  IncrementalStroke,
+} from "./perfectFreehand";
 
 import { elementWithCanvasCache } from "./renderElement";
 
@@ -70,6 +74,8 @@ import {
   getElementAbsoluteCoords,
 } from "./bounds";
 import { shouldTestInside } from "./collision";
+
+import type { StrokeOptions } from "./perfectFreehand";
 
 import type {
   ExcalidrawElement,
@@ -1305,6 +1311,12 @@ const CONSTANT_WIDTH_FREEDRAW = {
 const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
   element.strokeOptions?.streamline ?? DEFAULT_STROKE_STREAMLINE;
 
+// https://easings.net/#easeOutSine
+const easeOutSine = (t: number) => Math.sin((t * Math.PI) / 2);
+
+let lastStroke: { options: StrokeOptions; stroke: IncrementalStroke } | null =
+  null;
+
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
  * perfect-freehand. This is the original Excalidraw freedraw look.
@@ -1312,24 +1324,36 @@ const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
 const getVariableWidthFreedrawOutline = (
   element: ExcalidrawFreeDrawElement,
 ): [number, number][] => {
-  // If input points are empty (should they ever be?) return a dot
-  const inputPoints = element.simulatePressure
-    ? element.points
-    : element.points.length
-    ? element.points.map(
-        ([x, y], i) => [x, y, element.pressures[i]] as [number, number, number],
-      )
-    : [[0, 0, 0.5]];
-
-  return getStroke(inputPoints as number[][], {
+  const options: StrokeOptions = {
     simulatePressure: element.simulatePressure,
     size: element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR,
     thinning: VARIABLE_WIDTH_FREEDRAW.THINNING,
     smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
     streamline: getFreedrawStreamline(element),
-    easing: (t) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
+    easing: easeOutSine,
     last: true,
-  }) as [number, number][];
+  };
+
+  // If input points are empty (should they ever be?) return a dot
+  if (!element.points.length) {
+    return getStroke([[0, 0, 0.5]], options) as [number, number][];
+  }
+
+  // The stroke being drawn is outlined on every pointer move, one point
+  // longer each time, so keep its outline to resume.
+  if (
+    !lastStroke ||
+    lastStroke.options.simulatePressure !== options.simulatePressure ||
+    lastStroke.options.size !== options.size ||
+    lastStroke.options.streamline !== options.streamline
+  ) {
+    lastStroke = { options, stroke: new IncrementalStroke(options) };
+  }
+
+  return lastStroke.stroke.getOutline(
+    element.points,
+    element.simulatePressure ? undefined : element.pressures,
+  ) as [number, number][];
 };
 
 const createLaserPointer = (element: ExcalidrawFreeDrawElement) =>
