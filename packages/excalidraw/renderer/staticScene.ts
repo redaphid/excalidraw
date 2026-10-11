@@ -539,7 +539,9 @@ const paintedUnderNewElement = new WeakMap<
   PaintedUnderNewElement
 >();
 
-const countLoadedImages = (imageCache: StaticCanvasRenderConfig["imageCache"]) => {
+const countLoadedImages = (
+  imageCache: StaticCanvasRenderConfig["imageCache"],
+) => {
   let count = 0;
   for (const { image } of imageCache.values()) {
     if (!(image instanceof Promise)) {
@@ -597,6 +599,12 @@ const elementsToPaintOver = (
     !isShallowEqual(
       getStaticSceneAppState(painted.config.appState as AppState),
       getStaticSceneAppState(next.appState as AppState),
+      {
+        // a new element drawn inside a frame highlights it until released;
+        // the static scene clips by it only for elements being dragged
+        frameToHighlight: (a, b) =>
+          a === b || !next.appState.selectedElementsAreBeingDragged,
+      },
     ) ||
     !isShallowEqual(painted.config.renderConfig, next.renderConfig, {
       // compared above as the bitmaps themselves
