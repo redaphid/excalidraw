@@ -6,13 +6,14 @@ This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [dr
 
 **[Benchmark it](https://redaphid.github.io/excalidraw/?bench)**: the same page with `?bench` loads three generated boards instead of your drawing and, on **run**, scripts a pan, a wheel zoom, a two-finger pinch and a pen stroke on each. It reports the median, 95th-percentile and mean time between animation frames per gesture, with the device pixel ratio and user agent, and **copy JSON** puts the report on the clipboard. `?bench=auto` starts on load, `&only=mixed/pan,deep/zoom` picks gestures, and `&counters` adds draw-call and work counts per frame (these slow the frames, so time without them). It never touches the saved drawing ([`playground/bench/`](playground/bench)).
 
-The fork changes five things:
+The fork changes six things:
 
 - **Deep zoom.** The editor zooms from 0.1x to 1,000,000x, and the wheel and trackpad zoom by the same ratio per tick at any depth.
 - **Rendering at depth.** Freehand strokes and text stay sharp at any zoom, including during animated camera moves, and zooming does not stall on rebuilding per-element bitmaps.
 - **Zoom-relative authoring.** An opt-in mode where new work is sized in screen pixels, so a pen stroke or a rectangle made at 10,000x looks the same on screen as one made at 1x.
 - **Pen size.** A continuous pen-size slider replaces the three freehand presets, and the presets that remain are thinner.
 - **Frame navigation.** An opt-in frames drawer, breadcrumb, arrow-key stepping between frames and bookmark keys.
+- **Themes.** A `css` prop restyles one editor: its UI, its canvas (background, grid, selection, frames) and the stroke character of new elements, from a stylesheet or from JSON tokens through `generateThemeCss`. See [docs/theming.md](docs/theming.md).
 
 For everything else, see [upstream's README](https://github.com/excalidraw/excalidraw/blob/master/README.md) (or [the copy at the fork point](https://github.com/excalidraw/excalidraw/blob/5a406e51875157bece389b9bc92d41ff241d5f3d/README.md)).
 
@@ -47,7 +48,7 @@ Each release also attaches one tarball per package, which installs from its URL 
 "@excalidraw/excalidraw": "https://github.com/redaphid/excalidraw/releases/download/v0.19.0-draw.N/excalidraw-excalidraw-0.19.0-draw.N.tgz"
 ```
 
-Replace `N` with a release number from [Releases](https://github.com/redaphid/excalidraw/releases), or use a `vX.Y.Z` release from 1.0.0 on. The versions are `0.19.0-draw.N` so they sort above upstream's npm `0.18.1` ([`a5e5b09f`](https://github.com/redaphid/excalidraw/commit/a5e5b09f)).
+Replace the version with a `vX.Y.Z` release from [Releases](https://github.com/redaphid/excalidraw/releases), such as `v1.0.0/excalidraw-excalidraw-1.0.0.tgz`. Releases before 1.0.0 were numbered `0.19.0-draw.N` so they sorted above upstream's npm `0.18.1` ([`a5e5b09f`](https://github.com/redaphid/excalidraw/commit/a5e5b09f)), and they stay downloadable.
 
 **Element format.** A release reads and writes upstream `master`'s element format, not npm `0.18.1`'s (freedraw `strokeOptions`, arrow bindings as `{ elementId, fixedPoint, mode }`, sticky notes). A `0.18.1` client misreads these elements, so every client sharing a scene has to move to the fork together. Elements made with `authoringUnits="screen"` away from 1x also carry an optional `authoringScale` field (see below).
 
