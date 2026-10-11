@@ -82,7 +82,9 @@ const pack = ({ version }) => {
   );
   if (unversioned.length > 0) {
     throw new Error(
-      `${unversioned.join(", ")} not at ${version}. Run node scripts/semver/bump.js ${version} and commit it first.`,
+      `${unversioned.join(
+        ", ",
+      )} not at ${version}. Run node scripts/semver/bump.js ${version} and commit it first.`,
     );
   }
   const sha = execSync("git rev-parse HEAD", {
@@ -169,7 +171,6 @@ const pack = ({ version }) => {
     );
   }
   fs.rmSync(work, { recursive: true, force: true });
-
 };
 
 if (require.main === module) {
