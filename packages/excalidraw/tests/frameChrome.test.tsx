@@ -6,6 +6,8 @@ import type {
 } from "@excalidraw/element/types";
 
 import { CommandPalette, Excalidraw, MainMenu } from "../index";
+import { clearAppStateForLocalStorage } from "../appState";
+import { restoreAppState } from "../data/restore";
 
 import { API } from "./helpers/api";
 import {
@@ -182,6 +184,20 @@ describe("Show frames", () => {
       it("restores the outline and the name", () => {
         expect(paint()).toEqual({ outlined: true, clipped: true });
         expect(frameName()).toBe("Board");
+      });
+    });
+  });
+
+  describe("toggled off, saved and restored", () => {
+    beforeEach(toggleFromMenu);
+
+    it("stays hidden and keeps clipping", () => {
+      const saved = JSON.stringify(clearAppStateForLocalStorage(h.state));
+      expect(restoreAppState(JSON.parse(saved), null).frameRendering).toEqual({
+        enabled: true,
+        clip: true,
+        name: false,
+        outline: false,
       });
     });
   });
