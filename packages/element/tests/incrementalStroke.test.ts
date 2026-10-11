@@ -4,6 +4,7 @@ import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
 import { getFreedrawOutlinePoints } from "../src";
 import { getStroke, IncrementalStroke } from "../src/perfectFreehand";
+import { IncrementalSvgPath } from "../src/shape";
 
 import type { StrokeOptions } from "../src/perfectFreehand";
 import type { ExcalidrawFreeDrawElement } from "../src/types";
@@ -182,5 +183,78 @@ describe("a freedraw element drawn point by point", () => {
         ),
       );
     }
+  });
+});
+
+describe("IncrementalSvgPath", () => {
+  it.each([
+    { pen: "variable", simulatePressure: true },
+    { pen: "variable", simulatePressure: false },
+    { pen: "constant", simulatePressure: true },
+  ] as const)(
+    "paths each outline of a growing $pen stroke as from scratch (simulatePressure $simulatePressure)",
+    ({ pen, simulatePressure }) => {
+      const random = seeded(0x9a7);
+      const { points, pressures } = randomStroke(random, 300, 1);
+      const path = new IncrementalSvgPath();
+      for (let n = 1; n <= points.length; n++) {
+        const element: ExcalidrawFreeDrawElement = {
+          ...(API.createElement({
+            type: "freedraw",
+            strokeOptions: { variability: pen, streamline: 0.5 },
+            points: points
+              .slice(0, n)
+              .map(([x, y]) => pointFrom<LocalPoint>(x, y)),
+          }) as ExcalidrawFreeDrawElement),
+          simulatePressure,
+          pressures: pressures.slice(0, n),
+        };
+        const outline = getFreedrawOutlinePoints(element);
+        expect(path.getPath(outline)).toBe(
+          new IncrementalSvgPath().getPath(outline),
+        );
+      }
+    },
+  );
+
+  it("paths outlines edited anywhere as from scratch", () => {
+    const random = seeded(0xed17);
+    let outline = randomStroke(random, 40, 1).points;
+    const path = new IncrementalSvgPath();
+    for (let edit = 0; edit < 500; edit++) {
+      const at = Math.floor(random() * outline.length);
+      const point = [random() * 100, random() * 100];
+      const roll = random();
+      outline =
+        roll < 0.3
+          ? [...outline.slice(0, at), point, ...outline.slice(at)]
+          : roll < 0.6 && outline.length > 1
+          ? [...outline.slice(0, at), ...outline.slice(at + 1)]
+          : outline.map((old, i) => (i === at ? point : old));
+      expect(path.getPath(outline)).toBe(
+        new IncrementalSvgPath().getPath(outline),
+      );
+    }
+  });
+
+  it("paths an outline that differs only in its first point", () => {
+    const random = seeded(0x52);
+    const outline = randomStroke(random, 50, 1).points;
+    const path = new IncrementalSvgPath();
+    path.getPath(outline);
+    const moved = outline.map(([x, y], i) => (i === 0 ? [x + 1, y] : [x, y]));
+    expect(path.getPath(moved)).toBe(new IncrementalSvgPath().getPath(moved));
+  });
+
+  it("paths an outline that differs only in its middle", () => {
+    const random = seeded(0x51);
+    const outline = randomStroke(random, 50, 1).points;
+    const path = new IncrementalSvgPath();
+    path.getPath(outline);
+    const bent = outline.map(([x, y], i) => (i === 25 ? [x + 1, y] : [x, y]));
+    expect(path.getPath(bent)).toBe(new IncrementalSvgPath().getPath(bent));
+    expect(path.getPath(outline.slice(0, 1))).toBe(
+      new IncrementalSvgPath().getPath(outline.slice(0, 1)),
+    );
   });
 });
