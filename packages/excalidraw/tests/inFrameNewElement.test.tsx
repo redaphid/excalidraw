@@ -17,9 +17,6 @@ const { h } = window;
 const renderStaticScene = vi.spyOn(StaticScene, "renderStaticScene");
 const renderElement = vi.spyOn(ElementModule, "renderElement");
 
-// the last frame schedules settled bitmaps; build them before teardown
-afterEach(() => new Promise((resolve) => setTimeout(resolve, 400)));
-
 /** element ids each canvas painted since the last call, in paint order */
 const takePainted = () => {
   const painted = { static: [] as string[], newElement: [] as string[] };
