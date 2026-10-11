@@ -214,10 +214,13 @@ const sampleFrames = () => {
   let running = true;
   let lastAt = performance.now();
   let lastTotals = totals();
-  const tick = (at: number) => {
+  // the time is read here rather than taken from the frame's timestamp, so
+  // a sample's time and counters cover the same work
+  const tick = () => {
     if (!running) {
       return;
     }
+    const at = performance.now();
     const now = totals();
     const delta = { ...now };
     for (const key of Object.keys(delta) as (keyof Counters)[]) {
