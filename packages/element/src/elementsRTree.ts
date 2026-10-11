@@ -1,8 +1,6 @@
-import { PackedRTree } from "@excalidraw/common";
+import { PackedRTree, type Bounds } from "@excalidraw/common";
 
 import { getElementMutationCount } from "./mutateElement";
-
-import type { Bounds } from "@excalidraw/common";
 
 import type { ElementsMap, ExcalidrawElement } from "./types";
 
