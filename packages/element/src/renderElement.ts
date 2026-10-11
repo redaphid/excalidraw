@@ -864,15 +864,22 @@ export const buildSceneBitmaps = (
   }
   due.sort((a, b) => a.distance - b.distance);
   const built = Math.min(due.length, BITMAPS_PER_FRAME);
-  for (let i = 0; i < built; i++) {
-    redrawElementWithCanvas(
-      due[i].element,
-      elementsMap,
-      renderConfig,
-      appState,
-    );
-  }
-  for (let i = built; i < due.length; i++) {
+  for (let i = 0; i < due.length; i++) {
+    if (i < built) {
+      try {
+        redrawElementWithCanvas(
+          due[i].element,
+          elementsMap,
+          renderConfig,
+          appState,
+        );
+        continue;
+      } catch (error) {
+        // e.g. a canvas context refused past WebKit's memory cap: drawn as
+        // if over the cap, and tried again on the next paint that asks
+        console.error(error);
+      }
+    }
     if (!due[i].stale) {
       missing.add(due[i].element);
     }
