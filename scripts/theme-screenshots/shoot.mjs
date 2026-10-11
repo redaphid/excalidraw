@@ -8,8 +8,13 @@
  *
  *   --themes a,b        theme ids (default: "default" plus themes/index.json)
  *   --viewports a,b     desktop, tablet, phone (default: all)
- *   --states a,b        canvas, selected, colorpicker, menu, dialog, pen
- *                       (default: all; pen also writes a 2.5x close-up, penzoom)
+ *   --states a,b        canvas, selected, colorpicker, menu, dialog, frames,
+ *                       pen (default: all; pen also writes a 2.5x close-up,
+ *                       penzoom)
+ *   --flip              also shoot each theme in the other mode, as a host's
+ *                       light and dark toggle shows it, to <shot>-flip.png
+ *   --audit             also write OUT/<theme>/audit.json: per shot, the text
+ *                       and icons below WCAG contrast, and the console errors
  *   --browser NAME      chromium (default), firefox or webkit
  *   --root DIR          the checkout whose playground to serve (default: this
  *                       one), e.g. a worktree of master for a before/after diff
@@ -209,6 +214,8 @@ const STATES = {
     await page.click('[data-testid="main-menu-trigger"]');
   },
   dialog: (page) => setAppState(page, { openDialog: { name: "help" } }),
+  frames: (page) =>
+    setAppState(page, { openSidebar: { name: "default", tab: "frames" } }),
   pen: (page) => drawPen(page, { realtime: false }),
 };
 
@@ -229,6 +236,10 @@ const parseArgs = (argv) => {
       args.root = path.resolve(value());
     } else if (flag === "--out") {
       args.out = path.resolve(value());
+    } else if (flag === "--flip") {
+      args.flip = true;
+    } else if (flag === "--audit") {
+      args.audit = true;
     } else if (flag === "--video") {
       args.video = true;
     } else if (flag === "--contact") {
@@ -276,6 +287,13 @@ const LEFT_PANEL = { desktop: 220, tablet: 220, phone: 0 };
 
 const openTheme = async (context, baseUrl, theme, scene) => {
   const page = await context.newPage();
+  page.errors = [];
+  page.on("pageerror", (error) => page.errors.push(String(error)));
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      page.errors.push(message.text());
+    }
+  });
   await page.addInitScript((scene) => {
     // the dev server serves fonts from absolute /@fs/ paths, which the font
     // loader resolves only against EXCALIDRAW_ASSET_PATH
@@ -337,6 +355,141 @@ const fitScene = (page, viewport) =>
     });
   }, LEFT_PANEL[viewport]);
 
+/**
+ * Text below WCAG AA (4.5:1, or 3:1 when large) and icons below 3:1, each
+ * against the opaque color behind it. Where that color cannot be known
+ * (a gradient, an image, a blur or a filter on the way up) the element is
+ * skipped rather than guessed.
+ */
+const auditContrast = (page) =>
+  page.evaluate(() => {
+    const parse = (color) => {
+      const match = color.match(/rgba?\(([^)]+)\)/);
+      if (!match) {
+        return null;
+      }
+      const [r, g, b, a = 1] = match[1]
+        .split(/[\s,/]+/)
+        .filter(Boolean)
+        .map(Number);
+      return { r, g, b, a };
+    };
+    const over = (top, bottom) => ({
+      r: top.r * top.a + bottom.r * (1 - top.a),
+      g: top.g * top.a + bottom.g * (1 - top.a),
+      b: top.b * top.a + bottom.b * (1 - top.a),
+      a: 1,
+    });
+    const luminance = ({ r, g, b }) => {
+      const [R, G, B] = [r, g, b].map((value) => {
+        const c = value / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+    };
+    const ratio = (a, b) => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const hex = ({ r, g, b }) =>
+      `#${[r, g, b]
+        .map((value) => Math.round(value).toString(16).padStart(2, "0"))
+        .join("")}`;
+    const probe = document.createElement("div");
+    probe.style.background = window.excalidrawAPI.getAppState().theme ===
+      "dark"
+      ? "var(--canvas-background, #121212)"
+      : "var(--canvas-background, #ffffff)";
+    document.querySelector(".excalidraw").append(probe);
+    const canvas = parse(getComputedStyle(probe).backgroundColor);
+    probe.remove();
+    const backdrop = (el) => {
+      const layers = [];
+      for (let node = el; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (
+          style.backgroundImage !== "none" ||
+          (style.backdropFilter ?? "none") !== "none" ||
+          style.filter !== "none"
+        ) {
+          return null;
+        }
+        const bg = parse(style.backgroundColor);
+        if (bg && bg.a > 0) {
+          layers.push(bg);
+          if (bg.a === 1) {
+            return layers.reduceRight((below, layer) => over(layer, below));
+          }
+        }
+      }
+      return layers.reduceRight((below, layer) => over(layer, below), canvas);
+    };
+    const visible = (el) => {
+      const rect = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return (
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom > 0 &&
+        rect.right > 0 &&
+        rect.top < innerHeight &&
+        rect.left < innerWidth &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) > 0.1
+      );
+    };
+    const findings = new Map();
+    const check = (el, kind) => {
+      if (!visible(el)) {
+        return;
+      }
+      const style = getComputedStyle(el);
+      const fg = parse(style.color);
+      const bg = backdrop(el);
+      if (!fg || !bg || fg.a === 0) {
+        return;
+      }
+      const size = parseFloat(style.fontSize);
+      const large =
+        size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+      const min = kind === "icon" || large ? 3 : 4.5;
+      const shown = over(fg, bg);
+      const value = ratio(shown, bg);
+      if (value >= min) {
+        return;
+      }
+      const label =
+        kind === "icon"
+          ? el.closest("[title]")?.getAttribute("title") ??
+            el.closest("[aria-label]")?.getAttribute("aria-label") ??
+            String(el.parentElement?.className ?? "icon")
+          : el.textContent.trim().slice(0, 40);
+      findings.set(`${kind}|${label}|${hex(shown)}|${hex(bg)}`, {
+        kind,
+        label,
+        fg: hex(shown),
+        bg: hex(bg),
+        ratio: Math.round(value * 100) / 100,
+        min,
+      });
+    };
+    for (const el of document.querySelectorAll(".excalidraw *")) {
+      if (el instanceof SVGElement) {
+        if (el.tagName === "svg" && !el.parentElement.closest("svg")) {
+          check(el, "icon");
+        }
+        continue;
+      }
+      const ownText = [...el.childNodes].some(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+      );
+      if (ownText) {
+        check(el, "text");
+      }
+    }
+    return [...findings.values()].sort((a, b) => a.ratio - b.ratio);
+  });
+
 const capture = async (page, file) => {
   await page.mouse.move(-10, -10);
   await settle(page);
@@ -352,8 +505,10 @@ const shootOne = async (
   style,
   state,
   dir,
+  { flip = false, audit = null } = {},
 ) => {
   const pen = state === "pen";
+  const name = `${viewport}-${state}${flip ? "-flip" : ""}`;
   const page = await openTheme(
     context,
     baseUrl,
@@ -363,6 +518,16 @@ const shootOne = async (
       : JSON.stringify(buildScene(style, { stacked: viewport === "phone" })),
   );
   await settle(page);
+  if (flip) {
+    await page.evaluate(() => {
+      const api = window.excalidrawAPI;
+      const { theme } = api.getAppState();
+      api.updateScene({
+        appState: { theme: theme === "dark" ? "light" : "dark" },
+      });
+    });
+    await settle(page);
+  }
   if (!pen) {
     await fitScene(page, viewport);
     await settle(page);
@@ -372,12 +537,22 @@ const shootOne = async (
     // fresh strokes are redrawn crisp from cache a moment after drawing
     await page.waitForTimeout(1500);
   }
-  await capture(page, path.join(dir, `${viewport}-${state}.png`));
+  await capture(page, path.join(dir, `${name}.png`));
+  if (audit) {
+    audit[name] = {
+      mode: await page.evaluate(() => window.excalidrawAPI.getAppState().theme),
+      contrast: await auditContrast(page),
+      errors: page.errors,
+    };
+  }
   if (pen) {
     await zoomOnHandwriting(page);
     // after a zoom the editor redraws cached strokes crisp, a moment later
     await page.waitForTimeout(1500);
-    await capture(page, path.join(dir, `${viewport}-penzoom.png`));
+    await capture(
+      page,
+      path.join(dir, `${name.replace("-pen", "-penzoom")}.png`),
+    );
   }
   await page.close();
 };
@@ -410,16 +585,28 @@ const shoot = (args) =>
           if (!styles.has(theme)) {
             styles.set(theme, await readStyle(context, baseUrl, theme));
           }
-          for (const state of args.states) {
-            await shootOne(
-              context,
-              baseUrl,
-              viewport,
-              theme,
-              styles.get(theme),
-              state,
-              dir,
-            );
+          const auditFile = path.join(dir, "audit.json");
+          const audit = args.audit
+            ? fs.existsSync(auditFile)
+              ? JSON.parse(fs.readFileSync(auditFile, "utf8"))
+              : {}
+            : null;
+          for (const flip of args.flip ? [false, true] : [false]) {
+            for (const state of args.states) {
+              await shootOne(
+                context,
+                baseUrl,
+                viewport,
+                theme,
+                styles.get(theme),
+                state,
+                dir,
+                { flip, audit },
+              );
+            }
+          }
+          if (audit) {
+            fs.writeFileSync(auditFile, `${JSON.stringify(audit, null, 2)}\n`);
           }
         }
         await context.close();
