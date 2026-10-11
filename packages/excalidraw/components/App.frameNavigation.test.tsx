@@ -30,10 +30,12 @@ import {
   fireEvent,
   GlobalTestState,
   render,
+  screen,
   waitFor,
 } from "../tests/test-utils";
 
 import App from "./App";
+import { CommandPalette } from "./CommandPalette/CommandPalette";
 
 import type { MockInstance } from "vitest";
 
@@ -730,6 +732,28 @@ describe("the frame tool", () => {
     });
   });
 
+  describe("when it is picked from the command palette", () => {
+    beforeEach(async () => {
+      await render(
+        <Excalidraw handleKeyboardGlobally frameNavigation={{}}>
+          <CommandPalette />
+        </Excalidraw>,
+      );
+      fakeClock();
+      API.setElements(board);
+      fireEvent.keyDown(document, { key: KEYS.SLASH, ctrlKey: true });
+      fireEvent.click(screen.getByText("Frame tool"));
+    });
+
+    it("should pick the tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should open the Frames drawer", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+  });
+
   describe("when it is picked with the library open", () => {
     beforeEach(async () => {
       await mount(board);
@@ -785,51 +809,106 @@ describe("the frame tool", () => {
     });
   });
 
+  /** keys pressed one after another */
+  const keys =
+    (...pressed: string[]) =>
+    () =>
+      pressed.forEach((key) => Keyboard.keyPress(key));
+
+  // a pick opens the drawer; a return to the frame tool from the eraser or
+  // the hand does not, so a drawer closed meanwhile stays closed
   describe.each([
-    ["the pen's eraser end is pressed and lifted", eraserEnd],
+    ["E then F", keys("e", "f"), drawer],
+    ["H then F", keys("h", "f"), drawer],
     [
-      "E is pressed twice",
-      () => ["e", "e"].forEach((key) => Keyboard.keyPress(key)),
+      "H then the toolbar's frame tool",
+      () => {
+        Keyboard.keyPress("h");
+        UI.clickExtraTool("frame");
+      },
+      drawer,
     ],
-    [
-      "H is pressed twice",
-      () => ["h", "h"].forEach((key) => Keyboard.keyPress(key)),
-    ],
-    [
-      "E then Escape are pressed",
-      () => ["e", KEYS.ESCAPE].forEach((key) => Keyboard.keyPress(key)),
-    ],
+    ["F again", keys("f"), drawer],
+    ["E, V then F", keys("e", "v", "f"), drawer],
+    ["the pen's eraser end, pressed and lifted", eraserEnd, null],
+    ["E twice", keys("e", "e"), null],
+    ["H twice", keys("h", "h"), null],
+    ["E then Escape", keys("e", KEYS.ESCAPE), null],
   ])(
-    "when the drawer is closed with the frame tool in hand and %s",
-    (_, detour) => {
+    "when the drawer is closed with the frame tool in hand, then %s",
+    (_, then, expected) => {
       beforeEach(async () => {
         await mount(board);
         Keyboard.keyPress("f");
         closeDrawer();
-        detour();
+        then();
       });
 
-      it("should be back on the frame tool", () => {
+      it("should be on the frame tool", () => {
         expect(h.state.activeTool.type).toBe("frame");
       });
 
-      it("should leave the drawer closed", () => {
-        expect(h.state.openSidebar).toBeNull();
-      });
+      it(
+        expected ? "should open the drawer" : "should leave the drawer closed",
+        () => {
+          expect(h.state.openSidebar).toEqual(expected);
+        },
+      );
     },
   );
 
-  describe("when the frame tool is picked from the selection tool after a turn with the eraser", () => {
+  describe("when two frames are drawn with the tool locked and the drawer closed", () => {
     beforeEach(async () => {
       await mount(board);
       Keyboard.keyPress("f");
+      Keyboard.keyPress("q");
       closeDrawer();
-      // the selection tool keeps the frame tool as the one before the eraser
-      ["e", "v", "f"].forEach((key) => Keyboard.keyPress(key));
+      mouse.reset();
+      mouse.downAt(100, 400);
+      mouse.moveTo(300, 550);
+      mouse.up();
+      mouse.downAt(400, 400);
+      mouse.moveTo(600, 550);
+      mouse.up();
     });
 
-    it("should open the drawer", () => {
-      expect(h.state.openSidebar).toEqual(drawer);
+    it("should draw both with the frame tool still in hand", () => {
+      expect(
+        h.elements.filter((element) => element.type === "frame"),
+      ).toHaveLength(board.length + 2);
+      expect(h.state.activeTool).toMatchObject({ type: "frame", locked: true });
+    });
+
+    it("should leave the drawer closed", () => {
+      expect(h.state.openSidebar).toBeNull();
+    });
+  });
+
+  describe("when F is pressed while the host holds another tool", () => {
+    beforeEach(async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      await render(
+        <Excalidraw
+          handleKeyboardGlobally
+          frameNavigation={{}}
+          activeTool={{ type: "rectangle" }}
+        />,
+      );
+      fakeClock();
+      API.setElements(board);
+      Keyboard.keyPress("f");
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("should keep the host's tool", () => {
+      expect(h.state.activeTool.type).toBe("rectangle");
+    });
+
+    it("should leave the sidebar closed", () => {
+      expect(h.state.openSidebar).toBeNull();
     });
   });
 

@@ -14,8 +14,6 @@ import {
   viewBounds,
 } from "../frameNavigation";
 
-import { TOGGLE_TOOLS } from "./Tools";
-
 import type { Direction, FrameModel } from "../frameNavigation";
 import type { AnimationOptions } from "../viewport";
 import type { AppState, ViewportOffsetsOptions } from "../types";
@@ -156,28 +154,27 @@ export class AppFrameNavigation {
   private besideCanvas = () =>
     this.enabled && this.app.editorInterface.formFactor !== "phone";
 
-  /** Picking the frame tool, by any path, opens the drawer beside it so each
-   * frame drawn shows up in the list; it stays open after the tool changes.
-   * Coming back to the frame tool from the eraser or the hand (the pen's
-   * eraser end, E or H again, Escape) is no pick, so a drawer closed
-   * meanwhile stays closed. */
-  handleToolChange = (prevState: AppState) => {
-    const prev = prevState.activeTool;
-    const back =
-      TOGGLE_TOOLS.includes(prev.type) && prev.lastActiveTool?.type === "frame";
-    if (
-      this.besideCanvas() &&
-      this.app.state.activeTool.type === "frame" &&
-      prev.type !== "frame" &&
-      !back &&
-      !this.isDrawerOpen()
-    ) {
-      this.app.toggleSidebar({
-        name: DEFAULT_SIDEBAR.name,
-        tab: FRAMES_SIDEBAR_TAB,
-        force: true,
-      });
+  /** The user picked the frame tool (F, the toolbar, the command palette),
+   * even with it already in hand: the drawer opens beside it so each frame
+   * drawn shows up in the list, and stays open after the tool changes. The
+   * way back from the eraser or the hand never comes here, so a drawer
+   * closed meanwhile stays closed. Call it after `setActiveTool`. */
+  frameToolPicked = () => {
+    if (!this.besideCanvas()) {
+      return;
     }
+    // queued behind the tool change, so a pick the editor refused (a tool
+    // the host holds) opens nothing
+    this.app.setState((state) =>
+      state.activeTool.type === "frame" && !this.isDrawerOpen(state)
+        ? {
+            openSidebar: {
+              name: DEFAULT_SIDEBAR.name,
+              tab: FRAMES_SIDEBAR_TAB,
+            },
+          }
+        : null,
+    );
   };
 
   /** An undocked drawer closes on a press outside it, and starting a frame

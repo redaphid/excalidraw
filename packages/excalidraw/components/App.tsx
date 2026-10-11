@@ -4466,7 +4466,6 @@ class App extends React.Component<AppProps, AppState> {
 
     this.handleInteractionStateChange(prevProps, prevState);
     this.handleForcedToolChange(prevProps, prevState);
-    this.frameNavigation.handleToolChange(prevState);
 
     this.appStateObserver.flush(prevState);
 
@@ -5616,6 +5615,9 @@ ${css}
             });
           } else {
             this.setActiveTool({ type: shape }, { toggle: true });
+            if (shape === "frame") {
+              this.frameNavigation.frameToolPicked();
+            }
           }
 
           event.stopPropagation();
