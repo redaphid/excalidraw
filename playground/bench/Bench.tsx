@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { reseed } from "@excalidraw/common";
+import { ShapeCache } from "@excalidraw/element";
 import { Excalidraw } from "@excalidraw/excalidraw";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
@@ -24,6 +25,10 @@ type Counters = {
   mapSets: number;
   mapGets: number;
   boundingRectReads: number;
+  shapesGenerated: number;
+  shapesGeneratedIdle: number;
+  shapeMs: number;
+  idleMs: number;
 };
 
 type ScenarioResult = {
@@ -32,7 +37,10 @@ type ScenarioResult = {
   frameMs: Stats;
   releaseMs: number;
   settleMaxFrameMs: number;
-  countersPerFrame?: Counters;
+  countersPerFrame?: Counters & {
+    shapesGeneratedMax: number;
+    shapeMsMax: number;
+  };
   countersAtRelease?: Counters;
 };
 
@@ -120,6 +128,10 @@ const counters: Counters = {
   mapSets: 0,
   mapGets: 0,
   boundingRectReads: 0,
+  shapesGenerated: 0,
+  shapesGeneratedIdle: 0,
+  shapeMs: 0,
+  idleMs: 0,
 };
 
 const wrap = <T extends object>(
@@ -173,6 +185,40 @@ const installCounters = () => {
     "getBoundingClientRect",
     () => counters.boundingRectReads++,
   );
+  let inIdle = false;
+  const requestIdle = window.requestIdleCallback;
+  window.requestIdleCallback = (callback, options) =>
+    requestIdle((deadline) => {
+      const start = performance.now();
+      inIdle = true;
+      try {
+        callback(deadline);
+      } finally {
+        inIdle = false;
+        counters.idleMs += performance.now() - start;
+      }
+    }, options);
+  const generateElementShape = ShapeCache.generateElementShape;
+  ShapeCache.generateElementShape = ((element, renderConfig) => {
+    if (
+      renderConfig?.isExporting ||
+      ShapeCache.get(element, renderConfig ? renderConfig.theme : null) !==
+        undefined
+    ) {
+      return generateElementShape(element, renderConfig);
+    }
+    const start = performance.now();
+    try {
+      return generateElementShape(element, renderConfig);
+    } finally {
+      if (!inIdle) {
+        counters.shapesGenerated++;
+        counters.shapeMs += performance.now() - start;
+      } else {
+        counters.shapesGeneratedIdle++;
+      }
+    }
+  }) as typeof generateElementShape;
   wrap(document, "createElement", (_, [tag]) => {
     if (String(tag).toLowerCase() === "canvas") {
       counters.canvasesCreated++;
@@ -216,7 +262,11 @@ const runScenario = async (
   await window.profilerHook?.(scenario.id, "start");
   const frames: number[] = [];
   let frameStart = await nextFrame();
+  let shapesGeneratedMax = 0;
+  let shapeMsMax = 0;
   for (let i = 1; i <= scenario.steps; i++) {
+    const shapesBefore = counters.shapesGenerated;
+    const shapeMsBefore = counters.shapeMs;
     window.stepHook?.(scenario.id, i);
     if (i === (scenario.midwayStep ?? Math.floor(scenario.steps / 2))) {
       await scenario.midway?.(api, canvas);
@@ -224,11 +274,22 @@ const runScenario = async (
     scenario.step(canvas, i);
     await flushTasks();
     const next = await nextFrame();
+    shapesGeneratedMax = Math.max(
+      shapesGeneratedMax,
+      counters.shapesGenerated - shapesBefore,
+    );
+    shapeMsMax = Math.max(shapeMsMax, counters.shapeMs - shapeMsBefore);
     frames.push(next - frameStart);
     frameStart = next;
   }
   await window.profilerHook?.(scenario.id, "stop");
-  const countersPerFrame = counting ? takeCounters(scenario.steps) : undefined;
+  const countersPerFrame = counting
+    ? {
+        ...takeCounters(scenario.steps),
+        shapesGeneratedMax,
+        shapeMsMax: round(shapeMsMax),
+      }
+    : undefined;
 
   const releaseStart = performance.now();
   scenario.end(canvas);
