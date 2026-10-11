@@ -237,6 +237,7 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
  */
 :scope,
 :scope.theme--dark {
+  --canvas-mode: ${mode};
   --canvas-background: ${tokens.backdrop ? "transparent" : canvas};
   --canvas-grid-color: ${rgba(tokens.grid.color, tokens.grid.minor)};
   --canvas-grid-bold-color: ${rgba(tokens.grid.color, tokens.grid.major)};
