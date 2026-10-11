@@ -26,5 +26,9 @@ coverage
 dev-dist
 html
 meta*.json
-.claude
+.claude/*
+!.claude/skills/
 release/
+
+# local output of scripts/theme-screenshots
+/theme-screenshots/

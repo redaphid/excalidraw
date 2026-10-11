@@ -1324,13 +1324,20 @@ let lastStroke: { options: StrokeOptions; stroke: IncrementalStroke } | null =
 const getVariableWidthFreedrawOutline = (
   element: ExcalidrawFreeDrawElement,
 ): [number, number][] => {
+  const size = element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR;
+  const taper = element.strokeOptions?.taper;
   const options: StrokeOptions = {
     simulatePressure: element.simulatePressure,
-    size: element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR,
-    thinning: VARIABLE_WIDTH_FREEDRAW.THINNING,
+    size,
+    thinning:
+      element.strokeOptions?.thinning ?? VARIABLE_WIDTH_FREEDRAW.THINNING,
     smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
     streamline: getFreedrawStreamline(element),
     easing: easeOutSine,
+    ...(taper && {
+      start: { taper: taper * size },
+      end: { taper: taper * size },
+    }),
     last: true,
   };
 
@@ -1341,11 +1348,15 @@ const getVariableWidthFreedrawOutline = (
 
   // The stroke being drawn is outlined on every pointer move, one point
   // longer each time, so keep its outline to resume.
+  const last = lastStroke?.options;
   if (
     !lastStroke ||
-    lastStroke.options.simulatePressure !== options.simulatePressure ||
-    lastStroke.options.size !== options.size ||
-    lastStroke.options.streamline !== options.streamline
+    last?.simulatePressure !== options.simulatePressure ||
+    last?.size !== options.size ||
+    last?.thinning !== options.thinning ||
+    last?.streamline !== options.streamline ||
+    last?.start?.taper !== options.start?.taper ||
+    last?.end?.taper !== options.end?.taper
   ) {
     lastStroke = { options, stroke: new IncrementalStroke(options) };
   }

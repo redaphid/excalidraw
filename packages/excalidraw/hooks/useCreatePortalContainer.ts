@@ -14,7 +14,8 @@ export const useCreatePortalContainer = (opts?: {
   const editorInterface = useEditorInterface();
   const { theme } = useUIAppState();
 
-  const { container: excalidrawContainer } = useExcalidrawContainer();
+  const { container: excalidrawContainer, id: editorId } =
+    useExcalidrawContainer();
 
   useLayoutEffect(() => {
     if (div) {
@@ -25,8 +26,12 @@ export const useCreatePortalContainer = (opts?: {
         editorInterface.formFactor === "phone",
       );
       div.classList.toggle("theme--dark", theme === THEME.DARK);
+      // the editor's scoped `css` prop reaches portals through this
+      if (editorId) {
+        div.dataset.excalidrawId = editorId;
+      }
     }
-  }, [div, theme, editorInterface.formFactor, opts?.className]);
+  }, [div, theme, editorInterface.formFactor, opts?.className, editorId]);
 
   useLayoutEffect(() => {
     const ownerDocument = excalidrawContainer?.ownerDocument;
