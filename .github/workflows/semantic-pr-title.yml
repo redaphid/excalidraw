@@ -9,6 +9,8 @@ on:
       - labeled
       - unlabeled
 
+permissions: {}
+
 jobs:
   semantic:
     runs-on: ubuntu-latest
