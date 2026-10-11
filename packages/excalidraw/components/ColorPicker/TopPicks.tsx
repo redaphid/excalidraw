@@ -110,7 +110,7 @@ export const TopPicks = ({
                   ? `translateX(${reorderOffset}px)`
                   : undefined,
               }}
-              key={color}
+              key={index}
               type="button"
               title={color}
               onClick={() => onChange(color)}
