@@ -48,7 +48,7 @@ Each release also attaches one tarball per package, which installs from its URL 
 "@excalidraw/excalidraw": "https://github.com/redaphid/excalidraw/releases/download/v0.19.0-draw.N/excalidraw-excalidraw-0.19.0-draw.N.tgz"
 ```
 
-Replace `N` with a release number from [Releases](https://github.com/redaphid/excalidraw/releases), or use a `vX.Y.Z` release from 1.0.0 on. The versions are `0.19.0-draw.N` so they sort above upstream's npm `0.18.1` ([`a5e5b09f`](https://github.com/redaphid/excalidraw/commit/a5e5b09f)).
+Replace the version with a `vX.Y.Z` release from [Releases](https://github.com/redaphid/excalidraw/releases), such as `v1.0.0/excalidraw-excalidraw-1.0.0.tgz`. Releases before 1.0.0 were numbered `0.19.0-draw.N` so they sorted above upstream's npm `0.18.1` ([`a5e5b09f`](https://github.com/redaphid/excalidraw/commit/a5e5b09f)), and they stay downloadable.
 
 **Element format.** A release reads and writes upstream `master`'s element format, not npm `0.18.1`'s (freedraw `strokeOptions`, arrow bindings as `{ elementId, fixedPoint, mode }`, sticky notes). A `0.18.1` client misreads these elements, so every client sharing a scene has to move to the fork together. Elements made with `authoringUnits="screen"` away from 1x also carry an optional `authoringScale` field (see below).
 
