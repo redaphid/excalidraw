@@ -1,4 +1,8 @@
-import { invariant, viewportCoordsToSceneCoords } from "@excalidraw/common";
+import {
+  FRAME_STYLE,
+  invariant,
+  viewportCoordsToSceneCoords,
+} from "@excalidraw/common";
 import { newElementWith } from "@excalidraw/element";
 
 import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
@@ -355,7 +359,28 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
       streamedAt: win.performance.now(),
     };
     generation++;
-    renderer.begin(color, at);
+    // The committed stroke is clipped to its frame (staticScene's frameClip),
+    // so the ink is too: else what the ink drew outside the frame would
+    // vanish at the hand-off.
+    const frame =
+      element.frameId &&
+      state.frameRendering.enabled &&
+      state.frameRendering.clip
+        ? app.scene.getNonDeletedElementsMap().get(element.frameId)
+        : undefined;
+    renderer.begin(
+      color,
+      at,
+      frame
+        ? {
+            x: frame.x,
+            y: frame.y,
+            width: frame.width,
+            height: frame.height,
+            radius: FRAME_STYLE.radius,
+          }
+        : null,
+    );
     feed(active, e);
     render(active, e);
     if (e.target instanceof win.Element) {

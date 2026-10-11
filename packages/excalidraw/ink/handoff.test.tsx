@@ -1,4 +1,4 @@
-import { applyDarkModeFilter } from "@excalidraw/common";
+import { FRAME_STYLE, applyDarkModeFilter } from "@excalidraw/common";
 import {
   getFreedrawOutlinePoints,
   getFreedrawStrokeCenterPoints,
@@ -414,5 +414,52 @@ describe("the ink's colour", () => {
       ...channels(applyDarkModeFilter("#1e1e1e", true)),
       1,
     ]);
+  });
+});
+
+describe("the ink of a stroke that leaves its frame", () => {
+  const frame = { x: 0, y: 0, width: 500, height: 300 };
+
+  const drawOutOfFrame = async ({
+    clip,
+    zoom,
+  }: {
+    clip: boolean;
+    zoom: number;
+  }) => {
+    await setup(1, zoom);
+    API.setElements([API.createElement({ type: "frame", ...frame })]);
+    API.setAppState({
+      frameRendering: { enabled: true, name: true, outline: true, clip },
+    });
+    Object.defineProperties(gpu.canvases.at(-1)!, {
+      clientWidth: { value: 1400 },
+      clientHeight: { value: 800 },
+    });
+    draw(
+      [250, 450, 650].map((x) => ({ x, y: 150, pressure: 0.5 })),
+      "pen",
+      zoom,
+    );
+  };
+
+  it("should be cut by the rounded rectangle frameClip cuts the committed stroke by", async () => {
+    const zoom = 2;
+    await drawOutOfFrame({ clip: true, zoom });
+    expect(committed().frameId).not.toBeNull();
+    // frameClip: roundRect(frame, FRAME_STYLE.radius / zoom) in scene units,
+    // at devicePixelRatio 1
+    expect(lastFrame().clip).toEqual({
+      x: frame.x * zoom,
+      y: frame.y * zoom,
+      width: frame.width * zoom,
+      height: frame.height * zoom,
+      radius: (FRAME_STYLE.radius / zoom) * zoom,
+    });
+  });
+
+  it("should run on past it while frames do not clip", async () => {
+    await drawOutOfFrame({ clip: false, zoom: 1 });
+    expect(lastFrame().clip).toBeNull();
   });
 });

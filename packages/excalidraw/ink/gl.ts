@@ -6,6 +6,8 @@ import type { Dab } from "./stroke";
 // other, and turns it into a pixel of antialiased coverage. Blending with MAX
 // makes overlapping capsules a union, so a translucent stroke never darkens
 // where it crosses itself. Adding a dab uploads 12 bytes; drawing is one call.
+// A stroke in a frame is cut by the frame's rounded rectangle the same way,
+// so the ink ends where the committed stroke's canvas clip ends it.
 
 const VERTEX = `#version 300 es
 layout(location = 0) in vec3 a_from;
@@ -42,6 +44,9 @@ in vec2 v_px;
 flat in vec3 v_from;
 flat in vec3 v_to;
 uniform vec4 u_color;
+uniform float u_clipped;
+uniform vec4 u_clip;
+uniform float u_clipRadius;
 out vec4 color;
 
 void main() {
@@ -49,10 +54,27 @@ void main() {
   vec2 ba = v_to.xy - v_from.xy;
   float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
   float d = length(pa - ba * h) - mix(v_from.z, v_to.z, h);
+  if (u_clipped > 0.5) {
+    vec2 q = abs(v_px - (u_clip.xy + u_clip.zw) * 0.5)
+      - (u_clip.zw - u_clip.xy) * 0.5 + u_clipRadius;
+    d = max(d, length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - u_clipRadius);
+  }
   float coverage = clamp(0.5 - d, 0.0, 1.0);
   if (coverage <= 0.0) discard;
   color = u_color * coverage;
 }`;
+
+/**
+ * A rectangle in scene coordinates with corners rounded by `radius` CSS
+ * pixels, whatever the zoom, as frames are.
+ */
+export type Clip = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  radius: number;
+};
 
 export type View = {
   scrollX: number;
@@ -70,9 +92,9 @@ type InkRenderer = {
   /**
    * Starts a stroke. Dabs are kept relative to `origin`: GPU floats are 32
    * bits, and a thousandfold zoomed in, board coordinates in the thousands
-   * would jitter by whole pixels.
+   * would jitter by whole pixels. Nothing is drawn outside `clip`.
    */
-  begin(color: Rgba, origin: { x: number; y: number }): void;
+  begin(color: Rgba, origin: { x: number; y: number }, clip: Clip | null): void;
   push(dab: Dab): void;
   /** Draws the settled dabs, then a provisional tail up to the pen. */
   draw(view: View, tail: readonly Dab[]): void;
@@ -153,11 +175,18 @@ export const createInkRenderer = (
   let capacity = 0;
   let color: Rgba = [0, 0, 0, 1];
   let origin = { x: 0, y: 0 };
+  let clip: Clip | null = null;
   let program: WebGLProgram;
   let buffer: WebGLBuffer;
   let vao: WebGLVertexArrayObject;
   let uniforms: Record<
-    "scroll" | "scale" | "resolution" | "color",
+    | "scroll"
+    | "scale"
+    | "resolution"
+    | "color"
+    | "clipped"
+    | "clip"
+    | "clipRadius",
     WebGLUniformLocation | null
   >;
 
@@ -188,6 +217,9 @@ export const createInkRenderer = (
       scale: gl.getUniformLocation(program, "u_scale"),
       resolution: gl.getUniformLocation(program, "u_resolution"),
       color: gl.getUniformLocation(program, "u_color"),
+      clipped: gl.getUniformLocation(program, "u_clipped"),
+      clip: gl.getUniformLocation(program, "u_clip"),
+      clipRadius: gl.getUniformLocation(program, "u_clipRadius"),
     };
     capacity = 0;
     uploaded = 0;
@@ -229,6 +261,31 @@ export const createInkRenderer = (
     );
   };
 
+  /**
+   * `clip` in device pixels, as the shader measures. An edge off screen is
+   * pulled in to just past it, corner and all, so a deep zoom never hands
+   * 32-bit floats a coordinate too large to place a pixel with.
+   */
+  const setClip = (box: Clip | null, view: View) => {
+    gl.uniform1f(uniforms.clipped, box ? 1 : 0);
+    if (!box) {
+      return;
+    }
+    const scale = view.zoom * view.dpr;
+    const radius = box.radius * view.dpr;
+    const pad = 2 * radius + 2;
+    const px = (v: number, max: number) =>
+      Math.min(max + pad, Math.max(-pad, v * scale));
+    gl.uniform4f(
+      uniforms.clip,
+      px(box.x + view.scrollX, canvas.width),
+      px(box.y + view.scrollY, canvas.height),
+      px(box.x + box.width + view.scrollX, canvas.width),
+      px(box.y + box.height + view.scrollY, canvas.height),
+    );
+    gl.uniform1f(uniforms.clipRadius, radius);
+  };
+
   const onLost = (e: Event) => {
     e.preventDefault();
     lost = true;
@@ -253,10 +310,11 @@ export const createInkRenderer = (
       canvas.width = width;
       canvas.height = height;
     },
-    begin(next, at) {
+    begin(next, at, box) {
       canvas.style.visibility = "visible";
       color = next;
       origin = at;
+      clip = box;
       settled = 0;
       uploaded = 0;
     },
@@ -298,6 +356,7 @@ export const createInkRenderer = (
       gl.uniform1f(uniforms.scale, view.zoom * view.dpr);
       gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
       gl.uniform4f(uniforms.color, ...color);
+      setClip(clip, view);
       gl.enable(gl.BLEND);
       gl.blendEquation(gl.MAX);
       gl.blendFunc(gl.ONE, gl.ONE);

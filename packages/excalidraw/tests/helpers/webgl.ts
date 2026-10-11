@@ -10,6 +10,14 @@ export type InkFrame = {
   dabs: DrawnDab[];
   /** premultiplied rgba */
   color: number[];
+  /** the rounded rectangle it was cut by, in device pixels, if any */
+  clip: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    radius: number;
+  } | null;
 };
 
 /**
@@ -105,7 +113,20 @@ export class FakeWebGL2 {
       y: this.data[i * 3 + 1] + scrollY,
       r: this.data[i * 3 + 2],
     }));
-    this.frames.push({ dabs, color: this.uniforms.u_color });
+    const [left, top, right, bottom] = this.uniforms.u_clip ?? [];
+    this.frames.push({
+      dabs,
+      color: this.uniforms.u_color,
+      clip: this.uniforms.u_clipped?.[0]
+        ? {
+            x: left,
+            y: top,
+            width: right - left,
+            height: bottom - top,
+            radius: this.uniforms.u_clipRadius[0],
+          }
+        : null,
+    });
   }
 }
 
