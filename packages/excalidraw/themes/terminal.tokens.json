@@ -1,0 +1,165 @@
+{
+  "$schema": "./tokens.schema.json",
+  "$description": "Green phosphor on black: monospace everything, square corners, a dim glow on UI text and nothing else lit. Element greens display at #6fc76f, the brightest dark mode allows.",
+  "$extensions": {
+    "com.hypnodroid.draw": {
+      "name": "Terminal",
+      "mode": "dark",
+      "stroke": {
+        "width": "thin",
+        "roundness": "sharp",
+        "arrowhead": "arrow",
+        "arrowType": "sharp",
+        "fill": "solid"
+      },
+      "pen": {
+        "pressure": false
+      },
+      "surface": {
+        "border": "hairline",
+        "shadow": "none"
+      },
+      "washes": ["phosphor", "cyan", "phosphor", "cyan"],
+      "extra": ":scope {\n  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n}"
+    }
+  },
+  "color": {
+    "$type": "color",
+    "canvas": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.0196, 0.0392, 0.0235],
+        "hex": "#050a06"
+      }
+    },
+    "ink": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.2235, 1, 0.4157],
+        "hex": "#39ff6a"
+      }
+    },
+    "accent": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.3647, 1, 0.5412],
+        "hex": "#5dff8a"
+      }
+    },
+    "panel": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.0275, 0.0706, 0.0392],
+        "hex": "#07120a"
+      }
+    },
+    "grid": {
+      "$value": "{color.accent}"
+    },
+    "palette": {
+      "red": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [1, 0.4196, 0.4196],
+          "hex": "#ff6b6b"
+        }
+      },
+      "cyan": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.498, 0.8627, 1],
+          "hex": "#7fdcff"
+        }
+      },
+      "phosphor": {
+        "$value": "{color.ink}"
+      },
+      "amber": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [1, 0.7216, 0.4196],
+          "hex": "#ffb86b"
+        }
+      },
+      "lilac": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.7804, 0.5725, 0.9176],
+          "hex": "#c792ea"
+        }
+      },
+      "teal": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.3098, 0.8392, 0.7451],
+          "hex": "#4fd6be"
+        }
+      }
+    }
+  },
+  "font": {
+    "ui": {
+      "$type": "fontFamily",
+      "$value": "Cascadia"
+    },
+    "canvas": {
+      "$type": "fontFamily",
+      "$value": "Cascadia"
+    },
+    "size": {
+      "$type": "dimension",
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    }
+  },
+  "grid": {
+    "minor": {
+      "$type": "number",
+      "$value": 0.05
+    },
+    "major": {
+      "$type": "number",
+      "$value": 0.14
+    },
+    "style": {
+      "$type": "strokeStyle",
+      "$value": "solid"
+    }
+  },
+  "stroke": {
+    "roughness": {
+      "$type": "number",
+      "$value": 0
+    }
+  },
+  "pen": {
+    "$type": "number",
+    "width": {
+      "$value": 0.35
+    }
+  },
+  "surface": {
+    "radius": {
+      "$type": "dimension",
+      "$value": {
+        "value": 0,
+        "unit": "px"
+      }
+    }
+  },
+  "frame": {
+    "width": {
+      "$type": "dimension",
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      }
+    },
+    "alpha": {
+      "$type": "number",
+      "$value": 0.45
+    }
+  }
+}

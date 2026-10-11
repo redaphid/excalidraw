@@ -18,6 +18,8 @@ type Input = {
   simulatePressure: boolean;
   /** perfect-freehand's streamline: how far the line lags behind the pointer. */
   streamline: number;
+  /** perfect-freehand's thinning, when the element sets its own. */
+  thinning?: number;
 };
 
 type Pen = Input & {
@@ -43,7 +45,11 @@ export const createStroke = (pen: Pen): Stroke => {
     getVariableWidthFreedrawStrokeOptions({
       strokeWidth: pen.strokeWidth,
       simulatePressure: pen.simulatePressure,
-      strokeOptions: { variability: "variable", streamline: pen.streamline },
+      strokeOptions: {
+        variability: "variable",
+        streamline: pen.streamline,
+        thinning: pen.thinning,
+      },
     });
   /** A dab's radius at `pressure`, as perfect-freehand sizes the outline. */
   const radius = (pressure: number) =>

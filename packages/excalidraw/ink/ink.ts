@@ -317,7 +317,8 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
       app.setState({
         penMode: true,
         penDetected: true,
-        currentItemStrokeVariability: "variable",
+        currentItemStrokeVariability:
+          app.cssTheme.appState.currentItemStrokeVariability ?? "variable",
       });
     }
 
@@ -340,6 +341,7 @@ export const attachInk = (app: App, canvas: HTMLCanvasElement): Ink | null => {
         strokeWidth: element.strokeWidth,
         simulatePressure: element.simulatePressure,
         streamline: element.strokeOptions.streamline,
+        thinning: element.strokeOptions.thinning,
         minStep: MIN_STEP_PX / state.zoom.value,
       }),
       element,

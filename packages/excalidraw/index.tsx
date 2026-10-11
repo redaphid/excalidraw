@@ -80,6 +80,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onInitialize,
     isCollaborating = false,
     authoringUnits,
+    css,
     freedrawStrokeWidth,
     freedrawRenderer,
     onFreedrawProgress,
@@ -229,6 +230,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           onInitialize={onInitialize}
           isCollaborating={isCollaborating}
           authoringUnits={authoringUnits}
+          css={css}
           freedrawStrokeWidth={freedrawStrokeWidth}
           freedrawRenderer={freedrawRenderer}
           onFreedrawProgress={onFreedrawProgress}

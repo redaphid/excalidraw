@@ -20,7 +20,7 @@ export type Freedraw = NonDeleted<ExcalidrawFreeDrawElement>;
 
 type FreedrawHost = Pick<
   App,
-  "state" | "getCurrentItemScale" | "getTopLayerFrameAtSceneCoords"
+  "state" | "cssTheme" | "getCurrentItemScale" | "getTopLayerFrameAtSceneCoords"
 >;
 
 /**
@@ -50,6 +50,7 @@ export const newFreedrawAt = (
     strokeOptions: {
       variability: state.currentItemStrokeVariability,
       streamline: streamlineFor(pointer.pointerType),
+      ...host.cssTheme.pen,
     },
     locked: false,
     frameId: host.getTopLayerFrameAtSceneCoords(origin)?.id ?? null,

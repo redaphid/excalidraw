@@ -1313,15 +1313,24 @@ const getFreedrawStreamline = (
 export const getVariableWidthFreedrawStrokeOptions = (
   element: Pick<ExcalidrawFreeDrawElement, "strokeWidth" | "simulatePressure"> &
     Partial<Pick<ExcalidrawFreeDrawElement, "strokeOptions">>,
-) => ({
-  simulatePressure: element.simulatePressure,
-  size: element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR,
-  thinning: VARIABLE_WIDTH_FREEDRAW.THINNING,
-  smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
-  streamline: getFreedrawStreamline(element),
-  easing: (t: number) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
-  last: true,
-});
+) => {
+  const size = element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR;
+  const taper = element.strokeOptions?.taper;
+  return {
+    simulatePressure: element.simulatePressure,
+    size,
+    thinning:
+      element.strokeOptions?.thinning ?? VARIABLE_WIDTH_FREEDRAW.THINNING,
+    smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
+    streamline: getFreedrawStreamline(element),
+    easing: (t: number) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
+    ...(taper && {
+      start: { taper: taper * size },
+      end: { taper: taper * size },
+    }),
+    last: true,
+  };
+};
 
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
