@@ -20,6 +20,8 @@ type Counters = {
   stroke: number;
   fillText: number;
   canvasesCreated: number;
+  /** megapixels of canvas allocated, counted as a canvas's height is set */
+  canvasMpx: number;
   arrayElementsWalked: number;
   mapSets: number;
   mapGets: number;
@@ -122,6 +124,7 @@ const counters: Counters = {
   stroke: 0,
   fillText: 0,
   canvasesCreated: 0,
+  canvasMpx: 0,
   arrayElementsWalked: 0,
   mapSets: 0,
   mapGets: 0,
@@ -179,6 +182,17 @@ const installCounters = () => {
     "getBoundingClientRect",
     () => counters.boundingRectReads++,
   );
+  const height = Object.getOwnPropertyDescriptor(
+    HTMLCanvasElement.prototype,
+    "height",
+  )!;
+  Object.defineProperty(HTMLCanvasElement.prototype, "height", {
+    ...height,
+    set(this: HTMLCanvasElement, value: number) {
+      counters.canvasMpx += (this.width * value) / 1e6;
+      height.set!.call(this, value);
+    },
+  });
   wrap(document, "createElement", (_, [tag]) => {
     if (String(tag).toLowerCase() === "canvas") {
       counters.canvasesCreated++;
