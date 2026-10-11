@@ -1,18 +1,19 @@
 # redaphid/excalidraw
 
-This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [draw](https://draw.hypnodroid.com), a pen-first whiteboard that zooms far past upstream's 30x. It is upstream `master` at [`5a406e518`](https://github.com/excalidraw/excalidraw/commit/5a406e51875157bece389b9bc92d41ff241d5f3d) plus the fork's commits on this repo's `master`. It is not an upstream release and is not published to npm. Releases are tarballs attached to this repo's GitHub releases.
+This is a fork of [Excalidraw](https://github.com/excalidraw/excalidraw) for [draw](https://draw.hypnodroid.com), a pen-first whiteboard that zooms far past upstream's 30x. It is upstream `master` at [`5a406e518`](https://github.com/excalidraw/excalidraw/commit/5a406e51875157bece389b9bc92d41ff241d5f3d) plus the fork's commits on this repo's `master`. It is not an upstream release. Its packages are published to GitHub Packages as `@redaphid/excalidraw` and four siblings, versioned with semver from 1.0.0 (see [Install](#install)). Nothing is published to npmjs.
 
 **[Try it](https://redaphid.github.io/excalidraw/)**: the fork's editor on a static page, with `authoringUnits="screen"`. The drawing stays in your browser's localStorage: there is no collaboration, sharing, AI or analytics, and the only requests are for the page's own scripts, styles and fonts. It redeploys on every push to `master` ([`playground/`](playground), [`playground.yml`](.github/workflows/playground.yml)); `yarn build:playground` builds it locally.
 
 **[Benchmark it](https://redaphid.github.io/excalidraw/?bench)**: the same page with `?bench` loads three generated boards instead of your drawing and, on **run**, scripts a pan, a wheel zoom, a two-finger pinch and a pen stroke on each. It reports the median, 95th-percentile and mean time between animation frames per gesture, with the device pixel ratio and user agent, and **copy JSON** puts the report on the clipboard. `?bench=auto` starts on load, `&only=mixed/pan,deep/zoom` picks gestures, and `&counters` adds draw-call and work counts per frame (these slow the frames, so time without them). It never touches the saved drawing ([`playground/bench/`](playground/bench)).
 
-The fork changes five things:
+The fork changes six things:
 
 - **Deep zoom.** The editor zooms from 0.1x to 1,000,000x, and the wheel and trackpad zoom by the same ratio per tick at any depth.
 - **Rendering at depth.** Freehand strokes and text stay sharp at any zoom, including during animated camera moves, and zooming does not stall on rebuilding per-element bitmaps.
 - **Zoom-relative authoring.** An opt-in mode where new work is sized in screen pixels, so a pen stroke or a rectangle made at 10,000x looks the same on screen as one made at 1x.
 - **Pen size.** A continuous pen-size slider replaces the three freehand presets, and the presets that remain are thinner.
 - **Frame navigation.** An opt-in frames drawer, breadcrumb, arrow-key stepping between frames and bookmark keys.
+- **Themes.** A `css` prop restyles one editor: its UI, its canvas (background, grid, selection, frames) and the stroke character of new elements, from a stylesheet or from JSON tokens through `generateThemeCss`. See [docs/theming.md](docs/theming.md).
 
 For everything else, see [upstream's README](https://github.com/excalidraw/excalidraw/blob/master/README.md) (or [the copy at the fork point](https://github.com/excalidraw/excalidraw/blob/5a406e51875157bece389b9bc92d41ff241d5f3d/README.md)).
 
@@ -24,13 +25,30 @@ For everything else, see [upstream's README](https://github.com/excalidraw/excal
 
 ## Install
 
-Each release attaches one tarball per package. From `0.19.0-draw.7` on, the `@excalidraw/excalidraw` tarball bundles `@excalidraw/common`, `element`, `math` and `fractional-indexing`, so it installs from its URL alone, with no package-manager overrides ([`eb9bcc33`](https://github.com/redaphid/excalidraw/commit/eb9bcc33)). From `0.19.0-draw.17` on, the `math` and `element` tarballs bundle their `@excalidraw/*` siblings the same way (`math` bundles `common`; `element` bundles `common`, `math` and `fractional-indexing`), so every tarball installs from its URL alone, including under pnpm's `blockExoticSubdeps`. From `0.19.0-draw.18` on, `common` bundles `math` too, since it imports it, so the standalone `common` tarball also loads in Node. The GIFs above were recorded from a page that installs `0.19.0-draw.10` with pnpm this way:
+GitHub Packages needs a token for every install, public packages included. Add an `.npmrc` beside your `package.json` and set `NODE_AUTH_TOKEN` to a personal access token (classic) with the `read:packages` scope:
+
+```ini
+@redaphid:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
+Then depend on the fork under upstream's name, so your imports stay `@excalidraw/excalidraw`:
+
+```json
+"@excalidraw/excalidraw": "npm:@redaphid/excalidraw@^1.0.0"
+```
+
+[docs/releasing.md](docs/releasing.md) covers the other four packages and how releases are cut.
+
+### Install from a release tarball
+
+Each release also attaches one tarball per package, which installs from its URL with no token. From `0.19.0-draw.7` on, the `@excalidraw/excalidraw` tarball bundles `@excalidraw/common`, `element`, `math` and `fractional-indexing`, so it installs from its URL alone, with no package-manager overrides ([`eb9bcc33`](https://github.com/redaphid/excalidraw/commit/eb9bcc33)). From `0.19.0-draw.17` on, the `math` and `element` tarballs bundle their `@excalidraw/*` siblings the same way (`math` bundles `common`; `element` bundles `common`, `math` and `fractional-indexing`), so every tarball installs from its URL alone, including under pnpm's `blockExoticSubdeps`. From `0.19.0-draw.18` on, `common` bundles `math` too, since it imports it, so the standalone `common` tarball also loads in Node. The GIFs above were recorded from a page that installs `0.19.0-draw.10` with pnpm this way:
 
 ```json
 "@excalidraw/excalidraw": "https://github.com/redaphid/excalidraw/releases/download/v0.19.0-draw.N/excalidraw-excalidraw-0.19.0-draw.N.tgz"
 ```
 
-Replace `N` with a release number from [Releases](https://github.com/redaphid/excalidraw/releases). The versions are `0.19.0-draw.N` so they sort above upstream's npm `0.18.1` ([`a5e5b09f`](https://github.com/redaphid/excalidraw/commit/a5e5b09f)).
+Replace the version with a `vX.Y.Z` release from [Releases](https://github.com/redaphid/excalidraw/releases), such as `v1.0.0/excalidraw-excalidraw-1.0.0.tgz`. Releases before 1.0.0 were numbered `0.19.0-draw.N` so they sorted above upstream's npm `0.18.1` ([`a5e5b09f`](https://github.com/redaphid/excalidraw/commit/a5e5b09f)), and they stay downloadable.
 
 **Element format.** A release reads and writes upstream `master`'s element format, not npm `0.18.1`'s (freedraw `strokeOptions`, arrow bindings as `{ elementId, fixedPoint, mode }`, sticky notes). A `0.18.1` client misreads these elements, so every client sharing a scene has to move to the fork together. Elements made with `authoringUnits="screen"` away from 1x also carry an optional `authoringScale` field (see below).
 
@@ -131,10 +149,11 @@ const canvas = await exportToCanvas({
 ## Releasing
 
 ```sh
-node scripts/pack-draw-release.js --version=0.19.0-draw.N
+node scripts/semver/bump.js 1.1.0   # merge this in a pull request
+git tag v1.1.0 && git push origin v1.1.0
 ```
 
-This sets the five packages (`common`, `fractional-indexing`, `math`, `element`, `excalidraw`) to one version, builds them, and writes the tarballs to `release/`, with the siblings bundled into the `excalidraw` tarball. The `chore: version the packages 0.19.0-draw.N` commits are these bumps, and each release is tagged `v0.19.0-draw.N` with the five tarballs attached.
+A `vX.Y.Z` tag publishes the five packages (`common`, `fractional-indexing`, `math`, `element`, `excalidraw`) to GitHub Packages at that version and attaches their tarballs to a GitHub release. [docs/releasing.md](docs/releasing.md) has the details. The `v0.19.0-draw.N` releases before 1.0.0 stay available for URL installs.
 
 ## Keeping up with upstream
 

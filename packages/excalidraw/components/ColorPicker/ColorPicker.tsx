@@ -360,6 +360,12 @@ const ColorPickerComponent = ({
   excludedColors,
   customizableTopPicks,
 }: ColorPickerProps) => {
+  const app = useApp();
+  // a theme's palette replaces the default one for element colors
+  const themePalette =
+    palette && (type === "elementStroke" || type === "elementBackground")
+      ? app.cssTheme.palettes[type]
+      : undefined;
   const openRef = useRef(appState.openPopup);
   useEffect(() => {
     openRef.current = appState.openPopup;
@@ -485,7 +491,7 @@ const ColorPickerComponent = ({
               onChange={onChange}
               label={label}
               elements={elements}
-              palette={palette}
+              palette={themePalette ?? palette}
               excludedColors={excludedColors}
               updateData={updateData}
               getOpenPopup={() => openRef.current}

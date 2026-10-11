@@ -177,6 +177,18 @@ const prepareElementsForRender = ({
   return nextElements;
 };
 
+/**
+ * A scene rectangle to export, with no padding, drawn as the editor's canvas
+ * draws it: unlike an exporting frame, every element is kept and frames clip
+ * their children as `appState.frameRendering` says.
+ */
+export type ExportRegion = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export const exportToCanvas = async (
   elements: readonly NonDeletedExcalidrawElement[],
   appState: AppState,
@@ -186,11 +198,13 @@ export const exportToCanvas = async (
     exportPadding = DEFAULT_EXPORT_PADDING,
     viewBackgroundColor,
     exportingFrame,
+    region,
   }: {
     exportBackground: boolean;
     exportPadding?: number;
     viewBackgroundColor: string;
     exportingFrame?: NonDeleted<ExcalidrawFrameLikeElement> | null;
+    region?: ExportRegion;
   },
   createCanvas: (
     width: number,
@@ -225,14 +239,16 @@ export const exportToCanvas = async (
     frameRendering,
   });
 
-  if (exportingFrame) {
+  if (exportingFrame || region) {
     exportPadding = 0;
   }
 
-  const [minX, minY, width, height] = getCanvasSize(
-    exportingFrame ? [exportingFrame] : getRootElements(elementsForRender),
-    exportPadding,
-  );
+  const [minX, minY, width, height] = region
+    ? [region.x, region.y, region.width, region.height]
+    : getCanvasSize(
+        exportingFrame ? [exportingFrame] : getRootElements(elementsForRender),
+        exportPadding,
+      );
 
   const { canvas, scale = 1 } = createCanvas(width, height);
 
