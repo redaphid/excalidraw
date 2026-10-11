@@ -1012,7 +1012,7 @@ describe("arranging an empty scene", () => {
     await act(async () => {
       outcome = await h.app.api.arrange();
     });
-    expect(outcome).toEqual({ status: "nothing-to-arrange" });
+    expect(outcome).toEqual({ status: "nothing-to-arrange", skipped: [] });
   });
 });
 
@@ -1070,7 +1070,7 @@ describe("arranging a single shape", () => {
     await act(async () => {
       outcome = await h.app.api.arrange({ elementIds: ["shape-id-alpha"] });
     });
-    expect(outcome).toEqual({ status: "nothing-to-arrange" });
+    expect(outcome).toEqual({ status: "nothing-to-arrange", skipped: [] });
   });
 
   it("should say why nothing was arranged from the keyboard", async () => {
@@ -1079,6 +1079,50 @@ describe("arranging a single shape", () => {
 
     expect(h.state.toast?.message).toMatch(/nothing to arrange/i);
     expect(geometryOf(snapshot())).toEqual(geometryOf(before));
+  });
+});
+
+describe("arranging standalone text and a pen stroke", () => {
+  const note = API.createElement({
+    type: "text",
+    id: "text-id-note",
+    x: 0,
+    y: 0,
+  });
+  const stroke = API.createElement({
+    type: "freedraw",
+    id: "freedraw-id-stroke",
+    x: 400,
+    y: 300,
+  });
+
+  beforeEach(async () => {
+    await load();
+    API.updateScene({
+      elements: [note, stroke],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+  });
+
+  it("should leave them where they are and name them from the API", async () => {
+    const before = snapshot();
+    let outcome: ArrangeOutcome | undefined;
+    await act(async () => {
+      outcome = await h.app.api.arrange();
+    });
+
+    expect(outcome).toEqual({
+      status: "nothing-to-arrange",
+      skipped: ["freedraw", "text"],
+    });
+    expect(geometryOf(snapshot())).toEqual(geometryOf(before));
+  });
+
+  it("should say from the keyboard that only shapes are arranged", async () => {
+    await arrangeBy.keyboard([note.id, stroke.id]);
+
+    expect(h.state.toast?.message).toMatch(/only shapes are arranged/i);
+    expect(h.state.toast?.message).toMatch(/freedraw, text/);
   });
 });
 
