@@ -5615,6 +5615,9 @@ ${css}
             });
           } else {
             this.setActiveTool({ type: shape }, { toggle: true });
+            if (shape === "frame") {
+              this.frameNavigation.frameToolPicked();
+            }
           }
 
           event.stopPropagation();

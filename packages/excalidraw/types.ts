@@ -1201,11 +1201,21 @@ export type UIOptions = Partial<{
   welcomeScreen?: boolean;
 }>;
 
+export type Slide = { frameId: string; included: boolean };
+
 export type FrameNavigation = {
   /** bookmarked frame ids, in order; the host keeps them */
   bookmarks?: readonly string[];
   /** a star or unstar in the drawer; without it the drawer shows no stars */
   onBookmarkChange?: (frameId: string, bookmarked: boolean) => void;
+  /** The host's talk. With it the drawer opens on a Slides view: the frames
+   * in this order, reorderable by pen, touch or mouse. */
+  slides?: {
+    order: readonly Slide[];
+    /** the whole talk after a move or a skip, one entry per frame */
+    onChange: (order: Slide[]) => void;
+    onPresent: () => void;
+  };
 };
 
 export type AppProps = Merge<

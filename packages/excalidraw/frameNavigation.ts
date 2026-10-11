@@ -13,6 +13,8 @@ import {
 
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
+import type { Slide } from "./types";
+
 type Bounds = { x: number; y: number; width: number; height: number };
 
 export type Frame = Bounds & { id: string; name: string };
@@ -182,6 +184,28 @@ export const liveBookmarks = (
   model: FrameModel,
   frameIds: readonly string[],
 ): Frame[] => frameIds.flatMap((id) => model.byId.get(id) ?? []);
+
+/** The host's talk over the frames still on the board: dead and repeated
+ * ids dropped, frames it lacks appended in scene order and included. */
+export const slideOrder = (
+  model: FrameModel,
+  order: readonly Slide[],
+): Slide[] => {
+  const seen = new Set<string>();
+  const kept = order.filter(({ frameId }) => {
+    if (!model.byId.has(frameId) || seen.has(frameId)) {
+      return false;
+    }
+    seen.add(frameId);
+    return true;
+  });
+  return [
+    ...kept,
+    ...model.frames
+      .filter((frame) => !seen.has(frame.id))
+      .map((frame) => ({ frameId: frame.id, included: true })),
+  ];
+};
 
 /** The scene box the screen shows, less the given screen-px insets. */
 export const viewBounds = (
