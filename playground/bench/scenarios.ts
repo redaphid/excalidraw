@@ -11,6 +11,8 @@ export type Scenario = {
   scene: SceneName;
   steps: number;
   tool: "hand" | "selection" | "freedraw" | "rectangle" | "arrow";
+  /** the pen's stroke variability, constant (the editor default) unless set */
+  variability?: "constant" | "variable";
   begin: (api: ExcalidrawImperativeAPI, canvas: HTMLCanvasElement) => void;
   midway?: (
     api: ExcalidrawImperativeAPI,
@@ -156,6 +158,46 @@ const pinch = (scene: SceneName, steps: number): Scenario => {
   };
 };
 
+/** zoom in, let go, and start panning a little after the zoom settles: the
+ * pan's first frames land while the crisp redraw at the new zoom runs */
+const settlePan = (
+  scene: SceneName,
+  zoomSteps: number,
+  panSteps: number,
+  pauseMs: number,
+): Scenario => {
+  let origin = { x: 0, y: 0 };
+  return {
+    id: `${scene}/settle-pan`,
+    scene,
+    steps: zoomSteps + panSteps,
+    tool: "hand",
+    begin: (_, canvas) => {
+      origin = center(canvas);
+      pointer(canvas, "pointermove", origin.x, origin.y, { buttons: 0 });
+    },
+    midway: () => new Promise((resolve) => setTimeout(resolve, pauseMs)),
+    midwayStep: zoomSteps + 1,
+    step: (canvas, i) => {
+      if (i <= zoomSteps) {
+        wheel(canvas, origin.x, origin.y, -10);
+      } else if (i === zoomSteps + 1) {
+        pointer(canvas, "pointerdown", origin.x, origin.y);
+      } else {
+        const t = i - zoomSteps - 1;
+        pointer(canvas, "pointermove", origin.x - 9 * t, origin.y - 4 * t);
+      }
+    },
+    end: (canvas) =>
+      pointer(
+        canvas,
+        "pointerup",
+        origin.x - 9 * (panSteps - 1),
+        origin.y - 4 * (panSteps - 1),
+      ),
+  };
+};
+
 type Path = (
   i: number,
   steps: number,
@@ -235,9 +277,21 @@ export const SCENARIOS: Scenario[] = [
   zoom("freedraw", 40, 100, 3, (_, canvas) => center(canvas)),
   pinch("freedraw", 160),
   freedraw("freedraw", 240),
+  gesture("freedraw/freedraw-long", "freedraw", "freedraw", 1000, loops),
+  {
+    ...gesture(
+      "freedraw/freedraw-long-variable",
+      "freedraw",
+      "freedraw",
+      1000,
+      loops,
+    ),
+    variability: "variable",
+  },
   zoom("deep", 0, 130, 10, deepAnchor),
   pinch("deep", 120),
   pan("deep", 120),
+  settlePan("labels", 6, 60, 300),
 ];
 
 /** gestures for checking that a change paints what master paints: shapes

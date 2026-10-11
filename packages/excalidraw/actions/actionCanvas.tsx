@@ -1,5 +1,7 @@
 import {
+  COLOR_PALETTE,
   DEFAULT_CANVAS_BACKGROUND_PICKS,
+  removeDarkModeFilter,
   MAX_ZOOM,
   MIN_ZOOM,
   THEME,
@@ -62,7 +64,13 @@ export const actionChangeViewBackgroundColor = register<Partial<AppState>>({
         : CaptureUpdateAction.EVENTUALLY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, appProps, data }) => {
+  PanelComponent: ({ elements, appState, updateData, app }) => {
+    // the canvas shows the theme's background over the default white, so
+    // the swatch does too (it displays its color through the dark filter)
+    const themeBackground =
+      appState.viewBackgroundColor === COLOR_PALETTE.white
+        ? app.cssTheme.canvas.background
+        : undefined;
     // FIXME move me to src/components/mainMenu/DefaultItems.tsx
     return (
       <ColorPicker
@@ -70,7 +78,13 @@ export const actionChangeViewBackgroundColor = register<Partial<AppState>>({
         topPicks={DEFAULT_CANVAS_BACKGROUND_PICKS}
         label={t("labels.canvasBackground")}
         type="canvasBackground"
-        color={appState.viewBackgroundColor}
+        color={
+          themeBackground &&
+          themeBackground !== COLOR_PALETTE.transparent &&
+          appState.theme === THEME.DARK
+            ? removeDarkModeFilter(themeBackground)
+            : themeBackground ?? appState.viewBackgroundColor
+        }
         onChange={(color) => updateData({ viewBackgroundColor: color })}
         data-testid="canvas-background-picker"
         elements={elements}

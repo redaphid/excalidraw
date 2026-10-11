@@ -20,6 +20,8 @@ type Counters = {
   stroke: number;
   fillText: number;
   canvasesCreated: number;
+  /** megapixels of canvas allocated, counted as a canvas's height is set */
+  canvasMpx: number;
   arrayElementsWalked: number;
   mapSets: number;
   mapGets: number;
@@ -34,6 +36,12 @@ type ScenarioResult = {
   settleMaxFrameMs: number;
   countersPerFrame?: Counters;
   countersAtRelease?: Counters;
+  /** the longest frame from the gesture's start to the end of its settle
+   * window, and the most of each counter spent in any one of those frames */
+  frameMaxMs: number;
+  countersMaxFrame?: Counters;
+  /** frames that created a canvas, i.e. (re)drew some element's bitmap */
+  canvasFrames?: number;
 };
 
 export type BenchReport = {
@@ -116,6 +124,7 @@ const counters: Counters = {
   stroke: 0,
   fillText: 0,
   canvasesCreated: 0,
+  canvasMpx: 0,
   arrayElementsWalked: 0,
   mapSets: 0,
   mapGets: 0,
@@ -173,6 +182,17 @@ const installCounters = () => {
     "getBoundingClientRect",
     () => counters.boundingRectReads++,
   );
+  const height = Object.getOwnPropertyDescriptor(
+    HTMLCanvasElement.prototype,
+    "height",
+  )!;
+  Object.defineProperty(HTMLCanvasElement.prototype, "height", {
+    ...height,
+    set(this: HTMLCanvasElement, value: number) {
+      counters.canvasMpx += (this.width * value) / 1e6;
+      height.set!.call(this, value);
+    },
+  });
   wrap(document, "createElement", (_, [tag]) => {
     if (String(tag).toLowerCase() === "canvas") {
       counters.canvasesCreated++;
@@ -180,13 +200,94 @@ const installCounters = () => {
   });
 };
 
+/** what `takeCounters` has reset so far, for the frame sampler's totals */
+const banked = { ...counters };
+
 const takeCounters = (steps: number): Counters => {
   const taken = { ...counters };
   for (const key of Object.keys(counters) as (keyof Counters)[]) {
     taken[key] = round(counters[key] / steps);
+    banked[key] += counters[key];
     counters[key] = 0;
   }
   return taken;
+};
+
+const totals = (): Counters => {
+  const sum = { ...counters };
+  for (const key of Object.keys(sum) as (keyof Counters)[]) {
+    sum[key] += banked[key];
+  }
+  return sum;
+};
+
+/** samples every animation frame until stopped: how long it took and what
+ * the counters did in it, wherever the work ran (input, timers, rAF) */
+const sampleFrames = () => {
+  const frames: { ms: number; counters: Counters }[] = [];
+  let running = true;
+  let lastAt = performance.now();
+  let lastTotals = totals();
+  // the time is read here rather than taken from the frame's timestamp, so
+  // a sample's time and counters cover the same work
+  const tick = () => {
+    if (!running) {
+      return;
+    }
+    const at = performance.now();
+    const now = totals();
+    const delta = { ...now };
+    for (const key of Object.keys(delta) as (keyof Counters)[]) {
+      delta[key] = round(now[key] - lastTotals[key]);
+    }
+    frames.push({ ms: at - lastAt, counters: delta });
+    lastAt = at;
+    lastTotals = now;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  return () => {
+    running = false;
+    const max = { ...counters };
+    for (const key of Object.keys(max) as (keyof Counters)[]) {
+      max[key] = Math.max(0, ...frames.map((frame) => frame.counters[key]));
+    }
+    return {
+      frameMaxMs: round(Math.max(0, ...frames.map((frame) => frame.ms))),
+      countersMaxFrame: max,
+      canvasFrames: frames.filter((frame) => frame.counters.canvasesCreated)
+        .length,
+    };
+  };
+};
+
+/** canvases created so far, counted whether or not `counters` is set */
+let canvasesMade = 0;
+const createElement = document.createElement;
+document.createElement = function (
+  this: Document,
+  ...args: Parameters<Document["createElement"]>
+) {
+  if (String(args[0]).toLowerCase() === "canvas") {
+    canvasesMade++;
+  }
+  return createElement.apply(this, args);
+} as Document["createElement"];
+
+const QUIET_FRAMES = 10;
+const QUIET_TIMEOUT_MS = 30_000;
+
+/** waits until the editor stops building bitmaps, so a build that builds
+ * them a few per frame starts the gesture from the same state as one that
+ * builds them all at once */
+const canvasesQuiet = async () => {
+  const until = performance.now() + QUIET_TIMEOUT_MS;
+  let quiet = 0;
+  while (quiet < QUIET_FRAMES && performance.now() < until) {
+    const before = canvasesMade;
+    await nextFrame();
+    quiet = canvasesMade === before ? quiet + 1 : 0;
+  }
 };
 
 const runScenario = async (
@@ -200,9 +301,11 @@ const runScenario = async (
       selectedElementIds: {},
       theme: "light",
       viewBackgroundColor: "#fff",
+      currentItemStrokeVariability: scenario.variability ?? "constant",
     },
   });
   await wait(VIEW_RESET_MS);
+  await canvasesQuiet();
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
@@ -212,6 +315,7 @@ const runScenario = async (
   scenario.begin(api, canvas);
   await flushTasks();
   takeCounters(1);
+  const stopSampling = sampleFrames();
 
   await window.profilerHook?.(scenario.id, "start");
   const frames: number[] = [];
@@ -244,6 +348,7 @@ const runScenario = async (
     settleMaxFrameMs = Math.max(settleMaxFrameMs, next - last);
     last = next;
   }
+  const sampled = stopSampling();
 
   return {
     id: scenario.id,
@@ -253,6 +358,11 @@ const runScenario = async (
     settleMaxFrameMs: round(settleMaxFrameMs),
     countersPerFrame,
     countersAtRelease,
+    frameMaxMs: sampled.frameMaxMs,
+    ...(counting && {
+      countersMaxFrame: sampled.countersMaxFrame,
+      canvasFrames: sampled.canvasFrames,
+    }),
   };
 };
 
