@@ -23,6 +23,10 @@ const sourceName = (id) => `@excalidraw/${id}`;
 const registryName = (id) =>
   id === "excalidraw" ? "@redaphid/excalidraw" : `@redaphid/excalidraw-${id}`;
 
+const urlTarball = (id, version) => `excalidraw-${id}-${version}.tgz`;
+const registryTarball = (id, version) =>
+  `redaphid-excalidraw-${id}-${version}.tgz`;
+
 const isLockstep = (name) => LOCKSTEP.some((id) => sourceName(id) === name);
 
 const lockstepDependencies = (manifest) =>
@@ -132,7 +136,9 @@ module.exports = {
   REPOSITORY,
   registryManifest,
   registryName,
+  registryTarball,
   siblingClosure,
   sourceName,
   urlManifest,
+  urlTarball,
 };

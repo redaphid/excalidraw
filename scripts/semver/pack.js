@@ -9,19 +9,17 @@ const {
   declarationTarget,
   LOCKSTEP,
   registryManifest,
+  registryTarball,
   siblingClosure,
   sourceName,
   urlManifest,
+  urlTarball,
 } = require("./packages");
 
 const ROOT = path.resolve(__dirname, "../..");
 const PACKAGES_DIR = path.join(ROOT, "packages");
 const OUT_DIR = path.join(ROOT, "release");
 const REGISTRY_DIR = path.join(OUT_DIR, "registry");
-
-const urlTarball = (id, version) => `excalidraw-${id}-${version}.tgz`;
-const registryTarball = (id, version) =>
-  `redaphid-excalidraw-${id}-${version}.tgz`;
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf-8"));
 
@@ -110,7 +108,7 @@ const pack = ({ version }) => {
       stdio: "inherit",
     });
     fs.mkdirSync(unpacked(id), { recursive: true });
-    tar(`-xzf ${id}.tgz --strip-components=1 -C ${unpacked(id)}`, work);
+    tar(`-xzf ${id}.tgz --strip-components=1 -C packed/${id}`, work);
     localizeDeclarations(
       unpacked(id),
       id,
@@ -148,9 +146,10 @@ const pack = ({ version }) => {
         atVersion(packed[sibling], version),
       );
     }
-    tar(
-      `-czf ${urlTarball(id, version)} -C ${path.dirname(urlStaging)} package`,
-      OUT_DIR,
+    tar(`-czf ${urlTarball(id, version)} package`, path.dirname(urlStaging));
+    fs.copyFileSync(
+      path.join(path.dirname(urlStaging), urlTarball(id, version)),
+      path.join(OUT_DIR, urlTarball(id, version)),
     );
 
     const registryStaging = path.join(work, "registry", id);

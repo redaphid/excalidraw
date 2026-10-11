@@ -8,6 +8,7 @@ const {
   LOCKSTEP,
   PUBLISH_ORDER,
   registryName,
+  registryTarball,
   sourceName,
 } = require("./packages");
 
@@ -65,10 +66,15 @@ const failed = (what, result) =>
 // order, and skips a version the registry already has, so a rerun after a
 // failure publishes only what is missing.
 const publish = ({ version, dir, run, dryRun = false }) => {
-  const tarball = (id) =>
-    path.join(dir, `redaphid-excalidraw-${id}-${version}.tgz`);
+  const tarball = (id) => path.join(dir, registryTarball(id, version));
   for (const id of PUBLISH_ORDER) {
-    const result = run("tar", ["-xzOf", tarball(id), "package/package.json"]);
+    // A bare name inside dir: GNU tar reads "D:\..." as a remote host and
+    // unescapes "\r" in a Windows path.
+    const result = run(
+      "tar",
+      ["-xzOf", path.basename(tarball(id)), "package/package.json"],
+      { cwd: dir },
+    );
     if (result.status !== 0) {
       throw failed(`Reading the manifest in ${tarball(id)}`, result);
     }
@@ -128,8 +134,14 @@ if (require.main === module) {
       version,
       dir: path.resolve(__dirname, "../../release/registry"),
       dryRun,
-      run: (command, args) =>
-        spawnSync(command, args, { encoding: "utf8", maxBuffer: 1 << 26 }),
+      run: (command, args, options) =>
+        spawnSync(command, args, {
+          ...options,
+          // npm is npm.cmd on Windows, which only a shell can start.
+          shell: process.platform === "win32" && command === "npm",
+          encoding: "utf8",
+          maxBuffer: 1 << 26,
+        }),
     });
   } catch (error) {
     console.error(`::error::${error.message}`);

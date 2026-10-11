@@ -33,6 +33,7 @@ jobs:
           fi
       - uses: ./.github/actions/setup
       - run: node scripts/semver/pack.js --version="${GITHUB_REF_NAME#v}"
+      - run: node scripts/semver/verify.js --version="${GITHUB_REF_NAME#v}"
       - env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/semver/publish.js --version="${GITHUB_REF_NAME#v}"

@@ -53,9 +53,17 @@ Types resolve with npm and with pnpm's default layout. Under pnpm `hoist=false`,
    git tag v1.1.0 && git push origin v1.1.0
    ```
 
-The tag runs `.github/workflows/release.yml`. It builds and packs the packages at the tag's version, refuses to continue if any package is at another version, checks each tarball's name, version, registry and sibling aliases, publishes the five packages to GitHub Packages, and creates a GitHub release with the five tarballs attached.
+The tag runs `.github/workflows/release.yml`. It builds and packs the packages at the tag's version, refuses to continue if any package is at another version, and installs the tarballs into fresh projects. There, `@excalidraw/excalidraw` has to bundle, every file in `themes/index.json` has to import through `./themes/*`, and the other four packages have to load in Node. It then checks each tarball's name, version, registry and sibling aliases, publishes the five packages to GitHub Packages, and creates a GitHub release with the five tarballs attached.
 
 If a run fails, rerun it. It skips the packages that are already published.
+
+To rehearse a release without publishing, run the same checks locally. CI's `pack` job runs them on every pull request.
+
+```sh
+node scripts/semver/pack.js --version=1.1.0
+node scripts/semver/verify.js --version=1.1.0
+node scripts/semver/publish.js --version=1.1.0 --dry-run
+```
 
 The packages take the repository's public visibility. A tag that is not on `master` fails before anything is built, and a rerun replaces a draft release that a failed run left behind.
 
