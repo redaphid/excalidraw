@@ -1,3 +1,4 @@
+import { LaserPointer } from "@excalidraw/laser-pointer";
 import { pointFrom, type LocalPoint } from "@excalidraw/math";
 import * as stock from "perfect-freehand";
 
@@ -189,5 +190,114 @@ describe("strokes drawn at 1x", () => {
         freehand.getStroke(points, options(size, simulatePressure)),
       );
     expect(outlines(vendored)).toEqual(outlines(stock));
+  });
+});
+
+describe("constant-width freedraw", () => {
+  // mulberry32: the same strokes every run.
+  const random = (() => {
+    let seed = 0xc0ffee;
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  })();
+
+  // Strokes as drawn at 1x: 1 to 40 points, with a thin, medium or bold pen.
+  const strokes = Array.from({ length: 200 }, (_, i) => {
+    let x = random() * 100;
+    let y = random() * 100;
+    return {
+      points: Array.from({ length: 1 + Math.floor(random() * 40) }, () => {
+        x += (random() - 0.5) * 30;
+        y += (random() - 0.5) * 30;
+        return [x, y];
+      }),
+      strokeWidth: [1, 2, 4][i % 3],
+    };
+  });
+
+  type Stroke = { points: number[][]; strokeWidth: number };
+
+  /** A stroke drawn at `zoom` in screen units: shrunk by the zoom. */
+  const drawnAt = (zoom: number, { points, strokeWidth }: Stroke) =>
+    ({
+      ...API.createElement({
+        type: "freedraw",
+        strokeWidth: strokeWidth / zoom,
+        points: points.map(([x, y]) =>
+          pointFrom<LocalPoint>(x / zoom, y / zoom),
+        ),
+        strokeOptions: { variability: "constant" },
+      }),
+      ...(zoom !== 1 && { authoringScale: 1 / zoom }),
+    } as ExcalidrawFreeDrawElement);
+
+  const onScreen = (zoom: number, stroke: Stroke) =>
+    getFreedrawOutlinePoints(drawnAt(zoom, stroke)).map(([x, y]) => [
+      x * zoom,
+      y * zoom,
+    ]);
+
+  it("gets exactly the laser pointer's outline at 1x", () => {
+    for (const stroke of strokes) {
+      const laserPointer = new LaserPointer({
+        size: stroke.strokeWidth * 1.4,
+        streamline: 0.5,
+        simplify: 0,
+        sizeMapping: (details) => Math.max(0.1, details.pressure),
+      });
+      stroke.points.forEach(([x, y]) => laserPointer.addPoint([x, y, 1]));
+      expect(getFreedrawOutlinePoints(drawnAt(1, stroke))).toEqual(
+        laserPointer.getStrokeOutline().map(([x, y]) => [x, y]),
+      );
+    }
+  });
+
+  describe.each([100, 100_000])("drawn at %dx", (zoom) => {
+    it("looks on screen as it does at 1x", () => {
+      for (const stroke of strokes) {
+        const atOne = onScreen(1, stroke);
+        const deep = onScreen(zoom, stroke);
+        expect(deep).toHaveLength(atOne.length);
+        deep.forEach(([x, y], i) => {
+          expect(x).toBeCloseTo(atOne[i][0], 6);
+          expect(y).toBeCloseTo(atOne[i][1], 6);
+        });
+      }
+    });
+
+    it("keeps its round start cap", () => {
+      const line = {
+        points: [
+          [0, 0],
+          [10, 0],
+          [20, 0],
+          [30, 0],
+        ],
+        strokeWidth: 2,
+      };
+      const behindStart = Math.max(...onScreen(zoom, line).map(([x]) => -x));
+      expect(behindStart).toBeCloseTo(2 * 1.4, 6);
+    });
+
+    it("draws a single tap as a dot", () => {
+      const dot = onScreen(zoom, { points: [[0, 0]], strokeWidth: 2 });
+      expect(extent(dot.map(([x]) => x))).toBeCloseTo(2 * 2 * 1.4, 6);
+      expect(extent(dot.map(([, y]) => y))).toBeCloseTo(2 * 2 * 1.4, 6);
+    });
+
+    it("draws a two-point stroke", () => {
+      const dash = onScreen(zoom, {
+        points: [
+          [0, 0],
+          [3, 0],
+        ],
+        strokeWidth: 2,
+      });
+      expect(extent(dash.map(([x]) => x))).toBeCloseTo(3 + 2 * 2 * 1.4, 6);
+    });
   });
 });
