@@ -6,6 +6,12 @@ import { Excalidraw } from "@excalidraw/excalidraw";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
+import {
+  BACKDROP_CSS,
+  LEAN_CSS,
+  placeLean,
+  publishCamera,
+} from "./backdropSpike";
 import { THEMES } from "./themes";
 import {
   loadBookmarks,
@@ -30,6 +36,14 @@ window.addEventListener("pagehide", save.flush);
 
 const params = new URLSearchParams(window.location.search);
 const showSwitcher = params.get("switcher") !== "0";
+const backdrop = params.get("backdrop");
+(window as any).__backdropSpike = backdrop === "canvas";
+const place =
+  backdrop === "css"
+    ? publishCamera
+    : backdrop === "css-lean"
+    ? placeLean
+    : undefined;
 
 const setThemeParam = (id: string | null) => {
   const url = new URL(window.location.href);
@@ -92,7 +106,14 @@ const Playground = () => {
   const theme = THEMES.find(({ id }) => id === themeId);
   return (
     <Excalidraw
-      css={theme?.css}
+      css={
+        backdrop === "css"
+          ? (theme?.css ?? "") + BACKDROP_CSS
+          : backdrop === "css-lean"
+          ? (theme?.css ?? "") + LEAN_CSS
+          : theme?.css
+      }
+      onScrollChange={place}
       theme={theme?.mode}
       renderTopRightUI={
         showSwitcher
@@ -112,6 +133,12 @@ const Playground = () => {
       frameNavigation={frameNavigation}
       onExcalidrawAPI={(api) => {
         window.excalidrawAPI = api;
+        if (place) {
+          requestAnimationFrame(() => {
+            const { scrollX, scrollY, zoom } = api.getAppState();
+            place(scrollX, scrollY, zoom);
+          });
+        }
       }}
       onChange={(elements, appState, files) =>
         save(localStorage, elements, appState, files)
