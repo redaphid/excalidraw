@@ -45,7 +45,7 @@ import type {
   SVGPathString,
 } from "@excalidraw/excalidraw/scene/types";
 
-import { getElementDetailScale } from "./authoring";
+import { getElementDetailScale, getNominalSize } from "./authoring";
 import { getStroke, getStrokePoints } from "./perfectFreehand";
 
 import { elementWithCanvasCache } from "./renderElement";
@@ -813,8 +813,8 @@ const generateAtDetailScale = (
   const grow = 1 / scale;
   const shape = generate({
     ...element,
-    width: element.width * grow,
-    height: element.height * grow,
+    width: getNominalSize(element.width, scale),
+    height: getNominalSize(element.height, scale),
     strokeWidth: element.strokeWidth * grow,
     authoringScale: 1,
     roundness: element.roundness?.value

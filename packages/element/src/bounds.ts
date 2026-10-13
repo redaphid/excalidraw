@@ -27,7 +27,7 @@ import type {
 import type { AppState } from "@excalidraw/excalidraw/types";
 import type { Mutable } from "@excalidraw/common/utility-types";
 
-import { getElementDetailScale } from "./authoring";
+import { getElementDetailScale, getNominalSize } from "./authoring";
 import { generateRoughOptions, getFreedrawMaxStrokeRadius } from "./shape";
 import { ShapeCache } from "./shape";
 import { LinearElementEditor } from "./linearElementEditor";
@@ -551,14 +551,14 @@ export const getRectangleBoxAbsoluteCoords = (boxSceneCoords: RectangleBox) => {
 export const getDiamondPoints = (element: ExcalidrawElement) => {
   // Here we add +1 to avoid these numbers to be 0
   // otherwise rough.js will throw an error complaining about it.
-  // Rounded at the element's 1x size, with `generateAtDetailScale`'s
-  // arithmetic, so a diamond made far in outlines exactly what it draws
+  // Rounded at the element's 1x size, as `generateAtDetailScale` draws it
   const scale = getElementDetailScale(element);
-  const grow = 1 / scale;
-  const topX = (Math.floor((element.width * grow) / 2) + 1) * scale;
+  const topX =
+    (Math.floor(getNominalSize(element.width, scale) / 2) + 1) * scale;
   const topY = 0;
   const rightX = element.width;
-  const rightY = (Math.floor((element.height * grow) / 2) + 1) * scale;
+  const rightY =
+    (Math.floor(getNominalSize(element.height, scale) / 2) + 1) * scale;
   const bottomX = topX;
   const bottomY = element.height;
   const leftX = 0;
