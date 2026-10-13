@@ -49,7 +49,7 @@ Shapes (rectangle, diamond, ellipse, line, arrow, embeddable) are generated at t
 
 ## Inventory
 
-`S` marks a size the editor writes (scaled by the authoring scale), `T` an interaction tolerance (authoring scale), `D` a fixed detail (detail scale), `=` a value already divided by the zoom upstream and left alone, `x` a value left in scene units, with the reason. Line numbers are on branch `zoom-relative`.
+`S` marks a size the editor writes (scaled by the authoring scale), `T` an interaction tolerance (authoring scale), `D` a fixed detail (detail scale), `=` a value already divided by the zoom upstream and left alone, `x` a value left in scene units, with the reason, `0` a scene-unit tolerance removed. Line numbers are on branch `zoom-relative`.
 
 ### Sizes the editor writes
 
@@ -86,6 +86,7 @@ Shapes (rectangle, diamond, ellipse, line, arrow, embeddable) are generated at t
 | `element/src/shape.ts:1380` `getFreedrawMaxStrokeRadius` | the 3-unit end-cap allowance | D |
 | `element/src/shape.ts` `getConstantWidthFreedrawOutline` | constant-width freedraw: the laser pointer's start-cap (0.1) and one- or two-point (0.5) size cutoffs and its speed-based corner detection; the outline is built at the element's size at 1x and scaled back | D |
 | `element/src/sizeHelpers.ts:73` | an arrow whose ends are within 0.1 units is dropped as invisible | D |
+| `element/src/collision.ts` `hitElementItself` | the hit test cache replayed its last result for any point within 1e-4 units (10 px at 100,000x); it now replays only for the same point | 0 |
 | `element/src/binding.ts:2104, 2187, 2239` | shortest arrow (10), smallest bindable shape (1) | D |
 | `element/src/utils.ts:777` | elbow midpoint snap floor, 5 | D |
 | snapping (`snapping.ts:48`), point handles (`linearElementEditor.ts:896`), transform handles, text auto-wrap threshold, focus points | already divided by the zoom | = |
@@ -96,6 +97,7 @@ Shapes (rectangle, diamond, ellipse, line, arrow, embeddable) are generated at t
 | --- | --- | --- |
 | `element/src/shape.ts:803` `generateAtDetailScale` | arrowhead sizes (`bounds.ts` `getArrowheadSize`), dash patterns (`shape.ts` `getDashArrayDashed/Dotted`, the non-solid +0.5 width), rough.js wobble and `adjustRoughness` cutoffs, the adaptive radius default, the elbow corner radius | D |
 | `element/src/textElement.ts:399` `getBoundTextPadding` and its callers (textElement.ts, textMeasurements.ts, renderElement.ts, staticSvgScene.ts, resizeElements.ts, dragElements.ts, App.text.ts, App.tsx, actionBoundText.tsx) | label padding, 5; container sizes are rounded in units of the container's scale instead of whole scene units | D |
+| `element/src/bounds.ts` `getDiamondPoints`, `element/src/utils.ts` `deconstructRectanguloidElement` | the outline that hit testing, bounds, binding, the lasso, the eraser and frame clipping read: a diamond's vertices are rounded to whole units at the element's 1x size (`getNominalSize` rounds off the float noise of dividing back, for the renderer too), and a sharp rectangle, frame or text gets a 0.01-unit corner | D |
 | `element/src/binding.ts:135, 1731` | binding gap, 5 | D |
 | `element/src/stickyNote.ts` (223, 241, 284, 432, 491, 604, 701), `newElement.ts:211`, `resizeElements.ts:775`, `restore.ts:584, 926`, renderers | sticky note minimum size (75), padding (16), footer, font range (16 to 512) and step (2), shadow, edge, roughness, corner cap | D |
 | `element/src/resizeElements.ts:310, 924, 1522` | smallest font a resize reaches, 1 | D |
@@ -132,7 +134,7 @@ Chrome 154 measures and draws nothing for a canvas font much under a pixel: in t
 
 ## Tests
 
-- `packages/excalidraw/tests/zoomRelativeAuthoring.test.tsx`: at zoom 1, 100 and 10,000 in screen mode, each tool (rectangle, ellipse, diamond, arrow, line, frame, freedraw, text, labelled shape, sticky note) makes an element of the same on-screen size, stroke and font; the corner radius matches, and at thin, medium and bold widths so do the arrowhead, the dash pattern and the label padding; the stroke width and font size pickers apply screen sizes; the eraser takes a stroke 3 px away and leaves one 30 px away; a click 4 px off a shape selects it and one 20 px off does not; an arrow ending 8 px from a shape binds and one ending 40 px away does not; the grid stays 20 to 100 px on screen and nests; the eraser trail keeps its size. In scene mode, new elements keep upstream's scene sizes at any zoom.
+- `packages/excalidraw/tests/zoomRelativeAuthoring.test.tsx`: at zoom 1, 100 and 10,000 in screen mode, each tool (rectangle, ellipse, diamond, arrow, line, frame, freedraw, text, labelled shape, sticky note) makes an element of the same on-screen size, stroke and font; the corner radius matches, and at thin, medium and bold widths so do the arrowhead, the dash pattern and the label padding; the stroke width and font size pickers apply screen sizes; the eraser takes a stroke 3 px away and leaves one 30 px away; a click 4 px off a shape selects it and one 20 px off does not; a sharp rectangle and a diamond select from the same clicks at 1x, 100x and 100,000x, a lasso drawn around a sharp rectangle takes it, and a diamond is drawn and outlined with its 1x vertices up to 1,000,000x; an arrow ending 8 px from a shape binds and one ending 40 px away does not; the grid stays 20 to 100 px on screen and nests; the eraser trail keeps its size. In scene mode, new elements keep upstream's scene sizes at any zoom.
 - The same file: a medium arrow made at 100x keeps its head through JSON export and restore and through duplication; `restore` drops an invalid `authoringScale`; a rectangle made at 100x or 10,000x is cached in a bitmap no bigger than it is on screen plus 20 px a side, and moving it reuses that bitmap.
 - `packages/excalidraw/tests/freedrawStrokeWidth.test.tsx`: the pen width prop in both units.
 - `packages/element/tests/paintExtent.test.ts`: a thick stroke whose ink, not its centre line, crosses a frame or the viewport edge is exported with the frame and counted as visible.
