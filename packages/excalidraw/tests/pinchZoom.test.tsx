@@ -143,29 +143,42 @@ describe("a two-finger gesture", () => {
     restoreOriginalGetBoundingClientRect();
   });
 
-  describe("when the fingers spread while their centre travels", () => {
-    let anchor: Point;
+  describe.each([
+    { startZoom: 1, scroll: 0 },
+    { startZoom: 100_000, scroll: -5_000 },
+  ])(
+    "when the fingers spread while their centre travels at $startZoom x",
+    ({ startZoom, scroll }) => {
+      let anchor: Point;
 
-    beforeEach(() => {
-      finger1.downAt(70, 60);
-      finger2.downAt(110, 60);
-      anchor = sceneUnder({ x: 90, y: 60 });
-      for (let step = 1; step <= 10; step++) {
-        finger1.moveTo(70 - step, 60 + 3 * step);
-        finger2.moveTo(110 + 3 * step, 60 + 3 * step);
-      }
-      finger1.up();
-      finger2.up();
-    });
+      beforeEach(() => {
+        React.act(() => {
+          h.setState({
+            zoom: { value: getNormalizedZoom(startZoom) },
+            scrollX: scroll,
+            scrollY: scroll,
+          });
+        });
+        finger1.downAt(70, 60);
+        finger2.downAt(110, 60);
+        anchor = sceneUnder({ x: 90, y: 60 });
+        for (let step = 1; step <= 10; step++) {
+          finger1.moveTo(70 - step, 60 + 3 * step);
+          finger2.moveTo(110 + 3 * step, 60 + 3 * step);
+        }
+        finger1.up();
+        finger2.up();
+      });
 
-    it("keeps the board point that was under the fingers under their centre", () => {
-      expect(screenDistance(anchor, { x: 100, y: 90 })).toBeLessThan(0.5);
-    });
+      it("keeps the board point that was under the fingers under their centre", () => {
+        expect(screenDistance(anchor, { x: 100, y: 90 })).toBeLessThan(0.5);
+      });
 
-    it("zooms by the ratio of the spread", () => {
-      expect(h.state.zoom.value).toBeCloseTo(2, 5);
-    });
-  });
+      it("zooms by the ratio of the spread", () => {
+        expect(h.state.zoom.value / startZoom).toBeCloseTo(2, 5);
+      });
+    },
+  );
 
   describe("when both fingers' moves land in one React batch", () => {
     let anchor: Point;
