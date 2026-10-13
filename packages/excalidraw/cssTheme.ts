@@ -1,4 +1,4 @@
-import { FONT_FAMILY } from "@excalidraw/common";
+import { FONT_FAMILY, STICKY_NOTE_SHADOW_REACH } from "@excalidraw/common";
 
 import type { ColorPaletteCustom, ColorTuple } from "@excalidraw/common";
 
@@ -32,6 +32,17 @@ export type CanvasTheme = Readonly<{
   frameColor?: string;
   /** frame outline width in screen pixels */
   frameWidth?: number;
+  /** the sticky note shadow's offset, in scene units at detail scale 1 */
+  stickyNoteShadowX?: number;
+  stickyNoteShadowY?: number;
+  /** the shadow's blur radius, as in CSS `box-shadow` (0 is a sharp edge) */
+  stickyNoteShadowBlur?: number;
+  /** `transparent` draws no shadow */
+  stickyNoteShadowColor?: string;
+  /** the width of the edge drawn just inside a sticky note's outline */
+  stickyNoteEdgeWidth?: number;
+  /** `transparent` draws no edge */
+  stickyNoteEdgeColor?: string;
 }>;
 
 /** The appState fields a theme may seed: new-element defaults and swatches. */
@@ -52,6 +63,8 @@ export type CssThemeAppState = Partial<
     | "currentItemArrowType"
     | "currentItemStrokeVariability"
     | "currentItemFreedrawStrokeWidth"
+    | "currentItemStickynoteBackgroundColor"
+    | "currentItemStickynoteStrokeColor"
   >
 > & {
   /** merged over the user's pins: the lists a theme leaves out are kept */
@@ -109,6 +122,10 @@ const oneOf =
 const elementColor = (value: string) =>
   HEX_COLOR.test(value) || value === "transparent" ? value : undefined;
 
+/** a sticky note is never transparent */
+const opaqueColor = (value: string) =>
+  HEX_COLOR.test(value) ? value : undefined;
+
 const positiveNumber = (value: string) => {
   const number = Number(value);
   return value !== "" && Number.isFinite(number) && number > 0
@@ -140,6 +157,83 @@ const colorList = (value: string) => {
   return colors.length && colors.every((color) => elementColor(color))
     ? colors
     : undefined;
+};
+
+const opaqueColorList = (value: string) => {
+  const colors = colorList(value);
+  return colors?.every((color) => opaqueColor(color))
+    ? colors.slice(0, 5)
+    : undefined;
+};
+
+/** offset plus blur past the cached bitmap's padding is cut off */
+const MAX_STICKY_NOTE_SHADOW_OFFSET = 16;
+const MAX_STICKY_NOTE_EDGE_WIDTH = 8;
+
+/** up to `count` numbers, then a color that may hold spaces, as
+ * `rgba(0, 0, 0, 0.2)` */
+const numbersThenColor = (value: string, count: number) => {
+  const parts = value.split(/\s+/);
+  const numbers: number[] = [];
+  while (
+    numbers.length < count &&
+    parts[numbers.length] !== "" &&
+    Number.isFinite(Number(parts[numbers.length]))
+  ) {
+    numbers.push(Number(parts[numbers.length]));
+  }
+  return parts.length > numbers.length
+    ? { numbers, color: parts.slice(numbers.length).join(" ") }
+    : undefined;
+};
+
+/** `none`, or `<x> <y> [<blur>] <color>`; the blur shrinks to fit the
+ * bitmap's padding, offsets past it are refused */
+const stickyNoteShadow = (
+  value: string,
+): Pick<
+  CanvasTheme,
+  | "stickyNoteShadowX"
+  | "stickyNoteShadowY"
+  | "stickyNoteShadowBlur"
+  | "stickyNoteShadowColor"
+> => {
+  if (value === "none") {
+    return {
+      stickyNoteShadowX: 0,
+      stickyNoteShadowY: 0,
+      stickyNoteShadowBlur: 0,
+      stickyNoteShadowColor: "transparent",
+    };
+  }
+  const parsed = numbersThenColor(value, 3);
+  if (!parsed || parsed.numbers.length < 2) {
+    return {};
+  }
+  const [x, y, blur = 0] = parsed.numbers;
+  const offset = Math.max(Math.abs(x), Math.abs(y));
+  return offset <= MAX_STICKY_NOTE_SHADOW_OFFSET && blur >= 0
+    ? {
+        stickyNoteShadowX: x,
+        stickyNoteShadowY: y,
+        stickyNoteShadowBlur: Math.min(blur, STICKY_NOTE_SHADOW_REACH - offset),
+        stickyNoteShadowColor: parsed.color,
+      }
+    : {};
+};
+
+/** `none`, or `<width> <color>` */
+const stickyNoteEdge = (
+  value: string,
+): Pick<CanvasTheme, "stickyNoteEdgeWidth" | "stickyNoteEdgeColor"> => {
+  if (value === "none") {
+    return { stickyNoteEdgeWidth: 0, stickyNoteEdgeColor: "transparent" };
+  }
+  const parsed = numbersThenColor(value, 1);
+  const width = parsed?.numbers.length ? parsed.numbers[0] : 0;
+  return parsed && width > 0 && width <= MAX_STICKY_NOTE_EDGE_WIDTH
+    ? { stickyNoteEdgeWidth: width, stickyNoteEdgeColor: parsed.color }
+    : {};
 };
 
 const isColorTuple = (colors: string[]): colors is [...ColorTuple] =>
@@ -201,6 +295,8 @@ export const readCssTheme = (style: {
     handleFill: color("--canvas-handle-fill"),
     frameColor: color("--canvas-frame-color"),
     frameWidth: positiveNumber(read("--canvas-frame-width")),
+    ...stickyNoteShadow(read("--canvas-sticky-note-shadow")),
+    ...stickyNoteEdge(read("--canvas-sticky-note-edge")),
   });
 
   const appState: CssThemeAppState = definedEntries({
@@ -240,13 +336,24 @@ export const readCssTheme = (style: {
     currentItemFreedrawStrokeWidth: positiveNumber(
       read("--element-freedraw-width"),
     ),
+    currentItemStickynoteBackgroundColor: opaqueColor(
+      read("--sticky-note-background-color"),
+    ),
+    currentItemStickynoteStrokeColor: opaqueColor(
+      read("--sticky-note-stroke-color"),
+    ),
   });
 
-  if (strokePicks || backgroundPicks) {
-    appState.colorTopPicks = definedEntries({
-      elementStroke: strokePicks,
-      elementBackground: backgroundPicks,
-    });
+  const colorTopPicks = definedEntries({
+    elementStroke: strokePicks,
+    elementBackground: backgroundPicks,
+    stickyNoteStroke: opaqueColorList(read("--color-picks-sticky-note-stroke")),
+    stickyNoteBackground: opaqueColorList(
+      read("--color-picks-sticky-note-background"),
+    ),
+  });
+  if (Object.keys(colorTopPicks).length) {
+    appState.colorTopPicks = colorTopPicks;
   }
 
   const palettes = definedEntries({

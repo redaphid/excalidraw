@@ -108,6 +108,31 @@
           "hex": "#00b3c7"
         }
       }
+    },
+    "note": {
+      "acid": {
+        "$value": "{color.active}"
+      },
+      "white": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [1, 1, 1],
+          "hex": "#ffffff"
+        }
+      },
+      "amber": {
+        "$value": "{color.palette.amber}"
+      },
+      "cyan": {
+        "$value": "{color.palette.cyan}"
+      },
+      "concrete": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.7686, 0.7686, 0.7373],
+          "hex": "#c4c4bc"
+        }
+      }
     }
   },
   "font": {

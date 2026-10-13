@@ -19,7 +19,11 @@
         "border": "bold",
         "shadow": "none"
       },
-      "extra": ":scope .HintViewer {\n  --color-gray-40: #454c53;\n}"
+      "extra": ":scope .HintViewer {\n  --color-gray-40: #454c53;\n}",
+      "note": {
+        "shadow": "none",
+        "edge": "ink"
+      }
     }
   },
   "color": {
@@ -85,6 +89,43 @@
           "colorSpace": "srgb",
           "components": [0.4, 0.4431, 0.4784],
           "hex": "#66717a"
+        }
+      }
+    },
+    "note": {
+      "bond": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.9255, 0.8941, 0.8314],
+          "hex": "#ece4d4"
+        }
+      },
+      "apricot": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.9412, 0.8314, 0.7216],
+          "hex": "#f0d4b8"
+        }
+      },
+      "sage": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.8118, 0.8784, 0.8235],
+          "hex": "#cfe0d2"
+        }
+      },
+      "slate": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.8039, 0.851, 0.902],
+          "hex": "#cdd9e6"
+        }
+      },
+      "brick": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.9098, 0.8118, 0.7608],
+          "hex": "#e8cfc2"
         }
       }
     }

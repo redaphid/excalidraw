@@ -31,6 +31,12 @@
   --element-freedraw-width: 0.35;
   --color-picks-stroke: #33312e #c0392b #2e7d4f #2f5fa7 #d17a00;
   --color-picks-background: transparent #fad1c6 #d6e7d0 #d4dfea #fae4bf;
+  --sticky-note-background-color: #fdf1cf;
+  --sticky-note-stroke-color: #33312e;
+  --color-picks-sticky-note-background: #fdf1cf #fbdcd2 #dcebd5 #dae4f1 #fffdf8;
+  --color-picks-sticky-note-stroke: #33312e #c0392b #2e7d4f #2f5fa7 #d17a00;
+  --canvas-sticky-note-shadow: 3 4 rgba(51, 49, 46, 0.18);
+  --canvas-sticky-note-edge: 1.25 #33312e;
   --color-palette-stroke: #d4cfc6 #ada9a1 #85827c #5a5853 #33312e,
     #edd1c5 #e2aca0 #d7877a #cb5e51 #c0392b,
     #d3ddcc #abc6ad #82ae8f #56946d #2e7d4f,

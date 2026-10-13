@@ -80,6 +80,7 @@ The draw MCP is planned to grow a theme tool that takes the tokens, calls `gener
 - **Labels read.** Text on every fill, the selected tool's icon, panel headings, dialog keycaps, the hint under the toolbar.
 - **Popovers are opaque.** The color picker must not show the scene through it.
 - **Frames sit behind content.** A frame drawn heavier than the shapes inside it is wrong.
+- **Notes are the theme's paper.** The sample scene's sticky notes must sit on the board like paper that belongs to the theme: papers from its world, its ink on them, and a shadow and edge that match how its panels sit. A default yellow note on a drafting sheet is wrong.
 - **The grid carries the theme, quietly.** Judge it at 100% zoom. Graph paper wants solid minors at about 0.15 to 0.2 alpha and majors at about 0.45.
 - **Menus and dialogs.** The main menu, the help dialog and its keycaps, the color picker.
 - **Phone is not an afterthought.** The bottom toolbar, the stacked scene, the picker at phone width.

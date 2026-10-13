@@ -15,6 +15,8 @@
   --canvas-frame-color: rgba(255, 255, 255, 0.55);
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #cfe0f5;
+  --canvas-sticky-note-shadow: none;
+  --canvas-sticky-note-edge: 1 rgba(255, 255, 255, 0.55);
   --color-selection: #ffd27a;
   --element-stroke-color: #000000;
   --element-background-color: transparent;
@@ -48,6 +50,11 @@
     #9fc5ff #93a6f1 #8485d8 #725dbd #61359f,
     #9ac8ff #84addf #6c90bd #4f6d92 #324967,
     #a8c2ff #a4a2de #9d7bb7 #974f8b #93235e;
+
+  --sticky-note-background-color: #d3e5fe;
+  --sticky-note-stroke-color: #000000;
+  --color-picks-sticky-note-background: #d3e5fe #b0e6f0 #f3ddc6 #e3e8ed;
+  --color-picks-sticky-note-stroke: #000000 #782013 #002c05 #002c61 #3f0f00;
 
   --ui-font: Cascadia, "Cascadia Code", Consolas, "SF Mono", monospace;
   --text-primary-color: #f2f6fb;

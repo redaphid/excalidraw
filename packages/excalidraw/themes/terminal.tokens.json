@@ -20,7 +20,11 @@
         "shadow": "none"
       },
       "washes": ["phosphor", "cyan", "phosphor", "cyan"],
-      "extra": ":scope {\n  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n}"
+      "extra": ":scope {\n  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n}",
+      "note": {
+        "shadow": "none",
+        "edge": "accent"
+      }
     }
   },
   "color": {
@@ -93,6 +97,43 @@
           "colorSpace": "srgb",
           "components": [0.3098, 0.8392, 0.7451],
           "hex": "#4fd6be"
+        }
+      }
+    },
+    "note": {
+      "phosphor": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.051, 0.1686, 0.0863],
+          "hex": "#0d2b16"
+        }
+      },
+      "dim": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.0392, 0.1216, 0.0627],
+          "hex": "#0a1f10"
+        }
+      },
+      "amber": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1686, 0.1333, 0.0627],
+          "hex": "#2b2210"
+        }
+      },
+      "cyan": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.051, 0.149, 0.1882],
+          "hex": "#0d2630"
+        }
+      },
+      "alert": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1647, 0.1059, 0.1059],
+          "hex": "#2a1b1b"
         }
       }
     }

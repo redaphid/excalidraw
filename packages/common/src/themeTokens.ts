@@ -53,6 +53,32 @@ const SHADOWS: Record<ThemeSpec["surface"]["shadow"], (ink: string) => string> =
     hard: (ink) => `0 0 0 2px ${ink}, 5px 5px 0 2px ${ink}`,
   };
 
+/**
+ * `--canvas-sticky-note-shadow` and `--canvas-sticky-note-edge`, in scene
+ * units. soft is the editor's built-in shadow; hard is the offset block of a
+ * brutalist panel. hairline is the panel ring (`SHADOWS.none`) in the note
+ * ink, which reads on every paper, so a white note on a pale board keeps an
+ * edge; the built-in 8% black does not.
+ */
+const NOTE_SHADOWS: Record<
+  ThemeSpec["note"]["shadow"],
+  (ink: string) => string
+> = {
+  none: () => "none",
+  soft: () => "3 3 rgba(0, 0, 0, 0.16)",
+  lifted: () => "6 8 10 rgba(0, 0, 0, 0.2)",
+  hard: (ink) => `5 5 ${ink}`,
+};
+const NOTE_EDGES: Record<
+  ThemeSpec["note"]["edge"],
+  (colors: { ink: string; accent: string }) => string
+> = {
+  none: () => "none",
+  hairline: ({ ink }) => `1 ${rgba(ink, 0.14)}`,
+  ink: ({ ink }) => `2 ${ink}`,
+  accent: ({ accent }) => `1 ${rgba(accent, 0.9)}`,
+};
+
 const STROKE_SHADES = [0.82, 0.62, 0.42, 0.2, 0];
 const GENERIC_FONTS = [
   "serif",
@@ -67,6 +93,8 @@ const GENERIC_FONTS = [
   "ui-rounded",
 ];
 const FILL_WASH = 0.68;
+/** a paper moved further than this share of the way warns on the note ink */
+const NOTE_PAPER_MOVE_LIMIT = 0.15;
 
 const generate = (
   tokens: ThemeSpec,
@@ -196,6 +224,7 @@ const generate = (
     steps.map((t) => store(mix(color, canvas, t)));
   const strokeEntries = lineHues.map((hue) => ramp(hue, STROKE_SHADES));
   // shade 1 is the wash under ink labels: paled until the label reads
+  const fillWashes: string[] = [];
   const fillEntries = hues.map((hue, i) => {
     let wash = FILL_WASH;
     while (
@@ -212,11 +241,97 @@ const generate = (
         reason: "the background wash was too strong for ink labels",
       });
     }
+    fillWashes.push(mix(hue, canvas, wash));
     return ramp(hue, [Math.max(0.86, wash + 0.12), wash, 0.48, 0.24, 0]);
   });
   const washes = (tokens.washes ?? [0, 1, 2, 3]).map(
     (i) => fillEntries[i + 1][1],
   );
+
+  // the note ink sits on its paper, never on the canvas: white type on black
+  // cards is fine on a white board
+  const noteInk = tokens.note.ink ?? elementInk;
+  const noteInkShown = shown(store(noteInk));
+  const onPaper = (paper: string) =>
+    contrastRatio(noteInkShown, shown(store(paper)));
+  // a failing paper fades toward the canvas; when the canvas fails the ink
+  // too (an inverse note), it moves away from the ink instead
+  const paperTarget =
+    onPaper(canvas) >= 4.5
+      ? canvas
+      : onPaper("#000000") > onPaper("#ffffff")
+      ? "#000000"
+      : "#ffffff";
+  /** the paper, and how far toward `paperTarget` it had to move */
+  const notePaper = (paper: string, token: string | null) => {
+    let moved = 0;
+    while (moved < 1 && onPaper(mix(paper, paperTarget, moved)) < 4.5) {
+      moved = Math.min(1, moved + 0.03);
+    }
+    const result = mix(paper, paperTarget, moved);
+    if (moved > 0 && token) {
+      warnings.push({
+        token,
+        from: paper,
+        to: result,
+        reason: `note ink on the paper: ${onPaper(paper).toFixed(
+          2,
+        )}:1, needs 4.5:1`,
+      });
+    }
+    return { paper: result, moved };
+  };
+  if (dark) {
+    tokens.note.papers.forEach((paper, i) => {
+      const displayed = shown(store(paper));
+      const [a, b] = [rgb(paper), rgb(displayed)];
+      if (Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > 40) {
+        warnings.push({
+          token: `note[${i}]`,
+          from: paper,
+          to: displayed,
+          reason:
+            "dark mode's color filter cannot display this color; notes show it as the `to` color",
+        });
+      }
+    });
+  }
+  // washes are the papers only without `color.note`; else they pad the picks
+  const washPapers = fillWashes
+    .slice(1, 6)
+    .map((wash) =>
+      notePaper(
+        wash,
+        tokens.note.ink && !tokens.note.papers.length ? "noteInk" : null,
+      ),
+    );
+  const papers = tokens.note.papers.length
+    ? tokens.note.papers.map((paper, i) => notePaper(paper, `note[${i}]`))
+    : washPapers;
+  // a paper moved far has lost its color: say so on the ink, the token that
+  // usually caused it, so notes never fade into the canvas silently
+  const paled = papers.filter(({ moved }) => moved > NOTE_PAPER_MOVE_LIMIT);
+  if (paled.length) {
+    const most = Math.max(...paled.map(({ moved }) => moved));
+    warnings.push({
+      token: "noteInk",
+      from: noteInk,
+      to: noteInk,
+      reason: `${paled.length} of ${
+        papers.length
+      } note papers moved ${Math.round(
+        most * 100,
+      )}% toward ${paperTarget} for this ink to reach 4.5:1${
+        most === 1 ? ", all the way: those notes lost their color" : ""
+      }; change the ink or the papers`,
+    });
+  }
+  // a theme's own papers, then its washes, so every pick slot has a color
+  const paperPicks = [
+    ...new Set([...papers, ...washPapers].map(({ paper }) => paper)),
+  ]
+    .slice(0, 5)
+    .map(store);
 
   const list = (entries: string[][]) =>
     entries.map((entry) => entry.join(" ")).join(",\n    ");
@@ -245,6 +360,13 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --canvas-frame-color: ${rgba(elementInk, tokens.frame.alpha)};
   --canvas-frame-width: ${tokens.frame.width};
   --canvas-frame-name-color: ${muted};
+  --canvas-sticky-note-shadow: ${NOTE_SHADOWS[tokens.note.shadow](
+    noteInkShown,
+  )};
+  --canvas-sticky-note-edge: ${NOTE_EDGES[tokens.note.edge]({
+    ink: noteInkShown,
+    accent,
+  })};
   --color-selection: ${accent};
 
   --element-stroke-color: ${store(elementInk)};
@@ -274,6 +396,14 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --color-palette-stroke: ${list(strokeEntries)};
   --color-palette-background: transparent,
     ${list(fillEntries.slice(1))};
+
+  --sticky-note-background-color: ${paperPicks[0]};
+  --sticky-note-stroke-color: ${store(noteInk)};
+  --color-picks-sticky-note-background: ${paperPicks.join(" ")};
+  --color-picks-sticky-note-stroke: ${[
+    store(noteInk),
+    ...strokeEntries.slice(1, 5).map((entry) => entry[4]),
+  ].join(" ")};
 
   --ui-font: ${tokens.type.ui
     .map((family) => (GENERIC_FONTS.includes(family) ? family : `"${family}"`))

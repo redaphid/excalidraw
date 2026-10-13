@@ -80,6 +80,14 @@ export type ThemeSpec = {
     active?: string;
   };
   frame: { width: number; alpha: number };
+  note: {
+    /** displayed colors, the default paper first; empty: the palette's washes */
+    papers: string[];
+    /** absent: the element ink */
+    ink?: string;
+    shadow: typeof NOTE_SHADOWS[number];
+    edge: typeof NOTE_EDGES[number];
+  };
   /** paints the canvas transparent and puts this CSS background behind it */
   backdrop?: string;
   /** CSS appended verbatim; prefix each selector with `:scope ` */
@@ -93,6 +101,17 @@ const ARROW_TYPES = ["sharp", "round"] as const;
 const FILLS = ["solid", "hachure", "cross-hatch", "zigzag"] as const;
 const BORDERS = ["none", "hairline", "bold"] as const;
 const SHADOWS = ["none", "soft", "long", "hard"] as const;
+const NOTE_SHADOWS = ["none", "soft", "lifted", "hard"] as const;
+const NOTE_EDGES = ["none", "hairline", "ink", "accent"] as const;
+/** a note sits on the board the way the theme's panels do */
+const NOTE_SHADOW_OF_SURFACE: Record<
+  typeof SHADOWS[number],
+  typeof NOTE_SHADOWS[number]
+> = { none: "none", soft: "soft", long: "lifted", hard: "hard" };
+const NOTE_EDGE_OF_BORDER: Record<
+  typeof BORDERS[number],
+  typeof NOTE_EDGES[number]
+> = { none: "none", hairline: "hairline", bold: "ink" };
 const ARROWHEADS = [
   "arrow",
   "bar",
@@ -166,6 +185,7 @@ const DEFAULT_LEAVES = [
 ];
 
 const PALETTE_SIZE = { min: 4, max: 12 };
+const NOTE_PAPERS_MAX = 5;
 
 const ALIAS = /^\{([^{}]+)\}$/;
 
@@ -299,7 +319,10 @@ const readGridStyle: Parse<"solid" | "dashed"> = (value) =>
 type Entry = { node: Record<string, unknown>; groupType?: string };
 type Resolved = { type?: string; value: unknown } | { error: string };
 
-/** The `$type` of each token the profile reads; `color.palette.*` are colors. */
+/**
+ * The `$type` of each token the profile reads; `color.palette.*` and
+ * `color.note.*` are colors.
+ */
 const PROFILE_TYPES: Readonly<Record<string, string>> = {
   "color.canvas": "color",
   "color.ink": "color",
@@ -307,6 +330,7 @@ const PROFILE_TYPES: Readonly<Record<string, string>> = {
   "color.panel": "color",
   "color.active": "color",
   "color.grid": "color",
+  "color.noteInk": "color",
   "font.ui": "fontFamily",
   "font.canvas": "fontFamily",
   "font.size": "dimension",
@@ -326,7 +350,9 @@ const PROFILE_TYPES: Readonly<Record<string, string>> = {
 /** the `$type` the profile gives a token path, if it reads one there */
 export const profileTypeOf = (path: string): string | undefined =>
   PROFILE_TYPES[path] ??
-  (path.startsWith("color.palette.") ? "color" : undefined);
+  (path.startsWith("color.palette.") || path.startsWith("color.note.")
+    ? "color"
+    : undefined);
 
 /** The profile's top-level groups: a token under one is meant for the theme. */
 const PROFILE_GROUPS = new Set(
@@ -570,6 +596,7 @@ export const readThemeTokens = (
         (candidate) =>
           !claimed.has(candidate) &&
           !candidate.startsWith("color.palette.") &&
+          !candidate.startsWith("color.note.") &&
           accept(candidate) &&
           typeOf(candidate) === type,
       )
@@ -674,6 +701,28 @@ export const readThemeTokens = (
   const panel = ifPresent("color.panel", "color", readColor);
   const active = ifPresent("color.active", "color", readColor);
   const gridColor = ifPresent("color.grid", "color", readColor) ?? ink.value;
+  const noteInk = ifPresent("color.noteInk", "color", readColor);
+
+  // read before the palette, which takes a document's unclaimed colors
+  const NOTE = "color.note.";
+  const papers = [...tokens.keys()]
+    .filter((path) => path.startsWith(NOTE))
+    .map((path) => ({
+      path,
+      color: read<string | undefined>(path, "color", readColor, undefined),
+    }))
+    .filter((entry): entry is { path: string; color: string } =>
+      Boolean(entry.color),
+    );
+  if (papers.length > NOTE_PAPERS_MAX) {
+    warnings.push({
+      token: papers[NOTE_PAPERS_MAX].path,
+      from: `${papers.length} colors`,
+      to: `${NOTE_PAPERS_MAX} colors`,
+      reason: `a theme has at most ${NOTE_PAPERS_MAX} note papers; the rest are left out`,
+    });
+    papers.length = NOTE_PAPERS_MAX;
+  }
 
   const PALETTE = "color.palette.";
   const paletteGroup = [...tokens.keys()].filter(
@@ -800,6 +849,18 @@ export const readThemeTokens = (
     ? read(sizePath, "dimension", fontSize, DEFAULTS.fontSize)
     : fontSize(typography.fontSize) ?? DEFAULTS.fontSize;
 
+  const surface: ThemeSpec["surface"] = {
+    radius: orDefault(
+      "surface.radius",
+      "dimension",
+      readDimension(),
+      DEFAULTS.radius,
+    ),
+    border: choice(["surface", "border"], BORDERS, "hairline"),
+    shadow: choice(["surface", "shadow"], SHADOWS, "soft"),
+    ...definedEntries({ panel, active }),
+  };
+
   const spec: ThemeSpec = {
     name: field(["name"], text, DEFAULTS.name, "a string"),
     ...definedEntries({
@@ -885,17 +946,7 @@ export const readThemeTokens = (
         streamline: ifPresent("pen.streamline", "number", inRange(0, 1)),
       }),
     },
-    surface: {
-      radius: orDefault(
-        "surface.radius",
-        "dimension",
-        readDimension(),
-        DEFAULTS.radius,
-      ),
-      border: choice(["surface", "border"], BORDERS, "hairline"),
-      shadow: choice(["surface", "shadow"], SHADOWS, "soft"),
-      ...definedEntries({ panel, active }),
-    },
+    surface,
     frame: {
       width: orDefault(
         "frame.width",
@@ -908,6 +959,20 @@ export const readThemeTokens = (
         "number",
         inRange(0, 1),
         DEFAULTS.frameAlpha,
+      ),
+    },
+    note: {
+      papers: papers.map(({ color }) => color),
+      ...definedEntries({ ink: noteInk }),
+      shadow: choice(
+        ["note", "shadow"],
+        NOTE_SHADOWS,
+        NOTE_SHADOW_OF_SURFACE[surface.shadow],
+      ),
+      edge: choice(
+        ["note", "edge"],
+        NOTE_EDGES,
+        NOTE_EDGE_OF_BORDER[surface.border],
       ),
     },
     ...definedEntries({
@@ -925,9 +990,11 @@ export const readThemeTokens = (
       accent: accent.path,
       "surface.active": "color.active",
       mode: `${EXTENSION}.mode`,
+      noteInk: "color.noteInk",
       ...Object.fromEntries(
         palette.map(({ path }, i) => [`palette[${i}]`, path]),
       ),
+      ...Object.fromEntries(papers.map(({ path }, i) => [`note[${i}]`, path])),
     },
     warnings,
   };
@@ -960,7 +1027,7 @@ const ignoredTokens = (
   tokens: Map<string, Entry>,
   claimed: Set<string>,
 ): ThemeWarning[] => {
-  const known = [...Object.keys(PROFILE_TYPES), "color.palette"];
+  const known = [...Object.keys(PROFILE_TYPES), "color.palette", "color.note"];
   const referenced = new Set(
     [...JSON.stringify(document).matchAll(/\{([^{}"]+)\}|"#\/([^"]+)"/g)].map(
       ([, alias, pointer]) =>
@@ -1147,6 +1214,22 @@ export const THEME_TOKENS_SCHEMA = {
                 shadow: { enum: SHADOWS },
               },
             },
+            note: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                shadow: {
+                  enum: NOTE_SHADOWS,
+                  description:
+                    "default: follows surface.shadow (long gives lifted)",
+                },
+                edge: {
+                  enum: NOTE_EDGES,
+                  description:
+                    "default: follows surface.border (bold gives ink); accent is 1 unit of the accent",
+                },
+              },
+            },
             washes: {
               type: "array",
               description:
@@ -1184,6 +1267,14 @@ export const THEME_TOKENS_SCHEMA = {
           "^[^${}.][^{}.]*$": color("an element color, or a group of them"),
         },
       },
+      note: {
+        type: "object",
+        description: `1 to ${NOTE_PAPERS_MAX} sticky note papers in order, the first the default; default: the first five background washes`,
+        patternProperties: {
+          "^[^${}.][^{}.]*$": color("a note paper"),
+        },
+      },
+      noteInk: color("sticky note text; default: ink"),
     }),
     font: group("fonts", {
       ui: token("the UI font", FONT_FAMILY_VALUE),

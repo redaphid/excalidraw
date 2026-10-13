@@ -48,7 +48,7 @@ Each of these cost a pass. The generator handles the ones marked (gen); the rest
 - No `backdrop-filter` over the canvas: it re-blurs on every repaint.
 - No animated gradients or shadows.
 - A static gradient behind a transparent canvas (`backdrop`) is free.
-- `node scripts/theme-screenshots/bench.mjs --theme <id>` counts `getComputedStyle` calls and canvas creations during pan and zoom. Both must match the run without `--theme`.
+- `node scripts/theme-screenshots/bench.mjs --theme <id>` counts `getComputedStyle` calls and canvas creations during pan and zoom. Both must match the run without `--theme`. For a note shadow or edge, add `--notes 50` and compare the main thread busy time: frame times stop at the display's refresh interval and hide the cost.
 
 ## Cross-engine
 

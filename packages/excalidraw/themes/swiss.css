@@ -13,6 +13,8 @@
   --canvas-frame-color: #111111;
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #111111;
+  --canvas-sticky-note-shadow: none;
+  --canvas-sticky-note-edge: none;
   --color-selection: #e3000f;
   --element-stroke-color: #111111;
   --element-background-color: transparent;
@@ -46,6 +48,11 @@
     #fcf4d6 #fceca9 #fde378 #fed73c #ffcc00,
     #e9e2ef #d2c2e2 #b89fd3 #9974c2 #7a4ab0,
     #fce9d6 #fcd2a9 #fdb878 #fe993c #ff7a00;
+
+  --sticky-note-background-color: #111111;
+  --sticky-note-stroke-color: #ffffff;
+  --color-picks-sticky-note-background: #111111 #e3000f #0057b8 #6f6f6f;
+  --color-picks-sticky-note-stroke: #ffffff #111111;
 
   --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
   --text-primary-color: #111111;
