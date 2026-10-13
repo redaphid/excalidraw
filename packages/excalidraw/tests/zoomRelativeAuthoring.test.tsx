@@ -387,6 +387,31 @@ describe("authoringUnits: screen", () => {
     },
     30_000,
   );
+
+  it("lassos a sharp rectangle the same at 1x, 100x and 100,000x", () => {
+    for (const zoom of [1, 100, 100_000]) {
+      atZoom(zoom);
+      API.setAppState({ currentItemRoundness: "sharp" });
+      const rectangle = UI.createElement("rectangle", {
+        x: 100,
+        y: 100,
+        width: 120,
+        height: 80,
+      });
+      API.clearSelection();
+      act(() => h.app.setActiveTool({ type: "lasso" }));
+      mouse.downAt(90, 90);
+      mouse.moveTo(230, 90);
+      mouse.moveTo(230, 190);
+      mouse.moveTo(90, 190);
+      mouse.moveTo(90, 95);
+      mouse.upAt();
+      expect({
+        zoom,
+        selected: !!h.state.selectedElementIds[rectangle.id],
+      }).toEqual({ zoom, selected: true });
+    }
+  });
 });
 
 describe("authoringUnits: screen, a long new text", () => {
