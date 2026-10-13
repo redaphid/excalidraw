@@ -84,6 +84,7 @@ Shapes (rectangle, diamond, ellipse, line, arrow, embeddable) are generated at t
 | `excalidraw/animatedTrail.ts:120` | eraser and laser trails: the head size and the outline simplification (0.1) that the laser-pointer library applies in scene units | T |
 | `excalidraw/components/App.tsx:6102` `getElementHitThreshold` | the 0.1-unit epsilon past a stroke | D |
 | `element/src/shape.ts:1380` `getFreedrawMaxStrokeRadius` | the 3-unit end-cap allowance | D |
+| `element/src/shape.ts` `getConstantWidthFreedrawOutline` | constant-width freedraw: the laser pointer's start-cap (0.1) and one- or two-point (0.5) size cutoffs and its speed-based corner detection; the outline is built at the element's size at 1x and scaled back | D |
 | `element/src/sizeHelpers.ts:73` | an arrow whose ends are within 0.1 units is dropped as invisible | D |
 | `element/src/binding.ts:2104, 2187, 2239` | shortest arrow (10), smallest bindable shape (1) | D |
 | `element/src/utils.ts:777` | elbow midpoint snap floor, 5 | D |
