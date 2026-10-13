@@ -2,10 +2,11 @@ import { arrayToMap } from "@excalidraw/common";
 import {
   isPointWithinBounds,
   pointFrom,
+  pointRotateRads,
   segmentsIntersectAt,
 } from "@excalidraw/math";
 
-import type { GlobalPoint, LineSegment } from "@excalidraw/math";
+import type { GlobalPoint, LineSegment, Radians } from "@excalidraw/math";
 
 import type {
   AppClassProperties,
@@ -169,11 +170,47 @@ const elementCrossesFrame = (
       ]),
   );
 
-  return nearFrameLineSegments.some((frameLineSegment) =>
-    elementLineSegments.some((elementLineSegment) =>
-      segmentsIntersectAt(frameLineSegment, elementLineSegment),
-    ),
+  if (nearFrameLineSegments.length === 0) {
+    return false;
+  }
+  if (
+    nearFrameLineSegments.some((frameLineSegment) =>
+      elementLineSegments.some((elementLineSegment) =>
+        segmentsIntersectAt(frameLineSegment, elementLineSegment),
+      ),
+    )
+  ) {
+    return true;
+  }
+
+  // segmentsIntersectAt ignores contact at the element's own vertices, so a
+  // path through a vertex on the edge crosses only if it has vertices
+  // strictly on both sides; touching the edge from one side is not crossing
+  const [fx1, fy1, fx2, fy2, fcx, fcy] = getElementAbsoluteCoords(
+    frame,
+    elementsMap,
   );
+  const frameCenter = pointFrom<GlobalPoint>(fcx, fcy);
+  let hasVertexInside = false;
+  let hasVertexOutside = false;
+  for (const segment of elementLineSegments) {
+    for (const vertex of segment) {
+      const [x, y] = pointRotateRads(
+        vertex,
+        frameCenter,
+        -frame.angle as Radians,
+      );
+      if (fx1 < x && x < fx2 && fy1 < y && y < fy2) {
+        hasVertexInside = true;
+      } else if (x < fx1 || x > fx2 || y < fy1 || y > fy2) {
+        hasVertexOutside = true;
+      }
+      if (hasVertexInside && hasVertexOutside) {
+        return true;
+      }
+    }
+  }
+  return false;
 };
 
 export const getElementsCompletelyInFrame = (

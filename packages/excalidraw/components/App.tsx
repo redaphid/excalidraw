@@ -3771,7 +3771,22 @@ class App extends React.Component<AppProps, AppState> {
       repairBindings: true,
       deleteInvisibleElements: true,
     });
-    let restoredAppState = restoreAppState(initialData?.appState, null);
+    // the theme's defaults fill only what the scene did not save: a returning
+    // user's own picks win
+    const { colorTopPicks: themeTopPicks = {}, ...themeDefaults } =
+      this.cssTheme.appState;
+    let restoredAppState = restoreAppState(
+      initialData?.appState,
+      themeDefaults,
+    );
+    const colorTopPicks = { ...restoredAppState.colorTopPicks };
+    for (const [slot, picks] of Object.entries(themeTopPicks) as [
+      keyof AppState["colorTopPicks"],
+      readonly string[],
+    ][]) {
+      colorTopPicks[slot] ??= picks;
+    }
+    restoredAppState.colorTopPicks = colorTopPicks;
     const activeTool = restoredAppState.activeTool;
 
     if (!restoredAppState.preferredSelectionTool.initialized) {
@@ -3951,7 +3966,13 @@ class App extends React.Component<AppProps, AppState> {
 
     this.excalidrawContainerValue.container =
       this.excalidrawContainerRef.current;
-    this.applyCssTheme(false);
+    // the first read must see the mode the editor starts in: the restored
+    // scene takes the theme's defaults from it
+    this.excalidrawContainerRef.current?.classList.toggle(
+      "theme--dark",
+      this.state.theme === THEME.DARK,
+    );
+    this.applyCssTheme();
 
     if (isTestEnv() || isDevEnv()) {
       const setState = this.setState.bind(this);
@@ -4458,8 +4479,6 @@ class App extends React.Component<AppProps, AppState> {
     // must be updated *before* state change listeners are triggered below
     if (!this._initialized && !this.state.isLoading) {
       this._initialized = true;
-      // loading the scene restored appState over the theme's defaults
-      this.applyCssTheme(true);
       this.editorLifecycleEvents.emit("editor:initialize", this.api);
       this.props.onInitialize?.(this.api);
     }
@@ -4582,7 +4601,7 @@ class App extends React.Component<AppProps, AppState> {
       prevProps.css !== this.props.css ||
       prevState.theme !== this.state.theme
     ) {
-      this.applyCssTheme(false);
+      this.applyCssTheme();
     }
 
     if (
@@ -5265,10 +5284,10 @@ ${css}
   /**
    * Re-reads the theme's custom properties. Canvas colors repaint the
    * canvases; new-element defaults are written to appState when they differ
-   * from the last read (or when `reapplyAppState`), so a light/dark toggle
-   * keeps the user's own picks.
+   * from the last read, so a light/dark toggle keeps the user's own picks.
+   * Loading a scene fills only what it did not save (see `initializeScene`).
    */
-  private applyCssTheme(reapplyAppState: boolean) {
+  private applyCssTheme() {
     const container = this.excalidrawContainerRef.current;
     if (!container) {
       return;
@@ -5281,13 +5300,7 @@ ${css}
     const palettesChanged =
       JSON.stringify(prev.palettes) !== JSON.stringify(next.palettes);
     const penChanged = !isShallowEqual(prev.pen, next.pen);
-    if (
-      !canvasChanged &&
-      !appStateChanged &&
-      !palettesChanged &&
-      !penChanged &&
-      !reapplyAppState
-    ) {
+    if (!canvasChanged && !appStateChanged && !palettesChanged && !penChanged) {
       return;
     }
     this.cssTheme = {
@@ -5297,10 +5310,7 @@ ${css}
       palettes: palettesChanged ? next.palettes : prev.palettes,
     };
     const { colorTopPicks, ...defaults } = next.appState;
-    if (
-      (appStateChanged || reapplyAppState) &&
-      (colorTopPicks || Object.keys(defaults).length)
-    ) {
+    if (appStateChanged && (colorTopPicks || Object.keys(defaults).length)) {
       this.setState((state) => ({
         ...state,
         ...defaults,

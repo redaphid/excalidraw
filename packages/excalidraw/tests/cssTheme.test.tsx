@@ -443,6 +443,59 @@ describe("css prop", () => {
     expect(h.state.currentItemRoughness).toBe(2);
   });
 
+  it("keeps the picks a loaded scene saved, and themes the rest", async () => {
+    await render(
+      <Excalidraw
+        css={THEME_CSS}
+        initialData={{
+          appState: {
+            currentItemRoughness: 2,
+            colorTopPicks: {
+              elementStroke: ["#0000ff"],
+              elementBackground: null,
+              bucketFill: null,
+              stickyNoteStroke: null,
+              stickyNoteBackground: null,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(h.state.currentItemRoughness).toBe(2);
+    expect(h.state.colorTopPicks.elementStroke).toEqual(["#0000ff"]);
+    expect(h.state.currentItemStrokeColor).toBe("#14181f");
+    expect(h.state.currentItemEndArrowhead).toBe("triangle");
+  });
+
+  it("themes the swatches a loaded scene left uncustomized", async () => {
+    await render(
+      <Excalidraw
+        css={THEME_CSS}
+        initialData={{
+          appState: {
+            colorTopPicks: {
+              elementStroke: null,
+              elementBackground: ["#00ff00"],
+              bucketFill: null,
+              stickyNoteStroke: null,
+              stickyNoteBackground: null,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(h.state.colorTopPicks.elementStroke).toEqual([
+      "#14181f",
+      "#9e3833",
+      "#c79e52",
+      "#5b7a8f",
+      "#8c4d80",
+    ]);
+    expect(h.state.colorTopPicks.elementBackground).toEqual(["#00ff00"]);
+  });
+
   it("shows the theme's palette in the color picker", async () => {
     // radix popovers measure themselves
     vi.stubGlobal(
