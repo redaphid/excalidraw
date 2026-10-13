@@ -140,6 +140,8 @@ Values with a plain meaning are standard tokens at known paths. Every token is o
 | `color.panel`, `color.active` | `color` | panels and the selected state | derived |
 | `color.grid` | `color` | grid lines | the ink |
 | `color.palette.*` | `color` | element colors in document order (JSON parsers put integer names such as `100` first): the first four are the stroke swatches, and each also gives a background wash | Excalidraw's red, green, blue and orange |
+| `color.note.*` | `color` | one to five sticky note papers in document order; the first is the default paper | the first five background washes |
+| `color.noteInk` | `color` | sticky note text | the ink |
 | `font.ui` | `fontFamily` | the UI font; a list is written as a CSS fallback list | Assistant |
 | `font.canvas` | `fontFamily` | the font new text is drawn in: the first family the editor has | the first editor font in `font.ui`, else Excalifont |
 | `font.size` | `dimension` | the font size of new text | 20px |
@@ -150,7 +152,7 @@ Values with a plain meaning are standard tokens at known paths. Every token is o
 | `surface.radius` | `dimension` | panel corner radius | 8px |
 | `frame.width`, `frame.alpha` | `dimension`, `number` | frame outlines | 1px, 0.35 |
 
-The choices only this editor has live in `$extensions["com.hypnodroid.draw"]`: `name`, `mode` (light or dark; by default dark when the canvas is dark), `stroke` (`width`, `roundness`, `arrowhead`, `arrowType`, `fill`), `pen.pressure`, `surface` (`border`, `shadow`), `washes` (four palette token names for the background swatches), `backdrop` and `extra` CSS. The spec asks that extensions hold only data that is not crucial to a token's value, so each one has a default. The root `$description` is the theme's description.
+The choices only this editor has live in `$extensions["com.hypnodroid.draw"]`: `name`, `mode` (light or dark; by default dark when the canvas is dark), `stroke` (`width`, `roundness`, `arrowhead`, `arrowType`, `fill`), `pen.pressure`, `surface` (`border`, `shadow`), `note` (`shadow`: `none`, `soft`, `lifted` or `hard`; `edge`: `none`, `hairline` or `ink`; by default they follow `surface.shadow` and `surface.border`, with `long` giving `lifted` and `bold` giving `ink`), `washes` (four palette token names for the background swatches), `backdrop` and `extra` CSS. The spec asks that extensions hold only data that is not crucial to a token's value, so each one has a default. The root `$description` is the theme's description.
 
 Aliases (`{color.accent}`) and `$ref` JSON pointers resolve anywhere, a pointer to a token reads as that token, a group's `$root` token stands for the group, and a token's type comes from its own `$type`, its alias's, or its closest group's, as the spec says. Colors are read in sRGB, with components from 0 to 1. Another color space is read through its `hex` fallback, and the hex strings of drafts before 2025.10 (`#rgb`, `#rrggbb`, `#rrggbbaa`) are accepted. Theme colors are opaque, so alpha is dropped with a warning. `$extends` is not supported: a group that extends another gets a warning, and only its own tokens are read.
 
@@ -177,7 +179,7 @@ A file without this profile still makes a theme. Each role is found by name when
 
 ### Warnings
 
-Each warning is `{ token, from, to, reason }`, and `token` is the DTCG path behind it: `color.ink` for ink the generator darkened, `color.palette.sage` for a wash it paled, `color.background` for a role it found by name, `$extensions["com.hypnodroid.draw"].mode` for a mode that disagrees with the canvas. Values it cannot read fall back to the default and say why. A token under one of the profile's groups (`color`, `font`, `grid`, `stroke`, `pen`, `surface`, `frame`) that no role reads and no alias points at is reported as ignored, with the closest profile path when one is near: `color.acent` asks whether you meant `color.accent`.
+Each warning is `{ token, from, to, reason }`, and `token` is the DTCG path behind it: `color.ink` for ink the generator darkened, `color.palette.sage` for a wash it paled, `color.note.butter` for a note paper it paled so the note ink reads on it, `color.background` for a role it found by name, `$extensions["com.hypnodroid.draw"].mode` for a mode that disagrees with the canvas. Values it cannot read fall back to the default and say why. A token under one of the profile's groups (`color`, `font`, `grid`, `stroke`, `pen`, `surface`, `frame`) that no role reads and no alias points at is reported as ignored, with the closest profile path when one is near: `color.acent` asks whether you meant `color.accent`.
 
 The generator is pure: no DOM, no Node built-ins, no editor code. A server, a Cloudflare Worker or an MCP tool can import it from `@excalidraw/common` without the editor. `THEME_TOKENS_SCHEMA` is the profile's JSON Schema, for validating tokens an agent wrote; the package ships it as `themes/tokens.schema.json`. The sample themes marked `generated` in `themes/index.json` are generated from `themes/<name>.tokens.json` (`yarn theme:gen <name>`).
 
@@ -218,11 +220,11 @@ Most of the editor is DOM, and the `css` prop styles it like any stylesheet. The
 - when the `css` prop changes,
 - when the theme switches between light and dark.
 
-It parses them once into a plain object and keeps that object until a read finds a different value. The renderers use the object. Nothing is read per frame, per element, or on scroll or zoom, and a theme does not invalidate the element bitmap caches.
+It parses them once into a plain object and keeps that object until a read finds a different value. The renderers use the object. Nothing is read per frame, per element, or on scroll or zoom. A theme invalidates no element bitmap except a sticky note's, and only when the note's shadow or edge changes.
 
 Two groups of properties are read:
 
-- **Canvas colors** repaint the canvases: background, grid, selection, handles and frames.
+- **Canvas colors** repaint the canvases: background, grid, selection, handles, frames, and the shadow and edge of sticky notes.
 - **New-element defaults** are written to `appState` (`currentItemStrokeWidthKey`, `currentItemRoughness`, and the rest). The toolbar and the properties panel start on them, and new elements take them. Elements already in the scene keep their own style.
 
 New-element defaults are written when they differ from the last read. A light and dark toggle that changes nothing keeps the picks the user made since. When the scene loads, the defaults are written again, because loading restores `appState`.
@@ -244,8 +246,10 @@ A value the editor can't parse is ignored, and the built-in value stays.
 | `--canvas-frame-color` | any CSS color | `#bbbbbb` |
 | `--canvas-frame-width` | outline width in screen pixels | `2` |
 | `--canvas-frame-name-color` | any CSS color (frame names are DOM) | `#999999` |
+| `--canvas-sticky-note-shadow` | `none`, or `<x> <y> <color>`: the offset in scene units at detail scale 1 (each at most 16 either way) and any CSS color | `3 3 rgba(0, 0, 0, 0.16)` |
+| `--canvas-sticky-note-edge` | `none`, or `<width> <color>`: the line just inside a note's outline, in scene units (above 0, at most 8) | `0.5 rgba(0, 0, 0, 0.08)` |
 
-`--canvas-background` replaces only the default white background. When the user picks another canvas background, the editor paints that one. Exports never use theme colors.
+`--canvas-background` replaces only the default white background. When the user picks another canvas background, the editor paints that one. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in outline.
 
 Theme colors are painted as written in both light and dark mode. The dark-mode filter does not apply to them.
 
@@ -269,6 +273,8 @@ Theme colors are painted as written in both light and dark mode. The dark-mode f
 | `--element-freedraw-thinning` | `-1` to `1`: how much pressure narrows a `variable` stroke (default `0.6`) | `strokeOptions.thinning` on new strokes |
 | `--element-freedraw-taper` | a positive number: how far each end of a `variable` stroke tapers, in stroke widths | `strokeOptions.taper` on new strokes |
 | `--element-freedraw-streamline` | `0` to `1`: how much the pen smooths its input. `0` keeps every wobble, like a pixel pencil | `strokeOptions.streamline` on new strokes |
+| `--sticky-note-background-color` | hex color, not `transparent` | `currentItemStickynoteBackgroundColor`, the paper of new notes |
+| `--sticky-note-stroke-color` | hex color | `currentItemStickynoteStrokeColor`, the text of new notes |
 
 Element colors are stored in the scene, so they must be hex.
 
@@ -281,6 +287,7 @@ The font names are `Excalifont`, `Virgil`, `Nunito`, `Lilita One`, `Comic Shanns
 | Property | Value |
 | --- | --- |
 | `--color-picks-stroke`, `--color-picks-background` | up to five hex colors: the quick swatches in the properties panel |
+| `--color-picks-sticky-note-background`, `--color-picks-sticky-note-stroke` | up to five hex colors, none `transparent`: the quick swatches for a selected sticky note |
 | `--color-palette-stroke`, `--color-palette-background` | comma-separated entries, each one hex color or five shades from lightest to darkest: the picker's palette grid |
 
 The picks are written to `appState.colorTopPicks`, so a user's own pins replace them in the same way. The hex input still accepts any color.

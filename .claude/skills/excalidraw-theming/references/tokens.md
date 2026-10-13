@@ -16,6 +16,8 @@ Colors are 2025.10 color objects, `{ "colorSpace": "srgb", "components": [r, g, 
 | `color.panel`, `color.active` | `color` | optional panel and selected-state colors | derived from canvas and accent when absent |
 | `color.grid` | `color` | grid lines | defaults to the ink |
 | `color.palette.<name>` | `color` | 4 to 12 element colors besides ink, in document order (integer names such as `100` sort first) | stroke and fill palettes with 5 shades each, quick swatches |
+| `color.note.<name>` | `color` | 1 to 5 sticky note papers, in document order; the first is the default paper. Absent: the first five background washes | `--sticky-note-background-color`, `--color-picks-sticky-note-background` |
+| `color.noteInk` | `color` | sticky note text; defaults to the element ink | `--sticky-note-stroke-color`, first of `--color-picks-sticky-note-stroke` |
 | `font.ui` | `fontFamily` | UI font, or a fallback list | `--ui-font` |
 | `font.canvas` | `fontFamily` | the font new text is drawn in, one the editor has; without it, the first editor font in `font.ui`, else Excalifont | element font family |
 | `font.size` | `dimension` | `{ "value": 16, "unit": "px" }` | element font size |
@@ -47,6 +49,8 @@ Choices that are this editor's own live in `$extensions["com.hypnodroid.draw"]`.
 | `pen.pressure` | `true` for a pressure pen, `false` for constant width | `true` |
 | `surface.border` | `none`, `hairline`, `bold` | `hairline` |
 | `surface.shadow` | `none`, `soft`, `long`, `hard` | `soft` |
+| `note.shadow` | `none`, `soft` (the built-in 3,3 at 16% black), `lifted` (6,8 at 20% black), `hard` (5,5 solid note ink) | follows `surface.shadow`: `long` gives `lifted` |
+| `note.edge` | `none`, `hairline` (the built-in 0.5 at 8% black), `ink` (2, the note ink) | follows `surface.border`: `bold` gives `ink` |
 | `washes` | four `color.palette` token names for the background swatches | the first four |
 | `backdrop` | a CSS background; paints the canvas transparent and puts this behind it | none |
 | `extra` | CSS appended verbatim; prefix each selector with `:scope ` | none |
@@ -62,6 +66,7 @@ A file a designer exported, without this profile, still makes a theme. A missing
 - **Secondary text**: the ink mixed into the panel, nudged to 4.5:1.
 - **Shade ramps**: each hue stepped toward the canvas. Stroke entries put the hue at shade 4, the one the picker shows. Fill entries put a wash at shade 1, paled until ink labels on it reach 4.5:1.
 - **Swatches**: the ink and the first four palette colors for strokes; transparent and the four `washes` for backgrounds.
+- **Sticky notes**: the `color.note` papers (else the washes), each paled toward the canvas until the note ink reaches 4.5:1 as displayed, with a warning on `color.note.<name>`; picks are the papers padded with washes to five. Note stroke picks are the note ink, then the same four line colors as the stroke picks. The shadow and edge are canvas chrome (`--canvas-sticky-note-shadow`, `--canvas-sticky-note-edge`), painted unfiltered in dark mode.
 - **Dark themes**: every element color is stored as `removeDarkModeFilter(color)`, so dark mode displays it as written, and contrast is checked on the displayed round trip.
 - **Popovers**: always the opaque panel color.
 
