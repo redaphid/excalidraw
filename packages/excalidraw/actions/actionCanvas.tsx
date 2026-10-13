@@ -31,6 +31,7 @@ import {
   ZoomOutIcon,
   ZoomResetIcon,
 } from "../components/icons";
+import { getThemeCanvasBackground } from "../cssTheme";
 import { useAppStateValue } from "../hooks/useAppStateValue";
 
 import { t } from "../i18n";
@@ -65,12 +66,12 @@ export const actionChangeViewBackgroundColor = register<Partial<AppState>>({
     };
   },
   PanelComponent: ({ elements, appState, updateData, app }) => {
-    // the canvas shows the theme's background over the default white, so
-    // the swatch does too (it displays its color through the dark filter)
-    const themeBackground =
-      appState.viewBackgroundColor === COLOR_PALETTE.white
-        ? app.cssTheme.canvas.background
-        : undefined;
+    // the swatch shows what the canvas paints (and displays its color
+    // through the dark filter)
+    const themeBackground = getThemeCanvasBackground(
+      appState,
+      app.cssTheme.canvas,
+    );
     // FIXME move me to src/components/mainMenu/DefaultItems.tsx
     return (
       <ColorPicker
@@ -85,7 +86,12 @@ export const actionChangeViewBackgroundColor = register<Partial<AppState>>({
             ? removeDarkModeFilter(themeBackground)
             : themeBackground ?? appState.viewBackgroundColor
         }
-        onChange={(color) => updateData({ viewBackgroundColor: color })}
+        onChange={(color) =>
+          updateData({
+            viewBackgroundColor: color,
+            viewBackgroundColorPicked: true,
+          })
+        }
         data-testid="canvas-background-picker"
         elements={elements}
         appState={appState}

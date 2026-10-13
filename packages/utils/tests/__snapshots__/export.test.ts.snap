@@ -122,6 +122,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   "theme": "light",
   "toast": null,
   "viewBackgroundColor": "#ffffff",
+  "viewBackgroundColorPicked": false,
   "viewModeEnabled": false,
   "zenModeEnabled": false,
   "zoom": {
