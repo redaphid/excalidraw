@@ -1253,16 +1253,12 @@ const settledElementCanvas = (
 
 /** How long the zoom holds still before direct-drawn elements get bitmaps. */
 const ZOOM_SETTLE_MS = 150;
-/** Where idle callbacks are missing, the time one slice spends building. */
-const SETTLED_BUILD_SLICE_MS = 8;
 /**
- * How much of an idle period a slice leaves unused, so the build it starts
- * last still ends before the next frame is due.
+ * The most time one slice spends starting builds. Input that arrives during
+ * a slice waits for it, so this stays well short of a long task even where
+ * the browser offers a whole 50 ms idle period.
  */
-const IDLE_HEADROOM_MS = 4;
-/** The most of an idle period one slice takes, half a long task, so a slice
- * and the build it starts last stay short of one. */
-const IDLE_SLICE_MS = 25;
+const SETTLED_BUILD_SLICE_MS = 8;
 /** How far past each edge of the view, as a fraction of the view, elements
  * get their bitmaps ahead of a pan. */
 const BUILD_AHEAD_VIEW_FRACTION = 0.5;
@@ -1296,11 +1292,9 @@ const scheduleSettledBuild = (delay: number) => {
     cancelScheduledBuild = () => clearTimeout(timer);
   } else if (typeof requestIdleCallback === "function") {
     const idle = requestIdleCallback((deadline) => {
-      const until = performance.now() + IDLE_SLICE_MS;
+      const until = performance.now() + SETTLED_BUILD_SLICE_MS;
       runSettledBuild(
-        () =>
-          deadline.timeRemaining() > IDLE_HEADROOM_MS &&
-          performance.now() < until,
+        () => deadline.timeRemaining() > 1 && performance.now() < until,
       );
     });
     cancelScheduledBuild = () => cancelIdleCallback(idle);
@@ -1413,10 +1407,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     }
   }
 
-  if (
-    build.next < elements.length ||
-    (buildsAhead && ahead.unchecked > 0)
-  ) {
+  if (build.next < elements.length || (buildsAhead && ahead.unchecked > 0)) {
     scheduleSettledBuild(0);
   } else {
     settledBuild = null;

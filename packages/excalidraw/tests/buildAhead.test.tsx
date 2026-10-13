@@ -26,6 +26,8 @@ const NEAR_GAP = AHEAD / 2;
 const NEAR_X = VIEW + NEAR_GAP;
 const FAR_X = VIEW + AHEAD * 4;
 const LONG_TASK_MS = 50;
+/** the most time an idle slice spends starting builds */
+const SLICE_MS = 8;
 const MS_PER_BITMAP = 3;
 const ZOOM_SETTLE_AND_BUILD_MS = 400;
 
@@ -53,10 +55,7 @@ const board = (elements: NonDeletedExcalidrawElement[]) => {
 
 /** paints a 500x500 view of the board at 1x scrolled to `scrollX`, and
  * reports the canvases the paint created and the paths it filled */
-const paint = (
-  { scene, renderer }: ReturnType<typeof board>,
-  scrollX = 0,
-) => {
+const paint = ({ scene, renderer }: ReturnType<typeof board>, scrollX = 0) => {
   const appState: AppState = {
     ...getDefaultAppState(),
     width: VIEW,
@@ -278,13 +277,11 @@ describe("idle slices building elements near the view", () => {
     return near;
   };
 
-  it("take at most half of a whole idle period, short of a long task", async () => {
+  it("stop starting builds after 8 ms of a whole idle period", async () => {
     const near = await nearBoardBuilding();
     const sliceStart = now;
     idle.shift()!(period(LONG_TASK_MS));
-    expect(now - sliceStart).toBeLessThanOrEqual(
-      LONG_TASK_MS / 2 + MS_PER_BITMAP,
-    );
+    expect(now - sliceStart).toBeLessThan(SLICE_MS + MS_PER_BITMAP);
     expect(near.filter(isBuilt).length).toBeGreaterThan(0);
     expect(near.filter(isBuilt).length).toBeLessThan(near.length);
 
@@ -294,12 +291,12 @@ describe("idle slices building elements near the view", () => {
     expect(near.filter(isBuilt)).toHaveLength(near.length);
   });
 
-  it("end before the next frame is due", async () => {
+  it("end with the idle period when it is shorter than 8 ms", async () => {
     await nearBoardBuilding();
-    const betweenFrames = 11;
+    const betweenFrames = 5;
     const sliceStart = now;
     idle.shift()!(period(betweenFrames));
-    expect(now - sliceStart).toBeLessThanOrEqual(betweenFrames);
+    expect(now - sliceStart).toBeLessThan(betweenFrames + MS_PER_BITMAP);
   });
 
   it("reach the end of a big board while a pan re-arms the build every frame", async () => {
