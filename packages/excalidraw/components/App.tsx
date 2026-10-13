@@ -609,7 +609,7 @@ let lastPointerUp: (() => void) | null = null;
 const gesture: Gesture = {
   pointers: new Map(),
   lastCenter: null,
-  initialDistance: null,
+  lastDistance: null,
   initialScale: null,
 };
 
@@ -3463,7 +3463,7 @@ class App extends React.Component<AppProps, AppState> {
 
     gesture.pointers.clear();
     gesture.lastCenter = null;
-    gesture.initialDistance = null;
+    gesture.lastDistance = null;
     gesture.initialScale = null;
 
     clearTimeout(tappedTwiceTimer);
@@ -8432,10 +8432,7 @@ ${css}
 
     if (gesture.pointers.size === 2) {
       gesture.lastCenter = getCenter(gesture.pointers);
-      gesture.initialScale = this.state.zoom.value;
-      gesture.initialDistance = getDistance(
-        Array.from(gesture.pointers.values()),
-      );
+      gesture.lastDistance = getDistance(Array.from(gesture.pointers.values()));
     }
   }
 
@@ -8453,65 +8450,47 @@ ${css}
       });
     }
 
-    const initialScale = gesture.initialScale;
-    if (
-      gesture.pointers.size === 2 &&
-      gesture.lastCenter &&
-      initialScale &&
-      gesture.initialDistance
-    ) {
+    const { lastCenter, lastDistance } = gesture;
+    if (gesture.pointers.size === 2 && lastCenter && lastDistance) {
       const center = getCenter(gesture.pointers);
-      const deltaX = center.x - gesture.lastCenter.x;
-      const deltaY = center.y - gesture.lastCenter.y;
-      gesture.lastCenter = center;
-
       const distance = getDistance(Array.from(gesture.pointers.values()));
+      if (!distance) {
+        return;
+      }
+      gesture.lastCenter = center;
+      gesture.lastDistance = distance;
+
       const scaleFactor =
         this.state.activeTool.type === "freedraw" && this.state.penMode
           ? 1
-          : distance / gesture.initialDistance;
+          : distance / lastDistance;
 
-      const nextZoom = scaleFactor
-        ? getNormalizedZoom(initialScale * scaleFactor)
-        : this.state.zoom.value;
-
-      this.setState((state) => {
-        // Preserve any existing screen-space overscroll through the zoom,
-        // then apply this frame's pan delta on top. `viewport.translate`
-        // rubberband-clamps the combined result against the scroll lock.
-        const zoomedViewport = getViewportForZoomWithScrollConstraints(
-          {
-            viewportX: center.x,
-            viewportY: center.y,
-            nextZoom,
-          },
-          state,
-        );
-        const zoomValue = zoomedViewport.zoom.value;
-
-        this.viewport.translate(
-          {
-            zoom: zoomedViewport.zoom,
-            // 2x multiplier is just a magic number that makes this work correctly
-            // on touchscreen devices (note: if we get report that panning is slower/faster
-            // than actual movement, consider swapping with devicePixelRatio)
-            scrollX: zoomedViewport.scrollX + (2 * deltaX) / zoomValue,
-            scrollY: zoomedViewport.scrollY + (2 * deltaY) / zoomValue,
+      this.viewport.translate(
+        (state) => {
+          const zoomed = getViewportForZoomWithScrollConstraints(
+            {
+              viewportX: lastCenter.x,
+              viewportY: lastCenter.y,
+              nextZoom: getNormalizedZoom(state.zoom.value * scaleFactor),
+            },
+            state,
+          );
+          return {
+            ...zoomed,
+            scrollX:
+              zoomed.scrollX + (center.x - lastCenter.x) / zoomed.zoom.value,
+            scrollY:
+              zoomed.scrollY + (center.y - lastCenter.y) / zoomed.zoom.value,
             shouldCacheIgnoreZoom: true,
-          },
-          { zoomPreConstrained: true },
-        );
-
-        return null;
-      });
+          };
+        },
+        { zoomPreConstrained: true },
+      );
       if (!this.viewport.isLockedTransitionPending) {
         this.resetShouldCacheIgnoreZoomDebounced();
       }
     } else {
-      gesture.lastCenter =
-        gesture.initialDistance =
-        gesture.initialScale =
-          null;
+      gesture.lastCenter = gesture.lastDistance = null;
     }
   };
 
