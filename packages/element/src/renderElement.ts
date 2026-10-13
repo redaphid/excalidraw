@@ -44,7 +44,11 @@ import type {
   InteractiveCanvasRenderConfig,
 } from "@excalidraw/excalidraw/scene/types";
 
-import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
+import {
+  getElementAbsoluteCoords,
+  getElementBounds,
+  getElementPaintBounds,
+} from "./bounds";
 import { getUncroppedImageElement } from "./cropElement";
 import { getElementDetailScale } from "./authoring";
 import { LinearElementEditor } from "./linearElementEditor";
@@ -1252,17 +1256,37 @@ const settledElementCanvas = (
 
 /** How long the zoom holds still before direct-drawn elements get bitmaps. */
 const ZOOM_SETTLE_MS = 150;
-/** Where idle callbacks are missing, the time one slice spends building. */
-const SETTLED_BUILD_SLICE_MS = 8;
+/**
+ * The most time one slice spends building, checked before each element, so
+ * a slice stays well short of a long task and input arriving during it waits
+ * little longer than this plus one element's build.
+ */
+export const SETTLED_BUILD_SLICE_MS = 8;
+/**
+ * How far past each edge of the view, as a fraction of the view's size,
+ * elements get their shapes and bitmaps built ahead of being panned in.
+ */
+export const BUILD_AHEAD_MARGIN = 0.5;
 
 let zoomHeld = { zoom: NaN, since: 0 };
 let settledBuild: {
   canvas: HTMLCanvasElement;
   elements: readonly NonDeletedExcalidrawElement[];
   next: number;
+  /** how many elements the scan for ones near the view has checked */
+  aheadChecked: number;
   elementsMap: NonDeletedSceneElementsMap;
   renderConfig: StaticCanvasRenderConfig;
   appState: StaticCanvasAppState;
+} | null = null;
+/**
+ * Where the scan for elements near the view resumes. Every frame of a pan
+ * re-arms the build, so the scan keeps its place across builds to get through
+ * the whole board instead of rechecking the start of it each frame.
+ */
+let aheadScan: {
+  elementsMap: NonDeletedSceneElementsMap;
+  elements: IterableIterator<NonDeletedExcalidrawElement>;
 } | null = null;
 let cancelScheduledBuild: (() => void) | null = null;
 let settledBitmapCount = 0;
@@ -1276,9 +1300,12 @@ const scheduleSettledBuild = (delay: number) => {
     const timer = setTimeout(() => scheduleSettledBuild(0), delay);
     cancelScheduledBuild = () => clearTimeout(timer);
   } else if (typeof requestIdleCallback === "function") {
-    const idle = requestIdleCallback((deadline) =>
-      buildSettledBitmaps(() => deadline.timeRemaining() > 1),
-    );
+    const idle = requestIdleCallback((deadline) => {
+      const until = performance.now() + SETTLED_BUILD_SLICE_MS;
+      buildSettledBitmaps(
+        () => deadline.timeRemaining() > 1 && performance.now() < until,
+      );
+    });
     cancelScheduledBuild = () => cancelIdleCallback(idle);
   } else {
     const timer = setTimeout(() => {
@@ -1303,14 +1330,10 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
   const { elements, elementsMap, renderConfig, appState } = build;
   const screenArea =
     appState.width * appState.height * window.devicePixelRatio ** 2;
-  while (build.next < elements.length && hasTime()) {
-    const element = elements[build.next++];
-    if (
-      element.id === appState.newElement?.id ||
-      !shouldDrawDirectly(element, elementsMap, appState) ||
-      settledElementCanvas(element, elementsMap, appState)
-    ) {
-      continue;
+  /** builds the bitmap a direct-drawn element is drawn from at this zoom */
+  const buildSettled = (element: NonDeletedExcalidrawElement) => {
+    if (settledElementCanvas(element, elementsMap, appState)) {
+      return false;
     }
     const { width, height, scale } = cappedElementCanvasSize(
       element,
@@ -1320,13 +1343,75 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     // a bitmap larger than the screen costs more memory than it saves time
     if (scale === appState.zoom.value && width * height <= screenArea) {
       generateElementWithCanvas(element, elementsMap, renderConfig, appState);
+      return true;
+    }
+    return false;
+  };
+  while (build.next < elements.length && hasTime()) {
+    const element = elements[build.next++];
+    if (
+      element.id !== appState.newElement?.id &&
+      shouldDrawDirectly(element, elementsMap, appState) &&
+      buildSettled(element)
+    ) {
       settledBitmapCount++;
     }
   }
-  if (build.next < elements.length) {
+
+  // Then what the view would build on the frame an element enters it, for
+  // the elements near it: their bitmaps, and with them their shapes.
+  const zoom = appState.zoom.value;
+  const viewWidth = appState.width / zoom;
+  const viewHeight = appState.height / zoom;
+  const left = -appState.scrollX - viewWidth * BUILD_AHEAD_MARGIN;
+  const top = -appState.scrollY - viewHeight * BUILD_AHEAD_MARGIN;
+  const right = left + viewWidth * (1 + 2 * BUILD_AHEAD_MARGIN);
+  const bottom = top + viewHeight * (1 + 2 * BUILD_AHEAD_MARGIN);
+  const scan =
+    aheadScan?.elementsMap === elementsMap
+      ? aheadScan
+      : (aheadScan = { elementsMap, elements: elementsMap.values() });
+  while (
+    build.next >= elements.length &&
+    build.aheadChecked < elementsMap.size &&
+    hasTime()
+  ) {
+    const scanned = scan.elements.next();
+    if (scanned.done) {
+      scan.elements = elementsMap.values();
+      continue;
+    }
+    build.aheadChecked++;
+    const element = scanned.value;
+    if (element.id === appState.newElement?.id || isFrameLikeElement(element)) {
+      continue;
+    }
+    const [x1, y1, x2, y2] = getElementPaintBounds(element, elementsMap);
+    if (x2 < left || x1 > right || y2 < top || y1 > bottom) {
+      continue;
+    }
+    // a build that throws (a canvas refused past the browser's memory cap)
+    // must not end the build for the rest; the frame that shows the element
+    // tries again and handles the failure
+    try {
+      if (shouldDrawDirectly(element, elementsMap, appState)) {
+        buildSettled(element);
+      } else {
+        generateElementWithCanvas(element, elementsMap, renderConfig, appState);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (
+    build.next < elements.length ||
+    build.aheadChecked < elementsMap.size
+  ) {
     scheduleSettledBuild(0);
   } else {
     settledBuild = null;
+    aheadScan = null;
     cancelScheduledBuild = null;
   }
 };
@@ -1341,6 +1426,7 @@ export const cancelSettledBitmaps = (canvas: HTMLCanvasElement) => {
     return;
   }
   settledBuild = null;
+  aheadScan = null;
   cancelScheduledBuild?.();
   cancelScheduledBuild = null;
 };
@@ -1350,7 +1436,10 @@ export const cancelSettledBitmaps = (canvas: HTMLCanvasElement) => {
  * has settled (no zoom gesture or animation running) and held still for
  * {@link ZOOM_SETTLE_MS}, the last frame's visible ones get bitmaps at that
  * zoom in idle time, and later frames at that zoom (pans) draw them from
- * those. Call once per static frame.
+ * those. Then the elements within {@link BUILD_AHEAD_MARGIN} of the view get
+ * the bitmaps a pan would build on the frame they enter it. Each frame
+ * replaces the build, so it always works from the latest view. Call once per
+ * static frame.
  */
 export const cacheSettledBitmaps = (
   canvas: HTMLCanvasElement,
@@ -1371,6 +1460,7 @@ export const cacheSettledBitmaps = (
     canvas,
     elements,
     next: 0,
+    aheadChecked: 0,
     elementsMap,
     renderConfig,
     appState,
