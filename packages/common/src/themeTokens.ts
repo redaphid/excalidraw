@@ -55,8 +55,10 @@ const SHADOWS: Record<ThemeSpec["surface"]["shadow"], (ink: string) => string> =
 
 /**
  * `--canvas-sticky-note-shadow` and `--canvas-sticky-note-edge`, in scene
- * units. soft and hairline are the editor's built-in look; hard is the
- * offset block of a brutalist panel.
+ * units. soft is the editor's built-in shadow; hard is the offset block of a
+ * brutalist panel. hairline is the panel ring (`SHADOWS.none`) in the note
+ * ink, which reads on every paper, so a white note on a pale board keeps an
+ * edge; the built-in 8% black does not.
  */
 const NOTE_SHADOWS: Record<
   ThemeSpec["note"]["shadow"],
@@ -69,7 +71,7 @@ const NOTE_SHADOWS: Record<
 };
 const NOTE_EDGES: Record<ThemeSpec["note"]["edge"], (ink: string) => string> = {
   none: () => "none",
-  hairline: () => "0.5 rgba(0, 0, 0, 0.08)",
+  hairline: (ink) => `1 ${rgba(ink, 0.14)}`,
   ink: (ink) => `2 ${ink}`,
 };
 
