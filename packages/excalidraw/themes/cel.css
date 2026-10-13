@@ -51,9 +51,9 @@
     #afb2ab #97a39a #7d9387 #5e7f71 #3f6b5a,
     #b4b3af #a4a5a4 #929698 #7c8389 #66717a;
 
-  --sticky-note-background-color: #c8ac95;
+  --sticky-note-background-color: #ece4d4;
   --sticky-note-stroke-color: #27303a;
-  --color-picks-sticky-note-background: #c8ac95 #97b29f #96a8b4 #b59b8c #97a39a;
+  --color-picks-sticky-note-background: #ece4d4 #f0d4b8 #cfe0d2 #cdd9e6 #e8cfc2;
   --color-picks-sticky-note-stroke: #27303a #8c5730 #2f7450 #346c9c #9a522e;
 
   --ui-font: "Nunito", system-ui, sans-serif;
