@@ -230,7 +230,7 @@ describe("constant-width freedraw", () => {
         points: points.map(([x, y]) =>
           pointFrom<LocalPoint>(x / zoom, y / zoom),
         ),
-        strokeOptions: { variability: "constant" },
+        strokeOptions: { variability: "constant", streamline: 0.5 },
       }),
       ...(zoom !== 1 && { authoringScale: 1 / zoom }),
     } as ExcalidrawFreeDrawElement);
