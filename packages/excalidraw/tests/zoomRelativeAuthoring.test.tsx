@@ -4,6 +4,7 @@ import {
   getBoundTextMaxWidth,
   getCornerRadius,
   getElementBounds,
+  getElementLineSegments,
   isTextElement,
   setCustomTextMetricsProvider,
   ShapeCache,
@@ -717,6 +718,46 @@ describe("authoringUnits: screen, what an element made far in keeps", () => {
       expect(elementWithCanvasCache.get(rectangle.get())).toBe(cached);
     },
   );
+
+  it("draws and outlines a diamond made far in with its 1x vertices", () => {
+    const onScreenAt = (zoom: number) => (value: number) =>
+      Math.round(value * zoom * 1e6) / 1e6;
+    const verticesOnScreen = (zoom: number) => {
+      atZoom(zoom);
+      API.setAppState({ currentItemRoundness: "sharp" });
+      const diamond = UI.createElement("diamond", {
+        x: 200,
+        y: 150,
+        width: 160,
+        height: 120,
+      }).get();
+      const toScreen = onScreenAt(zoom);
+      const drawn = ShapeCache.generateElementShape(diamond, null) as Drawable;
+      const outline = getElementLineSegments(
+        diamond,
+        h.app.scene.getNonDeletedElementsMap(),
+      );
+      return {
+        // with no roughness, each stroke starts on a vertex
+        drawn: drawn.sets[0].ops
+          .filter((op) => op.op === "move")
+          .map(({ data: [x, y] }) => [
+            toScreen(diamond.x + x),
+            toScreen(diamond.y + y),
+          ]),
+        outline: outline.map((segment) =>
+          segment.map((point) => point.map(toScreen)),
+        ),
+      };
+    };
+    const atOneX = verticesOnScreen(1);
+    for (const zoom of [100, 100_000, 1_000_000]) {
+      expect({ zoom, ...verticesOnScreen(zoom) }).toEqual({
+        zoom,
+        ...atOneX,
+      });
+    }
+  });
 });
 
 describe("authoringUnits: scene (default)", () => {
