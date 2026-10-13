@@ -258,7 +258,7 @@ export function deconstructRectanguloidElement(
       : getCornerRadius(Math.min(element.width, element.height), element);
 
   if (radius === 0) {
-    radius = 0.01;
+    radius = 0.01 * getElementDetailScale(element);
   }
 
   const r = rectangle(
