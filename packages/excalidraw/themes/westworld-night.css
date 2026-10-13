@@ -17,7 +17,7 @@
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #8a8885;
   --canvas-sticky-note-shadow: none;
-  --canvas-sticky-note-edge: 0.5 rgba(0, 0, 0, 0.08);
+  --canvas-sticky-note-edge: none;
   --color-selection: #c89a5a;
 
   --element-stroke-color: #090500;
@@ -56,9 +56,9 @@
     #fcfeff #f3f4f9 #e9eaf0 #dbdce3 #cdced6,
     #e9eff3 #c6cfd7 #9fadb9 #708595 #405b70;
 
-  --sticky-note-background-color: #deceb8;
+  --sticky-note-background-color: #f3eadf;
   --sticky-note-stroke-color: #090500;
-  --color-picks-sticky-note-background: #deceb8 #bdbbb9 #b6b4b3 #c8cace #fcdcda;
+  --color-picks-sticky-note-background: #f3eadf #faf4ed #e8e5e1 #e4edf7 #feeae6;
   --color-picks-sticky-note-stroke: #090500 #8b550b #221c10 #090500 #494e56;
 
   --ui-font: "Liberation Sans", system-ui, sans-serif;
@@ -133,6 +133,11 @@
 
 :scope [data-radix-popper-content-wrapper] .Island {
   background: #121316;
+}
+
+:scope,
+:scope.theme--dark {
+  --canvas-sticky-note-edge: 0.75 rgba(200, 154, 90, 0.85);
 }
 
 :scope .selected-shape-actions h3,
