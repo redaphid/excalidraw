@@ -20,7 +20,11 @@
         "shadow": "none"
       },
       "washes": ["graphite", "iron", "slate", "bronze"],
-      "extra": ":scope .selected-shape-actions h3,\n:scope .selected-shape-actions legend,\n:scope .frame-breadcrumb {\n  letter-spacing: 0.14em;\n  text-transform: uppercase;\n  font-size: 0.6875rem;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;\n}"
+      "extra": ":scope,\n:scope.theme--dark {\n  --canvas-sticky-note-edge: 0.75 rgba(200, 154, 90, 0.85);\n}\n\n:scope .selected-shape-actions h3,\n:scope .selected-shape-actions legend,\n:scope .frame-breadcrumb {\n  letter-spacing: 0.14em;\n  text-transform: uppercase;\n  font-size: 0.6875rem;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;\n}",
+      "note": {
+        "shadow": "none",
+        "edge": "none"
+      }
     }
   },
   "color": {
@@ -107,6 +111,43 @@
           "colorSpace": "srgb",
           "components": [0.5608, 0.651, 0.7216],
           "hex": "#8fa6b8"
+        }
+      }
+    },
+    "note": {
+      "bronze": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1647, 0.1333, 0.098],
+          "hex": "#2a2219"
+        }
+      },
+      "umber": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1216, 0.102, 0.0784],
+          "hex": "#1f1a14"
+        }
+      },
+      "bone": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1647, 0.1569, 0.1412],
+          "hex": "#2a2824"
+        }
+      },
+      "slate": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1059, 0.1373, 0.1686],
+          "hex": "#1b232b"
+        }
+      },
+      "oxide": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.1804, 0.1137, 0.102],
+          "hex": "#2e1d1a"
         }
       }
     }
