@@ -1332,9 +1332,11 @@ export type PointerDownState = Readonly<{
   scrollbars: ReturnType<typeof isOverScrollBars>;
   // The previous pointer position
   lastCoords: { x: number; y: number };
-  // original element frozen snapshots so we can access the original
-  // element attribute values at time of pointerdown; empty unless the
-  // selection or lasso tool is active
+  // copies of the elements the gesture drags, resizes, rotates, crops or
+  // duplicates (the selection, children of selected frames, their bound text
+  // and the image being cropped), taken when the gesture first transforms
+  // them, before it changes them. Empty until then, so always empty in
+  // `onPointerDown`, and empty in `onPointerUp` after a plain click.
   originalElements: Map<string, NonDeleted<ExcalidrawElement>>;
   resize: {
     // Handle when resizing, might change during the pointer interaction

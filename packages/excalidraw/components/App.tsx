@@ -8521,14 +8521,8 @@ ${css}
       ),
       // we need to duplicate because we'll be updating this state
       lastCoords: { ...origin },
-      // only selection-like tools keep a selection to drag, resize or crop;
-      // every other tool clears it, so nothing would read these copies
-      originalElements: isSelectionLikeTool(this.state.activeTool.type)
-        ? this.scene.getNonDeletedElements().reduce((acc, element) => {
-            acc.set(element.id, deepCopyElement(element));
-            return acc;
-          }, new Map() as PointerDownState["originalElements"])
-        : new Map(),
+      // filled by snapshotGestureElements once the gesture transforms
+      originalElements: new Map(),
       resize: {
         handleType: false,
         isResizing: false,
@@ -8564,6 +8558,35 @@ ${css}
         hasOccurred: false,
       },
     };
+  }
+
+  /**
+   * Copies, once per gesture, every element whose original the gesture's
+   * drag, resize, rotate, crop or duplicate reads. Call it before the first
+   * of them changes anything. Pointer-down settles the selection through
+   * setState, so the selection is known here but not at pointer-down.
+   */
+  private snapshotGestureElements(pointerDownState: PointerDownState) {
+    const originals = pointerDownState.originalElements;
+    if (originals.size) {
+      return;
+    }
+    const elementsMap = this.scene.getNonDeletedElementsMap();
+    const copy = (element: NonDeletedExcalidrawElement | null | undefined) => {
+      if (element) {
+        originals.set(element.id, deepCopyElement(element));
+      }
+    };
+    for (const element of this.scene.getSelectedElements({
+      selectedElementIds: this.state.selectedElementIds,
+      includeElementsInFrames: true,
+    })) {
+      copy(element);
+      copy(getBoundTextElement(element, elementsMap));
+    }
+    if (this.state.croppingElementId) {
+      copy(elementsMap.get(this.state.croppingElementId));
+    }
   }
 
   // Returns whether the event is a dragging a scrollbar
@@ -10195,6 +10218,7 @@ ${css}
             y: pointerCoords.y - pointerDownState.drag.origin.y,
           };
 
+          this.snapshotGestureElements(pointerDownState);
           const originalElements = [
             ...pointerDownState.originalElements.values(),
           ];
@@ -12750,6 +12774,7 @@ ${css}
       croppingElement &&
       isImageElement(croppingElement)
     ) {
+      this.snapshotGestureElements(pointerDownState);
       const croppingAtStateStart = pointerDownState.originalElements.get(
         croppingElement.id,
       );
@@ -12836,6 +12861,7 @@ ${css}
       return false;
     }
 
+    this.snapshotGestureElements(pointerDownState);
     this.activeResizeHandle =
       transformHandleType && transformHandleType !== "rotation"
         ? transformHandleType
