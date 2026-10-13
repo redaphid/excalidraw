@@ -32,6 +32,14 @@ const UPSTREAM_STICKY_NOTE_BACKGROUND_PICKS = [
 const fivePicks = (picks, fallback) =>
   fallback.map((color, index) => picks?.[index] ?? color);
 
+/** a theme's own papers, repeated from the first, so no stock paper slips in */
+const fivePapers = (papers) =>
+  papers?.length
+    ? UPSTREAM_STICKY_NOTE_BACKGROUND_PICKS.map(
+        (_, index) => papers[index % papers.length],
+      )
+    : UPSTREAM_STICKY_NOTE_BACKGROUND_PICKS;
+
 /**
  * `stacked` puts the Build frame under Discovery instead of beside it, the
  * layout a phone gives a scene.
@@ -39,10 +47,7 @@ const fivePicks = (picks, fallback) =>
 export const buildScene = (style, { stacked = false } = {}) => {
   const stroke = fivePicks(style.strokePicks, UPSTREAM_STROKE_PICKS);
   const fill = fivePicks(style.backgroundPicks, UPSTREAM_BACKGROUND_PICKS);
-  const papers = fivePicks(
-    style.stickyNoteBackgroundPicks,
-    UPSTREAM_STICKY_NOTE_BACKGROUND_PICKS,
-  );
+  const papers = fivePapers(style.stickyNoteBackgroundPicks);
   const ink = style.currentItemStrokeColor;
   const fontSize = style.currentItemFontSize;
   const fontFamily = style.currentItemFontFamily;
