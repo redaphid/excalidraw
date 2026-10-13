@@ -1,7 +1,7 @@
 import rough from "roughjs/bin/rough";
 
 import {
-  BUILD_AHEAD_MARGIN,
+  BUILD_AHEAD_VIEW_FRACTION,
   cancelSettledBitmaps,
   elementWithCanvasCache,
   Scene,
@@ -21,6 +21,8 @@ import { API } from "./helpers/api";
 import type { AppState } from "../types";
 
 const VIEW = 500;
+const SHAPE_SIZE = 40;
+const MS_PER_BITMAP = 3;
 
 let lastCanvas: HTMLCanvasElement | null = null;
 
@@ -32,7 +34,6 @@ afterEach(() => {
   }
 });
 
-/** paints a 500x500 view at 1x scrolled to `scrollX` */
 const paint = (elements: NonDeletedExcalidrawElement[], scrollX = 0) => {
   const scene = new Scene(elements, { skipValidation: true });
   const appState: AppState = {
@@ -71,15 +72,17 @@ const paint = (elements: NonDeletedExcalidrawElement[], scrollX = 0) => {
   });
 };
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 400));
+const ZOOM_SETTLE_AND_BUILD_MS = 400;
+const settle = () =>
+  new Promise((resolve) => setTimeout(resolve, ZOOM_SETTLE_AND_BUILD_MS));
 
 const rectangleAt = (x: number) =>
   API.createElement({
     type: "rectangle",
     x,
     y: 100,
-    width: 40,
-    height: 40,
+    width: SHAPE_SIZE,
+    height: SHAPE_SIZE,
     fillStyle: "hachure",
     backgroundColor: "#a5d8ff",
   });
@@ -96,9 +99,10 @@ const strokeAt = (x: number) =>
     ],
   });
 
-// the margin reaches 250 px past the view's right edge at 500
-const NEAR_X = VIEW + VIEW * BUILD_AHEAD_MARGIN * 0.5;
-const FAR_X = VIEW + VIEW * BUILD_AHEAD_MARGIN * 4;
+const NEAR_GAP = VIEW * BUILD_AHEAD_VIEW_FRACTION * 0.5;
+const NEAR_X = VIEW + NEAR_GAP;
+const FAR_X = VIEW + VIEW * BUILD_AHEAD_VIEW_FRACTION * 4;
+const SCROLL_LEAVING_FAR_LEFT_SHAPE_NEAR = FAR_X - SHAPE_SIZE - NEAR_GAP;
 
 const isBuilt = (element: NonDeletedExcalidrawElement) =>
   elementWithCanvasCache.get(element)?.zoomValue === 1;
@@ -132,7 +136,10 @@ describe("elements just outside the view, once the view holds still", () => {
     const far = [rectangleAt(FAR_X), strokeAt(FAR_X + 60)];
     paint([rectangleAt(10), rectangleAt(NEAR_X), ...far]);
     await settle();
-    expect(far.map((el) => ShapeCache.get(el, null))).toEqual([undefined, undefined]);
+    expect(far.map((el) => ShapeCache.get(el, null))).toEqual([
+      undefined,
+      undefined,
+    ]);
     expect(far.map((el) => elementWithCanvasCache.get(el))).toEqual([
       undefined,
       undefined,
@@ -144,9 +151,7 @@ describe("elements just outside the view, once the view holds still", () => {
     const nearLatest = rectangleAt(-FAR_X);
     const elements = [rectangleAt(10), nearFirst, nearLatest];
     paint(elements);
-    // the view moves far left, leaving `nearLatest` as far past its left
-    // edge as `nearFirst` was past the first view's right edge
-    paint(elements, FAR_X - 40 - (NEAR_X - VIEW));
+    paint(elements, SCROLL_LEAVING_FAR_LEFT_SHAPE_NEAR);
     await settle();
     expect([isBuilt(nearFirst), isBuilt(nearLatest)]).toEqual([false, true]);
   });
@@ -165,18 +170,16 @@ describe("an idle slice building elements near the view", () => {
       rectangleAt(VIEW + 10 + i * 5),
     );
     paint([rectangleAt(10), ...near]);
-    // past the zoom's settle delay, so the next idle callback builds
     await settle();
     expect(idle).toHaveLength(1);
 
-    // the clock moves only while a bitmap is built, 3 ms each
     let now = performance.now();
     vi.spyOn(performance, "now").mockImplementation(() => now);
     const createElement = document.createElement.bind(document);
     vi.spyOn(document, "createElement").mockImplementation(
       (tag: string, options?: ElementCreationOptions) => {
         if (tag === "canvas") {
-          now += 3;
+          now += MS_PER_BITMAP;
         }
         return createElement(tag, options);
       },
@@ -185,7 +188,9 @@ describe("an idle slice building elements near the view", () => {
 
     const sliceStart = now;
     idle.shift()!(deadline);
-    expect(now - sliceStart).toBeLessThan(SETTLED_BUILD_SLICE_MS + 3);
+    expect(now - sliceStart).toBeLessThan(
+      SETTLED_BUILD_SLICE_MS + MS_PER_BITMAP,
+    );
     expect(near.filter(isBuilt).length).toBeGreaterThan(0);
     expect(near.filter(isBuilt).length).toBeLessThan(near.length);
 

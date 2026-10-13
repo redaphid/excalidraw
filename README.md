@@ -110,6 +110,7 @@ The full design, with every zoom-dependent size and the alternatives that were r
 ### Rendering
 
 - Freehand strokes, and text above 1x, draw straight onto the canvas instead of through a per-element bitmap rebuilt on every zoom change ([`6a1b2217`](https://github.com/redaphid/excalidraw/commit/6a1b2217)). Once the zoom has held still for 150 ms they get bitmaps in idle time, so pans at that zoom draw from bitmaps ([`d5146312`](https://github.com/redaphid/excalidraw/commit/d5146312)).
+- Elements within half a view of each edge get their shapes and bitmaps in idle time too, so a pan draws elements entering the view from bitmaps already built. Each idle slice stops after 8 ms ([`62e83f46`](https://github.com/redaphid/excalidraw/commit/62e83f46)).
 - Each freehand stroke's `Path2D` is cached and reused across frames ([`7489a610`](https://github.com/redaphid/excalidraw/commit/7489a610)), and its SVG path is cached across exports ([`06c5f394`](https://github.com/redaphid/excalidraw/commit/06c5f394)).
 - Freehand path coordinates keep full precision instead of being cut to two decimals, which turned strokes drawn deep in a zoom into staircases or dots ([`426f6f60`](https://github.com/redaphid/excalidraw/commit/426f6f60)).
 - perfect-freehand 1.2.0 is vendored with two changes so strokes a fraction of a unit wide keep their shape. Unpatched, the vendored copy matches the npm build's output ([`f95e168a`](https://github.com/redaphid/excalidraw/commit/f95e168a)).
