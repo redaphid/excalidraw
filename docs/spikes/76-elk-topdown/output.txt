@@ -1,0 +1,39 @@
+elkjs 0.12.0
+
+algorithms in this build: fixed, box, random, layered, stress, mrtree, radial, force, sporeOverlap, sporeCompaction, rectpacking
+topdownpacking present: false
+
+=== 3 levels, 6 nodes per diagram, spine nesting ===
+L1 d1  scale=1 (from boxes 1)  cumulative=1
+    d1.0                   local x=12 y=12 w=160 h=80
+    d1.1                   local x=192 y=12 w=160 h=80
+    d1.2                   local x=372 y=12 w=160 h=80
+    d1.3                   local x=552 y=12 w=160 h=80
+    d1.4                   local x=732 y=12 w=160 h=80
+    d1.5                   local x=912 y=12 w=160 h=80
+L2 d1.3  scale=0.128302 (from boxes 0.128302)  cumulative=0.128302
+    d1.3.0                 local x=93.53 y=93.53 w=160 h=80
+    d1.3.1                 local x=273.53 y=93.53 w=160 h=80
+    d1.3.2                 local x=453.53 y=93.53 w=160 h=80
+    d1.3.3                 local x=633.53 y=93.53 w=160 h=80
+    d1.3.4                 local x=813.53 y=93.53 w=160 h=80
+    d1.3.5                 local x=993.53 y=93.53 w=160 h=80
+L3 d1.3.3  scale=0.128302 (from boxes 0.128302)  cumulative=0.016461
+    d1.3.3.0               local x=93.53 y=93.53 w=160 h=80
+    d1.3.3.1               local x=273.53 y=93.53 w=160 h=80
+    d1.3.3.2               local x=453.53 y=93.53 w=160 h=80
+    d1.3.3.3               local x=633.53 y=93.53 w=160 h=80
+    d1.3.3.4               local x=813.53 y=93.53 w=160 h=80
+    d1.3.3.5               local x=993.53 y=93.53 w=160 h=80
+layout 177.3 ms; logged scales: 2; JSON result carries scale: false
+child width in the result: 160 (slot 160); children are NOT pre-scaled, the scale is applied by the caller
+
+=== 6 levels, sweep of nodes per diagram ===
+n/diagram | scale/level | smallest cumulative | zoom needed | leaf w (root units) | f64 ulp/w | f32 ulp/w (abs) | f32 ulp/w (camera-rel) | log vs boxes
+        3 |     0.26154 |              0.0012 |     817.188 |              0.1958 |  2.90e-13 |         1.56e-4 |                7.61e-8 |            0
+        6 |      0.1283 |           3.4767e-5 |    28763.04 |              0.0056 |  2.04e-11 |            0.01 |                8.37e-8 |            0
+       10 |      0.0764 |           2.6037e-6 |  384065.653 |           4.1660e-4 |  2.73e-10 |            0.15 |                6.99e-8 |            0
+       16 |     0.04755 |           2.4314e-7 |    4.113e+6 |           3.8903e-5 |   5.84e-9 |            3.14 |                9.35e-8 |            0
+
+=== full tree, 3 nodes per diagram, 6 levels (every node expands) ===
+1093 ELK nodes, 363 scaled diagrams, 1678 ms
