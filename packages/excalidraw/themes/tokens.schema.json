@@ -34,7 +34,7 @@
               "additionalProperties": false,
               "properties": {
                 "shadow": { "enum": ["none", "soft", "lifted", "hard"], "description": "default: follows surface.shadow (long gives lifted)" },
-                "edge": { "enum": ["none", "hairline", "ink"], "description": "default: follows surface.border (bold gives ink)" }
+                "edge": { "enum": ["none", "hairline", "ink", "accent"], "description": "default: follows surface.border (bold gives ink); accent is 1 unit of the accent" }
               }
             },
             "washes": { "type": "array", "description": "the four background swatches, as names of color.palette tokens", "items": { "type": "string" }, "minItems": 4, "maxItems": 4 },

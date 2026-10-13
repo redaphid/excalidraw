@@ -69,10 +69,14 @@ const NOTE_SHADOWS: Record<
   lifted: () => "6 8 rgba(0, 0, 0, 0.2)",
   hard: (ink) => `5 5 ${ink}`,
 };
-const NOTE_EDGES: Record<ThemeSpec["note"]["edge"], (ink: string) => string> = {
+const NOTE_EDGES: Record<
+  ThemeSpec["note"]["edge"],
+  (colors: { ink: string; accent: string }) => string
+> = {
   none: () => "none",
-  hairline: (ink) => `1 ${rgba(ink, 0.14)}`,
-  ink: (ink) => `2 ${ink}`,
+  hairline: ({ ink }) => `1 ${rgba(ink, 0.14)}`,
+  ink: ({ ink }) => `2 ${ink}`,
+  accent: ({ accent }) => `1 ${rgba(accent, 0.9)}`,
 };
 
 const STROKE_SHADES = [0.82, 0.62, 0.42, 0.2, 0];
@@ -313,7 +317,9 @@ const generate = (
       token: "noteInk",
       from: noteInk,
       to: noteInk,
-      reason: `${paled.length} of ${papers.length} note papers moved ${Math.round(
+      reason: `${paled.length} of ${
+        papers.length
+      } note papers moved ${Math.round(
         most * 100,
       )}% toward ${paperTarget} for this ink to reach 4.5:1${
         most === 1 ? ", all the way: those notes lost their color" : ""
@@ -357,7 +363,10 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --canvas-sticky-note-shadow: ${NOTE_SHADOWS[tokens.note.shadow](
     noteInkShown,
   )};
-  --canvas-sticky-note-edge: ${NOTE_EDGES[tokens.note.edge](noteInkShown)};
+  --canvas-sticky-note-edge: ${NOTE_EDGES[tokens.note.edge]({
+    ink: noteInkShown,
+    accent,
+  })};
   --color-selection: ${accent};
 
   --element-stroke-color: ${store(elementInk)};

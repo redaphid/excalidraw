@@ -102,7 +102,7 @@ const FILLS = ["solid", "hachure", "cross-hatch", "zigzag"] as const;
 const BORDERS = ["none", "hairline", "bold"] as const;
 const SHADOWS = ["none", "soft", "long", "hard"] as const;
 const NOTE_SHADOWS = ["none", "soft", "lifted", "hard"] as const;
-const NOTE_EDGES = ["none", "hairline", "ink"] as const;
+const NOTE_EDGES = ["none", "hairline", "ink", "accent"] as const;
 /** a note sits on the board the way the theme's panels do */
 const NOTE_SHADOW_OF_SURFACE: Record<
   typeof SHADOWS[number],
@@ -1226,7 +1226,7 @@ export const THEME_TOKENS_SCHEMA = {
                 edge: {
                   enum: NOTE_EDGES,
                   description:
-                    "default: follows surface.border (bold gives ink)",
+                    "default: follows surface.border (bold gives ink); accent is 1 unit of the accent",
                 },
               },
             },

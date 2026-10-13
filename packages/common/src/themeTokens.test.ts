@@ -231,6 +231,26 @@ describe("generateThemeCss sticky notes", () => {
     expect(warnings).toEqual([]);
   });
 
+  it("draws an accent note edge in the accent, unfiltered in dark mode", () => {
+    const { css } = generateThemeCss(tokens({ note: { edge: "accent" } }));
+    const dark = generateThemeCss(
+      tokens({
+        mode: "dark",
+        canvas: "#050a06",
+        ink: "#39ff6a",
+        panel: "#07120a",
+        note: { edge: "accent" },
+      }),
+    ).css;
+
+    expect(property(css, "--canvas-sticky-note-edge")).toBe(
+      "1 rgba(168, 115, 47, 0.9)",
+    );
+    expect(property(dark, "--canvas-sticky-note-edge")).toBe(
+      "1 rgba(168, 115, 47, 0.9)",
+    );
+  });
+
   it("gives notes the background washes and the ink without note tokens", () => {
     const { css } = generateThemeCss(tokens());
     const washes = picks(css, "--color-picks-background").slice(1);
