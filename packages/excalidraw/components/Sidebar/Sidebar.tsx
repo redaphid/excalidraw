@@ -20,7 +20,7 @@ import {
 import { useUIAppState } from "../../context/ui-appState";
 import { atom, useSetAtom } from "../../editor-jotai";
 import { useOutsideClick } from "../../hooks/useOutsideClick";
-import { useEditorInterface, useExcalidrawSetAppState } from "../App";
+import { useApp, useEditorInterface, useExcalidrawSetAppState } from "../App";
 import { Island } from "../Island";
 
 import { SidebarHeader } from "./SidebarHeader";
@@ -96,6 +96,7 @@ export const SidebarInner = forwardRef(
       return islandRef.current!;
     });
 
+    const app = useApp();
     const editorInterface = useEditorInterface();
 
     const closeLibrary = useCallback(() => {
@@ -117,11 +118,15 @@ export const SidebarInner = forwardRef(
           if ((event.target as Element).closest(".sidebar-trigger")) {
             return;
           }
+          // the Frames drawer lists each frame as it is drawn
+          if (app.frameNavigation.keepsDrawerOpen()) {
+            return;
+          }
           if (!docked || !editorInterface.canFitSidebar) {
             closeLibrary();
           }
         },
-        [closeLibrary, docked, editorInterface.canFitSidebar],
+        [app, closeLibrary, docked, editorInterface.canFitSidebar],
       ),
     );
 

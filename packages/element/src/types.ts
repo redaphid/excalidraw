@@ -429,6 +429,12 @@ export type StrokeVariability = "variable" | "constant";
 export type StrokeOptions = Readonly<{
   variability: StrokeVariability;
   streamline: number;
+  /** how much pressure narrows a variable stroke, -1 to 1 (perfect-freehand
+   * `thinning`). Absent: 0.6 */
+  thinning?: number;
+  /** how far each end of a variable stroke tapers, in stroke widths.
+   * Absent: no taper */
+  taper?: number;
 }>;
 
 export type ExcalidrawFreeDrawElement = _ExcalidrawElementBase &

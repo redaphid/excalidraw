@@ -1183,13 +1183,14 @@ const SETTLED_BUILD_SLICE_MS = 8;
 
 let zoomHeld = { zoom: NaN, since: 0 };
 let settledBuild: {
+  canvas: HTMLCanvasElement;
   elements: readonly NonDeletedExcalidrawElement[];
   next: number;
   elementsMap: NonDeletedSceneElementsMap;
   renderConfig: StaticCanvasRenderConfig;
   appState: StaticCanvasAppState;
 } | null = null;
-let settledBuildScheduled = false;
+let cancelScheduledBuild: (() => void) | null = null;
 let settledBitmapCount = 0;
 
 /** How many settled bitmaps have been built, for a canvas that holds still
@@ -1198,23 +1199,26 @@ export const getSettledBitmapCount = () => settledBitmapCount;
 
 const scheduleSettledBuild = (delay: number) => {
   if (delay > 0) {
-    setTimeout(() => scheduleSettledBuild(0), delay);
+    const timer = setTimeout(() => scheduleSettledBuild(0), delay);
+    cancelScheduledBuild = () => clearTimeout(timer);
   } else if (typeof requestIdleCallback === "function") {
-    requestIdleCallback((deadline) =>
+    const idle = requestIdleCallback((deadline) =>
       buildSettledBitmaps(() => deadline.timeRemaining() > 1),
     );
+    cancelScheduledBuild = () => cancelIdleCallback(idle);
   } else {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       const until = performance.now() + SETTLED_BUILD_SLICE_MS;
       buildSettledBitmaps(() => performance.now() < until);
     });
+    cancelScheduledBuild = () => clearTimeout(timer);
   }
 };
 
 const buildSettledBitmaps = (hasTime: () => boolean) => {
   const build = settledBuild;
   if (!build) {
-    settledBuildScheduled = false;
+    cancelScheduledBuild = null;
     return;
   }
   const wait = zoomHeld.since + ZOOM_SETTLE_MS - performance.now();
@@ -1249,8 +1253,22 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     scheduleSettledBuild(0);
   } else {
     settledBuild = null;
-    settledBuildScheduled = false;
+    cancelScheduledBuild = null;
   }
+};
+
+/**
+ * Drops the pending build if this canvas scheduled it, so nothing runs once
+ * its editor unmounts. The build is shared by every editor on the page and
+ * holds only the canvas that rendered last, so another editor's build stays.
+ */
+export const cancelSettledBitmaps = (canvas: HTMLCanvasElement) => {
+  if (settledBuild?.canvas !== canvas) {
+    return;
+  }
+  settledBuild = null;
+  cancelScheduledBuild?.();
+  cancelScheduledBuild = null;
 };
 
 /**
@@ -1261,6 +1279,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
  * those. Call once per static frame.
  */
 export const cacheSettledBitmaps = (
+  canvas: HTMLCanvasElement,
   elements: readonly NonDeletedExcalidrawElement[],
   elementsMap: NonDeletedSceneElementsMap,
   renderConfig: StaticCanvasRenderConfig,
@@ -1274,9 +1293,15 @@ export const cacheSettledBitmaps = (
   if (zoomHeld.zoom !== appState.zoom.value) {
     zoomHeld = { zoom: appState.zoom.value, since: performance.now() };
   }
-  settledBuild = { elements, next: 0, elementsMap, renderConfig, appState };
-  if (!settledBuildScheduled) {
-    settledBuildScheduled = true;
+  settledBuild = {
+    canvas,
+    elements,
+    next: 0,
+    elementsMap,
+    renderConfig,
+    appState,
+  };
+  if (!cancelScheduledBuild) {
     scheduleSettledBuild(ZOOM_SETTLE_MS);
   }
 };
@@ -1358,11 +1383,15 @@ const drawElement = (
           );
           context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
-          context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
-          context.strokeStyle = applyDarkModeFilter(
-            FRAME_STYLE.strokeColor,
-            appState.theme === THEME.DARK,
-          );
+          context.lineWidth =
+            (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth) /
+            appState.zoom.value;
+          context.strokeStyle =
+            renderConfig.canvasTheme?.frameColor ??
+            applyDarkModeFilter(
+              FRAME_STYLE.strokeColor,
+              appState.theme === THEME.DARK,
+            );
 
           // TODO change later to only affect AI frames
           if (isMagicFrameElement(element)) {

@@ -214,7 +214,6 @@ export type StaticCanvasAppState = Readonly<
     frameRendering: AppState["frameRendering"];
     currentHoveredFontFamily: AppState["currentHoveredFontFamily"];
     hoveredElementIds: AppState["hoveredElementIds"];
-    suggestedBinding: AppState["suggestedBinding"];
     // Cropping
     croppingElementId: AppState["croppingElementId"];
     newElement?: AppState["newElement"];
@@ -901,6 +900,16 @@ export interface ExcalidrawProps {
    */
   authoringUnits?: AuthoringUnits;
   /**
+   * CSS for this editor, scoped to it with `@scope`: `:scope` matches the
+   * editor root and each of its portals. Besides restyling the UI, it can
+   * set the custom properties listed in docs/theming.md: the canvas colors
+   * (`--canvas-background`, `--canvas-grid-color`, ...), the defaults for
+   * new elements (`--element-stroke-width`, `--element-roughness`, ...) and
+   * the color picker's swatches. They are read when this prop or the theme
+   * changes, never per frame.
+   */
+  css?: string;
+  /**
    * The freedraw tool's stroke width, in `authoringUnits`, in place of the
    * named widths, which are hidden while the tool is out.
    */
@@ -1192,11 +1201,21 @@ export type UIOptions = Partial<{
   welcomeScreen?: boolean;
 }>;
 
+export type Slide = { frameId: string; included: boolean };
+
 export type FrameNavigation = {
   /** bookmarked frame ids, in order; the host keeps them */
   bookmarks?: readonly string[];
   /** a star or unstar in the drawer; without it the drawer shows no stars */
   onBookmarkChange?: (frameId: string, bookmarked: boolean) => void;
+  /** The host's talk. With it the drawer opens on a Slides view: the frames
+   * in this order, reorderable by pen, touch or mouse. */
+  slides?: {
+    order: readonly Slide[];
+    /** the whole talk after a move or a skip, one entry per frame */
+    onChange: (order: Slide[]) => void;
+    onPresent: () => void;
+  };
 };
 
 export type AppProps = Merge<
@@ -1229,6 +1248,7 @@ export type AppClassProperties = {
   interactiveCanvas: HTMLCanvasElement | null;
   /** static canvas */
   canvas: HTMLCanvasElement;
+  cssTheme: App["cssTheme"];
   focusContainer(): void;
   library: Library;
   imageCache: Map<

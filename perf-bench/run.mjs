@@ -12,6 +12,7 @@ const { values: opts } = parseArgs({
     builds: { type: "string" },
     runs: { type: "string", default: "5" },
     engine: { type: "string", default: "chromium" },
+    channel: { type: "string", default: "chromium" },
     throttle: { type: "string", default: "4" },
     device: { type: "string", default: "laptop" },
     only: { type: "string" },
@@ -22,7 +23,7 @@ const { values: opts } = parseArgs({
 
 if (!opts.builds) {
   console.error(
-    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name]",
+    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--channel chromium|chrome|msedge] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name]",
   );
   process.exit(2);
 }
@@ -68,8 +69,11 @@ const serve = () =>
 
 const launch = () => {
   if (opts.engine === "chromium") {
+    // Any channel but Playwright's own Chromium runs headed: an installed
+    // browser on the machine's GPU, the way the editor is used.
     return chromium.launch({
-      channel: "chromium",
+      channel: opts.channel,
+      headless: opts.channel === "chromium",
       args: ["--disable-gpu-vsync", "--disable-frame-rate-limit"],
     });
   }
@@ -115,6 +119,7 @@ const METRICS = [
   ["frameMean", (r) => r.frameMs.mean],
   ["releaseMs", (r) => r.releaseMs],
   ["settleMax", (r) => r.settleMaxFrameMs],
+  ["frameMax", (r) => r.frameMaxMs ?? NaN],
 ];
 
 const main = async () => {
@@ -130,6 +135,12 @@ const main = async () => {
       console.error(`run ${run + 1}/${runs} ${build} ${((Date.now() - started) / 1000).toFixed(0)}s`);
     }
   }
+  // Read after the runs: it says software until the GPU process is up.
+  const gpuCompositing =
+    opts.engine === "chromium"
+      ? (await (await browser.newBrowserCDPSession()).send("SystemInfo.getInfo")).gpu
+          .featureStatus.gpu_compositing
+      : "n/a";
   await browser.close();
   server.close();
 
@@ -146,6 +157,10 @@ const main = async () => {
       summary[id][build].meanSpread = spread(rows.map((r) => r.frameMs.mean));
       if (rows[0].countersPerFrame) summary[id][build].counters = rows[0].countersPerFrame;
       if (rows[0].countersAtRelease) summary[id][build].endCounters = rows[0].countersAtRelease;
+      if (rows[0].countersMaxFrame) {
+        summary[id][build].maxCounters = rows[0].countersMaxFrame;
+        summary[id][build].canvasFrames = rows[0].canvasFrames;
+      }
     }
   }
   const mount = Object.fromEntries(
@@ -163,29 +178,34 @@ const main = async () => {
   const file = path.join(out, `${stamp}-${opts.label}.json`);
   writeFileSync(
     file,
-    JSON.stringify({ opts, userAgent: first.userAgent, summary, mount, reports }, null, 1),
+    JSON.stringify({ opts, userAgent: first.userAgent, gpuCompositing, summary, mount, reports }, null, 1),
   );
 
   const [base, ...others] = builds;
   const pct = (a, b) => `${(((b - a) / a) * 100).toFixed(1)}%`;
-  console.log(`${opts.engine} ${opts.device} throttle ${throttle}x, ${runs} runs, ${first.userAgent}`);
+  console.log(
+    `${opts.engine} ${opts.channel} ${opts.device} throttle ${throttle}x, ${runs} runs, gpu compositing ${gpuCompositing}, ${first.userAgent}`,
+  );
   console.log(`mount ms: ${JSON.stringify(mount)}`);
   for (const [id, byBuild] of Object.entries(summary)) {
     const b = byBuild[base];
     const line = [
       id.padEnd(16),
-      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)}`,
+      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)} max ${b.frameMax.toFixed(1)}`,
     ];
     for (const other of others) {
       const c = byBuild[other];
       line.push(
-        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)})`,
+        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)}) max ${c.frameMax.toFixed(1)} (${pct(b.frameMax, c.frameMax)})`,
       );
     }
     console.log(line.join(" "));
     if (b.counters) {
       console.log(`  counters/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].counters)}`).join(" | ")}`);
       console.log(`  counters/release ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].endCounters)}`).join(" | ")}`);
+      if (b.maxCounters) {
+        console.log(`  counters max/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].maxCounters)} canvasFrames ${byBuild[x].canvasFrames}`).join(" | ")}`);
+      }
     }
   }
   console.log(`saved ${file}`);

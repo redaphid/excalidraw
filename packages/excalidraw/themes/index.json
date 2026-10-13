@@ -1,0 +1,173 @@
+{
+  "about": "Sample themes for the Excalidraw css prop. Each one is a complete, working stylesheet meant to be read and adapted: pick the closest and change it. <name>.css is the stylesheet. Pass it as css and pass mode as the theme prop beside it. When generated is true, <name>.tokens.json holds the design tokens the stylesheet was generated from with generateThemeCss in @excalidraw/common (schema: tokens.schema.json), so edit the tokens and regenerate instead of the CSS. A theme styles one viewer's editor and sets the defaults for new elements. Existing elements keep their stored colors, and on a shared board everyone sees those stored colors in their own theme.",
+  "themes": [
+    {
+      "name": "architect-parchment",
+      "title": "Architect Parchment",
+      "mode": "light",
+      "description": "Flat warm drafting paper with a graph-paper grid, thin graphite ink, pale sage and blue-gray washes and one bronze accent. Calm and technical, for plans and diagrams that should look printed.",
+      "pen": "Fine graphite nib: pressure-sensitive, slight thinning, long tapered ends.",
+      "generated": true,
+      "caveats": []
+    },
+    {
+      "name": "blueprint",
+      "title": "Blueprint",
+      "mode": "dark",
+      "description": "Cyanotype: deep cobalt paper, a white construction grid, chalk-white linework and monospace annotations. For engineering drawings that should read as a blueprint.",
+      "pen": "Fine chalk line: pressure-sensitive with little thinning and short tapers.",
+      "generated": false,
+      "caveats": ["Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas."]
+    },
+    {
+      "name": "brutalist",
+      "title": "Brutalist",
+      "mode": "light",
+      "description": "Raw and loud: hard black borders, offset block shadows, monospace type and acid accents, with no softness anywhere. For bold, opinionated boards.",
+      "pen": "Thick marker of constant width; pressure is ignored.",
+      "generated": true,
+      "caveats": []
+    },
+    {
+      "name": "cad-debug",
+      "title": "CAD Debug",
+      "mode": "light",
+      "description": "A CAD viewport: blue-gray ground, a white construction grid, graphite edges and a bright debug palette. Solid warm fills mean added material and dashed cool or red outlines mean voids.",
+      "pen": "Thin constant-width plotter line.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "cel",
+      "title": "Cel",
+      "mode": "light",
+      "description": "Flat cel illustration on warm grey board: one even slate outline around every shape, rounded forms and muted apricot, sage and slate-blue fills with no shading. Friendly and illustrative.",
+      "pen": "Medium inking brush: pressure-sensitive with light thinning and blunt ends.",
+      "generated": true,
+      "caveats": []
+    },
+    {
+      "name": "e-ink",
+      "title": "E-ink",
+      "mode": "light",
+      "description": "For e-paper tablets: pure black on white, no gray fills behind text, no shadows and no motion, so the panel never ghosts. The starting point for any low-refresh or print-like display.",
+      "pen": "Fine stylus pen that swells with pressure and tapers at both ends.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "gameboy",
+      "title": "Game Boy",
+      "mode": "light",
+      "description": "Four shades of green and nothing else: the DMG palette, chunky borders and monospace type. A playful retro example of a theme limited to a tiny palette.",
+      "pen": "Chunky constant-width pixel line.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "glass",
+      "title": "Glass",
+      "mode": "light",
+      "description": "Frosted panels over a pale aurora, made of translucency and a bright edge instead of backdrop-filter, so the canvas never pays for a blur. Shows how to get a soft, modern look cheaply.",
+      "pen": "Medium pressure pen with moderate thinning and tapered ends.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "high-contrast",
+      "title": "High Contrast",
+      "mode": "dark",
+      "description": "For low vision: black ground, white text and 2px white edges, yellow for focus and selection, bold strokes and larger text. The reference for an accessibility theme.",
+      "pen": "Bold constant-width marker; pressure is ignored so every line stays legible.",
+      "generated": false,
+      "caveats": [
+        "Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas.",
+        "New elements get bold strokes and large text, and collaborators see them at that size."
+      ]
+    },
+    {
+      "name": "locked-profile",
+      "title": "Locked Profile",
+      "mode": "light",
+      "description": "The quietest plate: graphite on cool white, no grid, hairline ink and one bronze accent for anything live, with panels that are almost not there. For minimal, distraction-free boards.",
+      "pen": "Hairline graphite: pressure-sensitive, slight thinning, tapered ends.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "raking-light",
+      "title": "Raking Light",
+      "mode": "light",
+      "description": "Low warm key light from the left and cool fill from the right: the paper is one quiet gradient and the panels cast a long shadow away from the light. Medium graphite outlines with sage and bronze bodies.",
+      "pen": "Graphite pencil: pressure-sensitive, moderate thinning, long tapers.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "risograph",
+      "title": "Risograph",
+      "mode": "light",
+      "description": "A two-drum riso print: blue and fluorescent pink on warm stock, with panels printed slightly off register. For posters, zines and playful layouts.",
+      "pen": "Medium pressure-sensitive pen with strong thinning and short tapers; new shapes are slightly rough.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "sketchbook",
+      "title": "Sketchbook",
+      "mode": "light",
+      "description": "A cream sketchbook page with faint ruled lines, soft graphite, colored pencils and hachure, loose and hand-drawn on purpose. For brainstorming and early ideas.",
+      "pen": "Soft pencil: strong pressure thinning and long tapers; new shapes are drawn rough.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "swiss",
+      "title": "Swiss",
+      "mode": "light",
+      "description": "International typographic style: white space, Helvetica, a strict faint grid, black hairlines and one red. For clean, grid-led diagrams.",
+      "pen": "Thin constant-width technical pen.",
+      "generated": false,
+      "caveats": []
+    },
+    {
+      "name": "synthwave",
+      "title": "Synthwave",
+      "mode": "dark",
+      "description": "1986 at midnight: violet night, a magenta and cyan neon grid, glowing panel edges and rounded type. Shows a vivid dark theme whose glow lives in the UI, not the elements.",
+      "pen": "Constant-width neon tube.",
+      "generated": false,
+      "caveats": ["Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas."]
+    },
+    {
+      "name": "terminal",
+      "title": "Terminal",
+      "mode": "dark",
+      "description": "Green phosphor on black: monospace everything, square corners, and a dim glow on UI text with nothing else lit. For console-flavored boards.",
+      "pen": "Thin constant-width phosphor trace.",
+      "generated": true,
+      "caveats": [
+        "Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas.",
+        "Element greens display at #6fc76f at most, the brightest green dark mode can show. Only the unfiltered UI text gets full phosphor green."
+      ]
+    },
+    {
+      "name": "westworld-night",
+      "title": "Westworld Night",
+      "mode": "dark",
+      "description": "A white-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills and bronze for anything live. Machined and unhurried.",
+      "pen": "Fine bone-white nib: pressure-sensitive, light thinning, long tapers.",
+      "generated": true,
+      "caveats": ["Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas."]
+    },
+    {
+      "name": "win95",
+      "title": "Windows 95",
+      "mode": "light",
+      "description": "A teal desktop, silver beveled chrome, navy title bars and 1-pixel black ink, like it is 1995. A nostalgic example of restyling the editor's chrome with plain selectors.",
+      "pen": "MS Paint pencil: constant width with no smoothing, so every wobble stays.",
+      "generated": false,
+      "caveats": []
+    }
+  ]
+}

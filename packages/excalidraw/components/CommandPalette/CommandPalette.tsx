@@ -543,6 +543,9 @@ function CommandPaletteInner({
               viewMode: false,
               perform: () => {
                 app.setActiveTool({ type: value }, { toggle: false });
+                if (value === "frame") {
+                  app.frameNavigation.frameToolPicked();
+                }
               },
             };
 

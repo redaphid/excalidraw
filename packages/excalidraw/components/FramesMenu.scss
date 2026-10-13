@@ -1,6 +1,8 @@
 .excalidraw {
   .frames-menu {
-    flex: 1 1 auto;
+    // a zero basis, like the search tab's results, so a long list scrolls
+    // in the drawer instead of stretching the tab past it
+    flex: 1 1 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -26,7 +28,9 @@
       padding-inline-start: 1rem;
     }
 
-    button {
+    // Present keeps its fill. At 0,2,1 this outweighs a lone class, so the
+    // drawer's button rules below start from .frames-menu to win over it.
+    button:where(:not(.ExcButton)) {
       border: none;
       background: none;
       color: inherit;
@@ -101,7 +105,7 @@
     font-size: 0.6875rem;
   }
 
-  .frames-menu__star {
+  .frames-menu .frames-menu__star {
     padding: 0.25rem 0.375rem;
     color: var(--color-gray-60);
     font-size: 1rem;
@@ -115,5 +119,129 @@
     padding: 0.5rem 0.375rem 0;
     color: var(--color-gray-60);
     font-size: 0.75rem;
+  }
+
+  .frames-menu__views {
+    flex: none;
+    display: flex;
+    gap: 0.125rem;
+    margin-bottom: 0.5rem;
+    padding: 0.125rem;
+    border: 1px solid var(--default-border-color);
+    border-radius: var(--border-radius-lg);
+
+    button {
+      flex: 1;
+      min-height: 2.75rem;
+      border-radius: var(--border-radius-md);
+      color: var(--color-gray-60);
+
+      &:hover {
+        background: var(--button-hover-bg);
+      }
+
+      &[aria-pressed="true"] {
+        background: var(--color-primary-light);
+        color: var(--color-primary);
+        font-weight: 600;
+      }
+    }
+  }
+
+  .frames-menu__present {
+    flex: none;
+    margin-bottom: 0.5rem;
+  }
+
+  .frames-menu__slides {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    user-select: none;
+
+    > li {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      border-radius: var(--border-radius-md);
+    }
+
+    &.is-sorting {
+      // the pen may be over any button while it holds a slide
+      &,
+      button {
+        cursor: grabbing;
+      }
+
+      > li {
+        transition: transform 120ms ease-out;
+      }
+
+      > li.is-held {
+        z-index: 1;
+        transition: none;
+        background: var(--island-bg-color);
+        box-shadow: var(--shadow-island);
+      }
+    }
+
+    > li.is-skipped .frames-menu__go {
+      opacity: 0.4;
+    }
+
+    .frames-menu__thumb {
+      width: 5rem;
+      height: 3.5rem;
+    }
+  }
+
+  .frames-menu .frames-menu__grip {
+    flex: none;
+    width: 2rem;
+    min-height: 2.75rem;
+    border-radius: var(--border-radius-md);
+    color: var(--color-gray-60);
+    letter-spacing: -0.25em;
+    cursor: grab;
+    // the pen and finger drag the slide, not the drawer
+    touch-action: none;
+
+    &:hover {
+      background: var(--button-hover-bg);
+    }
+  }
+
+  .frames-menu__number {
+    flex: none;
+    min-width: 1.25rem;
+    color: var(--color-gray-60);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  .frames-menu .frames-menu__skip {
+    flex: none;
+    width: 2.75rem;
+    display: grid;
+    place-items: center;
+    border-radius: var(--border-radius-md);
+    color: var(--color-gray-60);
+
+    &:hover {
+      background: var(--button-hover-bg);
+    }
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
+  .frames-menu__empty {
+    margin: 1rem 0.375rem;
+    color: var(--color-gray-60);
   }
 }
