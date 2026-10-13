@@ -3,6 +3,7 @@ import {
   COLOR_PALETTE,
   COLOR_WHITE,
   FRAME_STYLE,
+  isShallowEqual,
   THEME,
   throttleRAF,
 } from "@excalidraw/common";
@@ -23,6 +24,7 @@ import {
 import {
   cacheSettledBitmaps,
   getRenderElementWithPositionOverride,
+  getSettledBitmapCount,
   resolveElementRenderState,
   renderElement,
 } from "@excalidraw/element";
@@ -54,7 +56,7 @@ import type {
   StaticCanvasRenderConfig,
   StaticSceneRenderConfig,
 } from "../scene/types";
-import type { StaticCanvasAppState, Zoom } from "../types";
+import type { AppState, StaticCanvasAppState, Zoom } from "../types";
 
 const GridLineColor = {
   [THEME.LIGHT]: {
@@ -485,16 +487,180 @@ export const renderSceneElements = ({
   });
 };
 
-const _renderStaticScene = ({
-  canvas,
-  rc,
-  elementsMap,
-  allElementsMap,
-  visibleElements,
-  scale,
-  appState: unsnappedAppState,
-  renderConfig,
-}: StaticSceneRenderConfig) => {
+/** the app state the static scene paints from */
+export const getStaticSceneAppState = (
+  appState: AppState,
+): StaticCanvasAppState => {
+  const relevantAppStateProps = {
+    zoom: appState.zoom,
+    scrollX: appState.scrollX,
+    scrollY: appState.scrollY,
+    width: appState.width,
+    height: appState.height,
+    viewModeEnabled: appState.viewModeEnabled,
+    openDialog: appState.openDialog,
+    hoveredElementIds: appState.hoveredElementIds,
+    offsetLeft: appState.offsetLeft,
+    offsetTop: appState.offsetTop,
+    theme: appState.theme,
+    shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
+    viewBackgroundColor: appState.viewBackgroundColor,
+    exportScale: appState.exportScale,
+    selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
+    gridSize: appState.gridSize,
+    gridStep: appState.gridStep,
+    frameRendering: appState.frameRendering,
+    selectedElementIds: appState.selectedElementIds,
+    frameToHighlight: appState.frameToHighlight,
+    editingGroupId: appState.editingGroupId,
+    currentHoveredFontFamily: appState.currentHoveredFontFamily,
+    croppingElementId: appState.croppingElementId,
+  };
+
+  return relevantAppStateProps;
+};
+
+/**
+ * What a static canvas last painted while a new element was being drawn, so
+ * that committing the element can paint over it instead of repainting all.
+ */
+type PaintedUnderNewElement = {
+  config: StaticSceneRenderConfig;
+  newElementId: string;
+  /** every scene element's id and version, in scene order */
+  sceneIds: string[];
+  sceneVersions: number[];
+  settledBitmapCount: number;
+  loadedImageCount: number;
+};
+
+const paintedUnderNewElement = new WeakMap<
+  HTMLCanvasElement,
+  PaintedUnderNewElement
+>();
+
+const countLoadedImages = (
+  imageCache: StaticCanvasRenderConfig["imageCache"],
+) => {
+  let count = 0;
+  for (const { image } of imageCache.values()) {
+    if (!(image instanceof Promise)) {
+      count++;
+    }
+  }
+  return count;
+};
+
+const recordPaintUnderNewElement = (config: StaticSceneRenderConfig) => {
+  const { newElement } = config.appState;
+  if (!newElement || config.renderConfig.isExporting) {
+    paintedUnderNewElement.delete(config.canvas);
+    return;
+  }
+  const sceneIds: string[] = [];
+  const sceneVersions: number[] = [];
+  for (const element of config.allElementsMap.values()) {
+    sceneIds.push(element.id);
+    sceneVersions.push(element.version);
+  }
+  paintedUnderNewElement.set(config.canvas, {
+    config,
+    newElementId: newElement.id,
+    sceneIds,
+    sceneVersions,
+    settledBitmapCount: getSettledBitmapCount(),
+    loadedImageCount: countLoadedImages(config.renderConfig.imageCache),
+  });
+};
+
+/**
+ * The elements to paint over the canvas so it shows what a full repaint of
+ * `next` would, or null when it must be repainted in full.
+ *
+ * Elements paint one after another, each on its own, so painting a list's
+ * tail over a canvas holding its head equals painting the list. That holds
+ * when the new element just committed is the only thing in the scene that
+ * changed since the canvas was painted, nothing else about the view
+ * changed, and what the canvas holds is the head of what `next` paints.
+ */
+const elementsToPaintOver = (
+  painted: PaintedUnderNewElement | undefined,
+  next: StaticSceneRenderConfig,
+): NonDeletedExcalidrawElement[] | null => {
+  if (
+    !painted ||
+    next.appState.newElement ||
+    next.renderConfig.isExporting ||
+    next.scale !== painted.config.scale ||
+    painted.settledBitmapCount !== getSettledBitmapCount() ||
+    painted.loadedImageCount !==
+      countLoadedImages(next.renderConfig.imageCache) ||
+    painted.config.renderConfig.pendingFlowchartNodes?.length ||
+    !isShallowEqual(
+      getStaticSceneAppState(painted.config.appState as AppState),
+      getStaticSceneAppState(next.appState as AppState),
+      {
+        // a new element drawn inside a frame highlights it until released;
+        // the static scene clips by it only for elements being dragged
+        frameToHighlight: (a, b) =>
+          a === b || !next.appState.selectedElementsAreBeingDragged,
+      },
+    ) ||
+    !isShallowEqual(painted.config.renderConfig, next.renderConfig, {
+      // compared above as the bitmaps themselves
+      settledBitmapCount: () => true,
+    })
+  ) {
+    return null;
+  }
+
+  const { sceneIds, sceneVersions, newElementId } = painted;
+  if (next.allElementsMap.size !== sceneIds.length) {
+    return null;
+  }
+  let index = 0;
+  for (const element of next.allElementsMap.values()) {
+    if (
+      element.id !== sceneIds[index] ||
+      (element.version !== sceneVersions[index] && element.id !== newElementId)
+    ) {
+      return null;
+    }
+    index++;
+  }
+
+  // iframe-like elements paint after all others, so the canvas' elements
+  // must be the head of the others, and include none of them
+  const paintedElements = painted.config.visibleElements;
+  const over: NonDeletedExcalidrawElement[] = [];
+  let matched = 0;
+  for (const element of next.visibleElements) {
+    if (matched < paintedElements.length && !isIframeLikeElement(element)) {
+      if (element.id !== paintedElements[matched].id) {
+        return null;
+      }
+      matched++;
+    } else {
+      over.push(element);
+    }
+  }
+  return matched === paintedElements.length &&
+    !paintedElements.some(isIframeLikeElement)
+    ? over
+    : null;
+};
+
+const _renderStaticScene = (config: StaticSceneRenderConfig) => {
+  const {
+    canvas,
+    rc,
+    elementsMap,
+    allElementsMap,
+    visibleElements,
+    scale,
+    appState: unsnappedAppState,
+    renderConfig,
+  } = config;
   if (canvas === null) {
     return;
   }
@@ -504,6 +670,36 @@ const _renderStaticScene = ({
   const appState = isExporting
     ? unsnappedAppState
     : snapScrollToDevicePixels(unsnappedAppState, scale);
+
+  const paintOver = elementsToPaintOver(
+    paintedUnderNewElement.get(canvas),
+    config,
+  );
+  recordPaintUnderNewElement(config);
+
+  if (paintOver) {
+    const context = canvas.getContext("2d")!;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.scale(scale, scale);
+    context.scale(appState.zoom.value, appState.zoom.value);
+    renderSceneElements({
+      context,
+      rc,
+      elements: paintOver,
+      elementsMap,
+      allElementsMap,
+      appState,
+      renderConfig,
+    });
+    cacheSettledBitmaps(
+      canvas,
+      visibleElements,
+      allElementsMap,
+      renderConfig,
+      appState,
+    );
+    return;
+  }
 
   const [normalizedWidth, normalizedHeight] = getNormalizedCanvasDimensions(
     canvas,
