@@ -140,6 +140,9 @@ export const actionClearCanvas = register({
   },
 });
 
+// multiplicative, so a press is the same visible change at 1x and at 1,000,000x
+const ZOOM_STEP_FACTOR = 1 + ZOOM_STEP;
+
 export const actionZoomIn = register({
   name: "zoomIn",
   label: "buttons.zoomIn",
@@ -156,7 +159,7 @@ export const actionZoomIn = register({
         {
           viewportX: appState.width / 2 + appState.offsetLeft,
           viewportY: appState.height / 2 + appState.offsetTop,
-          nextZoom: getNormalizedZoom(appState.zoom.value + ZOOM_STEP),
+          nextZoom: getNormalizedZoom(appState.zoom.value * ZOOM_STEP_FACTOR),
         },
         appState,
       ),
@@ -210,7 +213,7 @@ export const actionZoomOut = register({
         {
           viewportX: appState.width / 2 + appState.offsetLeft,
           viewportY: appState.height / 2 + appState.offsetTop,
-          nextZoom: getNormalizedZoom(appState.zoom.value - ZOOM_STEP),
+          nextZoom: getNormalizedZoom(appState.zoom.value / ZOOM_STEP_FACTOR),
         },
         appState,
       ),
