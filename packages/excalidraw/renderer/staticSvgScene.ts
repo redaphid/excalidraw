@@ -14,6 +14,7 @@ import {
   STICKY_NOTE_EDGE_SHADOW_OPACITY,
   STICKY_NOTE_EDGE_SHADOW_WIDTH,
   STICKY_NOTE_FOOTER,
+  STICKY_NOTE_SHADOW_OFFSET,
   STICKY_NOTE_SHADOW_OPACITY,
 } from "@excalidraw/common";
 import { normalizeLink, toValidURL } from "@excalidraw/common";
@@ -201,7 +202,12 @@ const renderElementToSvg = (
       }
 
       const shadow = createPath(
-        getStickyNotePathCommands(element, { shadow: true }),
+        getStickyNotePathCommands(element, {
+          shadow: {
+            x: STICKY_NOTE_SHADOW_OFFSET,
+            y: STICKY_NOTE_SHADOW_OFFSET,
+          },
+        }),
         "#000",
         STICKY_NOTE_SHADOW_OPACITY,
       );

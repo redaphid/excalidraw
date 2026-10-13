@@ -2,8 +2,11 @@ import { arrayToMap } from "@excalidraw/common";
 import {
   isPointWithinBounds,
   pointFrom,
+  pointRotateRads,
   segmentsIntersectAt,
 } from "@excalidraw/math";
+
+import type { GlobalPoint, LineSegment, Radians } from "@excalidraw/math";
 
 import type {
   AppClassProperties,
@@ -11,6 +14,7 @@ import type {
   StaticCanvasAppState,
 } from "@excalidraw/excalidraw/types";
 
+import type { Bounds } from "@excalidraw/common";
 import type { ReadonlySetLike } from "@excalidraw/common/utility-types";
 
 import { getElementsWithinSelection, getSelectedElements } from "./selection";
@@ -29,6 +33,7 @@ import { mutateElement } from "./mutateElement";
 import { getBoundTextElement, getContainerElement } from "./textElement";
 import { syncMovedIndices } from "./fractionalIndex";
 import {
+  isBoundToContainer,
   isFrameElement,
   isFrameLikeElement,
   isTextElement,
@@ -73,23 +78,140 @@ export const bindElementsToFramesAfterDuplication = (
   }
 };
 
+// a frame's segments are the same for every element tested against it, and
+// mutateElement bumps the version whenever the frame's geometry changes
+const frameLineSegmentsCache = new WeakMap<
+  ExcalidrawFrameLikeElement,
+  { version: number; segments: LineSegment<GlobalPoint>[] }
+>();
+
+const getFrameLineSegments = (
+  frame: ExcalidrawFrameLikeElement,
+  elementsMap: ElementsMap,
+) => {
+  const cached = frameLineSegmentsCache.get(frame);
+  if (cached?.version === frame.version) {
+    return cached.segments;
+  }
+  const segments = getElementLineSegments(frame, elementsMap);
+  frameLineSegmentsCache.set(frame, { version: frame.version, segments });
+  return segments;
+};
+
+// whether an element crosses a frame's edge only changes when either moves;
+// a bound label follows its container without a version of its own
+const frameIntersectionCache = new WeakMap<
+  ExcalidrawElement,
+  {
+    version: number;
+    frame: ExcalidrawFrameLikeElement;
+    frameVersion: number;
+    intersects: boolean;
+  }
+>();
+
 export function isElementIntersectingFrame(
   element: ExcalidrawElement,
   frame: ExcalidrawFrameLikeElement,
   elementsMap: ElementsMap,
 ) {
-  const frameLineSegments = getElementLineSegments(frame, elementsMap);
+  const cached = frameIntersectionCache.get(element);
+  if (
+    cached &&
+    cached.version === element.version &&
+    cached.frame === frame &&
+    cached.frameVersion === frame.version
+  ) {
+    return cached.intersects;
+  }
+  const intersects = elementCrossesFrame(element, frame, elementsMap);
+  if (!isBoundToContainer(element)) {
+    frameIntersectionCache.set(element, {
+      version: element.version,
+      frame,
+      frameVersion: frame.version,
+      intersects,
+    });
+  }
+  return intersects;
+}
 
+const elementCrossesFrame = (
+  element: ExcalidrawElement,
+  frame: ExcalidrawFrameLikeElement,
+  elementsMap: ElementsMap,
+) => {
   const elementLineSegments = getElementLineSegments(element, elementsMap);
+  if (elementLineSegments.length === 0) {
+    return false;
+  }
 
-  const intersecting = frameLineSegments.some((frameLineSegment) =>
-    elementLineSegments.some((elementLineSegment) =>
-      segmentsIntersectAt(frameLineSegment, elementLineSegment),
-    ),
+  // boxed from the segments, not getElementBounds: a diamond's or a tiny
+  // rectangle's segments reach past its bounds
+  let [x1, y1, x2, y2] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const [[ax, ay], [bx, by]] of elementLineSegments) {
+    x1 = Math.min(x1, ax, bx);
+    y1 = Math.min(y1, ay, by);
+    x2 = Math.max(x2, ax, bx);
+    y2 = Math.max(y2, ay, by);
+  }
+  // grown so rounding in segmentsIntersectAt cannot find a crossing outside it
+  const pad =
+    Math.max(Math.abs(x1), Math.abs(y1), Math.abs(x2), Math.abs(y2)) * 1e-9;
+  const elementBox: Bounds = [x1 - pad, y1 - pad, x2 + pad, y2 + pad];
+
+  const nearFrameLineSegments = getFrameLineSegments(frame, elementsMap).filter(
+    ([[ax, ay], [bx, by]]) =>
+      doBoundsIntersect(elementBox, [
+        Math.min(ax, bx),
+        Math.min(ay, by),
+        Math.max(ax, bx),
+        Math.max(ay, by),
+      ]),
   );
 
-  return intersecting;
-}
+  if (nearFrameLineSegments.length === 0) {
+    return false;
+  }
+  if (
+    nearFrameLineSegments.some((frameLineSegment) =>
+      elementLineSegments.some((elementLineSegment) =>
+        segmentsIntersectAt(frameLineSegment, elementLineSegment),
+      ),
+    )
+  ) {
+    return true;
+  }
+
+  // segmentsIntersectAt ignores contact at the element's own vertices, so a
+  // path through a vertex on the edge crosses only if it has vertices
+  // strictly on both sides; touching the edge from one side is not crossing
+  const [fx1, fy1, fx2, fy2, fcx, fcy] = getElementAbsoluteCoords(
+    frame,
+    elementsMap,
+  );
+  const frameCenter = pointFrom<GlobalPoint>(fcx, fcy);
+  let hasVertexInside = false;
+  let hasVertexOutside = false;
+  for (const segment of elementLineSegments) {
+    for (const vertex of segment) {
+      const [x, y] = pointRotateRads(
+        vertex,
+        frameCenter,
+        -frame.angle as Radians,
+      );
+      if (fx1 < x && x < fx2 && fy1 < y && y < fy2) {
+        hasVertexInside = true;
+      } else if (x < fx1 || x > fx2 || y < fy1 || y > fy2) {
+        hasVertexOutside = true;
+      }
+      if (hasVertexInside && hasVertexOutside) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
 
 export const getElementsCompletelyInFrame = (
   elements: readonly ExcalidrawElement[],

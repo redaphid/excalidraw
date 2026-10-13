@@ -19,6 +19,7 @@ import {
   actionClearCanvas,
   actionLink,
   actionToggleSearchMenu,
+  actionToggleFramesMenu,
   actionToggleTheme,
 } from "../../actions";
 import {
@@ -422,6 +423,7 @@ function CommandPaletteInner({
 
       const additionalCommands: CommandPaletteItem[] = [
         actionToCommand(actionToggleTheme, DEFAULT_CATEGORIES.app),
+        actionToCommand(actionToggleFramesMenu, DEFAULT_CATEGORIES.app),
         {
           label: t("toolBar.library"),
           category: DEFAULT_CATEGORIES.app,
@@ -540,6 +542,9 @@ function CommandPaletteInner({
               viewMode: false,
               perform: () => {
                 app.setActiveTool({ type: value }, { toggle: false });
+                if (value === "frame") {
+                  app.frameNavigation.frameToolPicked();
+                }
               },
             };
 

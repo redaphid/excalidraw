@@ -1875,8 +1875,12 @@ const _renderInteractiveScene = ({
       const locallySelectedIds = arrayToMap(selectedElements);
 
       const selections: ElementSelectionBorder[] = [];
+      const candidates =
+        selectedElements.length || renderConfig.remoteSelectedElementIds.size
+          ? elementsMap.values()
+          : [];
 
-      for (const element of elementsMap.values()) {
+      for (const element of candidates) {
         const selectionColors = [];
         const remoteClients = renderConfig.remoteSelectedElementIds.get(
           element.id,
@@ -1979,7 +1983,9 @@ const _renderInteractiveScene = ({
     context.translate(appState.scrollX, appState.scrollY);
 
     if (selectedElements.length === 1) {
-      context.fillStyle = getThemedColor("#fff", appState.theme);
+      context.fillStyle =
+        renderConfig.canvasTheme.handleFill ??
+        getThemedColor("#fff", appState.theme);
       const transformHandles = getTransformHandles(
         selectedElements[0],
         appState.zoom,
@@ -2024,7 +2030,9 @@ const _renderInteractiveScene = ({
     ) {
       const dashedLinePadding =
         (DEFAULT_TRANSFORM_HANDLE_SPACING * 2) / appState.zoom.value;
-      context.fillStyle = getThemedColor("#fff", appState.theme);
+      context.fillStyle =
+        renderConfig.canvasTheme.handleFill ??
+        getThemedColor("#fff", appState.theme);
       const [x1, y1, x2, y2] = getCommonBounds(selectedElements, elementsMap);
       const initialLineDash = context.getLineDash();
       context.setLineDash([2 / appState.zoom.value]);

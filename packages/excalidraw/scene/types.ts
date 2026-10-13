@@ -19,6 +19,7 @@ import type {
   SocketId,
   PendingExcalidrawElements,
 } from "../types";
+import type { CanvasTheme } from "../cssTheme";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Drawable } from "roughjs/bin/core";
 
@@ -45,6 +46,11 @@ export type StaticCanvasRenderConfig = {
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
   elementRenderOverrides?: ElementRenderOverrides;
+  /** editor chrome colors from the `css` prop; absent when exporting */
+  canvasTheme?: CanvasTheme;
+  /** while the static canvas holds still under a new element, repaints it
+   * once settled bitmaps land, as the per-move repaint otherwise would */
+  settledBitmapCount?: number;
 };
 
 export type SVGRenderConfig = {
@@ -75,6 +81,7 @@ export type InteractiveCanvasRenderConfig = {
   remotePointerUsernames: Map<SocketId, string>;
   remotePointerButton: Map<SocketId, string | undefined>;
   selectionColor: string;
+  canvasTheme: CanvasTheme;
   lastViewportPosition: { x: number; y: number };
   // extra options passed to the renderer
   // ---------------------------------------------------------------------------
@@ -116,10 +123,18 @@ export type InteractiveSceneRenderConfig = {
   deltaTime: number;
 };
 
+/** what the new-element canvas paints */
+export type NewElementLayer =
+  /** an unframed new element or a tool-drag preview, drawn over the scene */
+  | { element: NonDeletedExcalidrawElement }
+  /** a new element drawn inside a frame and everything the static scene
+   * would paint over it (see Renderer.splitAtNewElement) */
+  | { elementsAbove: readonly NonDeletedExcalidrawElement[] };
+
 export type NewElementSceneRenderConfig = {
   canvas: HTMLCanvasElement | null;
   rc: RoughCanvas;
-  newElement: NonDeletedExcalidrawElement | null;
+  layer: NewElementLayer;
   elementsMap: RenderableElementsMap;
   allElementsMap: NonDeletedSceneElementsMap;
   scale: number;

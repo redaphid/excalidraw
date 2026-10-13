@@ -153,7 +153,8 @@ export const hitElementItself = ({
   if (
     !isBoundToContainer(element) &&
     cachedPoint &&
-    pointsEqual(point, cachedPoint) &&
+    point[0] === cachedPoint[0] &&
+    point[1] === cachedPoint[1] &&
     (cachedHit ? cachedThreshold <= threshold : cachedThreshold >= threshold) &&
     overrideShouldTestInside === cachedOverrideShouldTestInside &&
     frameNameBoundsEqual(frameNameBound, cachedFrameNameBound)

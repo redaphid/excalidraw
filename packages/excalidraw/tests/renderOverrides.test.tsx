@@ -1177,22 +1177,32 @@ describe("render override geometry", () => {
       }),
       link: "https://example.com",
     };
-    const { draw } = setup([arrow]);
+    const { context, draw } = setup([arrow]);
     draw(new Map());
     const bitmap = Element.elementWithCanvasCache.get(arrow);
     const shape = Element.ShapeCache.get(arrow, null);
     const generateShape = vi.spyOn(Element.ShapeCache, "generateElementShape");
+    const drawnImages: CanvasImageSource[] = [];
+    const drawImage = vi.mocked(context.drawImage).getMockImplementation()!;
+    vi.spyOn(context, "drawImage").mockImplementation((...args) => {
+      drawnImages.push(args[0]);
+      drawImage.call(context, ...args);
+    });
     for (const x of [10, 20, 0]) {
       draw(new Map([[arrow.id, { offset: { x, y: 0 }, opacity: 40 }]]));
     }
     expect(bitmap).toBeDefined();
     expect(shape).toBeDefined();
+    // The checks below only rule copies out, which a draw that painted
+    // nothing would also pass
+    expect(
+      drawnImages.filter((image) => image === bitmap!.canvas),
+    ).toHaveLength(3);
     expect(Element.elementWithCanvasCache.get(arrow)).toBe(bitmap);
     expect(Element.ShapeCache.get(arrow, null)).toBe(shape);
-    expect(generateShape).toHaveBeenCalled();
     expect(
-      generateShape.mock.calls.every(([element]) => element === arrow),
-    ).toBe(true);
+      generateShape.mock.calls.filter(([element]) => element !== arrow),
+    ).toEqual([]);
   });
 
   it("preserves frame, erasure and selection alpha without leaking it to siblings or links", () => {

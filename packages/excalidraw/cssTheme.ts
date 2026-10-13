@@ -1,0 +1,394 @@
+import {
+  COLOR_PALETTE,
+  FONT_FAMILY,
+  STICKY_NOTE_SHADOW_REACH,
+} from "@excalidraw/common";
+
+import type { ColorPaletteCustom, ColorTuple } from "@excalidraw/common";
+
+import type {
+  Arrowhead,
+  FillStyle,
+  FontFamilyValues,
+  StrokeRoundness,
+  StrokeStyle,
+  StrokeVariability,
+} from "@excalidraw/element/types";
+import type { StrokeWidthKey } from "@excalidraw/common";
+
+import type { AppState, StaticCanvasAppState } from "./types";
+
+/**
+ * Colors the editor paints on its canvases around the user's elements. Each
+ * field is optional; the renderers fall back to their built-in values.
+ */
+export type CanvasTheme = Readonly<{
+  /** painted instead of the default `viewBackgroundColor` (see
+   * `getThemeCanvasBackground`); a background the user picked is kept */
+  background?: string;
+  gridColor?: string;
+  gridBoldColor?: string;
+  /** `dashed` (the default) or `solid` minor grid lines */
+  gridStyle?: "dashed" | "solid";
+  selectionColor?: string;
+  /** fill of the resize and rotation handles */
+  handleFill?: string;
+  frameColor?: string;
+  /** frame outline width in screen pixels */
+  frameWidth?: number;
+  /** the sticky note shadow's offset, in scene units at detail scale 1 */
+  stickyNoteShadowX?: number;
+  stickyNoteShadowY?: number;
+  /** the shadow's blur radius, as in CSS `box-shadow` (0 is a sharp edge) */
+  stickyNoteShadowBlur?: number;
+  /** `transparent` draws no shadow */
+  stickyNoteShadowColor?: string;
+  /** the width of the edge drawn just inside a sticky note's outline */
+  stickyNoteEdgeWidth?: number;
+  /** `transparent` draws no edge */
+  stickyNoteEdgeColor?: string;
+}>;
+
+/** The appState fields a theme may seed: new-element defaults and swatches. */
+export type CssThemeAppState = Partial<
+  Pick<
+    AppState,
+    | "currentItemStrokeColor"
+    | "currentItemBackgroundColor"
+    | "currentItemFillStyle"
+    | "currentItemStrokeWidthKey"
+    | "currentItemStrokeStyle"
+    | "currentItemRoughness"
+    | "currentItemRoundness"
+    | "currentItemFontFamily"
+    | "currentItemFontSize"
+    | "currentItemStartArrowhead"
+    | "currentItemEndArrowhead"
+    | "currentItemArrowType"
+    | "currentItemStrokeVariability"
+    | "currentItemFreedrawStrokeWidth"
+    | "currentItemStickynoteBackgroundColor"
+    | "currentItemStickynoteStrokeColor"
+  >
+> & {
+  /** merged over the user's pins: the lists a theme leaves out are kept */
+  colorTopPicks?: Partial<AppState["colorTopPicks"]>;
+};
+
+export type CssTheme = Readonly<{
+  canvas: CanvasTheme;
+  appState: CssThemeAppState;
+  /** perfect-freehand options for new variable-width freedraw strokes */
+  pen: Readonly<{ thinning?: number; taper?: number; streamline?: number }>;
+  /** replace the color picker's palette grid */
+  palettes: Readonly<{
+    elementStroke?: ColorPaletteCustom;
+    elementBackground?: ColorPaletteCustom;
+  }>;
+}>;
+
+export const EMPTY_CSS_THEME: CssTheme = Object.freeze({
+  canvas: Object.freeze({}),
+  appState: Object.freeze({}),
+  pen: Object.freeze({}),
+  palettes: Object.freeze({}),
+});
+
+/** the theme's canvas color, when it replaces the scene's background: only
+ * the default white the user never picked */
+export const getThemeCanvasBackground = (
+  appState: Pick<
+    StaticCanvasAppState,
+    "viewBackgroundColor" | "viewBackgroundColorPicked"
+  >,
+  canvasTheme: CanvasTheme | undefined,
+) =>
+  !appState.viewBackgroundColorPicked &&
+  appState.viewBackgroundColor === COLOR_PALETTE.white
+    ? canvasTheme?.background
+    : undefined;
+
+const ARROWHEADS: readonly Arrowhead[] = [
+  "arrow",
+  "bar",
+  "circle",
+  "circle_outline",
+  "triangle",
+  "triangle_outline",
+  "diamond",
+  "diamond_outline",
+  "cardinality_one",
+  "cardinality_many",
+  "cardinality_one_or_many",
+  "cardinality_exactly_one",
+  "cardinality_zero_or_one",
+  "cardinality_zero_or_many",
+];
+
+const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+type ReadProperty = (name: string) => string;
+
+const unquote = (value: string) => value.replace(/^(["'])(.*)\1$/, "$2");
+
+const oneOf =
+  <T extends string>(options: readonly T[]) =>
+  (value: string): T | undefined =>
+    (options as readonly string[]).includes(value) ? (value as T) : undefined;
+
+/** element colors are stored in the scene, so only hex (or transparent) */
+const elementColor = (value: string) =>
+  HEX_COLOR.test(value) || value === "transparent" ? value : undefined;
+
+/** a sticky note is never transparent */
+const opaqueColor = (value: string) =>
+  HEX_COLOR.test(value) ? value : undefined;
+
+const positiveNumber = (value: string) => {
+  const number = Number(value);
+  return value !== "" && Number.isFinite(number) && number > 0
+    ? number
+    : undefined;
+};
+
+const roughness = (value: string) => {
+  const number = Number(value);
+  return value !== "" && [0, 1, 2].includes(number) ? number : undefined;
+};
+
+const fontFamily = (value: string): FontFamilyValues | undefined => {
+  if (value in FONT_FAMILY) {
+    return FONT_FAMILY[value as keyof typeof FONT_FAMILY];
+  }
+  const id = Number(value);
+  return (Object.values(FONT_FAMILY) as number[]).includes(id)
+    ? (id as FontFamilyValues)
+    : undefined;
+};
+
+/** `none` clears the arrowhead */
+const arrowhead = (value: string): Arrowhead | null | undefined =>
+  value === "none" ? null : oneOf(ARROWHEADS)(value);
+
+const colorList = (value: string) => {
+  const colors = value.split(/[\s,]+/).filter(Boolean);
+  return colors.length && colors.every((color) => elementColor(color))
+    ? colors
+    : undefined;
+};
+
+const opaqueColorList = (value: string) => {
+  const colors = colorList(value);
+  return colors?.every((color) => opaqueColor(color))
+    ? colors.slice(0, 5)
+    : undefined;
+};
+
+/** offset plus blur past the cached bitmap's padding is cut off */
+const MAX_STICKY_NOTE_SHADOW_OFFSET = 16;
+const MAX_STICKY_NOTE_EDGE_WIDTH = 8;
+
+/** up to `count` numbers, then a color that may hold spaces, as
+ * `rgba(0, 0, 0, 0.2)` */
+const numbersThenColor = (value: string, count: number) => {
+  const parts = value.split(/\s+/);
+  const numbers: number[] = [];
+  while (
+    numbers.length < count &&
+    parts[numbers.length] !== "" &&
+    Number.isFinite(Number(parts[numbers.length]))
+  ) {
+    numbers.push(Number(parts[numbers.length]));
+  }
+  return parts.length > numbers.length
+    ? { numbers, color: parts.slice(numbers.length).join(" ") }
+    : undefined;
+};
+
+/** `none`, or `<x> <y> [<blur>] <color>`; the blur shrinks to fit the
+ * bitmap's padding, offsets past it are refused */
+const stickyNoteShadow = (
+  value: string,
+): Pick<
+  CanvasTheme,
+  | "stickyNoteShadowX"
+  | "stickyNoteShadowY"
+  | "stickyNoteShadowBlur"
+  | "stickyNoteShadowColor"
+> => {
+  if (value === "none") {
+    return {
+      stickyNoteShadowX: 0,
+      stickyNoteShadowY: 0,
+      stickyNoteShadowBlur: 0,
+      stickyNoteShadowColor: "transparent",
+    };
+  }
+  const parsed = numbersThenColor(value, 3);
+  if (!parsed || parsed.numbers.length < 2) {
+    return {};
+  }
+  const [x, y, blur = 0] = parsed.numbers;
+  const offset = Math.max(Math.abs(x), Math.abs(y));
+  return offset <= MAX_STICKY_NOTE_SHADOW_OFFSET && blur >= 0
+    ? {
+        stickyNoteShadowX: x,
+        stickyNoteShadowY: y,
+        stickyNoteShadowBlur: Math.min(blur, STICKY_NOTE_SHADOW_REACH - offset),
+        stickyNoteShadowColor: parsed.color,
+      }
+    : {};
+};
+
+/** `none`, or `<width> <color>` */
+const stickyNoteEdge = (
+  value: string,
+): Pick<CanvasTheme, "stickyNoteEdgeWidth" | "stickyNoteEdgeColor"> => {
+  if (value === "none") {
+    return { stickyNoteEdgeWidth: 0, stickyNoteEdgeColor: "transparent" };
+  }
+  const parsed = numbersThenColor(value, 1);
+  const width = parsed?.numbers.length ? parsed.numbers[0] : 0;
+  return parsed && width > 0 && width <= MAX_STICKY_NOTE_EDGE_WIDTH
+    ? { stickyNoteEdgeWidth: width, stickyNoteEdgeColor: parsed.color }
+    : {};
+};
+
+const isColorTuple = (colors: string[]): colors is [...ColorTuple] =>
+  colors.length === 5;
+
+/**
+ * Comma-separated entries, each one color or five shades from lightest to
+ * darkest. The picker keys a palette by name; an entry is named after its
+ * first color.
+ */
+const palette = (value: string): ColorPaletteCustom | undefined => {
+  const entries = value
+    .split(",")
+    .map((entry) => entry.trim().split(/\s+/).filter(Boolean))
+    .filter((entry) => entry.length);
+  const valid = entries.every(
+    (entry) =>
+      (entry.length === 1 || isColorTuple(entry)) &&
+      entry.every((color) => elementColor(color)),
+  );
+  return entries.length && valid
+    ? Object.fromEntries(
+        entries.map((entry) => [
+          entry[0],
+          isColorTuple(entry) ? entry : entry[0],
+        ]),
+      )
+    : undefined;
+};
+
+const definedEntries = <T extends Record<string, unknown>>(record: T) =>
+  Object.fromEntries(
+    Object.entries(record).filter(([, value]) => value !== undefined),
+  ) as { [K in keyof T]?: Exclude<T[K], undefined> };
+
+/**
+ * Parses the theme's custom properties from the editor container's computed
+ * style. Unset or malformed values are left out, so the editor keeps its
+ * built-in behavior for them.
+ */
+export const readCssTheme = (style: {
+  getPropertyValue: ReadProperty;
+}): CssTheme => {
+  const read = (name: string) => unquote(style.getPropertyValue(name).trim());
+  const color = (name: string) => read(name) || undefined;
+
+  const strokePicks = colorList(read("--color-picks-stroke"))?.slice(0, 5);
+  const backgroundPicks = colorList(read("--color-picks-background"))?.slice(
+    0,
+    5,
+  );
+
+  const canvas: CanvasTheme = definedEntries({
+    background: color("--canvas-background"),
+    gridColor: color("--canvas-grid-color"),
+    gridBoldColor: color("--canvas-grid-bold-color"),
+    gridStyle: oneOf(["dashed", "solid"] as const)(read("--canvas-grid-style")),
+    selectionColor: color("--color-selection"),
+    handleFill: color("--canvas-handle-fill"),
+    frameColor: color("--canvas-frame-color"),
+    frameWidth: positiveNumber(read("--canvas-frame-width")),
+    ...stickyNoteShadow(read("--canvas-sticky-note-shadow")),
+    ...stickyNoteEdge(read("--canvas-sticky-note-edge")),
+  });
+
+  const appState: CssThemeAppState = definedEntries({
+    currentItemStrokeColor: elementColor(read("--element-stroke-color")),
+    currentItemBackgroundColor: elementColor(
+      read("--element-background-color"),
+    ),
+    currentItemFillStyle: oneOf<FillStyle>([
+      "hachure",
+      "cross-hatch",
+      "solid",
+      "zigzag",
+    ])(read("--element-fill-style")),
+    currentItemStrokeWidthKey: oneOf<StrokeWidthKey>([
+      "thin",
+      "medium",
+      "bold",
+    ])(read("--element-stroke-width")),
+    currentItemStrokeStyle: oneOf<StrokeStyle>(["solid", "dashed", "dotted"])(
+      read("--element-stroke-style"),
+    ),
+    currentItemRoughness: roughness(read("--element-roughness")),
+    currentItemRoundness: oneOf<StrokeRoundness>(["round", "sharp"])(
+      read("--element-roundness"),
+    ),
+    currentItemFontFamily: fontFamily(read("--element-font-family")),
+    currentItemFontSize: positiveNumber(read("--element-font-size")),
+    currentItemStartArrowhead: arrowhead(read("--element-start-arrowhead")),
+    currentItemEndArrowhead: arrowhead(read("--element-end-arrowhead")),
+    currentItemArrowType: oneOf(["sharp", "round", "elbow"] as const)(
+      read("--element-arrow-type"),
+    ),
+    currentItemStrokeVariability: oneOf<StrokeVariability>([
+      "variable",
+      "constant",
+    ])(read("--element-freedraw-variability")),
+    currentItemFreedrawStrokeWidth: positiveNumber(
+      read("--element-freedraw-width"),
+    ),
+    currentItemStickynoteBackgroundColor: opaqueColor(
+      read("--sticky-note-background-color"),
+    ),
+    currentItemStickynoteStrokeColor: opaqueColor(
+      read("--sticky-note-stroke-color"),
+    ),
+  });
+
+  const colorTopPicks = definedEntries({
+    elementStroke: strokePicks,
+    elementBackground: backgroundPicks,
+    stickyNoteStroke: opaqueColorList(read("--color-picks-sticky-note-stroke")),
+    stickyNoteBackground: opaqueColorList(
+      read("--color-picks-sticky-note-background"),
+    ),
+  });
+  if (Object.keys(colorTopPicks).length) {
+    appState.colorTopPicks = colorTopPicks;
+  }
+
+  const palettes = definedEntries({
+    elementStroke: palette(read("--color-palette-stroke")),
+    elementBackground: palette(read("--color-palette-background")),
+  });
+
+  const unitInterval = (name: string, min: number) => {
+    const value = read(name);
+    const number = Number(value);
+    return value !== "" && number >= min && number <= 1 ? number : undefined;
+  };
+  const pen = definedEntries({
+    thinning: unitInterval("--element-freedraw-thinning", -1),
+    taper: positiveNumber(read("--element-freedraw-taper")),
+    streamline: unitInterval("--element-freedraw-streamline", 0),
+  });
+
+  return { canvas, appState, pen, palettes };
+};

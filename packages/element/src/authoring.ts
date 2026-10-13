@@ -43,3 +43,12 @@ export const getAuthoringScaleField = (
 export const getElementDetailScale = (
   element: Pick<ExcalidrawElement, "authoringScale">,
 ) => element.authoringScale ?? 1;
+
+/**
+ * A size at the element's 1x size: divided by its detail scale. Sizes made
+ * far in come back with float noise (159.99999999999997 for 160) that would
+ * flip a whole-unit rounding such as a diamond's vertices, so it is rounded
+ * off. At scale 1 the size is returned as it is.
+ */
+export const getNominalSize = (size: number, scale: number) =>
+  scale === 1 ? size : Math.round(size * (1 / scale) * 1e9) / 1e9;

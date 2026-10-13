@@ -45,7 +45,7 @@ import type {
   SVGPathString,
 } from "@excalidraw/excalidraw/scene/types";
 
-import { getElementDetailScale } from "./authoring";
+import { getElementDetailScale, getNominalSize } from "./authoring";
 import { getStroke, getStrokePoints } from "./perfectFreehand";
 
 import { elementWithCanvasCache } from "./renderElement";
@@ -813,8 +813,8 @@ const generateAtDetailScale = (
   const grow = 1 / scale;
   const shape = generate({
     ...element,
-    width: element.width * grow,
-    height: element.height * grow,
+    width: getNominalSize(element.width, scale),
+    height: getNominalSize(element.height, scale),
     strokeWidth: element.strokeWidth * grow,
     authoringScale: 1,
     roundness: element.roundness?.value
@@ -1321,38 +1321,50 @@ const getVariableWidthFreedrawOutline = (
       )
     : [[0, 0, 0.5]];
 
+  const size = element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR;
+  const taper = element.strokeOptions?.taper;
   return getStroke(inputPoints as number[][], {
     simulatePressure: element.simulatePressure,
-    size: element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR,
-    thinning: VARIABLE_WIDTH_FREEDRAW.THINNING,
+    size,
+    thinning:
+      element.strokeOptions?.thinning ?? VARIABLE_WIDTH_FREEDRAW.THINNING,
     smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
     streamline: getFreedrawStreamline(element),
     easing: (t) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
+    ...(taper && {
+      start: { taper: taper * size },
+      end: { taper: taper * size },
+    }),
     last: true,
   }) as [number, number][];
 };
 
-const createLaserPointer = (element: ExcalidrawFreeDrawElement) =>
-  new LaserPointer({
-    size: element.strokeWidth * CONSTANT_WIDTH_FREEDRAW.SIZE_FACTOR,
-    streamline: getFreedrawStreamline(element),
-    simplify: 0,
-    sizeMapping: (details) => Math.max(0.1, details.pressure),
-  });
-
 /**
  * Uniform (constant width) freedraw outline, rendered with the laser-pointer
  * geometry. Pressure is pinned to 1 so the stroke keeps a constant width.
+ *
+ * The laser pointer drops the start cap under a size of 0.1, a one- or
+ * two-point stroke under 0.5, and reads corners from pointer speed, all in
+ * absolute units. The outline is built at the element's size at 1x and
+ * scaled back, so a stroke drawn deep in a zoom looks as it does at 1x.
  */
 const getConstantWidthFreedrawOutline = (
   element: ExcalidrawFreeDrawElement,
 ): [number, number][] => {
-  const laserPointer = createLaserPointer(element);
-  element.points.map(([x, y]) => laserPointer.addPoint([x, y, 1]));
+  const scale = getElementDetailScale(element);
+  const laserPointer = new LaserPointer({
+    size: (element.strokeWidth / scale) * CONSTANT_WIDTH_FREEDRAW.SIZE_FACTOR,
+    streamline: getFreedrawStreamline(element),
+    simplify: 0,
+    sizeMapping: (details) => Math.max(0.1, details.pressure),
+  });
+  element.points.forEach(([x, y]) =>
+    laserPointer.addPoint([x / scale, y / scale, 1]),
+  );
 
   return laserPointer
     .getStrokeOutline()
-    .map(([x, y]) => [x, y] as [number, number]);
+    .map(([x, y]) => [x * scale, y * scale] as [number, number]);
 };
 
 export const getFreedrawOutlinePoints = (

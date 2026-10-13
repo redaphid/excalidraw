@@ -42,6 +42,7 @@ import {
   ELEMENT_LINK_IMG,
   getLinkHandleFromCoords,
 } from "../components/hyperlink/helpers";
+import { getThemeCanvasBackground } from "../cssTheme";
 
 import {
   bootstrapCanvas,
@@ -79,7 +80,12 @@ const strokeGrid = (
   width: number,
   height: number,
   scale: number,
+  canvasTheme: StaticCanvasRenderConfig["canvasTheme"],
 ) => {
+  const boldColor = canvasTheme?.gridBoldColor ?? GridLineColor[theme].bold;
+  const regularColor = canvasTheme?.gridColor ?? GridLineColor[theme].regular;
+  const dashed = canvasTheme?.gridStyle !== "solid";
+
   const offsetX = (scrollX % gridSize) - gridSize;
   const offsetY = (scrollY % gridSize) - gridSize;
 
@@ -131,10 +137,8 @@ const strokeGrid = (
     const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
 
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
+    context.setLineDash(isBold || !dashed ? [] : lineDash);
+    context.strokeStyle = isBold ? boldColor : regularColor;
     context.moveTo(position, offsetY - gridSize);
     context.lineTo(position, Math.ceil(offsetY + height + gridSize * 2));
     context.stroke();
@@ -152,10 +156,8 @@ const strokeGrid = (
     const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
 
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
-    context.strokeStyle = isBold
-      ? GridLineColor[theme].bold
-      : GridLineColor[theme].regular;
+    context.setLineDash(isBold || !dashed ? [] : lineDash);
+    context.strokeStyle = isBold ? boldColor : regularColor;
     context.moveTo(offsetX - gridSize, position);
     context.lineTo(Math.ceil(offsetX + width + gridSize * 2), position);
     context.stroke();
@@ -272,79 +274,28 @@ const renderLinkIcon = (
     context.restore();
   }
 };
-const _renderStaticScene = ({
-  canvas,
+/**
+ * Paints elements as the static scene does: the painted ones in order, then
+ * the iframe-like ones over all of them, then pending flowchart nodes.
+ */
+export const renderSceneElements = ({
+  context,
   rc,
+  elements: visibleElements,
   elementsMap,
   allElementsMap,
-  visibleElements,
-  scale,
-  appState: unsnappedAppState,
+  appState,
   renderConfig,
-}: StaticSceneRenderConfig) => {
-  if (canvas === null) {
-    return;
-  }
-
-  const { renderGrid = true, isExporting } = renderConfig;
-  // export draws vectors, not cached bitmaps — nothing to keep on the grid
-  const appState = isExporting
-    ? unsnappedAppState
-    : snapScrollToDevicePixels(unsnappedAppState, scale);
-
-  const [normalizedWidth, normalizedHeight] = getNormalizedCanvasDimensions(
-    canvas,
-    scale,
-  );
-
-  const context = bootstrapCanvas({
-    canvas,
-    scale,
-    normalizedWidth,
-    normalizedHeight,
-    theme: appState.theme,
-    isExporting,
-    viewBackgroundColor: appState.viewBackgroundColor,
-  });
-
-  // Apply zoom
-  context.scale(appState.zoom.value, appState.zoom.value);
-
-  // Grid
-  if (renderGrid) {
-    strokeGrid(
-      context,
-      renderConfig.gridSize ?? appState.gridSize,
-      appState.gridStep,
-      appState.scrollX,
-      appState.scrollY,
-      appState.zoom,
-      renderConfig.theme,
-      normalizedWidth / appState.zoom.value,
-      normalizedHeight / appState.zoom.value,
-      scale,
-    );
-  }
-
-  const groupsToBeAddedToFrame = new Set<string>();
-
-  visibleElements.forEach((element) => {
-    if (
-      element.groupIds.length > 0 &&
-      appState.frameToHighlight &&
-      appState.selectedElementIds[element.id] &&
-      (elementOverlapsWithFrame(
-        element,
-        appState.frameToHighlight,
-        elementsMap,
-      ) ||
-        element.groupIds.find((groupId) => groupsToBeAddedToFrame.has(groupId)))
-    ) {
-      element.groupIds.forEach((groupId) =>
-        groupsToBeAddedToFrame.add(groupId),
-      );
-    }
-  });
+}: {
+  context: CanvasRenderingContext2D;
+  rc: StaticSceneRenderConfig["rc"];
+  elements: readonly NonDeletedExcalidrawElement[];
+  elementsMap: StaticSceneRenderConfig["elementsMap"];
+  allElementsMap: StaticSceneRenderConfig["allElementsMap"];
+  appState: StaticCanvasAppState;
+  renderConfig: StaticCanvasRenderConfig;
+}) => {
+  const { isExporting } = renderConfig;
 
   const inFrameGroupsMap = new Map<string, boolean>();
 
@@ -407,35 +358,36 @@ const _renderStaticScene = ({
           return;
         }
 
-        context.save();
-        const boundTextElement = getBoundTextElement(element, elementsMap);
-
         const renderState = getRenderState(element);
-        clipElementToFrame(element, renderState);
-        renderElement(
-          element,
-          elementsMap,
-          allElementsMap,
-          rc,
-          context,
-          renderConfig,
-          appState,
-          renderState,
-        );
-
-        if (boundTextElement) {
+        context.save();
+        try {
+          const boundTextElement = getBoundTextElement(element, elementsMap);
+          clipElementToFrame(element, renderState);
           renderElement(
-            boundTextElement,
+            element,
             elementsMap,
             allElementsMap,
             rc,
             context,
             renderConfig,
             appState,
+            renderState,
           );
-        }
 
-        context.restore();
+          if (boundTextElement) {
+            renderElement(
+              boundTextElement,
+              elementsMap,
+              allElementsMap,
+              rc,
+              context,
+              renderConfig,
+              appState,
+            );
+          }
+        } finally {
+          context.restore();
+        }
 
         if (!isExporting && renderConfig.renderLinks !== false) {
           renderLinkIcon(element, context, appState, elementsMap, renderState);
@@ -459,47 +411,57 @@ const _renderStaticScene = ({
       try {
         const renderState = getRenderState(element);
         context.save();
-        clipElementToFrame(element, renderState);
-        renderElement(
-          element,
-          elementsMap,
-          allElementsMap,
-          rc,
-          context,
-          renderConfig,
-          appState,
-          renderState,
-        );
-
-        if (
-          isIframeLikeElement(element) &&
-          (isExporting ||
-            (isEmbeddableElement(element) &&
-              renderConfig.embedsValidationStatus.get(element.id) !== true)) &&
-          element.width &&
-          element.height
-        ) {
-          const label = {
-            ...createPlaceholderEmbeddableLabel(element),
-            // Synthetic visual: resolve overrides and frame opacity through
-            // its owner, without creating another animation target.
-            id: element.id,
-            frameId: element.frameId,
-          };
+        try {
+          clipElementToFrame(element, renderState);
           renderElement(
-            label,
+            element,
             elementsMap,
             allElementsMap,
             rc,
             context,
             renderConfig,
             appState,
+            renderState,
           );
+
+          if (
+            isIframeLikeElement(element) &&
+            (isExporting ||
+              (isEmbeddableElement(element) &&
+                renderConfig.embedsValidationStatus.get(element.id) !==
+                  true)) &&
+            element.width &&
+            element.height
+          ) {
+            const label = {
+              ...createPlaceholderEmbeddableLabel(element),
+              // Synthetic visual: resolve overrides and frame opacity through
+              // its owner, without creating another animation target.
+              id: element.id,
+              frameId: element.frameId,
+            };
+            renderElement(
+              label,
+              elementsMap,
+              allElementsMap,
+              rc,
+              context,
+              renderConfig,
+              appState,
+            );
+          }
+          if (!isExporting && renderConfig.renderLinks !== false) {
+            renderLinkIcon(
+              element,
+              context,
+              appState,
+              elementsMap,
+              renderState,
+            );
+          }
+        } finally {
+          context.restore();
         }
-        if (!isExporting && renderConfig.renderLinks !== false) {
-          renderLinkIcon(element, context, appState, elementsMap, renderState);
-        }
-        context.restore();
       } catch (error: any) {
         console.error(error);
       }
@@ -521,8 +483,104 @@ const _renderStaticScene = ({
       console.error(error);
     }
   });
+};
 
-  cacheSettledBitmaps(visibleElements, allElementsMap, renderConfig, appState);
+const _renderStaticScene = ({
+  canvas,
+  rc,
+  elementsMap,
+  allElementsMap,
+  visibleElements,
+  scale,
+  appState: unsnappedAppState,
+  renderConfig,
+}: StaticSceneRenderConfig) => {
+  if (canvas === null) {
+    return;
+  }
+
+  const { renderGrid = true, isExporting } = renderConfig;
+  // export draws vectors, not cached bitmaps — nothing to keep on the grid
+  const appState = isExporting
+    ? unsnappedAppState
+    : snapScrollToDevicePixels(unsnappedAppState, scale);
+
+  const [normalizedWidth, normalizedHeight] = getNormalizedCanvasDimensions(
+    canvas,
+    scale,
+  );
+
+  const context = bootstrapCanvas({
+    canvas,
+    scale,
+    normalizedWidth,
+    normalizedHeight,
+    theme: appState.theme,
+    isExporting,
+    viewBackgroundColor: appState.viewBackgroundColor,
+    themeBackgroundColor: getThemeCanvasBackground(
+      appState,
+      renderConfig.canvasTheme,
+    ),
+  });
+
+  // Apply zoom
+  context.scale(appState.zoom.value, appState.zoom.value);
+
+  // Grid
+  if (renderGrid) {
+    strokeGrid(
+      context,
+      renderConfig.gridSize ?? appState.gridSize,
+      appState.gridStep,
+      appState.scrollX,
+      appState.scrollY,
+      appState.zoom,
+      renderConfig.theme,
+      normalizedWidth / appState.zoom.value,
+      normalizedHeight / appState.zoom.value,
+      scale,
+      renderConfig.canvasTheme,
+    );
+  }
+
+  const groupsToBeAddedToFrame = new Set<string>();
+
+  visibleElements.forEach((element) => {
+    if (
+      element.groupIds.length > 0 &&
+      appState.frameToHighlight &&
+      appState.selectedElementIds[element.id] &&
+      (elementOverlapsWithFrame(
+        element,
+        appState.frameToHighlight,
+        elementsMap,
+      ) ||
+        element.groupIds.find((groupId) => groupsToBeAddedToFrame.has(groupId)))
+    ) {
+      element.groupIds.forEach((groupId) =>
+        groupsToBeAddedToFrame.add(groupId),
+      );
+    }
+  });
+
+  renderSceneElements({
+    context,
+    rc,
+    elements: visibleElements,
+    elementsMap,
+    allElementsMap,
+    appState,
+    renderConfig,
+  });
+
+  cacheSettledBitmaps(
+    canvas,
+    visibleElements,
+    allElementsMap,
+    renderConfig,
+    appState,
+  );
 };
 
 /** throttled to animation framerate */

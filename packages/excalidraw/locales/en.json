@@ -219,6 +219,24 @@
       "clearSearch": "Clear search"
     }
   },
+  "frameNavigation": {
+    "title": "Frames",
+    "bookmarks": "Bookmarks",
+    "allFrames": "All frames",
+    "bookmark": "Bookmark {{name}}",
+    "removeBookmark": "Remove bookmark {{name}}",
+    "breadcrumb": "Current frame",
+    "hint": "↵ into · Esc out · {{bookmarks}} bookmarks · M close",
+    "stepHelp": "Step between frames",
+    "bookmarkHelp": "Fly to a bookmarked frame",
+    "slides": "Slides",
+    "present": "Present",
+    "moveSlide": "Move {{name}}",
+    "skipSlide": "Skip {{name}}",
+    "includeSlide": "Include {{name}}",
+    "noSlides": "Draw a frame (F) to make your first slide.",
+    "slidesHint": "Drag ⋮⋮ to reorder · tap the eye to skip"
+  },
   "search": {
     "title": "Find on canvas",
     "noMatch": "No matches found...",

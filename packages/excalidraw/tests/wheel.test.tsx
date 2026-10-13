@@ -118,6 +118,61 @@ describe("wheel navigation", () => {
     expect(h.state.zoom.value).toBeLessThan(zoomedIn);
   });
 
+  it("redraws crisp 100ms after the last zoom tick, not while ticks keep coming", () => {
+    vi.useFakeTimers();
+    try {
+      wheel({ deltaY: -10, ctrlKey: true });
+      vi.advanceTimersByTime(99);
+      wheel({ deltaY: -10, ctrlKey: true });
+      vi.advanceTimersByTime(99);
+      expect(h.state.shouldCacheIgnoreZoom).toBe(true);
+
+      React.act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(h.state.shouldCacheIgnoreZoom).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("redraws crisp 100ms after a host hands over a stretched camera", () => {
+    vi.useFakeTimers();
+    try {
+      API.updateScene({
+        appState: {
+          zoom: { value: getNormalizedZoom(2) },
+          shouldCacheIgnoreZoom: true,
+        },
+      });
+      vi.advanceTimersByTime(99);
+      expect(h.state.shouldCacheIgnoreZoom).toBe(true);
+
+      React.act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(h.state.shouldCacheIgnoreZoom).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("redraws crisp inside the settle timer, before the next frame", () => {
+    vi.useFakeTimers();
+    try {
+      API.updateScene({
+        appState: {
+          zoom: { value: getNormalizedZoom(2) },
+          shouldCacheIgnoreZoom: true,
+        },
+      });
+      vi.advanceTimersByTime(100);
+      expect(h.state.shouldCacheIgnoreZoom).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does nothing on a zoom tick at the zoom limit", () => {
     API.setAppState({ zoom: { value: getNormalizedZoom(MIN_ZOOM) } });
     const start = getViewport();

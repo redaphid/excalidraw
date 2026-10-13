@@ -6,7 +6,12 @@ import type { FileId } from "@excalidraw/element/types";
 import type { ImportedDataState } from "@excalidraw/excalidraw/data/types";
 import type { DataURL } from "@excalidraw/excalidraw/types";
 
-import { loadScene, saveScene } from "./persistence";
+import {
+  loadBookmarks,
+  loadScene,
+  saveScene,
+  toggleBookmark,
+} from "./persistence";
 
 describe("playground persistence", () => {
   beforeEach(() => {
@@ -37,7 +42,11 @@ describe("playground persistence", () => {
       saveScene(
         localStorage,
         [thunderwrench, rustyConquistador],
-        { ...getDefaultAppState(), zoom: { value: getNormalizedZoom(100) } },
+        {
+          ...getDefaultAppState(),
+          zoom: { value: getNormalizedZoom(100) },
+          viewBackgroundColorPicked: true,
+        },
         {},
       );
       scene = loadScene(localStorage);
@@ -49,6 +58,10 @@ describe("playground persistence", () => {
 
     it("keeps the zoom", () => {
       expect(scene?.appState?.zoom).toEqual({ value: 100 });
+    });
+
+    it("keeps that the user picked the canvas background", () => {
+      expect(scene?.appState?.viewBackgroundColorPicked).toBe(true);
     });
   });
 
@@ -74,6 +87,63 @@ describe("playground persistence", () => {
 
     it("drops its file", () => {
       expect(scene?.files).toEqual({});
+    });
+  });
+
+  describe("when no bookmarks were saved", () => {
+    let bookmarks: string[];
+
+    beforeEach(() => {
+      bookmarks = loadBookmarks(localStorage);
+    });
+
+    it("loads none", () => {
+      expect(bookmarks).toEqual([]);
+    });
+  });
+
+  describe("when two frames are starred and the first unstarred", () => {
+    let bookmarks: string[];
+
+    beforeEach(() => {
+      toggleBookmark(localStorage, "frame-the-lair", true);
+      toggleBookmark(localStorage, "frame-valley-of-the-sun", true);
+      toggleBookmark(localStorage, "frame-the-lair", false);
+      bookmarks = loadBookmarks(localStorage);
+    });
+
+    it("keeps the second", () => {
+      expect(bookmarks).toEqual(["frame-valley-of-the-sun"]);
+    });
+  });
+
+  describe("when the saved bookmarks are not a list of frame ids", () => {
+    let error: unknown;
+
+    beforeEach(() => {
+      localStorage.setItem("excalidraw-playground-bookmarks", "[7]");
+      try {
+        loadBookmarks(localStorage);
+      } catch (thrown) {
+        error = thrown;
+      }
+    });
+
+    it("throws", () => {
+      expect(error).toBeInstanceOf(Error);
+    });
+  });
+
+  describe("when a frame is starred twice", () => {
+    let bookmarks: string[];
+
+    beforeEach(() => {
+      toggleBookmark(localStorage, "frame-the-lair", true);
+      bookmarks = toggleBookmark(localStorage, "frame-the-lair", true);
+    });
+
+    it("keeps it once", () => {
+      expect(bookmarks).toEqual(["frame-the-lair"]);
     });
   });
 });

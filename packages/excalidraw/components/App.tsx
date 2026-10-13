@@ -48,6 +48,7 @@ import {
   THEME,
   TOUCH_CTX_MENU_TIMEOUT,
   YOUTUBE_STATES,
+  ZOOM_SETTLE_TIMEOUT,
   POINTER_EVENTS,
   TOOL_TYPE,
   DEFAULT_COLLISION_THRESHOLD,
@@ -75,6 +76,7 @@ import {
   updateActiveTool,
   isTransparent,
   muteFSAbortError,
+  memoize,
   isTestEnv,
   isDevEnv,
   updateStable,
@@ -167,6 +169,8 @@ import {
   getBoundTextElement,
   getContainerCenter,
   getContainerElement,
+  getSettledBitmapCount,
+  cancelSettledBitmaps,
   getColorUpdate,
   getStickyNoteMinSize,
   isValidTextContainer,
@@ -338,6 +342,7 @@ import {
 import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
+import { EMPTY_CSS_THEME, readCssTheme } from "../cssTheme";
 import { getCenter, getDistance } from "../gesture";
 import {
   copyElementRenderOverrides,
@@ -426,6 +431,7 @@ import { AppCursor } from "./App.cursor";
 import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
 import { AppFlowchart } from "./App.flowchart";
+import { AppFrameNavigation } from "./App.frameNavigation";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -491,6 +497,7 @@ import type {
   NullableGridSize,
   UIConfig,
 } from "../types";
+import type { CssTheme } from "../cssTheme";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Action, ActionResult } from "../actions/types";
 
@@ -621,6 +628,11 @@ class App extends React.Component<AppProps, AppState> {
   private excalidrawContainerRef = React.createRef<HTMLDivElement>();
   private zenModeTransitionTimer = 0;
 
+  /** parsed from the container's custom properties when the `css` prop or
+   * the theme changes; renderers read it instead of the DOM */
+  public cssTheme: CssTheme = EMPTY_CSS_THEME;
+  private scopedCss: { css: string; scoped: string } | null = null;
+
   public get ownerDocument(): Document {
     return (
       this.props.ownerDocument ??
@@ -690,6 +702,7 @@ class App extends React.Component<AppProps, AppState> {
   public duplicate: AppDuplicate = new AppDuplicate(this);
   public toolDrag: AppToolDrag = new AppToolDrag(this);
   public flowchart: AppFlowchart = new AppFlowchart(this);
+  public frameNavigation: AppFrameNavigation = new AppFrameNavigation(this);
   public cursor: AppCursor = new AppCursor(this);
   public arrowText: AppArrowText = new AppArrowText(this);
   public pan: AppPan = new AppPan(this, {
@@ -1762,11 +1775,19 @@ class App extends React.Component<AppProps, AppState> {
     ShapeCache.delete(element);
   };
 
+  // filtered once per elements array, not on every render and update
+  private getIframeLikeElements = memoize(
+    ({ elements }: { elements: readonly NonDeletedExcalidrawElement[] }) =>
+      elements.filter(isIframeLikeElement),
+  );
+
   private updateEmbeddables = () => {
     const iframeLikes = new Set<ExcalidrawIframeLikeElement["id"]>();
 
     let updated = false;
-    this.scene.getNonDeletedElements().filter((element) => {
+    this.getIframeLikeElements({
+      elements: this.scene.getNonDeletedElements(),
+    }).forEach((element) => {
       if (isEmbeddableElement(element)) {
         iframeLikes.add(element.id);
         if (!this.embedsValidationStatus.has(element.id)) {
@@ -1782,7 +1803,6 @@ class App extends React.Component<AppProps, AppState> {
       } else if (isIframeElement(element)) {
         iframeLikes.add(element.id);
       }
-      return false;
     });
 
     if (updated) {
@@ -1802,14 +1822,14 @@ class App extends React.Component<AppProps, AppState> {
     const normalizedWidth = this.state.width;
     const normalizedHeight = this.state.height;
 
-    const embeddableElements = this.scene
-      .getNonDeletedElements()
-      .filter(
-        (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
-          (isEmbeddableElement(el) &&
-            this.embedsValidationStatus.get(el.id) === true) ||
-          isIframeElement(el),
-      );
+    const embeddableElements = this.getIframeLikeElements({
+      elements: this.scene.getNonDeletedElements(),
+    }).filter(
+      (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
+        (isEmbeddableElement(el) &&
+          this.embedsValidationStatus.get(el.id) === true) ||
+        isIframeElement(el),
+    );
 
     return (
       <>
@@ -2349,9 +2369,11 @@ class App extends React.Component<AppProps, AppState> {
               fontFamily: "Assistant",
               fontSize: `${FRAME_STYLE.nameFontSize}px`,
               transform: `translate(-${FRAME_NAME_EDIT_PADDING}px, ${FRAME_NAME_EDIT_PADDING}px)`,
-              color: isDarkTheme
-                ? FRAME_STYLE.nameColorDarkTheme
-                : FRAME_STYLE.nameColorLightTheme,
+              color: `var(--canvas-frame-name-color, ${
+                isDarkTheme
+                  ? FRAME_STYLE.nameColorDarkTheme
+                  : FRAME_STYLE.nameColorLightTheme
+              })`,
               overflow: "hidden",
               maxWidth: `${
                 this.ownerDocument.body.clientWidth -
@@ -2392,9 +2414,11 @@ class App extends React.Component<AppProps, AppState> {
             left: `${x1 - this.state.offsetLeft}px`,
             zIndex: 2,
             fontSize: FRAME_STYLE.nameFontSize,
-            color: isDarkTheme
-              ? FRAME_STYLE.nameColorDarkTheme
-              : FRAME_STYLE.nameColorLightTheme,
+            color: `var(--canvas-frame-name-color, ${
+              isDarkTheme
+                ? FRAME_STYLE.nameColorDarkTheme
+                : FRAME_STYLE.nameColorLightTheme
+            })`,
             lineHeight: FRAME_STYLE.nameLineHeight,
             width: "max-content",
             maxWidth:
@@ -2469,6 +2493,22 @@ class App extends React.Component<AppProps, AppState> {
     // (it is not in the scene until dropped)
     const previewElement = newElementCanvasElement ?? this.toolDrag.preview;
 
+    const staticVisibleElements = this.elementRenderOffsets.size
+      ? this.renderer.getVisibleElementsWithRenderOffsets(
+          visibleElements,
+          renderableElementsMap,
+          this.state,
+          this.elementRenderOffsets,
+        )
+      : visibleElements;
+    const newElementSplit = this.renderer.splitAtNewElement(
+      staticVisibleElements,
+      this.state.newElement,
+    );
+    const newElementLayer = newElementSplit
+      ? { elementsAbove: newElementSplit.above }
+      : previewElement && { element: previewElement };
+
     const shouldBlockPointerEvents =
       // default back to `--ui-pointerEvents` flow if setPointerCapture
       // not supported
@@ -2528,6 +2568,7 @@ class App extends React.Component<AppProps, AppState> {
           ["--zen-mode-transition-duration" as any]: `${ZEN_MODE_TRANSITION_DURATION}ms`,
         }}
         ref={this.excalidrawContainerRef}
+        data-excalidraw-id={this.id}
         onDrop={this.isFileDropEnabled() ? this.handleAppOnDrop : undefined}
         tabIndex={0}
         onKeyDown={
@@ -2546,6 +2587,7 @@ class App extends React.Component<AppProps, AppState> {
             : undefined
         }
       >
+        {this.props.css && <style>{this.getScopedCss(this.props.css)}</style>}
         <ExcalidrawAPIContext.Provider value={this.api}>
           <AppContext.Provider value={this}>
             <AppPropsContext.Provider value={this.props}>
@@ -2731,14 +2773,7 @@ class App extends React.Component<AppProps, AppState> {
                             elementsMap={renderableElementsMap}
                             allElementsMap={allElementsMap}
                             visibleElements={
-                              this.elementRenderOffsets.size
-                                ? this.renderer.getVisibleElementsWithRenderOffsets(
-                                    visibleElements,
-                                    renderableElementsMap,
-                                    this.state,
-                                    this.elementRenderOffsets,
-                                  )
-                                : visibleElements
+                              newElementSplit?.below ?? staticVisibleElements
                             }
                             canvasNonce={canvasNonce}
                             selectionNonce={
@@ -2758,16 +2793,21 @@ class App extends React.Component<AppProps, AppState> {
                                 this.embedsValidationStatus,
                               elementsPendingErasure:
                                 this.elementsPendingErasure,
-                              pendingFlowchartNodes:
-                                this.flowchart.pendingNodes,
+                              pendingFlowchartNodes: newElementSplit
+                                ? null
+                                : this.flowchart.pendingNodes,
                               theme: this.state.theme,
+                              canvasTheme: this.cssTheme.canvas,
                               ...this.getRenderOverrideConfig(),
+                              settledBitmapCount: newElementSplit
+                                ? getSettledBitmapCount()
+                                : undefined,
                             }}
                           />
-                          {previewElement && (
+                          {newElementLayer && (
                             <NewElementCanvas
                               appState={this.state}
-                              newElement={previewElement}
+                              layer={newElementLayer}
                               scale={this.ownerWindow.devicePixelRatio}
                               rc={this.rc}
                               elementsMap={renderableElementsMap}
@@ -2782,8 +2822,11 @@ class App extends React.Component<AppProps, AppState> {
                                   this.embedsValidationStatus,
                                 elementsPendingErasure:
                                   this.elementsPendingErasure,
-                                pendingFlowchartNodes: null,
+                                pendingFlowchartNodes: newElementSplit
+                                  ? this.flowchart.pendingNodes
+                                  : null,
                                 theme: this.state.theme,
+                                canvasTheme: this.cssTheme.canvas,
                                 ...this.getRenderOverrideConfig(),
                               }}
                               // a tool dragged out of the toolbar previews
@@ -3728,7 +3771,22 @@ class App extends React.Component<AppProps, AppState> {
       repairBindings: true,
       deleteInvisibleElements: true,
     });
-    let restoredAppState = restoreAppState(initialData?.appState, null);
+    // the theme's defaults fill only what the scene did not save: a returning
+    // user's own picks win
+    const { colorTopPicks: themeTopPicks = {}, ...themeDefaults } =
+      this.cssTheme.appState;
+    let restoredAppState = restoreAppState(
+      initialData?.appState,
+      themeDefaults,
+    );
+    const colorTopPicks = { ...restoredAppState.colorTopPicks };
+    for (const [slot, picks] of Object.entries(themeTopPicks) as [
+      keyof AppState["colorTopPicks"],
+      readonly string[],
+    ][]) {
+      colorTopPicks[slot] ??= picks;
+    }
+    restoredAppState.colorTopPicks = colorTopPicks;
     const activeTool = restoredAppState.activeTool;
 
     if (!restoredAppState.preferredSelectionTool.initialized) {
@@ -3908,6 +3966,13 @@ class App extends React.Component<AppProps, AppState> {
 
     this.excalidrawContainerValue.container =
       this.excalidrawContainerRef.current;
+    // the first read must see the mode the editor starts in: the restored
+    // scene takes the theme's defaults from it
+    this.excalidrawContainerRef.current?.classList.toggle(
+      "theme--dark",
+      this.state.theme === THEME.DARK,
+    );
+    this.applyCssTheme();
 
     if (isTestEnv() || isDevEnv()) {
       const setState = this.setState.bind(this);
@@ -3955,6 +4020,7 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     this.scene.onUpdate(this.triggerRender);
+    this.scene.onUpdate(() => this.frameNavigation.sceneUpdated.trigger());
     this.addEventListeners();
 
     if (this.props.autoFocus && this.excalidrawContainerRef.current) {
@@ -4030,6 +4096,7 @@ class App extends React.Component<AppProps, AppState> {
 
     (this.ownerWindow as any).launchQueue?.setConsumer(() => {});
 
+    cancelSettledBitmaps(this.canvas);
     this.renderer.destroy();
     this.scene.destroy();
     this.scene = new Scene();
@@ -4531,6 +4598,13 @@ class App extends React.Component<AppProps, AppState> {
     );
 
     if (
+      prevProps.css !== this.props.css ||
+      prevState.theme !== this.state.theme
+    ) {
+      this.applyCssTheme();
+    }
+
+    if (
       this.state.selectedLinearElement?.isEditing &&
       !this.state.selectedElementIds[this.state.selectedLinearElement.elementId]
     ) {
@@ -4854,6 +4928,11 @@ class App extends React.Component<AppProps, AppState> {
     const wasMultiTouchGesture = gesture.pointers.size >= 2;
     gesture.pointers.delete(event.pointerId);
 
+    // a lifted finger ends the pinch: redraw crisp now, not after a pause
+    if (wasMultiTouchGesture && gesture.pointers.size < 2) {
+      this.resetShouldCacheIgnoreZoomDebounced.flush();
+    }
+
     // the multi-touch viewport gesture just disengaged: release the
     // rubberband that was withheld while it was active
     // (see `snapBackToScrollConstraints`)
@@ -4922,8 +5001,9 @@ class App extends React.Component<AppProps, AppState> {
       return {
         penMode: force ?? !prevState.penMode,
         penDetected: true,
+        // a theme's pen keeps its pressure response when a pen shows up
         currentItemStrokeVariability: !prevState.penDetected
-          ? "variable"
+          ? this.cssTheme.appState.currentItemStrokeVariability ?? "variable"
           : prevState.currentItemStrokeVariability,
       };
     });
@@ -5108,6 +5188,11 @@ class App extends React.Component<AppProps, AppState> {
 
       if (appState) {
         this.setState(appState as Pick<AppState, K> | null);
+        // a host that zoomed with the bitmaps stretched gets them redrawn
+        // crisp on the same settle as a zoom tick
+        if ((appState as Partial<AppState>).shouldCacheIgnoreZoom === true) {
+          this.resetShouldCacheIgnoreZoomDebounced();
+        }
       }
 
       if (elements) {
@@ -5176,6 +5261,66 @@ class App extends React.Component<AppProps, AppState> {
       isDragging: false,
     });
   };
+
+  /** wraps the `css` prop in `@scope`, so it reaches this editor and its
+   * portals only (each carries `data-excalidraw-id`, and is a `:scope`) */
+  private getScopedCss(css: string) {
+    if (this.scopedCss?.css !== css) {
+      const root = `[data-excalidraw-id="${this.id}"]`;
+      this.scopedCss = {
+        css,
+        // a browser without `@scope` would drop the whole block
+        scoped:
+          "CSSScopeRule" in this.ownerWindow
+            ? `@scope (${root}) {
+${css}
+}`
+            : css.replaceAll(":scope", root),
+      };
+    }
+    return this.scopedCss.scoped;
+  }
+
+  /**
+   * Re-reads the theme's custom properties. Canvas colors repaint the
+   * canvases; new-element defaults are written to appState when they differ
+   * from the last read, so a light/dark toggle keeps the user's own picks.
+   * Loading a scene fills only what it did not save (see `initializeScene`).
+   */
+  private applyCssTheme() {
+    const container = this.excalidrawContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const prev = this.cssTheme;
+    const next = readCssTheme(this.ownerWindow.getComputedStyle(container));
+    const canvasChanged = !isShallowEqual(prev.canvas, next.canvas);
+    const appStateChanged =
+      JSON.stringify(prev.appState) !== JSON.stringify(next.appState);
+    const palettesChanged =
+      JSON.stringify(prev.palettes) !== JSON.stringify(next.palettes);
+    const penChanged = !isShallowEqual(prev.pen, next.pen);
+    if (!canvasChanged && !appStateChanged && !palettesChanged && !penChanged) {
+      return;
+    }
+    this.cssTheme = {
+      canvas: canvasChanged ? next.canvas : prev.canvas,
+      appState: next.appState,
+      pen: penChanged ? next.pen : prev.pen,
+      palettes: palettesChanged ? next.palettes : prev.palettes,
+    };
+    const { colorTopPicks, ...defaults } = next.appState;
+    if (appStateChanged && (colorTopPicks || Object.keys(defaults).length)) {
+      this.setState((state) => ({
+        ...state,
+        ...defaults,
+        colorTopPicks: { ...state.colorTopPicks, ...colorTopPicks },
+      }));
+    }
+    if (canvasChanged) {
+      this.triggerRender(true);
+    }
+  }
 
   public triggerRender = (
     /** force always re-renders canvas even if no change */
@@ -5403,6 +5548,10 @@ class App extends React.Component<AppProps, AppState> {
         }
       }
 
+      if (this.frameNavigation.handleKeyDown(event)) {
+        return;
+      }
+
       if (this.actionManager.handleKeyDown(event)) {
         return;
       }
@@ -5476,6 +5625,9 @@ class App extends React.Component<AppProps, AppState> {
             });
           } else {
             this.setActiveTool({ type: shape }, { toggle: true });
+            if (shape === "frame") {
+              this.frameNavigation.frameToolPicked();
+            }
           }
 
           event.stopPropagation();
@@ -7807,7 +7959,8 @@ class App extends React.Component<AppProps, AppState> {
         return {
           penMode: true,
           penDetected: true,
-          currentItemStrokeVariability: "variable",
+          currentItemStrokeVariability:
+            this.cssTheme.appState.currentItemStrokeVariability ?? "variable",
         };
       });
     }
@@ -8368,12 +8521,14 @@ class App extends React.Component<AppProps, AppState> {
       ),
       // we need to duplicate because we'll be updating this state
       lastCoords: { ...origin },
-      originalElements: this.scene
-        .getNonDeletedElements()
-        .reduce((acc, element) => {
-          acc.set(element.id, deepCopyElement(element));
-          return acc;
-        }, new Map() as PointerDownState["originalElements"]),
+      // only selection-like tools keep a selection to drag, resize or crop;
+      // every other tool clears it, so nothing would read these copies
+      originalElements: isSelectionLikeTool(this.state.activeTool.type)
+        ? this.scene.getNonDeletedElements().reduce((acc, element) => {
+            acc.set(element.id, deepCopyElement(element));
+            return acc;
+          }, new Map() as PointerDownState["originalElements"])
+        : new Map(),
       resize: {
         handleType: false,
         isResizing: false,
@@ -8979,6 +9134,7 @@ class App extends React.Component<AppProps, AppState> {
           event.pointerType !== "mouse"
             ? DEFAULT_STROKE_STREAMLINE_PRECISE
             : DEFAULT_STROKE_STREAMLINE,
+        ...this.cssTheme.pen,
       },
       locked: false,
       frameId: topLayerFrame ? topLayerFrame.id : null,
@@ -9934,6 +10090,9 @@ class App extends React.Component<AppProps, AppState> {
             // NOTE: Optimize setState calls because it
             // affects history and performance
             if (
+              // a new element's points move without informing the scene, so
+              // this render is what repaints it
+              this.state.newElement?.id === linearElementEditor.elementId ||
               newState.suggestedBinding !== this.state.suggestedBinding ||
               !isShallowEqual(
                 newState.selectedLinearElement?.selectedPointsIndices ?? [],
@@ -12952,11 +13111,15 @@ class App extends React.Component<AppProps, AppState> {
     });
   };
 
+  // flushed, so the crisp frame is drawn before this timer returns, ahead of
+  // the next paint (onChange fires first, mid-flush, before the redraw)
   public resetShouldCacheIgnoreZoomDebounced = debounce(() => {
     if (!this.unmounted) {
-      this.setState({ shouldCacheIgnoreZoom: false });
+      flushSync(() => {
+        this.setState({ shouldCacheIgnoreZoom: false });
+      });
     }
-  }, 300);
+  }, ZOOM_SETTLE_TIMEOUT);
 
   private updateDOMRect = (cb?: () => void) => {
     if (this.excalidrawContainerRef?.current) {

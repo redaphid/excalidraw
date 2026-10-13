@@ -207,6 +207,7 @@ export type StaticCanvasAppState = Readonly<
     shouldCacheIgnoreZoom: AppState["shouldCacheIgnoreZoom"];
     /** null indicates transparent bg */
     viewBackgroundColor: AppState["viewBackgroundColor"] | null;
+    viewBackgroundColorPicked: AppState["viewBackgroundColorPicked"];
     exportScale: AppState["exportScale"];
     selectedElementsAreBeingDragged: AppState["selectedElementsAreBeingDragged"];
     gridSize: AppState["gridSize"];
@@ -214,9 +215,9 @@ export type StaticCanvasAppState = Readonly<
     frameRendering: AppState["frameRendering"];
     currentHoveredFontFamily: AppState["currentHoveredFontFamily"];
     hoveredElementIds: AppState["hoveredElementIds"];
-    suggestedBinding: AppState["suggestedBinding"];
     // Cropping
     croppingElementId: AppState["croppingElementId"];
+    newElement?: AppState["newElement"];
   }
 >;
 
@@ -265,6 +266,7 @@ export type ObservedAppState = ObservedStandaloneAppState &
 export type ObservedStandaloneAppState = {
   name: AppState["name"];
   viewBackgroundColor: AppState["viewBackgroundColor"];
+  viewBackgroundColorPicked: AppState["viewBackgroundColorPicked"];
 };
 
 export type ObservedElementsAppState = {
@@ -469,6 +471,9 @@ export interface AppState {
   currentItemRoundness: StrokeRoundness;
   currentItemArrowType: "sharp" | "round" | "elbow";
   viewBackgroundColor: string;
+  /** the user chose `viewBackgroundColor`, so a theme's canvas color does not
+   * replace it, even when it is the default white */
+  viewBackgroundColorPicked: boolean;
   scrollX: number;
   scrollY: number;
   scrollConstraints: ScrollConstraints | null;
@@ -900,6 +905,16 @@ export interface ExcalidrawProps {
    */
   authoringUnits?: AuthoringUnits;
   /**
+   * CSS for this editor, scoped to it with `@scope`: `:scope` matches the
+   * editor root and each of its portals. Besides restyling the UI, it can
+   * set the custom properties listed in docs/theming.md: the canvas colors
+   * (`--canvas-background`, `--canvas-grid-color`, ...), the defaults for
+   * new elements (`--element-stroke-width`, `--element-roughness`, ...) and
+   * the color picker's swatches. They are read when this prop or the theme
+   * changes, never per frame.
+   */
+  css?: string;
+  /**
    * The freedraw tool's stroke width, in `authoringUnits`, in place of the
    * named widths, which are hidden while the tool is out.
    */
@@ -1070,6 +1085,19 @@ export interface ExcalidrawProps {
   renderScrollbars?: boolean;
   viewportStatusFrame?: ViewportStatusFrame | null;
   /**
+   * Turns on frame navigation: a Frames tab in the default sidebar (also
+   * `M`, or `toggleSidebar({ name: "default", tab: FRAMES_SIDEBAR_TAB })`),
+   * a breadcrumb of the frame the view is in, arrow keys that step between
+   * frames while nothing is selected, and ⌥1–9 for the first nine
+   * bookmarks. Leave it out to turn all of it off.
+   *
+   * The object may be inlined: it is compared by its bookmarks and by the
+   * identity of `onBookmarkChange`, like any other callback prop. The keys
+   * reach the editor only while focus is inside it, unless
+   * `handleKeyboardGlobally` is set.
+   */
+  frameNavigation?: FrameNavigation;
+  /**
    * Rendered inside the UserList "who's here" dropdown (desktop) and inline
    * in the mobile menu's collaborators section, below a divider. Accepts a
    * render function — called with `isMobile` so hosts can render different
@@ -1178,6 +1206,23 @@ export type UIOptions = Partial<{
   welcomeScreen?: boolean;
 }>;
 
+export type Slide = { frameId: string; included: boolean };
+
+export type FrameNavigation = {
+  /** bookmarked frame ids, in order; the host keeps them */
+  bookmarks?: readonly string[];
+  /** a star or unstar in the drawer; without it the drawer shows no stars */
+  onBookmarkChange?: (frameId: string, bookmarked: boolean) => void;
+  /** The host's talk. With it the drawer opens on a Slides view: the frames
+   * in this order, reorderable by pen, touch or mouse. */
+  slides?: {
+    order: readonly Slide[];
+    /** the whole talk after a move or a skip, one entry per frame */
+    onChange: (order: Slide[]) => void;
+    onPresent: () => void;
+  };
+};
+
 export type AppProps = Merge<
   ExcalidrawProps,
   {
@@ -1208,6 +1253,7 @@ export type AppClassProperties = {
   interactiveCanvas: HTMLCanvasElement | null;
   /** static canvas */
   canvas: HTMLCanvasElement;
+  cssTheme: App["cssTheme"];
   focusContainer(): void;
   library: Library;
   imageCache: Map<
@@ -1238,6 +1284,8 @@ export type AppClassProperties = {
   getName: App["getName"];
   dismissLinearEditor: App["dismissLinearEditor"];
   flowchart: App["flowchart"];
+  frameNavigation: App["frameNavigation"];
+  toggleSidebar: App["toggleSidebar"];
   drawShape: App["drawShape"];
   arrowText: App["arrowText"];
   textTool: App["textTool"];
@@ -1285,7 +1333,8 @@ export type PointerDownState = Readonly<{
   // The previous pointer position
   lastCoords: { x: number; y: number };
   // original element frozen snapshots so we can access the original
-  // element attribute values at time of pointerdown
+  // element attribute values at time of pointerdown; empty unless the
+  // selection or lasso tool is active
   originalElements: Map<string, NonDeleted<ExcalidrawElement>>;
   resize: {
     // Handle when resizing, might change during the pointer interaction

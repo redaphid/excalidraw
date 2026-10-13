@@ -268,6 +268,9 @@ export const STICKY_NOTE_SHADOW_OFFSET = 3;
 export const STICKY_NOTE_SHADOW_OPACITY = 0.16;
 export const STICKY_NOTE_EDGE_SHADOW_WIDTH = 0.5;
 export const STICKY_NOTE_EDGE_SHADOW_OPACITY = 0.08;
+/** how far a sticky note's shadow (offset plus blur) may reach past the note,
+ * in scene units at detail scale 1; its cached bitmap is padded this much */
+export const STICKY_NOTE_SHADOW_REACH = 20;
 export const DEFAULT_FONT_FAMILY: FontFamilyValues = FONT_FAMILY.Excalifont;
 /** number of slots in the font-picker top-picks strip — pick customization
  * (replace / reorder) preserves it. Must equal `DEFAULT_FONTS.length` in
@@ -361,6 +364,8 @@ export const TOUCH_CTX_MENU_TIMEOUT = 500;
 export const TITLE_TIMEOUT = 10000;
 export const VERSION_TIMEOUT = 30000;
 export const SCROLL_TIMEOUT = 100;
+/** how long the zoom is idle before its scaled bitmaps are redrawn crisp */
+export const ZOOM_SETTLE_TIMEOUT = 100;
 export const ZEN_MODE_TRANSITION_DURATION = 250;
 export const ZOOM_STEP = 0.1;
 export const MIN_ZOOM = 0.1;
@@ -535,6 +540,7 @@ export const DEFAULT_ELEMENT_PROPS: {
 
 export const LIBRARY_SIDEBAR_TAB = "library";
 export const CANVAS_SEARCH_TAB = "search";
+export const FRAMES_SIDEBAR_TAB = "frames";
 
 export const DEFAULT_SIDEBAR = {
   name: "default",
