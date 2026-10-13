@@ -42,7 +42,8 @@ type ScenarioResult = {
   frameMaxMs: number;
   countersMaxFrame?: Counters;
   bitmapBuildingFrames?: number;
-  preGestureLongTasks?: LongTasks;
+  preGestureIdleCallbackMaxMs: number;
+  gestureIdleCallbackMaxMs: number;
   gestureLongTasks?: LongTasks;
 };
 
@@ -206,21 +207,35 @@ const installCounters = () => {
       }
     }
   });
-  if (typeof window.requestIdleCallback === "function") {
-    const requestIdle = window.requestIdleCallback.bind(window);
-    window.requestIdleCallback = (callback, options) =>
-      requestIdle((deadline) => {
-        inIdleCallback = true;
-        try {
-          callback(deadline);
-        } finally {
-          inIdleCallback = false;
-        }
-      }, options);
-  }
 };
 
 let inIdleCallback = false;
+/** the longest idle callback since the last `takeLongestIdleCallback` */
+let longestIdleCallbackMs = 0;
+
+if (typeof window.requestIdleCallback === "function") {
+  const requestIdle = window.requestIdleCallback.bind(window);
+  window.requestIdleCallback = (callback, options) =>
+    requestIdle((deadline) => {
+      inIdleCallback = true;
+      const start = performance.now();
+      try {
+        callback(deadline);
+      } finally {
+        inIdleCallback = false;
+        longestIdleCallbackMs = Math.max(
+          longestIdleCallbackMs,
+          performance.now() - start,
+        );
+      }
+    }, options);
+}
+
+const takeLongestIdleCallback = () => {
+  const longest = round(longestIdleCallbackMs);
+  longestIdleCallbackMs = 0;
+  return longest;
+};
 
 /** what `takeCounters` has reset so far, for the frame sampler's totals */
 const banked = { ...counters };
@@ -350,10 +365,10 @@ const runScenario = async (
       currentItemStrokeVariability: scenario.variability ?? "constant",
     },
   });
-  const stopPreGestureLongTasks = observeLongTasks();
+  takeLongestIdleCallback();
   await wait(VIEW_RESET_MS);
   await canvasesQuiet();
-  const preGestureLongTasks = stopPreGestureLongTasks();
+  const preGestureIdleCallbackMaxMs = takeLongestIdleCallback();
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
@@ -372,8 +387,8 @@ const runScenario = async (
   for (let i = 1; i <= scenario.steps; i++) {
     let stepStart = frameStart;
     if (scenario.minStepIntervalMs) {
-      await wait(frameStart + scenario.minStepIntervalMs - performance.now());
-      stepStart = performance.now();
+      stepStart = frameStart + scenario.minStepIntervalMs;
+      await wait(stepStart - performance.now());
     }
     window.stepHook?.(scenario.id, i);
     if (i === (scenario.midwayStep ?? Math.floor(scenario.steps / 2))) {
@@ -406,7 +421,8 @@ const runScenario = async (
   const gestureLongTasks = stopGestureLongTasks();
 
   return {
-    preGestureLongTasks,
+    preGestureIdleCallbackMaxMs,
+    gestureIdleCallbackMaxMs: takeLongestIdleCallback(),
     gestureLongTasks,
     id: scenario.id,
     steps: scenario.steps,
