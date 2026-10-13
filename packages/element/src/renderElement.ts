@@ -44,11 +44,7 @@ import type {
   InteractiveCanvasRenderConfig,
 } from "@excalidraw/excalidraw/scene/types";
 
-import {
-  getElementAbsoluteCoords,
-  getElementBounds,
-  getElementPaintBounds,
-} from "./bounds";
+import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
 import { getUncroppedImageElement } from "./cropElement";
 import { getElementDetailScale } from "./authoring";
 import { LinearElementEditor } from "./linearElementEditor";
@@ -75,6 +71,7 @@ import {
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
+import { isElementInViewport } from "./sizeHelpers";
 
 import { ShapeCache } from "./shape";
 import {
@@ -1256,22 +1253,32 @@ const settledElementCanvas = (
 
 /** How long the zoom holds still before direct-drawn elements get bitmaps. */
 const ZOOM_SETTLE_MS = 150;
-export const SETTLED_BUILD_SLICE_MS = 8;
-export const BUILD_AHEAD_VIEW_FRACTION = 0.5;
+/** Where idle callbacks are missing, the time one slice spends building. */
+const SETTLED_BUILD_SLICE_MS = 8;
+/**
+ * How much of an idle period a slice leaves unused, so the build it starts
+ * last still ends inside the period and the slice stays short of a long task.
+ */
+const IDLE_HEADROOM_MS = 4;
+/** How far past each edge of the view, as a fraction of the view, elements
+ * get their bitmaps ahead of a pan. */
+const BUILD_AHEAD_VIEW_FRACTION = 0.5;
 
 let zoomHeld = { zoom: NaN, since: 0 };
 let settledBuild: {
   canvas: HTMLCanvasElement;
   elements: readonly NonDeletedExcalidrawElement[];
   next: number;
-  aheadChecked: number;
   elementsMap: NonDeletedSceneElementsMap;
   renderConfig: StaticCanvasRenderConfig;
   appState: StaticCanvasAppState;
-} | null = null;
-let aheadScanCursor: {
-  elementsMap: NonDeletedSceneElementsMap;
-  elements: IterableIterator<NonDeletedExcalidrawElement>;
+  /** the scan for elements near the view, which a re-armed build carries on
+   * while the elements it scans are the same */
+  ahead: {
+    candidates: RenderableElementsMap;
+    cursor: IterableIterator<NonDeletedExcalidrawElement>;
+    unchecked: number;
+  };
 } | null = null;
 let cancelScheduledBuild: (() => void) | null = null;
 let settledBitmapCount = 0;
@@ -1285,19 +1292,28 @@ const scheduleSettledBuild = (delay: number) => {
     const timer = setTimeout(() => scheduleSettledBuild(0), delay);
     cancelScheduledBuild = () => clearTimeout(timer);
   } else if (typeof requestIdleCallback === "function") {
-    const idle = requestIdleCallback((deadline) => {
-      const until = performance.now() + SETTLED_BUILD_SLICE_MS;
-      buildSettledBitmaps(
-        () => deadline.timeRemaining() > 1 && performance.now() < until,
-      );
-    });
+    const idle = requestIdleCallback((deadline) =>
+      runSettledBuild(() => deadline.timeRemaining() > IDLE_HEADROOM_MS),
+    );
     cancelScheduledBuild = () => cancelIdleCallback(idle);
   } else {
     const timer = setTimeout(() => {
       const until = performance.now() + SETTLED_BUILD_SLICE_MS;
-      buildSettledBitmaps(() => performance.now() < until);
+      runSettledBuild(() => performance.now() < until);
     });
     cancelScheduledBuild = () => clearTimeout(timer);
+  }
+};
+
+const runSettledBuild = (hasTime: () => boolean) => {
+  try {
+    buildSettledBitmaps(hasTime);
+  } catch (error) {
+    // browsers refuse canvases past their memory cap, and the build throws;
+    // the next frame starts another
+    settledBuild = null;
+    cancelScheduledBuild = null;
+    console.error(error);
   }
 };
 
@@ -1312,11 +1328,18 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     scheduleSettledBuild(wait);
     return;
   }
-  const { elements, elementsMap, renderConfig, appState } = build;
+  const { elements, elementsMap, renderConfig, appState, ahead } = build;
   const screenArea =
     appState.width * appState.height * window.devicePixelRatio ** 2;
-  const buildSettled = (element: NonDeletedExcalidrawElement) => {
-    if (settledElementCanvas(element, elementsMap, appState)) {
+  /** builds what a frame drawing the element at this zoom would, and says
+   * whether that was a new bitmap */
+  const buildForView = (element: NonDeletedExcalidrawElement) => {
+    if (
+      element.id === appState.newElement?.id ||
+      element.type === "selection" ||
+      isFrameLikeElement(element) ||
+      settledElementCanvas(element, elementsMap, appState)
+    ) {
       return false;
     }
     const { width, height, scale } = cappedElementCanvasSize(
@@ -1329,66 +1352,66 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
       generateElementWithCanvas(element, elementsMap, renderConfig, appState);
       return true;
     }
+    ShapeCache.generateElementShape(element, renderConfig);
     return false;
   };
+
   while (build.next < elements.length && hasTime()) {
     const element = elements[build.next++];
     if (
-      element.id !== appState.newElement?.id &&
       shouldDrawDirectly(element, elementsMap, appState) &&
-      buildSettled(element)
+      buildForView(element)
     ) {
       settledBitmapCount++;
     }
   }
 
-  const zoom = appState.zoom.value;
-  const viewWidth = appState.width / zoom;
-  const viewHeight = appState.height / zoom;
-  const left = -appState.scrollX - viewWidth * BUILD_AHEAD_VIEW_FRACTION;
-  const top = -appState.scrollY - viewHeight * BUILD_AHEAD_VIEW_FRACTION;
-  const right = left + viewWidth * (1 + 2 * BUILD_AHEAD_VIEW_FRACTION);
-  const bottom = top + viewHeight * (1 + 2 * BUILD_AHEAD_VIEW_FRACTION);
-  const scan =
-    aheadScanCursor?.elementsMap === elementsMap
-      ? aheadScanCursor
-      : (aheadScanCursor = { elementsMap, elements: elementsMap.values() });
+  // Where idle callbacks are missing, the slices are not idle time, so only
+  // the view's own elements get built.
+  const buildsAhead = typeof requestIdleCallback === "function";
+  const margin = {
+    x: appState.width * BUILD_AHEAD_VIEW_FRACTION,
+    y: appState.height * BUILD_AHEAD_VIEW_FRACTION,
+  };
+  const nearView = {
+    zoom: appState.zoom,
+    offsetLeft: appState.offsetLeft,
+    offsetTop: appState.offsetTop,
+    scrollX: appState.scrollX + margin.x / appState.zoom.value,
+    scrollY: appState.scrollY + margin.y / appState.zoom.value,
+  };
   while (
+    buildsAhead &&
     build.next >= elements.length &&
-    build.aheadChecked < elementsMap.size &&
+    ahead.unchecked > 0 &&
     hasTime()
   ) {
-    const scanned = scan.elements.next();
+    const scanned = ahead.cursor.next();
     if (scanned.done) {
-      scan.elements = elementsMap.values();
+      ahead.cursor = ahead.candidates.values();
       continue;
     }
-    build.aheadChecked++;
-    const element = scanned.value;
-    if (element.id === appState.newElement?.id || isFrameLikeElement(element)) {
-      continue;
-    }
-    const [x1, y1, x2, y2] = getElementPaintBounds(element, elementsMap);
-    if (x2 < left || x1 > right || y2 < top || y1 > bottom) {
-      continue;
-    }
-    // browsers refuse canvases past their memory cap, and the build throws
-    try {
-      if (shouldDrawDirectly(element, elementsMap, appState)) {
-        buildSettled(element);
-      } else {
-        generateElementWithCanvas(element, elementsMap, renderConfig, appState);
-      }
-    } catch (error) {
-      console.error(error);
+    ahead.unchecked--;
+    if (
+      isElementInViewport(
+        scanned.value,
+        appState.width + 2 * margin.x,
+        appState.height + 2 * margin.y,
+        nearView,
+        elementsMap,
+      )
+    ) {
+      buildForView(scanned.value);
     }
   }
 
-  if (build.next < elements.length || build.aheadChecked < elementsMap.size) {
+  if (
+    build.next < elements.length ||
+    (buildsAhead && ahead.unchecked > 0)
+  ) {
     scheduleSettledBuild(0);
   } else {
     settledBuild = null;
-    aheadScanCursor = null;
     cancelScheduledBuild = null;
   }
 };
@@ -1403,7 +1426,6 @@ export const cancelSettledBitmaps = (canvas: HTMLCanvasElement) => {
     return;
   }
   settledBuild = null;
-  aheadScanCursor = null;
   cancelScheduledBuild?.();
   cancelScheduledBuild = null;
 };
@@ -1413,14 +1435,15 @@ export const cancelSettledBitmaps = (canvas: HTMLCanvasElement) => {
  * has settled (no zoom gesture or animation running) and held still for
  * {@link ZOOM_SETTLE_MS}, the last frame's visible ones get bitmaps at that
  * zoom in idle time, and later frames at that zoom (pans) draw them from
- * those. Then the elements within {@link BUILD_AHEAD_VIEW_FRACTION} of the view get
- * the bitmaps a pan would build on the frame they enter it. Each frame
- * replaces the build, so it always works from the latest view. Call once per
- * static frame.
+ * those. Then, where the browser has idle callbacks, the elements of
+ * `candidates` within {@link BUILD_AHEAD_VIEW_FRACTION} of the view get what
+ * a frame would build when they enter it. Each frame replaces the build, so
+ * it always works from the latest view. Call once per static frame.
  */
 export const cacheSettledBitmaps = (
   canvas: HTMLCanvasElement,
   elements: readonly NonDeletedExcalidrawElement[],
+  candidates: RenderableElementsMap,
   elementsMap: NonDeletedSceneElementsMap,
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState,
@@ -1437,10 +1460,17 @@ export const cacheSettledBitmaps = (
     canvas,
     elements,
     next: 0,
-    aheadChecked: 0,
     elementsMap,
     renderConfig,
     appState,
+    ahead: {
+      candidates,
+      cursor:
+        settledBuild?.ahead.candidates === candidates
+          ? settledBuild.ahead.cursor
+          : candidates.values(),
+      unchecked: candidates.size,
+    },
   };
   if (!cancelScheduledBuild) {
     scheduleSettledBuild(ZOOM_SETTLE_MS);
