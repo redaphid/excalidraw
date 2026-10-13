@@ -22,9 +22,7 @@ export type Scenario = {
   midwayStep?: number;
   step: (canvas: HTMLCanvasElement, i: number) => void;
   end: (canvas: HTMLCanvasElement) => void;
-  /** the least time between steps, as a pointer moving at the display's rate
-   * leaves the editor idle between frames; steps follow frames when unset */
-  paceMs?: number;
+  minStepIntervalMs?: number;
 };
 
 type PointerInit = {
@@ -295,7 +293,7 @@ export const SCENARIOS: Scenario[] = [
   pinch("deep", 120),
   pan("deep", 120),
   settlePan("labels", 6, 60, 300),
-  { ...pan("big", 240), paceMs: 16 },
+  { ...pan("big", 240), minStepIntervalMs: 16 },
 ];
 
 /** gestures for checking that a change paints what master paints: shapes

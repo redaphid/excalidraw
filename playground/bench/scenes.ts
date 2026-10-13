@@ -357,8 +357,6 @@ const freedraw = (): BenchScene => {
 
 const BIG_ELEMENTS = 5000;
 
-/** the mixed board's kinds at its density, without frames, over a board
- * several screens wide */
 const big = (): BenchScene => {
   const rng = mulberry32(3);
   const next = deterministicIds("b");

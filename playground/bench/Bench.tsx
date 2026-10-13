@@ -20,7 +20,6 @@ type Counters = {
   stroke: number;
   fillText: number;
   canvasesCreated: number;
-  /** of those, the ones created in idle callbacks rather than for a frame */
   idleCanvasesCreated: number;
   /** megapixels of canvas allocated, counted as a canvas's height is set */
   canvasMpx: number;
@@ -42,14 +41,9 @@ type ScenarioResult = {
    * window, and the most of each counter spent in any one of those frames */
   frameMaxMs: number;
   countersMaxFrame?: Counters;
-  /** frames that created a canvas outside idle callbacks, i.e. (re)drew some
-   * element's bitmap for that frame */
-  canvasFrames?: number;
-  /** tasks over 50 ms while the view sat still before the gesture, which
-   * is when idle-time work runs, and from the gesture's start to the end of
-   * its settle window */
-  idleLongTasks: LongTasks;
-  longTasks: LongTasks;
+  bitmapBuildingFrames?: number;
+  preGestureLongTasks?: LongTasks;
+  gestureLongTasks?: LongTasks;
 };
 
 type LongTasks = { count: number; totalMs: number; maxMs: number };
@@ -283,7 +277,7 @@ const sampleFrames = () => {
     return {
       frameMaxMs: round(Math.max(0, ...frames.map((frame) => frame.ms))),
       countersMaxFrame: max,
-      canvasFrames: frames.filter(
+      bitmapBuildingFrames: frames.filter(
         (frame) =>
           frame.counters.canvasesCreated > frame.counters.idleCanvasesCreated,
       ).length,
@@ -304,22 +298,20 @@ document.createElement = function (
   return createElement.apply(this, args);
 } as Document["createElement"];
 
-/** collects long tasks until the returned function is called; engines
- * without the longtask entry type report none */
-const observeLongTasks = () => {
+const observeLongTasks = (): (() => LongTasks | undefined) => {
+  if (!PerformanceObserver.supportedEntryTypes?.includes("longtask")) {
+    return () => undefined;
+  }
   const durations: number[] = [];
   const collect = (entries: PerformanceEntryList) =>
     entries.forEach((entry) => durations.push(entry.duration));
-  let observer: PerformanceObserver | null = null;
-  if (PerformanceObserver.supportedEntryTypes?.includes("longtask")) {
-    observer = new PerformanceObserver((list) => collect(list.getEntries()));
-    observer.observe({ type: "longtask" });
-  }
-  return (): LongTasks => {
-    if (observer) {
-      collect(observer.takeRecords());
-      observer.disconnect();
-    }
+  const observer = new PerformanceObserver((list) =>
+    collect(list.getEntries()),
+  );
+  observer.observe({ type: "longtask" });
+  return () => {
+    collect(observer.takeRecords());
+    observer.disconnect();
     return {
       count: durations.length,
       totalMs: round(durations.reduce((sum, ms) => sum + ms, 0)),
@@ -358,17 +350,17 @@ const runScenario = async (
       currentItemStrokeVariability: scenario.variability ?? "constant",
     },
   });
-  const stopIdleLongTasks = observeLongTasks();
+  const stopPreGestureLongTasks = observeLongTasks();
   await wait(VIEW_RESET_MS);
   await canvasesQuiet();
-  const idleLongTasks = stopIdleLongTasks();
+  const preGestureLongTasks = stopPreGestureLongTasks();
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
   api.setActiveTool({ type: scenario.tool });
   await flushTasks();
   reseed(1);
-  const stopLongTasks = observeLongTasks();
+  const stopGestureLongTasks = observeLongTasks();
   scenario.begin(api, canvas);
   await flushTasks();
   takeCounters(1);
@@ -378,10 +370,10 @@ const runScenario = async (
   const frames: number[] = [];
   let frameStart = await nextFrame();
   for (let i = 1; i <= scenario.steps; i++) {
-    if (scenario.paceMs) {
-      // a paced step's frame time runs from the move to the frame after it
-      await wait(frameStart + scenario.paceMs - performance.now());
-      frameStart = performance.now();
+    let stepStart = frameStart;
+    if (scenario.minStepIntervalMs) {
+      await wait(frameStart + scenario.minStepIntervalMs - performance.now());
+      stepStart = performance.now();
     }
     window.stepHook?.(scenario.id, i);
     if (i === (scenario.midwayStep ?? Math.floor(scenario.steps / 2))) {
@@ -390,7 +382,7 @@ const runScenario = async (
     scenario.step(canvas, i);
     await flushTasks();
     const next = await nextFrame();
-    frames.push(next - frameStart);
+    frames.push(next - stepStart);
     frameStart = next;
   }
   await window.profilerHook?.(scenario.id, "stop");
@@ -411,11 +403,11 @@ const runScenario = async (
     last = next;
   }
   const sampled = stopSampling();
-  const longTasks = stopLongTasks();
+  const gestureLongTasks = stopGestureLongTasks();
 
   return {
-    idleLongTasks,
-    longTasks,
+    preGestureLongTasks,
+    gestureLongTasks,
     id: scenario.id,
     steps: scenario.steps,
     frameMs: stats(frames),
@@ -426,7 +418,7 @@ const runScenario = async (
     frameMaxMs: sampled.frameMaxMs,
     ...(counting && {
       countersMaxFrame: sampled.countersMaxFrame,
-      canvasFrames: sampled.canvasFrames,
+      bitmapBuildingFrames: sampled.bitmapBuildingFrames,
     }),
   };
 };
