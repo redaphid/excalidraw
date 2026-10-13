@@ -147,7 +147,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       selectedElements: props.selectedElements,
       allElementsMap: props.allElementsMap,
       scale: window.devicePixelRatio,
-      appState: props.appState,
+      appState: { ...props.appState, theme: props.app.getCanvasMode() },
       renderConfig: {
         remotePointerViewportCoords,
         remotePointerButton,
@@ -245,6 +245,8 @@ const getRelevantAppStateProps = (
   frameToHighlight: appState.frameToHighlight,
   offsetLeft: appState.offsetLeft,
   offsetTop: appState.offsetTop,
+  // compared only to repaint on a light/dark toggle; a css mode change
+  // repaints through canvasNonce
   theme: appState.theme,
   selectionElement: appState.selectionElement,
   selectedGroupIds: appState.selectedGroupIds,

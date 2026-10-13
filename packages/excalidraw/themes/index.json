@@ -1,5 +1,5 @@
 {
-  "about": "Sample themes for the Excalidraw css prop. Each one is a complete, working stylesheet meant to be read and adapted: pick the closest and change it. <name>.css is the stylesheet. Pass it as css and pass mode as the theme prop beside it. When generated is true, <name>.tokens.json holds the design tokens the stylesheet was generated from with generateThemeCss in @excalidraw/common (schema: tokens.schema.json), so edit the tokens and regenerate instead of the CSS. A theme styles one viewer's editor and sets the defaults for new elements. Existing elements keep their stored colors, and on a shared board everyone sees those stored colors in their own theme.",
+  "about": "Sample themes for the Excalidraw css prop. Each one is a complete, working stylesheet meant to be read and adapted: pick the closest and change it. <name>.css is the stylesheet. Pass it as css. It declares mode as --canvas-mode, so the canvas paints in that mode whatever the theme prop says. When generated is true, <name>.tokens.json holds the design tokens the stylesheet was generated from with generateThemeCss in @excalidraw/common (schema: tokens.schema.json), so edit the tokens and regenerate instead of the CSS. A theme styles one viewer's editor and sets the defaults for new elements. Existing elements keep their stored colors, and on a shared board everyone sees those stored colors in their own theme.",
   "themes": [
     {
       "name": "architect-parchment",
@@ -17,7 +17,7 @@
       "description": "Cyanotype: deep cobalt paper, a white construction grid, chalk-white linework and monospace annotations. For engineering drawings that should read as a blueprint.",
       "pen": "Fine chalk line: pressure-sensitive with little thinning and short tapers.",
       "generated": false,
-      "caveats": ["Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas."]
+      "caveats": []
     },
     {
       "name": "brutalist",
@@ -80,10 +80,7 @@
       "description": "For low vision: black ground, white text and 2px white edges, yellow for focus and selection, bold strokes and larger text. The reference for an accessibility theme.",
       "pen": "Bold constant-width marker; pressure is ignored so every line stays legible.",
       "generated": false,
-      "caveats": [
-        "Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas.",
-        "New elements get bold strokes and large text, and collaborators see them at that size."
-      ]
+      "caveats": ["New elements get bold strokes and large text, and collaborators see them at that size."]
     },
     {
       "name": "locked-profile",
@@ -137,7 +134,7 @@
       "description": "1986 at midnight: violet night, a magenta and cyan neon grid, glowing panel edges and rounded type. Shows a vivid dark theme whose glow lives in the UI, not the elements.",
       "pen": "Constant-width neon tube.",
       "generated": false,
-      "caveats": ["Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas."]
+      "caveats": []
     },
     {
       "name": "terminal",
@@ -146,10 +143,7 @@
       "description": "Green phosphor on black: monospace everything, square corners, and a dim glow on UI text with nothing else lit. For console-flavored boards.",
       "pen": "Thin constant-width phosphor trace.",
       "generated": true,
-      "caveats": [
-        "Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas.",
-        "Element greens display at #6fc76f at most, the brightest green dark mode can show. Only the unfiltered UI text gets full phosphor green."
-      ]
+      "caveats": ["Element greens display at #6fc76f at most, the brightest green dark mode can show. Only the unfiltered UI text gets full phosphor green."]
     },
     {
       "name": "westworld-night",
@@ -158,7 +152,7 @@
       "description": "A white-on-black stencil: near-black ground, a barely-there grid, crisp bone linework and labels, hollow graphite fills and bronze for anything live. Machined and unhurried.",
       "pen": "Fine bone-white nib: pressure-sensitive, light thinning, long tapers.",
       "generated": true,
-      "caveats": ["Dark canvas: pass theme=\"dark\" with it. In light mode, ink drawn in the default black, such as other people's work on a shared board, disappears into this canvas."]
+      "caveats": []
     },
     {
       "name": "win95",

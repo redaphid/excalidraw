@@ -199,7 +199,7 @@ const ColorPickerPopupContent = ({
           excludedColors={excludedColors}
           onResetTopPicks={onResetTopPicks}
           color={color}
-          theme={appState.theme}
+          theme={app.getCanvasMode()}
           onChange={(changedColor) => {
             // Save caret position before color change if editing text
             const savedSelection = appState.editingTextElement
@@ -431,7 +431,7 @@ const ColorPickerComponent = ({
       >
         {!isCompactMode && (
           <TopPicks
-            theme={appState.theme}
+            theme={app.getCanvasMode()}
             activeColor={color}
             onChange={(pickedColor) => {
               onChange(pickedColor);
@@ -467,7 +467,7 @@ const ColorPickerComponent = ({
             color={color}
             label={label}
             type={type}
-            theme={appState.theme}
+            theme={app.getCanvasMode()}
             mode={type === "elementStroke" ? "stroke" : "background"}
             editingTextElement={!!appState.editingTextElement}
             onToggle={() => {

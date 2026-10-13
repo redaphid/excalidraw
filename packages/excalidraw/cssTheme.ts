@@ -1,4 +1,4 @@
-import { FONT_FAMILY } from "@excalidraw/common";
+import { FONT_FAMILY, THEME } from "@excalidraw/common";
 
 import type { ColorPaletteCustom, ColorTuple } from "@excalidraw/common";
 
@@ -9,6 +9,7 @@ import type {
   StrokeRoundness,
   StrokeStyle,
   StrokeVariability,
+  Theme,
 } from "@excalidraw/element/types";
 import type { StrokeWidthKey } from "@excalidraw/common";
 
@@ -19,6 +20,9 @@ import type { AppState } from "./types";
  * field is optional; the renderers fall back to their built-in values.
  */
 export type CanvasTheme = Readonly<{
+  /** the mode the canvas paints element colors in, whatever the editor's
+   * own light/dark setting */
+  mode?: Theme;
   /** painted instead of the default (`#ffffff`) `viewBackgroundColor`; a
    * scene with another background keeps it */
   background?: string;
@@ -193,6 +197,7 @@ export const readCssTheme = (style: {
   );
 
   const canvas: CanvasTheme = definedEntries({
+    mode: oneOf<Theme>([THEME.LIGHT, THEME.DARK])(read("--canvas-mode")),
     background: color("--canvas-background"),
     gridColor: color("--canvas-grid-color"),
     gridBoldColor: color("--canvas-grid-bold-color"),

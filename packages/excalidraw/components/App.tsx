@@ -631,6 +631,12 @@ class App extends React.Component<AppProps, AppState> {
   /** parsed from the container's custom properties when the `css` prop or
    * the theme changes; renderers read it instead of the DOM */
   public cssTheme: CssTheme = EMPTY_CSS_THEME;
+
+  /** the mode the canvas paints element colors in: the theme's declared
+   * mode, else the editor's light/dark setting */
+  public getCanvasMode = (): AppState["theme"] =>
+    this.cssTheme.canvas.mode ?? this.state.theme;
+
   private scopedCss: { css: string; scoped: string } | null = null;
 
   public get ownerDocument(): Document {
@@ -2228,7 +2234,7 @@ class App extends React.Component<AppProps, AppState> {
       return null;
     }
 
-    const isDarkTheme = this.state.theme === THEME.DARK;
+    const isDarkTheme = this.getCanvasMode() === THEME.DARK;
     const nonDeletedFramesLikes = this.scene.getNonDeletedFramesLikes();
 
     const focusedSearchMatch =
@@ -2796,7 +2802,7 @@ class App extends React.Component<AppProps, AppState> {
                               pendingFlowchartNodes: newElementSplit
                                 ? null
                                 : this.flowchart.pendingNodes,
-                              theme: this.state.theme,
+                              theme: this.getCanvasMode(),
                               canvasTheme: this.cssTheme.canvas,
                               ...this.getRenderOverrideConfig(),
                               settledBitmapCount: newElementSplit
@@ -2825,7 +2831,7 @@ class App extends React.Component<AppProps, AppState> {
                                 pendingFlowchartNodes: newElementSplit
                                   ? this.flowchart.pendingNodes
                                   : null,
-                                theme: this.state.theme,
+                                theme: this.getCanvasMode(),
                                 canvasTheme: this.cssTheme.canvas,
                                 ...this.getRenderOverrideConfig(),
                               }}

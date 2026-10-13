@@ -281,7 +281,6 @@ export const exportToCanvas = async (
       scrollY: -minY + exportPadding,
       zoom: defaultAppState.zoom,
       shouldCacheIgnoreZoom: false,
-      theme: appState.exportWithDarkMode ? THEME.DARK : THEME.LIGHT,
     },
     renderConfig: {
       canvasBackgroundColor: viewBackgroundColor,

@@ -104,6 +104,18 @@ describe("generateThemeCss", () => {
     });
   });
 
+  it("declares the mode for the canvas to paint in", () => {
+    expect(property(generateThemeCss(tokens()).css, "--canvas-mode")).toBe(
+      "light",
+    );
+    expect(
+      property(
+        generateThemeCss(tokens({ mode: "dark", canvas: "#0b0c0e" })).css,
+        "--canvas-mode",
+      ),
+    ).toBe("dark");
+  });
+
   it("moves illegible text until it passes, and names the token", () => {
     const { css, warnings } = generateThemeCss(tokens({ ink: "#c8c0b0" }));
     const text = property(css, "--text-primary-color")!;

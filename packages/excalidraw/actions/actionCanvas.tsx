@@ -81,7 +81,7 @@ export const actionChangeViewBackgroundColor = register<Partial<AppState>>({
         color={
           themeBackground &&
           themeBackground !== COLOR_PALETTE.transparent &&
-          appState.theme === THEME.DARK
+          app.getCanvasMode() === THEME.DARK
             ? removeDarkModeFilter(themeBackground)
             : themeBackground ?? appState.viewBackgroundColor
         }

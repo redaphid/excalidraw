@@ -5,6 +5,7 @@
  */
 :scope,
 :scope.theme--dark {
+  --canvas-mode: light;
   --element-freedraw-streamline: 0;
   --canvas-background: #008080;
   --canvas-grid-color: rgba(255, 255, 255, 0.07);
