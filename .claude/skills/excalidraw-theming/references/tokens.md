@@ -49,7 +49,7 @@ Choices that are this editor's own live in `$extensions["com.hypnodroid.draw"]`.
 | `pen.pressure` | `true` for a pressure pen, `false` for constant width | `true` |
 | `surface.border` | `none`, `hairline`, `bold` | `hairline` |
 | `surface.shadow` | `none`, `soft`, `long`, `hard` | `soft` |
-| `note.shadow` | `none`, `soft` (the built-in 3,3 at 16% black), `lifted` (6,8 at 20% black), `hard` (5,5 solid note ink) | follows `surface.shadow`: `long` gives `lifted` |
+| `note.shadow` | `none`, `soft` (the built-in 3,3 at 16% black), `lifted` (6,8 blurred 10, at 20% black), `hard` (5,5 solid note ink) | follows `surface.shadow`: `long` gives `lifted` |
 | `note.edge` | `none`, `hairline` (1 at 14% note ink, the panel ring's weight), `ink` (2, the note ink), `accent` (1 at 90% accent, a lit edge) | follows `surface.border`: `bold` gives `ink` |
 | `washes` | four `color.palette` token names for the background swatches | the first four |
 | `backdrop` | a CSS background; paints the canvas transparent and puts this behind it | none |

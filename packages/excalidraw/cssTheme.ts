@@ -1,4 +1,4 @@
-import { FONT_FAMILY } from "@excalidraw/common";
+import { FONT_FAMILY, STICKY_NOTE_SHADOW_REACH } from "@excalidraw/common";
 
 import type { ColorPaletteCustom, ColorTuple } from "@excalidraw/common";
 
@@ -35,6 +35,8 @@ export type CanvasTheme = Readonly<{
   /** the sticky note shadow's offset, in scene units at detail scale 1 */
   stickyNoteShadowX?: number;
   stickyNoteShadowY?: number;
+  /** the shadow's blur radius, as in CSS `box-shadow` (0 is a sharp edge) */
+  stickyNoteShadowBlur?: number;
   /** `transparent` draws no shadow */
   stickyNoteShadowColor?: string;
   /** the width of the edge drawn just inside a sticky note's outline */
@@ -164,41 +166,57 @@ const opaqueColorList = (value: string) => {
     : undefined;
 };
 
-/** past the cached bitmap's padding (`getCanvasPadding`) a shadow is cut off */
+/** offset plus blur past the cached bitmap's padding is cut off */
 const MAX_STICKY_NOTE_SHADOW_OFFSET = 16;
 const MAX_STICKY_NOTE_EDGE_WIDTH = 8;
 
-/** a number, then a color that may hold spaces, as `rgba(0, 0, 0, 0.2)` */
+/** up to `count` numbers, then a color that may hold spaces, as
+ * `rgba(0, 0, 0, 0.2)` */
 const numbersThenColor = (value: string, count: number) => {
   const parts = value.split(/\s+/);
-  const numbers = parts.slice(0, count).map(Number);
-  return parts.length > count &&
-    numbers.every((number, i) => parts[i] !== "" && Number.isFinite(number))
-    ? { numbers, color: parts.slice(count).join(" ") }
+  const numbers: number[] = [];
+  while (
+    numbers.length < count &&
+    parts[numbers.length] !== "" &&
+    Number.isFinite(Number(parts[numbers.length]))
+  ) {
+    numbers.push(Number(parts[numbers.length]));
+  }
+  return parts.length > numbers.length
+    ? { numbers, color: parts.slice(numbers.length).join(" ") }
     : undefined;
 };
 
-/** `none`, or `<x> <y> <color>` */
+/** `none`, or `<x> <y> [<blur>] <color>`; the blur shrinks to fit the
+ * bitmap's padding, offsets past it are refused */
 const stickyNoteShadow = (
   value: string,
 ): Pick<
   CanvasTheme,
-  "stickyNoteShadowX" | "stickyNoteShadowY" | "stickyNoteShadowColor"
+  | "stickyNoteShadowX"
+  | "stickyNoteShadowY"
+  | "stickyNoteShadowBlur"
+  | "stickyNoteShadowColor"
 > => {
   if (value === "none") {
     return {
       stickyNoteShadowX: 0,
       stickyNoteShadowY: 0,
+      stickyNoteShadowBlur: 0,
       stickyNoteShadowColor: "transparent",
     };
   }
-  const parsed = numbersThenColor(value, 2);
-  return parsed?.numbers.every(
-    (offset) => Math.abs(offset) <= MAX_STICKY_NOTE_SHADOW_OFFSET,
-  )
+  const parsed = numbersThenColor(value, 3);
+  if (!parsed || parsed.numbers.length < 2) {
+    return {};
+  }
+  const [x, y, blur = 0] = parsed.numbers;
+  const offset = Math.max(Math.abs(x), Math.abs(y));
+  return offset <= MAX_STICKY_NOTE_SHADOW_OFFSET && blur >= 0
     ? {
-        stickyNoteShadowX: parsed.numbers[0],
-        stickyNoteShadowY: parsed.numbers[1],
+        stickyNoteShadowX: x,
+        stickyNoteShadowY: y,
+        stickyNoteShadowBlur: Math.min(blur, STICKY_NOTE_SHADOW_REACH - offset),
         stickyNoteShadowColor: parsed.color,
       }
     : {};
@@ -212,7 +230,7 @@ const stickyNoteEdge = (
     return { stickyNoteEdgeWidth: 0, stickyNoteEdgeColor: "transparent" };
   }
   const parsed = numbersThenColor(value, 1);
-  const width = parsed?.numbers[0] ?? 0;
+  const width = parsed?.numbers.length ? parsed.numbers[0] : 0;
   return parsed && width > 0 && width <= MAX_STICKY_NOTE_EDGE_WIDTH
     ? { stickyNoteEdgeWidth: width, stickyNoteEdgeColor: parsed.color }
     : {};

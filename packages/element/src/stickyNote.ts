@@ -69,7 +69,13 @@ export type StickyNotePathCommand =
 /** The shadow under a sticky note and the edge just inside its outline,
  * in scene units at detail scale 1. `null` draws none. */
 export type StickyNoteChrome = Readonly<{
-  shadow: Readonly<{ x: number; y: number; color: string }> | null;
+  shadow: Readonly<{
+    x: number;
+    y: number;
+    /** as in CSS `box-shadow`; 0 is a sharp edge */
+    blur: number;
+    color: string;
+  }> | null;
   edge: Readonly<{ width: number; color: string }> | null;
 }>;
 
@@ -91,6 +97,7 @@ export const getStickyNoteChrome = (
         : {
             x: theme?.stickyNoteShadowX ?? STICKY_NOTE_SHADOW_OFFSET,
             y: theme?.stickyNoteShadowY ?? STICKY_NOTE_SHADOW_OFFSET,
+            blur: theme?.stickyNoteShadowBlur ?? 0,
             color: shadowColor,
           },
     edge:

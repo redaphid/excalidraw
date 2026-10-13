@@ -173,6 +173,7 @@ describe("readCssTheme", () => {
     expect(theme.canvas).toEqual({
       stickyNoteShadowX: 5,
       stickyNoteShadowY: -2.5,
+      stickyNoteShadowBlur: 0,
       stickyNoteShadowColor: "rgba(20, 24, 31, 0.3)",
       stickyNoteEdgeWidth: 1.5,
       stickyNoteEdgeColor: "#14181f",
@@ -190,9 +191,27 @@ describe("readCssTheme", () => {
     ).toEqual({
       stickyNoteShadowX: 0,
       stickyNoteShadowY: 0,
+      stickyNoteShadowBlur: 0,
       stickyNoteShadowColor: "transparent",
       stickyNoteEdgeWidth: 0,
       stickyNoteEdgeColor: "transparent",
+    });
+  });
+
+  it.each([
+    ["6 8 10 rgba(0, 0, 0, 0.2)", 6, 8, 10],
+    ["-4 2 0.5 #000", -4, 2, 0.5],
+    // the bitmap is padded 20 units: offset plus blur stays inside
+    ["12 14 12 rgba(80, 58, 28, 0.2)", 12, 14, 6],
+    ["16 0 40 #000", 16, 0, 4],
+  ])("reads a sticky note shadow of %s with its blur", (value, x, y, blur) => {
+    expect(
+      readCssTheme(styleOf({ "--canvas-sticky-note-shadow": value })).canvas,
+    ).toEqual({
+      stickyNoteShadowX: x,
+      stickyNoteShadowY: y,
+      stickyNoteShadowBlur: blur,
+      stickyNoteShadowColor: value.split(" ").slice(3).join(" "),
     });
   });
 
@@ -206,6 +225,8 @@ describe("readCssTheme", () => {
     ["--canvas-sticky-note-shadow", "3 3"],
     ["--canvas-sticky-note-shadow", "40 3 #000"],
     ["--canvas-sticky-note-shadow", "soft"],
+    ["--canvas-sticky-note-shadow", "3 3 -2 #000"],
+    ["--canvas-sticky-note-shadow", "3 3 4"],
     ["--canvas-sticky-note-edge", "0 #000"],
     ["--canvas-sticky-note-edge", "-1 #000"],
     ["--canvas-sticky-note-edge", "hairline"],

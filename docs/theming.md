@@ -246,7 +246,7 @@ A value the editor can't parse is ignored, and the built-in value stays.
 | `--canvas-frame-color` | any CSS color | `#bbbbbb` |
 | `--canvas-frame-width` | outline width in screen pixels | `2` |
 | `--canvas-frame-name-color` | any CSS color (frame names are DOM) | `#999999` |
-| `--canvas-sticky-note-shadow` | `none`, or `<x> <y> <color>`: the offset in scene units at detail scale 1 (each at most 16 either way) and any CSS color | `3 3 rgba(0, 0, 0, 0.16)` |
+| `--canvas-sticky-note-shadow` | `none`, or `<x> <y> [<blur>] <color>`: the offset in scene units at detail scale 1 (each at most 16 either way), an optional blur radius as in `box-shadow` (the larger offset plus the blur is held to 20, the room around a note's cached bitmap; a larger blur shrinks to fit) and any CSS color | `3 3 rgba(0, 0, 0, 0.16)` |
 | `--canvas-sticky-note-edge` | `none`, or `<width> <color>`: the line just inside a note's outline, in scene units (above 0, at most 8) | `0.5 rgba(0, 0, 0, 0.08)` |
 
 `--canvas-background` replaces only the default white background. When the user picks another canvas background, the editor paints that one. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in outline.

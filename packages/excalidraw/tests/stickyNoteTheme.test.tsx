@@ -32,10 +32,14 @@ const draw = (
   { isExporting = true } = {},
 ) => {
   const fills: string[] = [];
+  const shadows: { color: string; blur: number }[] = [];
   const strokes: { style: string; width: number }[] = [];
   vi.spyOn(CanvasRenderingContext2D.prototype, "fill").mockImplementation(
     function (this: CanvasRenderingContext2D) {
       fills.push(String(this.fillStyle));
+      if (this.shadowBlur) {
+        shadows.push({ color: this.shadowColor, blur: this.shadowBlur });
+      }
     },
   );
   vi.spyOn(CanvasRenderingContext2D.prototype, "stroke").mockImplementation(
@@ -78,7 +82,7 @@ const draw = (
     },
   });
   vi.restoreAllMocks();
-  return { fills, strokes };
+  return { fills, shadows, strokes };
 };
 
 describe("sticky note chrome from the canvas theme", () => {
@@ -110,6 +114,21 @@ describe("sticky note chrome from the canvas theme", () => {
     });
     expect(fills).toEqual(["#111111", PAPER]);
     expect(strokes).toEqual([{ style: "#222222", width: 4 }]);
+  });
+
+  it("blurs a theme's shadow in device pixels and nothing else", () => {
+    const { fills, shadows } = draw(note(), {
+      stickyNoteShadowX: 6,
+      stickyNoteShadowY: 8,
+      stickyNoteShadowBlur: 10,
+      stickyNoteShadowColor: "rgba(80, 58, 28, 0.2)",
+    });
+    expect(shadows).toEqual([{ color: "rgba(80, 58, 28, 0.2)", blur: 10 }]);
+    expect(fills.slice(1)).toEqual([PAPER]);
+  });
+
+  it("draws no blur without a theme", () => {
+    expect(draw(note(), undefined).shadows).toEqual([]);
   });
 
   it("redraws a note's cached bitmap when the canvas theme changes", () => {

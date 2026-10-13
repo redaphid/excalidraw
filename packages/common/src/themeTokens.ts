@@ -66,7 +66,7 @@ const NOTE_SHADOWS: Record<
 > = {
   none: () => "none",
   soft: () => "3 3 rgba(0, 0, 0, 0.16)",
-  lifted: () => "6 8 rgba(0, 0, 0, 0.2)",
+  lifted: () => "6 8 10 rgba(0, 0, 0, 0.2)",
   hard: (ink) => `5 5 ${ink}`,
 };
 const NOTE_EDGES: Record<

@@ -26,6 +26,7 @@ import {
   applyDarkModeFilter,
   isSafari,
   STICKY_NOTE_FOOTER,
+  STICKY_NOTE_SHADOW_REACH,
   DEFAULT_ZOOM,
 } from "@excalidraw/common";
 
@@ -112,6 +113,16 @@ const getCanvasPadding = (element: ExcalidrawElement) => {
       return element.strokeWidth * 12;
     case "text":
       return element.fontSize / 2;
+    case "stickynote":
+      // in device pixels, unlike the theme's scene-unit shadow. A blur of
+      // radius b is a gaussian of sigma b/2: the extra half reach holds its
+      // tail to 3 sigma, where it is invisible
+      return (
+        STICKY_NOTE_SHADOW_REACH *
+        1.5 *
+        window.devicePixelRatio *
+        getElementDetailScale(element)
+      );
     case "arrow":
       if (element.endArrowhead || element.endArrowhead) {
         return 40 * getElementDetailScale(element);
@@ -423,6 +434,51 @@ const fillStickyNoteShape = (
   context.fill();
 };
 
+/**
+ * A canvas blurs only shadows, so a blurred shadow is cast by a copy of its
+ * shape drawn left of everything visible, offset back by the same distance.
+ * Shadow offsets and blur are in device pixels, untouched by the transform.
+ */
+const fillStickyNoteShadow = (
+  context: CanvasRenderingContext2D,
+  commands: StickyNotePathCommand[],
+  shadow: NonNullable<StickyNoteChrome["shadow"]>,
+  scale: number,
+) => {
+  context.fillStyle = shadow.color;
+  if (!shadow.blur) {
+    fillStickyNoteShape(context, commands);
+    return;
+  }
+  const transform = context.getTransform();
+  const right = Math.max(
+    ...commands.flatMap((command) =>
+      (command.type === "quadratic"
+        ? [command.control, command.point]
+        : [command.point]
+      ).map(({ x, y }) => transform.a * x + transform.c * y + transform.e),
+    ),
+  );
+  const shift = Math.max(0, right) + 1;
+  context.save();
+  context.setTransform(
+    transform.a,
+    transform.b,
+    transform.c,
+    transform.d,
+    transform.e - shift,
+    transform.f,
+  );
+  context.shadowColor = shadow.color;
+  context.shadowBlur =
+    shadow.blur * scale * Math.hypot(transform.a, transform.b);
+  context.shadowOffsetX = shift;
+  context.shadowOffsetY = 0;
+  context.fillStyle = "#000000";
+  fillStickyNoteShape(context, commands);
+  context.restore();
+};
+
 const strokeStickyNoteEdge = (
   context: CanvasRenderingContext2D,
   commands: StickyNotePathCommand[],
@@ -473,10 +529,11 @@ const drawElementOnCanvas = (
         // canvas chrome, like the frame outline: not dark-mode filtered
         const { shadow, edge } = getStickyNoteChrome(renderConfig.canvasTheme);
         if (shadow) {
-          context.fillStyle = shadow.color;
-          fillStickyNoteShape(
+          fillStickyNoteShadow(
             context,
             getStickyNotePathCommands(element, { shadow }),
+            shadow,
+            getElementDetailScale(element),
           );
         }
 
