@@ -3,10 +3,13 @@
  * Pan and zoom a ~2000-element scene in the playground under a 4x CPU
  * throttle and report what a theme costs: frame times (median, p95), how
  * often getComputedStyle runs, and how many canvases (bitmap caches) get
- * created. Run it against this checkout and against another one (e.g. a
- * worktree of master) to compare.
+ * created, and the main thread's busy time for each gesture, including the
+ * settle after it, when cached bitmaps are redrawn. Frame times stop at the
+ * display's refresh interval; busy time does not. Run it against this checkout and against another one (e.g. a
+ * worktree of master) to compare. `--notes N` pans a grid of N sticky notes
+ * at 100% instead, where a theme's note shadow and edge are drawn.
  *
- *   node scripts/theme-screenshots/bench.mjs [--root DIR] [--theme ID] [--runs N]
+ *   node scripts/theme-screenshots/bench.mjs [--root DIR] [--theme ID] [--runs N] [--notes N]
  */
 import fs from "node:fs";
 import os from "node:os";
@@ -28,6 +31,7 @@ const root = path.resolve(
   args.root ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "../.."),
 );
 const runs = Number(args.runs ?? 3);
+const notes = Number(args.notes ?? 0);
 
 const chromiumPath = () => {
   const dir = path.join(
@@ -122,10 +126,32 @@ const element = (i) => {
   return common;
 };
 
-const SCENE = JSON.stringify({
-  elements: Array.from({ length: 2000 }, (_, i) => element(i)),
-  appState: { viewBackgroundColor: "#ffffff", zoom: { value: 0.5 } },
+const note = (i) => ({
+  ...element(0),
+  id: `n${i}`,
+  type: "stickynote",
+  x: (i % 10) * 200,
+  y: Math.floor(i / 10) * 200,
+  width: 170,
+  height: 170,
+  baseHeight: 170,
+  backgroundColor: "#ffdf6b",
+  fillStyle: "solid",
+  roughness: 0,
+  seed: i + 1,
 });
+
+const SCENE = JSON.stringify(
+  notes
+    ? {
+        elements: Array.from({ length: notes }, (_, i) => note(i)),
+        appState: { viewBackgroundColor: "#ffffff", zoom: { value: 1 } },
+      }
+    : {
+        elements: Array.from({ length: 2000 }, (_, i) => element(i)),
+        appState: { viewBackgroundColor: "#ffffff", zoom: { value: 0.5 } },
+      },
+);
 
 const percentile = (values, p) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -134,7 +160,13 @@ const percentile = (values, p) => {
   ];
 };
 
-const measure = async (page, gesture) => {
+const busy = async (cdp) => {
+  const { metrics } = await cdp.send("Performance.getMetrics");
+  return metrics.find(({ name }) => name === "TaskDuration").value * 1000;
+};
+
+const measure = async (page, cdp, gesture) => {
+  const start = await busy(cdp);
   await page.evaluate(() => {
     window.__bench = { frames: [], styles: 0, canvases: 0, running: true };
     let last = performance.now();
@@ -148,11 +180,13 @@ const measure = async (page, gesture) => {
     requestAnimationFrame(tick);
   });
   await gesture();
-  return page.evaluate(() => {
+  const result = await page.evaluate(() => {
     window.__bench.running = false;
     const { frames, styles, canvases } = window.__bench;
     return { frames: frames.slice(2), styles, canvases };
   });
+  await page.waitForTimeout(1500);
+  return { ...result, busy: (await busy(cdp)) - start };
 };
 
 const server = await createServer({
@@ -163,7 +197,14 @@ const server = await createServer({
 });
 await server.listen();
 const browser = await chromium.launch({ executablePath: chromiumPath() });
-const results = { pan: [], zoom: [], styles: 0, canvases: 0 };
+const results = {
+  pan: [],
+  zoom: [],
+  panBusy: [],
+  zoomBusy: [],
+  styles: 0,
+  canvases: 0,
+};
 try {
   for (let run = 0; run < runs; run++) {
     const page = await browser.newPage({
@@ -196,15 +237,16 @@ try {
     await page.waitForTimeout(2500);
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    await cdp.send("Performance.enable");
     await page.mouse.move(720, 450);
-    const pan = await measure(page, async () => {
+    const pan = await measure(page, cdp, async () => {
       for (let i = 0; i < 90; i++) {
         await page.mouse.wheel(i < 45 ? 40 : -40, 25);
         await page.waitForTimeout(16);
       }
     });
     await page.keyboard.down("Control");
-    const zoom = await measure(page, async () => {
+    const zoom = await measure(page, cdp, async () => {
       for (let i = 0; i < 90; i++) {
         await page.mouse.wheel(0, i < 45 ? -12 : 12);
         await page.waitForTimeout(16);
@@ -213,6 +255,8 @@ try {
     await page.keyboard.up("Control");
     results.pan.push(...pan.frames);
     results.zoom.push(...zoom.frames);
+    results.panBusy.push(pan.busy);
+    results.zoomBusy.push(zoom.busy);
     results.styles += pan.styles + zoom.styles;
     results.canvases += pan.canvases + zoom.canvases;
     await page.close();
@@ -228,9 +272,15 @@ const summary = (frames) =>
     95,
   ).toFixed(1)} ms (${frames.length} frames)`;
 console.log(
-  `root ${root}, theme ${args.theme ?? "none"}, ${runs} runs, 4x CPU throttle`,
+  `root ${root}, theme ${args.theme ?? "none"}, ${
+    notes ? `${notes} sticky notes` : "2000 elements"
+  }, ${runs} runs, 4x CPU throttle`,
 );
-console.log(`pan:  ${summary(results.pan)}`);
-console.log(`zoom: ${summary(results.zoom)}`);
+const busySummary = (runs) =>
+  `main thread busy ${runs.map((ms) => ms.toFixed(0)).join(", ")} ms`;
+console.log(`pan:  ${summary(results.pan)}; ${busySummary(results.panBusy)}`);
+console.log(
+  `zoom: ${summary(results.zoom)}; ${busySummary(results.zoomBusy)}`,
+);
 console.log(`getComputedStyle calls during pan+zoom: ${results.styles}`);
 console.log(`canvases created during pan+zoom: ${results.canvases}`);
