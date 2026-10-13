@@ -368,6 +368,7 @@ function CommandPaletteInner({
         actionManager.actions.zenMode,
         actionManager.actions.viewMode,
         actionManager.actions.gridMode,
+        actionManager.actions.toggleFrameChrome,
         actionManager.actions.objectsSnapMode,
         actionManager.actions.showHints,
         actionManager.actions.toggleShortcuts,

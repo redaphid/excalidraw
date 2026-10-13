@@ -131,7 +131,7 @@ export type ActionName =
   | "toggleLinearEditor"
   | "selectAllElementsInFrame"
   | "removeAllElementsFromFrame"
-  | "updateFrameRendering"
+  | "toggleFrameChrome"
   | "createContainerFromText"
   | "wrapTextInContainer"
   | "commandPalette"
