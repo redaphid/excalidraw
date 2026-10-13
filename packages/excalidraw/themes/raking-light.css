@@ -36,7 +36,7 @@
   --sticky-note-stroke-color: #101317;
   --color-picks-sticky-note-background: #f6efe1 #eddcbf #dfe7d8 #dce4ea #e6e0d3;
   --color-picks-sticky-note-stroke: #101317 #9e3a33 #3d5c48 #4f7088 #8a5a1c;
-  --canvas-sticky-note-shadow: 12 14 rgba(80, 58, 28, 0.13);
+  --canvas-sticky-note-shadow: 11 13 7 rgba(80, 58, 28, 0.22);
   --canvas-sticky-note-edge: 0.75 rgba(22, 26, 32, 0.14);
   --color-palette-stroke: #c5c0b7 #9a9892 #6f6f6d #414345 #161a20,
     #ddc6ba #cea499 #be8278 #ad5c54 #9e3a33,
