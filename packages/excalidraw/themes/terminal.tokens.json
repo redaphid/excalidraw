@@ -20,10 +20,10 @@
         "shadow": "none"
       },
       "washes": ["phosphor", "cyan", "phosphor", "cyan"],
-      "extra": ":scope {\n  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);\n}\n\n:scope,\n:scope.theme--dark {\n  --canvas-sticky-note-edge: 1.5 rgba(93, 255, 138, 0.9);\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n}",
+      "extra": ":scope {\n  text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n}",
       "note": {
         "shadow": "none",
-        "edge": "none"
+        "edge": "accent"
       }
     }
   },

@@ -20,10 +20,10 @@
         "shadow": "none"
       },
       "washes": ["graphite", "iron", "slate", "bronze"],
-      "extra": ":scope,\n:scope.theme--dark {\n  --canvas-sticky-note-edge: 0.75 rgba(200, 154, 90, 0.85);\n}\n\n:scope .selected-shape-actions h3,\n:scope .selected-shape-actions legend,\n:scope .frame-breadcrumb {\n  letter-spacing: 0.14em;\n  text-transform: uppercase;\n  font-size: 0.6875rem;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;\n}",
+      "extra": ":scope .selected-shape-actions h3,\n:scope .selected-shape-actions legend,\n:scope .frame-breadcrumb {\n  letter-spacing: 0.14em;\n  text-transform: uppercase;\n  font-size: 0.6875rem;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  background: transparent;\n  box-shadow: none;\n}",
       "note": {
         "shadow": "none",
-        "edge": "none"
+        "edge": "accent"
       }
     }
   },

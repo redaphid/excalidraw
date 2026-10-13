@@ -17,7 +17,7 @@
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #23943f;
   --canvas-sticky-note-shadow: none;
-  --canvas-sticky-note-edge: none;
+  --canvas-sticky-note-edge: 1 rgba(93, 255, 138, 0.9);
   --color-selection: #5dff8a;
 
   --element-stroke-color: #006700;
@@ -131,11 +131,6 @@
 
 :scope {
   text-shadow: 0 0 6px rgba(93, 255, 138, 0.35);
-}
-
-:scope,
-:scope.theme--dark {
-  --canvas-sticky-note-edge: 1.5 rgba(93, 255, 138, 0.9);
 }
 
 :scope .frame-breadcrumb {

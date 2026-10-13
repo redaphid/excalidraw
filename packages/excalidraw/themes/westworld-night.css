@@ -17,7 +17,7 @@
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #8a8885;
   --canvas-sticky-note-shadow: none;
-  --canvas-sticky-note-edge: none;
+  --canvas-sticky-note-edge: 1 rgba(200, 154, 90, 0.9);
   --color-selection: #c89a5a;
 
   --element-stroke-color: #090500;
@@ -133,11 +133,6 @@
 
 :scope [data-radix-popper-content-wrapper] .Island {
   background: #121316;
-}
-
-:scope,
-:scope.theme--dark {
-  --canvas-sticky-note-edge: 0.75 rgba(200, 154, 90, 0.85);
 }
 
 :scope .selected-shape-actions h3,
