@@ -47,6 +47,13 @@
     #f4f4d0 #cccc78 #a1a11a #6a6a00 #353500,
     #e2ffff #9fe2e2 #5ac4c4 #039e9e #007979;
 
+  --sticky-note-background-color: #e8e8e8;
+  --sticky-note-stroke-color: #000000;
+  --color-picks-sticky-note-background: #e8e8e8 #c9c9c9;
+  --color-picks-sticky-note-stroke: #000000 #d44040 #003b00 #004686 #4e1700;
+  --canvas-sticky-note-shadow: none;
+  --canvas-sticky-note-edge: 2 #ffffff;
+
   --ui-font: "Liberation Sans", "Helvetica Neue", Arial, sans-serif;
   --text-primary-color: #ffffff;
   --color-on-surface: #ffffff;
