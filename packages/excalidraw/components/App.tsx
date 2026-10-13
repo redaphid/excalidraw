@@ -281,6 +281,8 @@ import type {
 
 import type { TransformHandleDirection } from "@excalidraw/element";
 
+import type { ArrangeOutcome, ArrangeRequest } from "@excalidraw/element";
+
 import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
 
 import {
@@ -317,6 +319,7 @@ import {
   actionToggleMidpointSnapping,
   actionToggleCropEditor,
 } from "../actions";
+import { actionArrangeElements, arrangeScene } from "../actions/actionArrange";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
 import { actionCopyElementLink } from "../actions/actionElementLink";
@@ -850,6 +853,7 @@ class App extends React.Component<AppProps, AppState> {
       onUserFollow: (cb) => this.onUserFollowEmitter.on(cb),
       onStateChange: this.onStateChange,
       onEvent: this.onEvent,
+      arrange: this.arrange,
     };
     return api;
   }
@@ -3364,6 +3368,19 @@ class App extends React.Component<AppProps, AppState> {
   });
 
   public scheduleCapture = () => this.store.scheduleCapture();
+
+  public arrange = async (
+    request: ArrangeRequest = {},
+  ): Promise<ArrangeOutcome> => {
+    const outcome = await arrangeScene(this.scene, this.state, request);
+    if (outcome.status === "arranged") {
+      this.syncActionResult({
+        elements: this.scene.getElementsIncludingDeleted(),
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    }
+    return outcome;
+  };
 
   // Lifecycle
 
@@ -13060,6 +13077,7 @@ ${css}
       actionBindText,
       actionWrapTextInContainer,
       actionUngroup,
+      actionArrangeElements,
       CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,

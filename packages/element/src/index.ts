@@ -57,6 +57,8 @@ export const getNonDeletedElements = <T extends ExcalidrawElement>(
 ): readonly NonDeleted<T>[] => elements.filter(isNonDeletedElement);
 
 export * from "./align";
+export * from "./arrange";
+export * from "./layoutStability";
 export * from "./arrowEndpointText";
 export * from "./binding";
 export * from "./bounds";
