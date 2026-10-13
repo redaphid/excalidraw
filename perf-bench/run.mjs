@@ -120,6 +120,10 @@ const METRICS = [
   ["releaseMs", (r) => r.releaseMs],
   ["settleMax", (r) => r.settleMaxFrameMs],
   ["frameMax", (r) => r.frameMaxMs ?? NaN],
+  ["longTasks", (r) => r.longTasks?.count ?? NaN],
+  ["longTaskMs", (r) => r.longTasks?.totalMs ?? NaN],
+  ["idleLongTasks", (r) => r.idleLongTasks?.count ?? NaN],
+  ["idleLongTaskMax", (r) => r.idleLongTasks?.maxMs ?? NaN],
 ];
 
 const main = async () => {
@@ -191,12 +195,12 @@ const main = async () => {
     const b = byBuild[base];
     const line = [
       id.padEnd(16),
-      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)} max ${b.frameMax.toFixed(1)}`,
+      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)} max ${b.frameMax.toFixed(1)} long ${b.longTasks}/${b.longTaskMs}ms idle-long ${b.idleLongTasks} (max ${b.idleLongTaskMax}ms)`,
     ];
     for (const other of others) {
       const c = byBuild[other];
       line.push(
-        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)}) max ${c.frameMax.toFixed(1)} (${pct(b.frameMax, c.frameMax)})`,
+        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)}) max ${c.frameMax.toFixed(1)} (${pct(b.frameMax, c.frameMax)}) long ${c.longTasks}/${c.longTaskMs}ms idle-long ${c.idleLongTasks} (max ${c.idleLongTaskMax}ms)`,
       );
     }
     console.log(line.join(" "));
