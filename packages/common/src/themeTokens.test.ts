@@ -204,7 +204,12 @@ describe("generateThemeCss sticky notes", () => {
   it.each([
     ["none", "none", "none", "none"],
     ["soft", "hairline", "3 3 rgba(0, 0, 0, 0.16)", "1 rgba(27, 33, 41, 0.14)"],
-    ["long", "hairline", "6 8 10 rgba(0, 0, 0, 0.2)", "1 rgba(27, 33, 41, 0.14)"],
+    [
+      "long",
+      "hairline",
+      "6 8 10 rgba(0, 0, 0, 0.2)",
+      "1 rgba(27, 33, 41, 0.14)",
+    ],
     ["hard", "bold", "5 5 #1b2129", "2 #1b2129"],
   ])(
     "sits a note on a %s, %s surface the way its panels sit",
