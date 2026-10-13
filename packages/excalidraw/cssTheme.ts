@@ -32,6 +32,15 @@ export type CanvasTheme = Readonly<{
   frameColor?: string;
   /** frame outline width in screen pixels */
   frameWidth?: number;
+  /** the sticky note shadow's offset, in scene units at detail scale 1 */
+  stickyNoteShadowX?: number;
+  stickyNoteShadowY?: number;
+  /** `transparent` draws no shadow */
+  stickyNoteShadowColor?: string;
+  /** the width of the edge drawn just inside a sticky note's outline */
+  stickyNoteEdgeWidth?: number;
+  /** `transparent` draws no edge */
+  stickyNoteEdgeColor?: string;
 }>;
 
 /** The appState fields a theme may seed: new-element defaults and swatches. */

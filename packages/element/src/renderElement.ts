@@ -25,10 +25,7 @@ import {
   invariant,
   applyDarkModeFilter,
   isSafari,
-  STICKY_NOTE_EDGE_SHADOW_OPACITY,
-  STICKY_NOTE_EDGE_SHADOW_WIDTH,
   STICKY_NOTE_FOOTER,
-  STICKY_NOTE_SHADOW_OPACITY,
   DEFAULT_ZOOM,
 } from "@excalidraw/common";
 
@@ -69,6 +66,7 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  isStickyNoteElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
@@ -76,7 +74,9 @@ import { getCornerRadius } from "./utils";
 import { ShapeCache } from "./shape";
 import {
   getStickyNoteFooter,
+  getStickyNoteChrome,
   getStickyNotePathCommands,
+  type StickyNoteChrome,
   type StickyNotePathCommand,
 } from "./stickyNote";
 
@@ -218,6 +218,8 @@ export interface ExcalidrawElementWithCanvas {
   canvasOffsetY: number;
   imageCrop: ExcalidrawImageElement["crop"] | null;
   containingFrameOpacity: number;
+  /** the theme a sticky note's shadow and edge were drawn with */
+  canvasTheme: StaticCanvasRenderConfig["canvasTheme"];
 }
 
 const cappedElementCanvasSize = (
@@ -341,6 +343,7 @@ const generateElementCanvas = (
     containingFrameOpacity:
       getContainingFrame(element, elementsMap)?.opacity || 100,
     imageCrop: isImageElement(element) ? element.crop : null,
+    canvasTheme: renderConfig.canvasTheme,
   };
 };
 
@@ -423,13 +426,14 @@ const fillStickyNoteShape = (
 const strokeStickyNoteEdge = (
   context: CanvasRenderingContext2D,
   commands: StickyNotePathCommand[],
+  edge: NonNullable<StickyNoteChrome["edge"]>,
   scale: number,
 ) => {
   context.save();
   drawStickyNotePath(context, commands);
   context.clip();
-  context.lineWidth = STICKY_NOTE_EDGE_SHADOW_WIDTH * 2 * scale;
-  context.strokeStyle = `rgba(0, 0, 0, ${STICKY_NOTE_EDGE_SHADOW_OPACITY})`;
+  context.lineWidth = edge.width * 2 * scale;
+  context.strokeStyle = edge.color;
   drawStickyNotePath(context, commands);
   context.stroke();
   context.restore();
@@ -466,11 +470,15 @@ const drawElementOnCanvas = (
     case "stickynote": {
       context.save();
       try {
-        context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY})`;
-        fillStickyNoteShape(
-          context,
-          getStickyNotePathCommands(element, { shadow: true }),
-        );
+        // canvas chrome, like the frame outline: not dark-mode filtered
+        const { shadow, edge } = getStickyNoteChrome(renderConfig.canvasTheme);
+        if (shadow) {
+          context.fillStyle = shadow.color;
+          fillStickyNoteShape(
+            context,
+            getStickyNotePathCommands(element, { shadow }),
+          );
+        }
 
         const commands = getStickyNotePathCommands(element);
         context.fillStyle = applyDarkModeFilter(
@@ -478,7 +486,14 @@ const drawElementOnCanvas = (
           renderConfig.theme === THEME.DARK,
         );
         fillStickyNoteShape(context, commands);
-        strokeStickyNoteEdge(context, commands, getElementDetailScale(element));
+        if (edge) {
+          strokeStickyNoteEdge(
+            context,
+            commands,
+            edge,
+            getElementDetailScale(element),
+          );
+        }
 
         // the label is absolute, so this cached canvas only goes stale at a
         // year boundary — and is regenerated on the next zoom, theme or
@@ -784,7 +799,9 @@ const generateElementWithCanvas = (
     shouldRegenerateBecauseZoom ||
     prevElementWithCanvas.theme !== appState.theme ||
     prevElementWithCanvas.imageCrop !== imageCrop ||
-    prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity
+    prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity ||
+    (isStickyNoteElement(element) &&
+      prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme)
   ) {
     const elementWithCanvas = generateElementCanvas(
       element,

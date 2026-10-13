@@ -11,7 +11,10 @@ import {
   STICKY_NOTE_MIN_SIZE,
   STICKY_NOTE_MIN_FONT_SIZE,
   STICKY_NOTE_PADDING,
+  STICKY_NOTE_EDGE_SHADOW_OPACITY,
+  STICKY_NOTE_EDGE_SHADOW_WIDTH,
   STICKY_NOTE_SHADOW_OFFSET,
+  STICKY_NOTE_SHADOW_OPACITY,
   getFontString,
   getLineHeight,
   isTransparent,
@@ -28,6 +31,8 @@ import { computeBoundTextPosition, getBoundTextElement } from "./textElement";
 import { measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
 import { isStickyNoteElement, isTextElement } from "./typeChecks";
+
+import type { CanvasTheme } from "@excalidraw/excalidraw/cssTheme";
 
 import type { Scene } from "./Scene";
 import type { VerticalResizeAnchor } from "./sizeHelpers";
@@ -60,6 +65,43 @@ export type StickyNotePathCommand =
       control: StickyNoteRenderPoint;
       point: StickyNoteRenderPoint;
     };
+
+/** The shadow under a sticky note and the edge just inside its outline,
+ * in scene units at detail scale 1. `null` draws none. */
+export type StickyNoteChrome = Readonly<{
+  shadow: Readonly<{ x: number; y: number; color: string }> | null;
+  edge: Readonly<{ width: number; color: string }> | null;
+}>;
+
+/** a theme's sticky note chrome over the built-in look; a theme's
+ * `transparent` color stands for none */
+export const getStickyNoteChrome = (
+  theme: CanvasTheme | undefined,
+): StickyNoteChrome => {
+  const shadowColor =
+    theme?.stickyNoteShadowColor ??
+    `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY})`;
+  const edgeColor =
+    theme?.stickyNoteEdgeColor ??
+    `rgba(0, 0, 0, ${STICKY_NOTE_EDGE_SHADOW_OPACITY})`;
+  return {
+    shadow:
+      shadowColor === "transparent"
+        ? null
+        : {
+            x: theme?.stickyNoteShadowX ?? STICKY_NOTE_SHADOW_OFFSET,
+            y: theme?.stickyNoteShadowY ?? STICKY_NOTE_SHADOW_OFFSET,
+            color: shadowColor,
+          },
+    edge:
+      edgeColor === "transparent"
+        ? null
+        : {
+            width: theme?.stickyNoteEdgeWidth ?? STICKY_NOTE_EDGE_SHADOW_WIDTH,
+            color: edgeColor,
+          },
+  };
+};
 
 const STICKY_NOTE_RENDER_ROUGHNESS = [0, 1.5, 8] as const;
 const STICKY_NOTE_CORNER_RADIUS_RATIO = 0.04;
@@ -275,14 +317,19 @@ export const getStickyNoteRenderPoints = (
 
 export const getStickyNotePathCommands = (
   element: ExcalidrawStickyNoteElement,
-  { shadow = false }: { shadow?: boolean } = {},
+  {
+    shadow,
+  }: {
+    /** the shadow's offset, in scene units at detail scale 1 */
+    shadow?: Readonly<{ x: number; y: number }>;
+  } = {},
 ): StickyNotePathCommand[] => {
   const points = getStickyNoteRenderPoints(
     element,
     shadow
       ? {
-          offsetX: STICKY_NOTE_SHADOW_OFFSET * getElementDetailScale(element),
-          offsetY: STICKY_NOTE_SHADOW_OFFSET * getElementDetailScale(element),
+          offsetX: shadow.x * getElementDetailScale(element),
+          offsetY: shadow.y * getElementDetailScale(element),
           seedOffset: 1,
         }
       : undefined,
