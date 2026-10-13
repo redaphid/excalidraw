@@ -49,6 +49,7 @@ import {
   getNormalizedCanvasDimensions,
   snapScrollToDevicePixels,
 } from "./helpers";
+import { strokeBackdrop } from "./backdropSpike";
 
 import type {
   StaticCanvasRenderConfig,
@@ -525,6 +526,14 @@ const _renderStaticScene = ({
         ? renderConfig.canvasTheme?.background
         : undefined,
   });
+
+  strokeBackdrop(
+    context,
+    appState.scrollX,
+    appState.scrollY,
+    appState.zoom.value,
+    scale,
+  );
 
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
