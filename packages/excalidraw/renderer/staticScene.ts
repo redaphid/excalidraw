@@ -577,6 +577,7 @@ const _renderStaticScene = ({
   cacheSettledBitmaps(
     canvas,
     visibleElements,
+    elementsMap,
     allElementsMap,
     renderConfig,
     appState,

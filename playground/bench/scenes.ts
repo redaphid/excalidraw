@@ -21,7 +21,7 @@ import type {
   DataURL,
 } from "@excalidraw/excalidraw/types";
 
-export type SceneName = "mixed" | "freedraw" | "deep" | "labels";
+export type SceneName = "mixed" | "freedraw" | "deep" | "labels" | "big";
 
 export type BenchScene = {
   elements: ExcalidrawElement[];
@@ -355,6 +355,35 @@ const freedraw = (): BenchScene => {
   };
 };
 
+const BIG_ELEMENTS = 5000;
+
+const big = (): BenchScene => {
+  const rng = mulberry32(3);
+  const next = deterministicIds("b");
+  const files = makeImages(4);
+  const fileIds = Object.keys(files) as FileId[];
+  const elements: ExcalidrawElement[] = [];
+  for (let i = 0; i < BIG_ELEMENTS; i++) {
+    elements.push(
+      shapeAt(
+        rng,
+        next,
+        pick(rng, MIXED_KINDS),
+        between(rng, 0, 14000),
+        between(rng, 0, 9200),
+        1,
+        fileIds,
+        null,
+      ),
+    );
+  }
+  return {
+    elements,
+    files,
+    view: { scrollX: -2000, scrollY: -2000, zoom: { value: 0.5 as never } },
+  };
+};
+
 export const DEEP_CENTER = { x: 500, y: 500 };
 const DEEP_LEVELS = 7;
 
@@ -474,4 +503,5 @@ export const SCENES: Record<SceneName, () => BenchScene> = {
   freedraw,
   deep,
   labels,
+  big,
 };

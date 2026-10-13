@@ -20,6 +20,7 @@ type Counters = {
   stroke: number;
   fillText: number;
   canvasesCreated: number;
+  idleCanvasesCreated: number;
   /** megapixels of canvas allocated, counted as a canvas's height is set */
   canvasMpx: number;
   arrayElementsWalked: number;
@@ -40,9 +41,13 @@ type ScenarioResult = {
    * window, and the most of each counter spent in any one of those frames */
   frameMaxMs: number;
   countersMaxFrame?: Counters;
-  /** frames that created a canvas, i.e. (re)drew some element's bitmap */
-  canvasFrames?: number;
+  bitmapBuildingFrames?: number;
+  preGestureIdleCallbackMaxMs: number;
+  gestureIdleCallbackMaxMs: number;
+  gestureLongTasks?: LongTasks;
 };
+
+type LongTasks = { count: number; totalMs: number; maxMs: number };
 
 export type BenchReport = {
   version: 1;
@@ -124,6 +129,7 @@ const counters: Counters = {
   stroke: 0,
   fillText: 0,
   canvasesCreated: 0,
+  idleCanvasesCreated: 0,
   canvasMpx: 0,
   arrayElementsWalked: 0,
   mapSets: 0,
@@ -196,8 +202,39 @@ const installCounters = () => {
   wrap(document, "createElement", (_, [tag]) => {
     if (String(tag).toLowerCase() === "canvas") {
       counters.canvasesCreated++;
+      if (inIdleCallback) {
+        counters.idleCanvasesCreated++;
+      }
     }
   });
+};
+
+let inIdleCallback = false;
+/** the longest idle callback since the last `takeLongestIdleCallback` */
+let longestIdleCallbackMs = 0;
+
+if (typeof window.requestIdleCallback === "function") {
+  const requestIdle = window.requestIdleCallback.bind(window);
+  window.requestIdleCallback = (callback, options) =>
+    requestIdle((deadline) => {
+      inIdleCallback = true;
+      const start = performance.now();
+      try {
+        callback(deadline);
+      } finally {
+        inIdleCallback = false;
+        longestIdleCallbackMs = Math.max(
+          longestIdleCallbackMs,
+          performance.now() - start,
+        );
+      }
+    }, options);
+}
+
+const takeLongestIdleCallback = () => {
+  const longest = round(longestIdleCallbackMs);
+  longestIdleCallbackMs = 0;
+  return longest;
 };
 
 /** what `takeCounters` has reset so far, for the frame sampler's totals */
@@ -255,8 +292,10 @@ const sampleFrames = () => {
     return {
       frameMaxMs: round(Math.max(0, ...frames.map((frame) => frame.ms))),
       countersMaxFrame: max,
-      canvasFrames: frames.filter((frame) => frame.counters.canvasesCreated)
-        .length,
+      bitmapBuildingFrames: frames.filter(
+        (frame) =>
+          frame.counters.canvasesCreated > frame.counters.idleCanvasesCreated,
+      ).length,
     };
   };
 };
@@ -273,6 +312,28 @@ document.createElement = function (
   }
   return createElement.apply(this, args);
 } as Document["createElement"];
+
+const observeLongTasks = (): (() => LongTasks | undefined) => {
+  if (!PerformanceObserver.supportedEntryTypes?.includes("longtask")) {
+    return () => undefined;
+  }
+  const durations: number[] = [];
+  const collect = (entries: PerformanceEntryList) =>
+    entries.forEach((entry) => durations.push(entry.duration));
+  const observer = new PerformanceObserver((list) =>
+    collect(list.getEntries()),
+  );
+  observer.observe({ type: "longtask" });
+  return () => {
+    collect(observer.takeRecords());
+    observer.disconnect();
+    return {
+      count: durations.length,
+      totalMs: round(durations.reduce((sum, ms) => sum + ms, 0)),
+      maxMs: round(Math.max(0, ...durations)),
+    };
+  };
+};
 
 const QUIET_FRAMES = 10;
 const QUIET_TIMEOUT_MS = 30_000;
@@ -304,14 +365,17 @@ const runScenario = async (
       currentItemStrokeVariability: scenario.variability ?? "constant",
     },
   });
+  takeLongestIdleCallback();
   await wait(VIEW_RESET_MS);
   await canvasesQuiet();
+  const preGestureIdleCallbackMaxMs = takeLongestIdleCallback();
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
   api.setActiveTool({ type: scenario.tool });
   await flushTasks();
   reseed(1);
+  const stopGestureLongTasks = observeLongTasks();
   scenario.begin(api, canvas);
   await flushTasks();
   takeCounters(1);
@@ -321,6 +385,11 @@ const runScenario = async (
   const frames: number[] = [];
   let frameStart = await nextFrame();
   for (let i = 1; i <= scenario.steps; i++) {
+    let stepStart = frameStart;
+    if (scenario.minStepIntervalMs) {
+      stepStart = frameStart + scenario.minStepIntervalMs;
+      await wait(stepStart - performance.now());
+    }
     window.stepHook?.(scenario.id, i);
     if (i === (scenario.midwayStep ?? Math.floor(scenario.steps / 2))) {
       await scenario.midway?.(api, canvas);
@@ -328,7 +397,7 @@ const runScenario = async (
     scenario.step(canvas, i);
     await flushTasks();
     const next = await nextFrame();
-    frames.push(next - frameStart);
+    frames.push(next - stepStart);
     frameStart = next;
   }
   await window.profilerHook?.(scenario.id, "stop");
@@ -349,8 +418,12 @@ const runScenario = async (
     last = next;
   }
   const sampled = stopSampling();
+  const gestureLongTasks = stopGestureLongTasks();
 
   return {
+    preGestureIdleCallbackMaxMs,
+    gestureIdleCallbackMaxMs: takeLongestIdleCallback(),
+    gestureLongTasks,
     id: scenario.id,
     steps: scenario.steps,
     frameMs: stats(frames),
@@ -361,7 +434,7 @@ const runScenario = async (
     frameMaxMs: sampled.frameMaxMs,
     ...(counting && {
       countersMaxFrame: sampled.countersMaxFrame,
-      canvasFrames: sampled.canvasFrames,
+      bitmapBuildingFrames: sampled.bitmapBuildingFrames,
     }),
   };
 };

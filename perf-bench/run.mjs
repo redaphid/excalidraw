@@ -120,6 +120,10 @@ const METRICS = [
   ["releaseMs", (r) => r.releaseMs],
   ["settleMax", (r) => r.settleMaxFrameMs],
   ["frameMax", (r) => r.frameMaxMs ?? NaN],
+  ["gestureLongTasks", (r) => r.gestureLongTasks?.count ?? NaN],
+  ["gestureLongTaskMs", (r) => r.gestureLongTasks?.totalMs ?? NaN],
+  ["preGestureIdleMax", (r) => r.preGestureIdleCallbackMaxMs ?? NaN],
+  ["gestureIdleMax", (r) => r.gestureIdleCallbackMaxMs ?? NaN],
 ];
 
 const main = async () => {
@@ -159,7 +163,7 @@ const main = async () => {
       if (rows[0].countersAtRelease) summary[id][build].endCounters = rows[0].countersAtRelease;
       if (rows[0].countersMaxFrame) {
         summary[id][build].maxCounters = rows[0].countersMaxFrame;
-        summary[id][build].canvasFrames = rows[0].canvasFrames;
+        summary[id][build].bitmapBuildingFrames = rows[0].bitmapBuildingFrames;
       }
     }
   }
@@ -191,12 +195,12 @@ const main = async () => {
     const b = byBuild[base];
     const line = [
       id.padEnd(16),
-      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)} max ${b.frameMax.toFixed(1)}`,
+      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)} max ${b.frameMax.toFixed(1)} gesture long ${b.gestureLongTasks}/${b.gestureLongTaskMs}ms longest idle callback ${b.preGestureIdleMax}ms before, ${b.gestureIdleMax}ms during`,
     ];
     for (const other of others) {
       const c = byBuild[other];
       line.push(
-        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)}) max ${c.frameMax.toFixed(1)} (${pct(b.frameMax, c.frameMax)})`,
+        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)}) max ${c.frameMax.toFixed(1)} (${pct(b.frameMax, c.frameMax)}) gesture long ${c.gestureLongTasks}/${c.gestureLongTaskMs}ms longest idle callback ${c.preGestureIdleMax}ms before, ${c.gestureIdleMax}ms during`,
       );
     }
     console.log(line.join(" "));
@@ -204,7 +208,7 @@ const main = async () => {
       console.log(`  counters/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].counters)}`).join(" | ")}`);
       console.log(`  counters/release ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].endCounters)}`).join(" | ")}`);
       if (b.maxCounters) {
-        console.log(`  counters max/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].maxCounters)} canvasFrames ${byBuild[x].canvasFrames}`).join(" | ")}`);
+        console.log(`  counters max/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].maxCounters)} bitmapBuildingFrames ${byBuild[x].bitmapBuildingFrames}`).join(" | ")}`);
       }
     }
   }
