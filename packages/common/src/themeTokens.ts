@@ -87,6 +87,8 @@ const GENERIC_FONTS = [
   "ui-rounded",
 ];
 const FILL_WASH = 0.68;
+/** a paper moved further than this share of the way warns on the note ink */
+const NOTE_PAPER_MOVE_LIMIT = 0.15;
 
 const generate = (
   tokens: ThemeSpec,
@@ -240,32 +242,38 @@ const generate = (
     (i) => fillEntries[i + 1][1],
   );
 
-  const noteInk = tokens.note.ink
-    ? legible("noteInk", tokens.note.ink, canvas, 4.5, "note ink on the canvas")
-    : elementInk;
+  // the note ink sits on its paper, never on the canvas: white type on black
+  // cards is fine on a white board
+  const noteInk = tokens.note.ink ?? elementInk;
   const noteInkShown = shown(store(noteInk));
-  /** paled toward the canvas until the note ink reads on it */
+  const onPaper = (paper: string) =>
+    contrastRatio(noteInkShown, shown(store(paper)));
+  // a failing paper fades toward the canvas; when the canvas fails the ink
+  // too (an inverse note), it moves away from the ink instead
+  const paperTarget =
+    onPaper(canvas) >= 4.5
+      ? canvas
+      : onPaper("#000000") > onPaper("#ffffff")
+      ? "#000000"
+      : "#ffffff";
+  /** the paper, and how far toward `paperTarget` it had to move */
   const notePaper = (paper: string, token: string | null) => {
-    let t = 0;
-    while (
-      t < 1 &&
-      contrastRatio(noteInkShown, shown(store(mix(paper, canvas, t)))) < 4.5
-    ) {
-      t = Math.min(1, t + 0.03);
+    let moved = 0;
+    while (moved < 1 && onPaper(mix(paper, paperTarget, moved)) < 4.5) {
+      moved = Math.min(1, moved + 0.03);
     }
-    const result = mix(paper, canvas, t);
-    if (t > 0 && token) {
+    const result = mix(paper, paperTarget, moved);
+    if (moved > 0 && token) {
       warnings.push({
         token,
         from: paper,
         to: result,
-        reason: `note ink on the paper: ${contrastRatio(
-          noteInkShown,
-          shown(store(paper)),
-        ).toFixed(2)}:1, needs 4.5:1`,
+        reason: `note ink on the paper: ${onPaper(paper).toFixed(
+          2,
+        )}:1, needs 4.5:1`,
       });
     }
-    return result;
+    return { paper: result, moved };
   };
   if (dark) {
     tokens.note.papers.forEach((paper, i) => {
@@ -282,14 +290,38 @@ const generate = (
       }
     });
   }
+  // washes are the papers only without `color.note`; else they pad the picks
   const washPapers = fillWashes
     .slice(1, 6)
-    .map((wash) => notePaper(wash, tokens.note.ink ? "noteInk" : null));
+    .map((wash) =>
+      notePaper(
+        wash,
+        tokens.note.ink && !tokens.note.papers.length ? "noteInk" : null,
+      ),
+    );
   const papers = tokens.note.papers.length
     ? tokens.note.papers.map((paper, i) => notePaper(paper, `note[${i}]`))
     : washPapers;
+  // a paper moved far has lost its color: say so on the ink, the token that
+  // usually caused it, so notes never fade into the canvas silently
+  const paled = papers.filter(({ moved }) => moved > NOTE_PAPER_MOVE_LIMIT);
+  if (paled.length) {
+    const most = Math.max(...paled.map(({ moved }) => moved));
+    warnings.push({
+      token: "noteInk",
+      from: noteInk,
+      to: noteInk,
+      reason: `${paled.length} of ${papers.length} note papers moved ${Math.round(
+        most * 100,
+      )}% toward ${paperTarget} for this ink to reach 4.5:1${
+        most === 1 ? ", all the way: those notes lost their color" : ""
+      }; change the ink or the papers`,
+    });
+  }
   // a theme's own papers, then its washes, so every pick slot has a color
-  const paperPicks = [...new Set([...papers, ...washPapers])]
+  const paperPicks = [
+    ...new Set([...papers, ...washPapers].map(({ paper }) => paper)),
+  ]
     .slice(0, 5)
     .map(store);
 

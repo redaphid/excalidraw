@@ -317,6 +317,65 @@ describe("generateThemeCss sticky notes", () => {
     );
   });
 
+  it("checks the note ink against its papers only: white type on black cards", () => {
+    const { css, warnings } = generateThemeCss(
+      tokens({
+        canvas: "#f4f4f0",
+        papers: { black: "#111111", red: "#d0000d" },
+        noteInk: "#ffffff",
+      }),
+    );
+
+    expect(property(css, "--sticky-note-stroke-color")).toBe("#ffffff");
+    expect(picks(css, "--color-picks-sticky-note-background")).toEqual(
+      expect.arrayContaining(["#111111", "#d0000d"]),
+    );
+    expect(
+      warnings.filter(({ token }) => token.startsWith("color.note")),
+    ).toEqual([]);
+  });
+
+  it("keeps dark ink on bright papers in a dark theme, checked as displayed", () => {
+    const { css, warnings } = generateThemeCss(
+      tokens({
+        mode: "dark",
+        canvas: "#140a24",
+        ink: "#f2e9ff",
+        panel: "#1b1030",
+        papers: { magenta: "#ff5fd2", orange: "#ff9a3c" },
+        noteInk: "#1a0b2e",
+      }),
+    );
+    const ink = applyDarkModeFilter(
+      property(css, "--sticky-note-stroke-color")!,
+    );
+    const [magenta, orange] = picks(css, "--color-picks-sticky-note-background")
+      .slice(0, 2)
+      .map((paper) => applyDarkModeFilter(paper));
+
+    expect(contrastRatio(ink, "#140a24")).toBeLessThan(2);
+    for (const paper of [magenta, orange]) {
+      expect(contrastRatio(ink, paper)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(paper, "#140a24")).toBeGreaterThan(4.5);
+    }
+    expect(warnings.map(({ token }) => token)).not.toContain("color.noteInk");
+  });
+
+  it("warns on the note ink when papers had to pale far, and not for a nudge", () => {
+    const far = generateThemeCss(
+      tokens({ papers: { mud: "#3f3a33", butter: "#f6e7b0" } }),
+    ).warnings.find(({ token }) => token === "color.noteInk");
+    const nudge = generateThemeCss(
+      tokens({ papers: { sage: "#7a8873" } }),
+    ).warnings;
+
+    expect(far?.reason).toMatch(/^1 of 2 note papers moved \d+% toward/);
+    expect(nudge).toContainEqual(
+      expect.objectContaining({ token: "color.note.sage" }),
+    );
+    expect(nudge.map(({ token }) => token)).not.toContain("color.noteInk");
+  });
+
   it("keeps five papers and says which it left out", () => {
     const papers = Object.fromEntries(
       ["#f6e7b0", "#d9e8f5", "#e3f0d8", "#f5dcd9", "#ebe0f2", "#f0f0f0"].map(
