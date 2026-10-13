@@ -1,5 +1,5 @@
 // A populated scene for theme screenshots: frames, every shape, arrows,
-// bound and free text, and a freedraw stroke, drawn with a theme's
+// bound and free text, a freedraw stroke and sticky notes, drawn with a theme's
 // new-element defaults and swatches (see `readStyle` in shoot.mjs) the way a
 // user of that theme would draw it. Elements are skeletons; `restore` fills
 // in the remaining fields when the playground loads them.
@@ -20,6 +20,13 @@ const UPSTREAM_BACKGROUND_PICKS = [
   "#a5d8ff",
   "#ffec99",
 ];
+const UPSTREAM_STICKY_NOTE_BACKGROUND_PICKS = [
+  "#ffdf6b",
+  "#fcc2d7",
+  "#b2f2bb",
+  "#a5d8ff",
+  "#ffd8a8",
+];
 
 /** fills a pick list to five, so every slot has a color */
 const fivePicks = (picks, fallback) =>
@@ -32,6 +39,10 @@ const fivePicks = (picks, fallback) =>
 export const buildScene = (style, { stacked = false } = {}) => {
   const stroke = fivePicks(style.strokePicks, UPSTREAM_STROKE_PICKS);
   const fill = fivePicks(style.backgroundPicks, UPSTREAM_BACKGROUND_PICKS);
+  const papers = fivePicks(
+    style.stickyNoteBackgroundPicks,
+    UPSTREAM_STICKY_NOTE_BACKGROUND_PICKS,
+  );
   const ink = style.currentItemStrokeColor;
   const fontSize = style.currentItemFontSize;
   const fontFamily = style.currentItemFontFamily;
@@ -101,6 +112,31 @@ export const buildScene = (style, { stacked = false } = {}) => {
           frameId: shape.frameId,
         },
       ),
+    ];
+  };
+
+  // a row under the frames, which the phone stacks taller
+  const NOTES_Y = stacked ? 1040 : 570;
+  // the theme's default paper and ink first, then two more papers it picks
+  const stickyNote = (id, x, paper, value) => {
+    const textId = `${id}-label`;
+    const size = 170;
+    return [
+      base(id, "stickynote", x, NOTES_Y, size, size, {
+        backgroundColor: paper,
+        strokeColor: style.currentItemStickynoteStrokeColor,
+        fillStyle: "solid",
+        roundness: shapeRoundness,
+        baseHeight: size,
+        boundElements: [{ id: textId, type: "text" }],
+      }),
+      text(textId, x + 16, NOTES_Y + 16, value, {
+        height: fontSize * 1.25 * value.split("\n").length,
+        strokeColor: style.currentItemStickynoteStrokeColor,
+        width: size - 32,
+        containerId: id,
+        baseFontSize: fontSize,
+      }),
     ];
   };
 
@@ -198,6 +234,15 @@ export const buildScene = (style, { stacked = false } = {}) => {
       strokeStyle: "dotted",
       strokeColor: stroke[0],
     }),
+    ...stickyNote(
+      "note-default",
+      60,
+      style.currentItemStickynoteBackgroundColor,
+      // loading a scene does not wrap a label, so it is wrapped here
+      "Ask legal\nabout the\nbeta terms",
+    ),
+    ...stickyNote("note-second", 270, papers[1], "Ship Friday?"),
+    ...stickyNote("note-third", 480, papers[2], "Owner: Sam"),
   ];
   const BUILD_SHIFT = { x: -660, y: 470 };
   const placed = stacked

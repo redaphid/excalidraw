@@ -282,8 +282,13 @@ const settle = (page) =>
       ),
   );
 
-// room for the properties panel, which covers the canvas's left edge
-const LEFT_PANEL = { desktop: 220, tablet: 220, phone: 0 };
+// room for the UI over the canvas's edges: the properties panel on the left,
+// and on a phone the menu buttons on top and the toolbars along the bottom
+const PANELS = {
+  desktop: { left: 220, top: 0, bottom: 0 },
+  tablet: { left: 220, top: 0, bottom: 0 },
+  phone: { left: 0, top: 60, bottom: 200 },
+};
 
 const openTheme = async (context, baseUrl, theme, scene) => {
   const page = await context.newPage();
@@ -330,6 +335,8 @@ const readStyle = async (context, baseUrl, theme) => {
       ),
       strokePicks: state.colorTopPicks.elementStroke,
       backgroundPicks: state.colorTopPicks.elementBackground,
+      stickyNoteStrokePicks: state.colorTopPicks.stickyNoteStroke,
+      stickyNoteBackgroundPicks: state.colorTopPicks.stickyNoteBackground,
     };
   });
   await page.close();
@@ -337,7 +344,7 @@ const readStyle = async (context, baseUrl, theme) => {
 };
 
 const fitScene = (page, viewport) =>
-  page.evaluate((leftPanel) => {
+  page.evaluate((panels) => {
     const api = window.excalidrawAPI;
     const elements = api.getSceneElements();
     const minX = Math.min(...elements.map((el) => el.x));
@@ -346,14 +353,14 @@ const fitScene = (page, viewport) =>
     const maxY = Math.max(...elements.map((el) => el.y + el.height));
     api.setViewport({
       target: {
-        x: minX - leftPanel - 20,
-        y: minY - 40,
-        width: maxX - minX + leftPanel + 40,
-        height: maxY - minY + 80,
+        x: minX - panels.left - 20,
+        y: minY - panels.top - 40,
+        width: maxX - minX + panels.left + 40,
+        height: maxY - minY + panels.top + panels.bottom + 80,
       },
       fit: "scale-down",
     });
-  }, LEFT_PANEL[viewport]);
+  }, PANELS[viewport]);
 
 /**
  * Text below WCAG AA (4.5:1, or 3:1 when large) and icons below 3:1, each
