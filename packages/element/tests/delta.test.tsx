@@ -623,6 +623,7 @@ describe("AppStateDelta", () => {
 
       const commonAppState = {
         viewBackgroundColor: "#ffffff",
+        viewBackgroundColorPicked: false,
         selectedElementIds: {},
         selectedGroupIds: {},
         editingGroupId: null,
@@ -667,6 +668,7 @@ describe("AppStateDelta", () => {
       const commonAppState = {
         name: "",
         viewBackgroundColor: "#ffffff",
+        viewBackgroundColorPicked: false,
         selectedGroupIds: {},
         editingGroupId: null,
         croppingElementId: null,
@@ -713,6 +715,7 @@ describe("AppStateDelta", () => {
       const commonAppState = {
         name: "",
         viewBackgroundColor: "#ffffff",
+        viewBackgroundColorPicked: false,
         selectedElementIds: {},
         editingGroupId: null,
         croppingElementId: null,
