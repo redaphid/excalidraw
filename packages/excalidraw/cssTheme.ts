@@ -1,4 +1,8 @@
-import { FONT_FAMILY, STICKY_NOTE_SHADOW_REACH } from "@excalidraw/common";
+import {
+  COLOR_PALETTE,
+  FONT_FAMILY,
+  STICKY_NOTE_SHADOW_REACH,
+} from "@excalidraw/common";
 
 import type { ColorPaletteCustom, ColorTuple } from "@excalidraw/common";
 
@@ -12,15 +16,15 @@ import type {
 } from "@excalidraw/element/types";
 import type { StrokeWidthKey } from "@excalidraw/common";
 
-import type { AppState } from "./types";
+import type { AppState, StaticCanvasAppState } from "./types";
 
 /**
  * Colors the editor paints on its canvases around the user's elements. Each
  * field is optional; the renderers fall back to their built-in values.
  */
 export type CanvasTheme = Readonly<{
-  /** painted instead of the default (`#ffffff`) `viewBackgroundColor`; a
-   * scene with another background keeps it */
+  /** painted instead of the default `viewBackgroundColor` (see
+   * `getThemeCanvasBackground`); a background the user picked is kept */
   background?: string;
   gridColor?: string;
   gridBoldColor?: string;
@@ -89,6 +93,20 @@ export const EMPTY_CSS_THEME: CssTheme = Object.freeze({
   pen: Object.freeze({}),
   palettes: Object.freeze({}),
 });
+
+/** the theme's canvas color, when it replaces the scene's background: only
+ * the default white the user never picked */
+export const getThemeCanvasBackground = (
+  appState: Pick<
+    StaticCanvasAppState,
+    "viewBackgroundColor" | "viewBackgroundColorPicked"
+  >,
+  canvasTheme: CanvasTheme | undefined,
+) =>
+  !appState.viewBackgroundColorPicked &&
+  appState.viewBackgroundColor === COLOR_PALETTE.white
+    ? canvasTheme?.background
+    : undefined;
 
 const ARROWHEADS: readonly Arrowhead[] = [
   "arrow",

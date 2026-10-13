@@ -227,7 +227,7 @@ Two groups of properties are read:
 - **Canvas colors** repaint the canvases: background, grid, selection, handles, frames, and the shadow and edge of sticky notes.
 - **New-element defaults** are written to `appState` (`currentItemStrokeWidthKey`, `currentItemRoughness`, and the rest). The toolbar and the properties panel start on them, and new elements take them. Elements already in the scene keep their own style.
 
-New-element defaults are written when they differ from the last read. A light and dark toggle that changes nothing keeps the picks the user made since. When the scene loads, the defaults are written again, because loading restores `appState`.
+New-element defaults are written when they differ from the last read. A light and dark toggle that changes nothing keeps the picks the user made since. When the scene loads, the defaults fill only what its `appState` did not save, so a returning user keeps their last stroke width, roughness and the rest. Quick swatches are filled per list: a list the user customized stays, a list they never touched takes the theme's.
 
 A value the editor can't parse is ignored, and the built-in value stays.
 
@@ -249,7 +249,7 @@ A value the editor can't parse is ignored, and the built-in value stays.
 | `--canvas-sticky-note-shadow` | `none`, or `<x> <y> [<blur>] <color>`: the offset in scene units at detail scale 1 (each at most 16 either way), an optional blur radius as in `box-shadow` (the larger offset plus the blur is held to 20, the room around a note's cached bitmap; a larger blur shrinks to fit) and any CSS color | `3 3 rgba(0, 0, 0, 0.16)` |
 | `--canvas-sticky-note-edge` | `none`, or `<width> <color>`: the line just inside a note's outline, in scene units (above 0, at most 8) | `0.5 rgba(0, 0, 0, 0.08)` |
 
-`--canvas-background` replaces only the default white background. When the user picks another canvas background, the editor paints that one. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in outline.
+`--canvas-background` replaces only the default white background that nobody picked. When the user picks a canvas background, white included, the editor paints that one. The pick is recorded in `appState.viewBackgroundColorPicked`, which is saved, exported and undone with `viewBackgroundColor`. A host that persists `viewBackgroundColor` by hand must persist this flag beside it, or a picked white turns back into the theme's canvas on reload. A scene that sets white without the flag, such as a file from upstream Excalidraw, shows the theme's canvas. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in outline.
 
 Theme colors are painted as written in both light and dark mode. The dark-mode filter does not apply to them.
 

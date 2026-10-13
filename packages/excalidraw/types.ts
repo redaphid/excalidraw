@@ -207,6 +207,7 @@ export type StaticCanvasAppState = Readonly<
     shouldCacheIgnoreZoom: AppState["shouldCacheIgnoreZoom"];
     /** null indicates transparent bg */
     viewBackgroundColor: AppState["viewBackgroundColor"] | null;
+    viewBackgroundColorPicked: AppState["viewBackgroundColorPicked"];
     exportScale: AppState["exportScale"];
     selectedElementsAreBeingDragged: AppState["selectedElementsAreBeingDragged"];
     gridSize: AppState["gridSize"];
@@ -265,6 +266,7 @@ export type ObservedAppState = ObservedStandaloneAppState &
 export type ObservedStandaloneAppState = {
   name: AppState["name"];
   viewBackgroundColor: AppState["viewBackgroundColor"];
+  viewBackgroundColorPicked: AppState["viewBackgroundColorPicked"];
 };
 
 export type ObservedElementsAppState = {
@@ -469,6 +471,9 @@ export interface AppState {
   currentItemRoundness: StrokeRoundness;
   currentItemArrowType: "sharp" | "round" | "elbow";
   viewBackgroundColor: string;
+  /** the user chose `viewBackgroundColor`, so a theme's canvas color does not
+   * replace it, even when it is the default white */
+  viewBackgroundColorPicked: boolean;
   scrollX: number;
   scrollY: number;
   scrollConstraints: ScrollConstraints | null;
