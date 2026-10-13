@@ -3775,7 +3775,10 @@ class App extends React.Component<AppProps, AppState> {
     // user's own picks win
     const { colorTopPicks: themeTopPicks = {}, ...themeDefaults } =
       this.cssTheme.appState;
-    let restoredAppState = restoreAppState(initialData?.appState, themeDefaults);
+    let restoredAppState = restoreAppState(
+      initialData?.appState,
+      themeDefaults,
+    );
     const colorTopPicks = { ...restoredAppState.colorTopPicks };
     for (const [slot, picks] of Object.entries(themeTopPicks) as [
       keyof AppState["colorTopPicks"],
@@ -5307,10 +5310,7 @@ ${css}
       palettes: palettesChanged ? next.palettes : prev.palettes,
     };
     const { colorTopPicks, ...defaults } = next.appState;
-    if (
-      appStateChanged &&
-      (colorTopPicks || Object.keys(defaults).length)
-    ) {
+    if (appStateChanged && (colorTopPicks || Object.keys(defaults).length)) {
       this.setState((state) => ({
         ...state,
         ...defaults,
