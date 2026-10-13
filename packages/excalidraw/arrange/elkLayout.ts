@@ -83,10 +83,20 @@ const layOut = async (graph: ElkNode): Promise<ElkNode> => {
   return (await mainThread)(graph);
 };
 
+/** layered's strategies that read the nodes' input coordinates instead of starting over */
+const INTERACTIVE: Record<string, string> = {
+  "elk.layered.cycleBreaking.strategy": "INTERACTIVE",
+  "elk.layered.layering.strategy": "INTERACTIVE",
+  "elk.layered.crossingMinimization.strategy": "INTERACTIVE",
+  "elk.layered.nodePlacement.strategy": "INTERACTIVE",
+  "elk.layered.interactiveReferencePoint": "TOP_LEFT",
+};
+
 const elkOptionsOf = ({
   algorithm,
   direction,
   spacing,
+  mode,
   elkOptions,
 }: LayoutOptions): Record<string, string> => ({
   "elk.algorithm": algorithm,
@@ -96,6 +106,7 @@ const elkOptionsOf = ({
   "elk.spacing.componentComponent": String(spacing.node),
   "elk.padding": "[top=0,left=0,bottom=0,right=0]",
   "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+  ...(mode === "incremental" && algorithm === "layered" ? INTERACTIVE : {}),
   ...elkOptions,
 });
 
@@ -110,7 +121,12 @@ export const elkLayout: LayoutEngine = async (
   const laid = await layOut({
     id: "excalidraw-arrange",
     layoutOptions: elkOptionsOf(options),
-    children: nodes.map(({ id, width, height }) => ({ id, width, height })),
+    children: nodes.map(({ id, width, height, previous }) => ({
+      id,
+      width,
+      height,
+      ...previous,
+    })),
     edges: edges.map(({ id, source, target }) => ({
       id,
       sources: [source],

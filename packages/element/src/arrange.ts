@@ -35,6 +35,8 @@ export type LayoutNode = {
   readonly id: string;
   readonly width: number;
   readonly height: number;
+  /** top-left where the node sits now; incremental layout keeps nodes near it */
+  readonly previous?: { readonly x: number; readonly y: number };
 };
 
 export type LayoutEdge = {
@@ -51,10 +53,14 @@ export type LayoutGraph = {
 
 export type LayoutSpacing = { readonly node: number; readonly rank: number };
 
+/** fresh lays out from scratch; incremental seeds the engine with where nodes sit now */
+export type LayoutMode = "fresh" | "incremental";
+
 export type LayoutOptions = {
   readonly algorithm: LayoutAlgorithm;
   readonly direction: LayoutDirection;
   readonly spacing: LayoutSpacing;
+  readonly mode: LayoutMode;
   /** raw engine options, merged last; the escape hatch for algorithm-specific tuning */
   readonly elkOptions?: Readonly<Record<string, string>>;
 };
@@ -76,6 +82,7 @@ export type ArrangeRequest = {
   readonly algorithm?: LayoutAlgorithm;
   readonly direction?: LayoutDirection;
   readonly spacing?: Partial<LayoutSpacing & { frameMargin: number }>;
+  readonly mode?: LayoutMode;
   readonly elkOptions?: Readonly<Record<string, string>>;
 };
 
@@ -294,6 +301,7 @@ export const planArrange = async (
     algorithm: request.algorithm ?? "layered",
     direction: request.direction ?? "down",
     spacing: { node: spacing.node, rank: spacing.rank },
+    mode: request.mode ?? "fresh",
     elkOptions: request.elkOptions,
   };
 
@@ -366,6 +374,10 @@ export const planArrange = async (
             id,
             width: box.width,
             height: box.height,
+            previous:
+              options.mode === "incremental"
+                ? { x: box.x, y: box.y }
+                : undefined,
           })),
           edges: arrows.map(({ edge }) => edge),
         },
@@ -391,11 +403,34 @@ export const planArrange = async (
     const height = Math.max(
       ...nodes.map((unit) => at(unit).y + unit.box.height),
     );
-    let origin = {
-      x: Math.min(...nodes.map((unit) => unit.box.x)),
-      y: Math.min(...nodes.map((unit) => unit.box.y)),
-    };
-    if (frame) {
+    const median = (values: number[]) =>
+      [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+    // incremental lines the new layout up with where most nodes already sit,
+    // so a few newcomers dropped far away cannot drag everyone with them
+    let origin =
+      options.mode === "incremental"
+        ? {
+            x: median(nodes.map((unit) => unit.box.x - at(unit).x)),
+            y: median(nodes.map((unit) => unit.box.y - at(unit).y)),
+          }
+        : {
+            x: Math.min(...nodes.map((unit) => unit.box.x)),
+            y: Math.min(...nodes.map((unit) => unit.box.y)),
+          };
+    if (frame && options.mode === "incremental") {
+      const margin = spacing.frameMargin;
+      origin = {
+        x: Math.max(origin.x, frame.x + margin),
+        y: Math.max(origin.y, frame.y + margin),
+      };
+      const grown = {
+        width: Math.max(frame.width, origin.x - frame.x + width + margin),
+        height: Math.max(frame.height, origin.y - frame.y + height + margin),
+      };
+      if (grown.width !== frame.width || grown.height !== frame.height) {
+        frames.set(frame.id, grown);
+      }
+    } else if (frame) {
       const grown = {
         width: Math.max(frame.width, width + 2 * spacing.frameMargin),
         height: Math.max(frame.height, height + 2 * spacing.frameMargin),
