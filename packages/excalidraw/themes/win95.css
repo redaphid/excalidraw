@@ -48,6 +48,13 @@
     #dbffff #adffff #7affff #3dffff #00ffff,
     #f6f6f6 #ebebeb #dedede #cfcfcf #c0c0c0;
 
+  --sticky-note-background-color: #ffffe1;
+  --sticky-note-stroke-color: #000000;
+  --color-picks-sticky-note-background: #ffffe1 #ffffff #80ffff #ff8040 #dfdfdf;
+  --color-picks-sticky-note-stroke: #000000 #800000 #008000 #000080 #808000;
+  --canvas-sticky-note-shadow: none;
+  --canvas-sticky-note-edge: 1 #000000;
+
   --ui-font: Tahoma, "MS Sans Serif", "Microsoft Sans Serif", Arial, sans-serif;
   --text-primary-color: #000000;
   --color-on-surface: #000000;

@@ -34,6 +34,13 @@
   --color-palette-background: transparent,
     #9bbc0f #8bac0f #8bac0f #306230 #0f380f, #8bac0f, #306230, #0f380f, #9bbc0f;
 
+  --sticky-note-background-color: #8bac0f;
+  --sticky-note-stroke-color: #0f380f;
+  --color-picks-sticky-note-background: #8bac0f #9bbc0f;
+  --color-picks-sticky-note-stroke: #0f380f;
+  --canvas-sticky-note-shadow: none;
+  --canvas-sticky-note-edge: 3 #0f380f;
+
   --ui-font: Cascadia, "Cascadia Code", Consolas, "SF Mono", monospace;
   --text-primary-color: #0f380f;
   --color-on-surface: #0f380f;
