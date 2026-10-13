@@ -12,6 +12,7 @@ import {
   newElement,
   newFrameElement,
   newFreeDrawElement,
+  newLinearElement,
 } from "../src/newElement";
 
 import type { ExcalidrawElement, ExcalidrawFrameElement } from "../src/types";
@@ -55,6 +56,23 @@ const arrow = (x: number, y: number, dx: number, dy: number) =>
     height: Math.abs(dy),
     points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(dx, dy)],
   });
+
+const path = (
+  type: "freedraw" | "line",
+  ...points: [number, number][]
+): ExcalidrawElement => {
+  const [[x, y]] = points;
+  const local = points.map(([px, py]) => pointFrom<LocalPoint>(px - x, py - y));
+  return type === "freedraw"
+    ? newFreeDrawElement({
+        type,
+        x,
+        y,
+        simulatePressure: false,
+        points: local,
+      })
+    : newLinearElement({ type, x, y, points: local });
+};
 
 const clips = (element: ExcalidrawElement, frame: ExcalidrawFrameElement) => {
   const placed = { ...element, frameId: frame.id };
@@ -154,6 +172,56 @@ describe("clipping an element to its frame (0..100 on both axes)", () => {
   it("does not clip an arrow outside the frame", () => {
     expect(clips(arrow(120, 20, 60, 40), frameAt())).toBe(false);
   });
+
+  describe.each(["freedraw", "line"] as const)(
+    "a %s with a vertex at the frame's right edge",
+    (type) => {
+      it("clips when the vertex lies on the edge and the path crosses it", () => {
+        expect(
+          clips(path(type, [50, 20], [100, 50], [150, 80]), frameAt()),
+        ).toBe(true);
+      });
+
+      it("clips when the vertex lies just inside the edge and the path crosses it", () => {
+        expect(
+          clips(path(type, [50, 20], [99, 50], [150, 80]), frameAt()),
+        ).toBe(true);
+      });
+
+      it("clips when the vertex lies just outside the edge and the path crosses it", () => {
+        expect(
+          clips(path(type, [50, 20], [101, 50], [150, 80]), frameAt()),
+        ).toBe(true);
+      });
+
+      it("clips when the path crosses at the frame's corner", () => {
+        expect(
+          clips(path(type, [50, 50], [100, 100], [150, 150]), frameAt()),
+        ).toBe(true);
+      });
+
+      it("clips when the path runs along the edge before leaving the frame", () => {
+        expect(
+          clips(
+            path(type, [50, 20], [100, 40], [100, 60], [150, 80]),
+            frameAt(),
+          ),
+        ).toBe(true);
+      });
+
+      it("does not clip when the path only touches the edge from inside", () => {
+        expect(
+          clips(path(type, [50, 20], [100, 50], [50, 80]), frameAt()),
+        ).toBe(false);
+      });
+
+      it("does not clip when the path only touches the edge from outside", () => {
+        expect(
+          clips(path(type, [150, 20], [100, 50], [150, 80]), frameAt()),
+        ).toBe(false);
+      });
+    },
+  );
 
   it("decides again after the frame moves onto an element it missed", () => {
     const frame = frameAt();
