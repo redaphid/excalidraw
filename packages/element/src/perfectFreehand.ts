@@ -8,6 +8,8 @@
  *   cap only for a pen of size 4.25 (Excalidraw's thinnest at 1x) or
  *   larger; the distance scales down with a smaller pen, so a stroke
  *   shorter than 3 units keeps its body.
+ * - The two passes are split into steps, so `IncrementalStroke` can resume
+ *   them on a stroke that grows while it is drawn.
  *
  * MIT License
  *
@@ -262,6 +264,137 @@ function getStrokeRadius(
 }
 
 /**
+ * The state of `getStrokePoints` after reading some inputs, none of them the
+ * last: streamline only ever looks back, so these stroke points stay put as
+ * the stroke grows.
+ * @internal
+ */
+type StrokePointsState = {
+  strokePoints: StrokePoint[];
+  prev: StrokePoint;
+  runningLength: number;
+  hasReachedMinimumLength: boolean;
+};
+
+function startStrokePoints(first: number[]): StrokePointsState {
+  const start: StrokePoint = {
+    point: [first[0], first[1]],
+    pressure: first[2] >= 0 ? first[2] : 0.25,
+    vector: [1, 1],
+    distance: 0,
+    runningLength: 0,
+  };
+  return {
+    strokePoints: [start],
+    prev: start,
+    runningLength: 0,
+    hasReachedMinimumLength: false,
+  };
+}
+
+/**
+ * Read an input point that is not the last one.
+ * @internal
+ */
+function addStrokePoint(
+  state: StrokePointsState,
+  input: number[],
+  t: number,
+  size: number,
+) {
+  const { prev } = state;
+
+  // Using the t calculated from the streamline option, interpolate a new
+  // point between the previous point the current point.
+  const point = lrp(prev.point, input, t);
+
+  // If the new point is the same as the previous point, skip ahead.
+  if (isEqual(prev.point, point)) {
+    return;
+  }
+
+  // How far is the new point from the previous point?
+  const distance = dist(point, prev.point);
+
+  // Add this distance to the total "running length" of the line.
+  state.runningLength += distance;
+
+  // At the start of the line, we wait until the new point is a
+  // certain distance away from the original point, to avoid noise
+  if (!state.hasReachedMinimumLength) {
+    if (state.runningLength < size) {
+      return;
+    }
+    state.hasReachedMinimumLength = true;
+    // TODO: Backfill the missing points so that tapering works correctly.
+  }
+
+  // Create a new strokepoint (it will be the new "previous" one).
+  state.prev = {
+    // The adjusted point
+    point,
+    // The input pressure (or .5 if not specified)
+    pressure: input[2] >= 0 ? input[2] : 0.5,
+    // The vector from the current point to the previous point
+    vector: uni(sub(prev.point, point)),
+    // The distance between the current point and the previous point
+    distance,
+    // The total distance so far
+    runningLength: state.runningLength,
+  };
+
+  // Push it to the strokePoints array.
+  state.strokePoints.push(state.prev);
+}
+
+/**
+ * The stroke point of the last input, which never waits for the minimum
+ * length, and is the input itself for a completed stroke.
+ * @internal
+ */
+function getLastStrokePoint(
+  state: StrokePointsState,
+  input: number[],
+  t: number,
+  isComplete: boolean,
+): StrokePoint | undefined {
+  const { prev } = state;
+
+  const point = isComplete ? input.slice(0, 2) : lrp(prev.point, input, t);
+
+  if (isEqual(prev.point, point)) {
+    return undefined;
+  }
+
+  const distance = dist(point, prev.point);
+
+  return {
+    point,
+    pressure: input[2] >= 0 ? input[2] : 0.5,
+    vector: uni(sub(prev.point, point)),
+    distance,
+    runningLength: state.runningLength + distance,
+  };
+}
+
+function finishStrokePoints(
+  state: StrokePointsState,
+  last: StrokePoint | undefined,
+): StrokePoint[] {
+  const strokePoints = last
+    ? state.strokePoints.concat([last])
+    : state.strokePoints.slice();
+
+  // Set the vector of the first point to be the same as the second point.
+  strokePoints[0] = {
+    ...strokePoints[0],
+    vector: strokePoints[1]?.vector || [0, 0],
+  };
+
+  return strokePoints;
+}
+
+/**
  * ## getStrokePoints
  * @description Get an array of points as objects with an adjusted point, pressure, vector, distance, and runningLength.
  * @param points An array of points (as `[x, y, pressure]` or `{x, y, pressure}`). Pressure is optional in both cases.
@@ -311,84 +444,18 @@ export function getStrokePoints<
     pts = [...pts, [...add(pts[0], [1, 1]), ...pts[0].slice(2)]];
   }
 
-  // The strokePoints array will hold the points for the stroke.
-  // Start it out with the first point, which needs no adjustment.
-  const strokePoints: StrokePoint[] = [
-    {
-      point: [pts[0][0], pts[0][1]],
-      pressure: pts[0][2] >= 0 ? pts[0][2] : 0.25,
-      vector: [1, 1],
-      distance: 0,
-      runningLength: 0,
-    },
-  ];
-
-  // A flag to see whether we've already reached out minimum length
-  let hasReachedMinimumLength = false;
-
-  // We use the runningLength to keep track of the total distance
-  let runningLength = 0;
-
-  // We're set this to the latest point, so we can use it to calculate
-  // the distance and vector of the next point.
-  let prev = strokePoints[0];
+  const state = startStrokePoints(pts[0]);
 
   const max = pts.length - 1;
 
-  // Iterate through all of the points, creating StrokePoints.
-  for (let i = 1; i < pts.length; i++) {
-    const point =
-      isComplete && i === max
-        ? // If we're at the last point, and `options.last` is true,
-          // then add the actual input point.
-          pts[i].slice(0, 2)
-        : // Otherwise, using the t calculated from the streamline
-          // option, interpolate a new point between the previous
-          // point the current point.
-          lrp(prev.point, pts[i], t);
-
-    // If the new point is the same as the previous point, skip ahead.
-    if (isEqual(prev.point, point)) {
-      continue;
-    }
-
-    // How far is the new point from the previous point?
-    const distance = dist(point, prev.point);
-
-    // Add this distance to the total "running length" of the line.
-    runningLength += distance;
-
-    // At the start of the line, we wait until the new point is a
-    // certain distance away from the original point, to avoid noise
-    if (i < max && !hasReachedMinimumLength) {
-      if (runningLength < size) {
-        continue;
-      }
-      hasReachedMinimumLength = true;
-      // TODO: Backfill the missing points so that tapering works correctly.
-    }
-    // Create a new strokepoint (it will be the new "previous" one).
-    prev = {
-      // The adjusted point
-      point,
-      // The input pressure (or .5 if not specified)
-      pressure: pts[i][2] >= 0 ? pts[i][2] : 0.5,
-      // The vector from the current point to the previous point
-      vector: uni(sub(prev.point, point)),
-      // The distance between the current point and the previous point
-      distance,
-      // The total distance so far
-      runningLength,
-    };
-
-    // Push it to the strokePoints array.
-    strokePoints.push(prev);
+  for (let i = 1; i < max; i++) {
+    addStrokePoint(state, pts[i], t, size);
   }
 
-  // Set the vector of the first point to be the same as the second point.
-  strokePoints[0].vector = strokePoints[1]?.vector || [0, 0];
-
-  return strokePoints;
+  return finishStrokePoints(
+    state,
+    getLastStrokePoint(state, pts[max], t, isComplete),
+  );
 }
 
 const { min, PI } = Math;
@@ -400,23 +467,29 @@ const RATE_OF_PRESSURE_CHANGE = 0.275;
 const FIXED_PI = PI + 0.0001;
 
 /**
- * ## getStrokeOutlinePoints
- * @description Get an array of points (as `[x, y]`) representing the outline of a stroke.
- * @param points An array of StrokePoints as returned from `getStrokePoints`.
- * @param options (optional) An object with options.
- * @param options.size	The base size (diameter) of the stroke.
- * @param options.thinning The effect of pressure on the stroke's size.
- * @param options.smoothing	How much to soften the stroke's edges.
- * @param options.easing	An easing function to apply to each point's pressure.
- * @param options.simulatePressure Whether to simulate pressure based on velocity.
- * @param options.start Cap, taper and easing for the start of the line.
- * @param options.end Cap, taper and easing for the end of the line.
- * @param options.last Whether to handle the points as a completed stroke.
+ * The options of `getStrokeOutlinePoints` resolved for one stroke.
+ * @internal
  */
-export function getStrokeOutlinePoints(
-  points: StrokePoint[],
-  options: Partial<StrokeOptions> = {} as Partial<StrokeOptions>,
-): number[][] {
+type OutlineSettings = {
+  size: number;
+  thinning: number;
+  simulatePressure: boolean;
+  easing: (t: number) => number;
+  capStart: boolean;
+  capEnd: boolean;
+  taperStartEase: (t: number) => number;
+  taperEndEase: (t: number) => number;
+  isComplete: boolean;
+  totalLength: number;
+  taperStart: number;
+  taperEnd: number;
+  minDistance: number;
+};
+
+function getOutlineSettings(
+  options: Partial<StrokeOptions>,
+  totalLength: number,
+): OutlineSettings {
   const {
     size = 16,
     smoothing = 0.5,
@@ -434,14 +507,6 @@ export function getStrokeOutlinePoints(
   const { cap: capEnd = true, easing: taperEndEase = (t) => --t * t * t + 1 } =
     end;
 
-  // We can't do anything with an empty array or a stroke with negative size.
-  if (points.length === 0 || size <= 0) {
-    return [];
-  }
-
-  // The total length of the line
-  const totalLength = points[points.length - 1].runningLength;
-
   const taperStart =
     start.taper === false
       ? 0
@@ -456,17 +521,57 @@ export function getStrokeOutlinePoints(
       ? Math.max(size, totalLength)
       : (end.taper as number);
 
-  // The minimum allowed distance between points (squared)
-  const minDistance = Math.pow(size * smoothing, 2);
+  return {
+    size,
+    thinning,
+    simulatePressure,
+    easing,
+    capStart,
+    capEnd,
+    taperStartEase,
+    taperEndEase,
+    isComplete,
+    totalLength,
+    taperStart,
+    taperEnd,
+    // The minimum allowed distance between points (squared)
+    minDistance: Math.pow(size * smoothing, 2),
+  };
+}
 
+/**
+ * The state of `getStrokeOutlinePoints` between two stroke points.
+ * @internal
+ */
+type OutlineState = {
   // Our collected left and right points
-  const leftPts: number[][] = [];
-  const rightPts: number[][] = [];
+  leftPts: number[][];
+  rightPts: number[][];
+  prevPressure: number;
+  // The current radius
+  radius: number;
+  // The radius of the first saved point
+  firstRadius: number | undefined;
+  // Previous vector
+  prevVector: number[];
+  // Previous left and right points
+  pl: number[];
+  pr: number[];
+  // Temporary left and right points
+  tl: number[];
+  tr: number[];
+  // Keep track of whether the previous point is a sharp corner
+  // ... so that we don't detect the same corner twice
+  isPrevPointSharpCorner: boolean;
+};
+
+function startOutline(points: StrokePoint[], s: OutlineSettings): OutlineState {
+  const { size, simulatePressure } = s;
 
   // Previous pressure (start with average of first five pressures,
   // in order to prevent fat starts for every line. Drawn lines
   // almost always start slow!
-  let prevPressure = points.slice(0, 10).reduce((acc, curr) => {
+  const prevPressure = points.slice(0, 10).reduce((acc, curr) => {
     let pressure = curr.pressure;
 
     if (simulatePressure) {
@@ -481,189 +586,200 @@ export function getStrokeOutlinePoints(
     return (acc + pressure) / 2;
   }, points[0].pressure);
 
-  // The current radius
-  let radius = getStrokeRadius(
-    size,
-    thinning,
-    points[points.length - 1].pressure,
-    easing,
-  );
+  const pl = points[0].point;
 
-  // The radius of the first saved point
-  let firstRadius: number | undefined = undefined;
+  return {
+    leftPts: [],
+    rightPts: [],
+    prevPressure,
+    radius: getStrokeRadius(
+      size,
+      s.thinning,
+      points[points.length - 1].pressure,
+      s.easing,
+    ),
+    firstRadius: undefined,
+    prevVector: points[0].vector,
+    pl,
+    pr: pl,
+    tl: pl,
+    tr: pl,
+    isPrevPointSharpCorner: false,
+  };
+}
 
-  // Previous vector
-  let prevVector = points[0].vector;
+/**
+ * Find the outline's left and right points for `points[i]`. The first and
+ * last points get caps later on.
+ * @internal
+ */
+function addOutlinePoint(
+  state: OutlineState,
+  points: StrokePoint[],
+  i: number,
+  s: OutlineSettings,
+) {
+  const { size, thinning, totalLength, taperStart, taperEnd } = s;
+  let { pressure } = points[i];
+  const { point, vector, distance, runningLength } = points[i];
 
-  // Previous left and right points
-  let pl = points[0].point;
-  let pr = pl;
-
-  // Temporary left and right points
-  let tl = pl;
-  let tr = pr;
-
-  // Keep track of whether the previous point is a sharp corner
-  // ... so that we don't detect the same corner twice
-  let isPrevPointSharpCorner = false;
-
-  // let short = true
-
-  /*
-    Find the outline's left and right points
-
-    Iterating through the points and populate the rightPts and leftPts arrays,
-    skipping the first and last pointsm, which will get caps later on.
-  */
-
-  for (let i = 0; i < points.length; i++) {
-    let { pressure } = points[i];
-    const { point, vector, distance, runningLength } = points[i];
-
-    // Removes noise from the end of the line
-    if (
-      i < points.length - 1 &&
-      totalLength - runningLength < Math.min(3, (size / 4.25) * 3)
-    ) {
-      continue;
-    }
-
-    /*
-      Calculate the radius
-
-      If not thinning, the current point's radius will be half the size; or
-      otherwise, the size will be based on the current (real or simulated)
-      pressure. 
-    */
-
-    if (thinning) {
-      if (simulatePressure) {
-        // If we're simulating pressure, then do so based on the distance
-        // between the current point and the previous point, and the size
-        // of the stroke. Otherwise, use the input pressure.
-        const sp = min(1, distance / size);
-        const rp = min(1, 1 - sp);
-        pressure = min(
-          1,
-          prevPressure + (rp - prevPressure) * (sp * RATE_OF_PRESSURE_CHANGE),
-        );
-      }
-
-      radius = getStrokeRadius(size, thinning, pressure, easing);
-    } else {
-      radius = size / 2;
-    }
-
-    if (firstRadius === undefined) {
-      firstRadius = radius;
-    }
-
-    /*
-      Apply tapering
-
-      If the current length is within the taper distance at either the
-      start or the end, calculate the taper strengths. Apply the smaller 
-      of the two taper strengths to the radius.
-    */
-
-    const ts =
-      runningLength < taperStart
-        ? taperStartEase(runningLength / taperStart)
-        : 1;
-
-    const te =
-      totalLength - runningLength < taperEnd
-        ? taperEndEase((totalLength - runningLength) / taperEnd)
-        : 1;
-
-    radius = Math.max(1e-9, radius * Math.min(ts, te));
-
-    /* Add points to left and right */
-
-    /*
-      Handle sharp corners
-
-      Find the difference (dot product) between the current and next vector.
-      If the next vector is at more than a right angle to the current vector,
-      draw a cap at the current point.
-    */
-
-    const nextVector = (i < points.length - 1 ? points[i + 1] : points[i])
-      .vector;
-    const nextDpr = i < points.length - 1 ? dpr(vector, nextVector) : 1.0;
-    const prevDpr = dpr(vector, prevVector);
-
-    const isPointSharpCorner = prevDpr < 0 && !isPrevPointSharpCorner;
-    const isNextPointSharpCorner = nextDpr !== null && nextDpr < 0;
-
-    if (isPointSharpCorner || isNextPointSharpCorner) {
-      // It's a sharp corner. Draw a rounded cap and move on to the next point
-      // Considering saving these and drawing them later? So that we can avoid
-      // crossing future points.
-
-      const offset = mul(per(prevVector), radius);
-
-      for (let step = 1 / 13, t = 0; t <= 1; t += step) {
-        tl = rotAround(sub(point, offset), point, FIXED_PI * t);
-        leftPts.push(tl);
-
-        tr = rotAround(add(point, offset), point, FIXED_PI * -t);
-        rightPts.push(tr);
-      }
-
-      pl = tl;
-      pr = tr;
-
-      if (isNextPointSharpCorner) {
-        isPrevPointSharpCorner = true;
-      }
-      continue;
-    }
-
-    isPrevPointSharpCorner = false;
-
-    // Handle the last point
-    if (i === points.length - 1) {
-      const offset = mul(per(vector), radius);
-      leftPts.push(sub(point, offset));
-      rightPts.push(add(point, offset));
-      continue;
-    }
-
-    /* 
-      Add regular points
-
-      Project points to either side of the current point, using the
-      calculated size as a distance. If a point's distance to the 
-      previous point on that side greater than the minimum distance
-      (or if the corner is kinda sharp), add the points to the side's
-      points array.
-    */
-
-    const offset = mul(per(lrp(nextVector, vector, nextDpr)), radius);
-
-    tl = sub(point, offset);
-
-    if (i <= 1 || dist2(pl, tl) > minDistance) {
-      leftPts.push(tl);
-      pl = tl;
-    }
-
-    tr = add(point, offset);
-
-    if (i <= 1 || dist2(pr, tr) > minDistance) {
-      rightPts.push(tr);
-      pr = tr;
-    }
-
-    // Set variables for next iteration
-    prevPressure = pressure;
-    prevVector = vector;
+  // Removes noise from the end of the line
+  if (
+    i < points.length - 1 &&
+    totalLength - runningLength < Math.min(3, (size / 4.25) * 3)
+  ) {
+    return;
   }
 
   /*
+    Calculate the radius
+
+    If not thinning, the current point's radius will be half the size; or
+    otherwise, the size will be based on the current (real or simulated)
+    pressure.
+  */
+
+  if (thinning) {
+    if (s.simulatePressure) {
+      // If we're simulating pressure, then do so based on the distance
+      // between the current point and the previous point, and the size
+      // of the stroke. Otherwise, use the input pressure.
+      const sp = min(1, distance / size);
+      const rp = min(1, 1 - sp);
+      pressure = min(
+        1,
+        state.prevPressure +
+          (rp - state.prevPressure) * (sp * RATE_OF_PRESSURE_CHANGE),
+      );
+    }
+
+    state.radius = getStrokeRadius(size, thinning, pressure, s.easing);
+  } else {
+    state.radius = size / 2;
+  }
+
+  if (state.firstRadius === undefined) {
+    state.firstRadius = state.radius;
+  }
+
+  /*
+    Apply tapering
+
+    If the current length is within the taper distance at either the
+    start or the end, calculate the taper strengths. Apply the smaller
+    of the two taper strengths to the radius.
+  */
+
+  const ts =
+    runningLength < taperStart
+      ? s.taperStartEase(runningLength / taperStart)
+      : 1;
+
+  const te =
+    totalLength - runningLength < taperEnd
+      ? s.taperEndEase((totalLength - runningLength) / taperEnd)
+      : 1;
+
+  const radius = Math.max(1e-9, state.radius * Math.min(ts, te));
+  state.radius = radius;
+
+  /* Add points to left and right */
+
+  /*
+    Handle sharp corners
+
+    Find the difference (dot product) between the current and next vector.
+    If the next vector is at more than a right angle to the current vector,
+    draw a cap at the current point.
+  */
+
+  const nextVector = (i < points.length - 1 ? points[i + 1] : points[i]).vector;
+  const nextDpr = i < points.length - 1 ? dpr(vector, nextVector) : 1.0;
+  const prevDpr = dpr(vector, state.prevVector);
+
+  const isPointSharpCorner = prevDpr < 0 && !state.isPrevPointSharpCorner;
+  const isNextPointSharpCorner = nextDpr !== null && nextDpr < 0;
+
+  if (isPointSharpCorner || isNextPointSharpCorner) {
+    // It's a sharp corner. Draw a rounded cap and move on to the next point
+    // Considering saving these and drawing them later? So that we can avoid
+    // crossing future points.
+
+    const offset = mul(per(state.prevVector), radius);
+
+    for (let step = 1 / 13, t = 0; t <= 1; t += step) {
+      state.tl = rotAround(sub(point, offset), point, FIXED_PI * t);
+      state.leftPts.push(state.tl);
+
+      state.tr = rotAround(add(point, offset), point, FIXED_PI * -t);
+      state.rightPts.push(state.tr);
+    }
+
+    state.pl = state.tl;
+    state.pr = state.tr;
+
+    if (isNextPointSharpCorner) {
+      state.isPrevPointSharpCorner = true;
+    }
+    return;
+  }
+
+  state.isPrevPointSharpCorner = false;
+
+  // Handle the last point
+  if (i === points.length - 1) {
+    const offset = mul(per(vector), radius);
+    state.leftPts.push(sub(point, offset));
+    state.rightPts.push(add(point, offset));
+    return;
+  }
+
+  /*
+    Add regular points
+
+    Project points to either side of the current point, using the
+    calculated size as a distance. If a point's distance to the
+    previous point on that side greater than the minimum distance
+    (or if the corner is kinda sharp), add the points to the side's
+    points array.
+  */
+
+  const offset = mul(per(lrp(nextVector, vector, nextDpr)), radius);
+
+  state.tl = sub(point, offset);
+
+  if (i <= 1 || dist2(state.pl, state.tl) > s.minDistance) {
+    state.leftPts.push(state.tl);
+    state.pl = state.tl;
+  }
+
+  state.tr = add(point, offset);
+
+  if (i <= 1 || dist2(state.pr, state.tr) > s.minDistance) {
+    state.rightPts.push(state.tr);
+    state.pr = state.tr;
+  }
+
+  // Set variables for next iteration
+  state.prevPressure = pressure;
+  state.prevVector = vector;
+}
+
+/**
+ * Draw the caps and join the sides into the outline.
+ * @internal
+ */
+function closeOutline(
+  state: OutlineState,
+  points: StrokePoint[],
+  s: OutlineSettings,
+): number[][] {
+  const { taperStart, taperEnd } = s;
+  const { radius, leftPts, rightPts } = state;
+
+  /*
     Drawing caps
-    
+
     Now that we have our points on either side of the line, we need to
     draw caps at the start and end. Tapered lines don't have caps, but
     may have dots for very short lines.
@@ -680,9 +796,9 @@ export function getStrokeOutlinePoints(
 
   const endCap: number[][] = [];
 
-  /* 
+  /*
     Draw a dot for very short or completed strokes
-    
+
     If the line is too short to gather left or right points and if the line is
     not tapered on either side, draw a dot. If the line is tapered, then only
     draw a dot if the line is both very short and complete. If we draw a dot,
@@ -690,11 +806,11 @@ export function getStrokeOutlinePoints(
   */
 
   if (points.length === 1) {
-    if (!(taperStart || taperEnd) || isComplete) {
+    if (!(taperStart || taperEnd) || s.isComplete) {
       const start = prj(
         firstPoint,
         uni(per(sub(firstPoint, lastPoint))),
-        -(firstRadius || radius),
+        -(state.firstRadius || radius),
       );
       const dotPts: number[][] = [];
       for (let step = 1 / 13, t = step; t <= 1; t += step) {
@@ -714,7 +830,7 @@ export function getStrokeOutlinePoints(
 
     if (taperStart || (taperEnd && points.length === 1)) {
       // The start point is tapered, noop
-    } else if (capStart) {
+    } else if (s.capStart) {
       // Draw the round cap - add thirteen points rotating the right point around the start point to the left point
       for (let step = 1 / 13, t = step; t <= 1; t += step) {
         const pt = rotAround(rightPts[0], firstPoint, FIXED_PI * t);
@@ -749,7 +865,7 @@ export function getStrokeOutlinePoints(
     if (taperEnd || (taperStart && points.length === 1)) {
       // Tapered end - push the last point to the line
       endCap.push(lastPoint);
-    } else if (capEnd) {
+    } else if (s.capEnd) {
       // Draw the round end cap
       const start = prj(lastPoint, direction, radius);
       for (let step = 1 / 29, t = step; t < 1; t += step) {
@@ -768,12 +884,54 @@ export function getStrokeOutlinePoints(
   }
 
   /*
-    Return the points in the correct winding order: begin on the left side, then 
-    continue around the end cap, then come back along the right side, and finally 
+    Return the points in the correct winding order: begin on the left side, then
+    continue around the end cap, then come back along the right side, and finally
     complete the start cap.
   */
 
   return leftPts.concat(endCap, rightPts.reverse(), startCap);
+}
+
+/**
+ * ## getStrokeOutlinePoints
+ * @description Get an array of points (as `[x, y]`) representing the outline of a stroke.
+ * @param points An array of StrokePoints as returned from `getStrokePoints`.
+ * @param options (optional) An object with options.
+ * @param options.size	The base size (diameter) of the stroke.
+ * @param options.thinning The effect of pressure on the stroke's size.
+ * @param options.smoothing	How much to soften the stroke's edges.
+ * @param options.easing	An easing function to apply to each point's pressure.
+ * @param options.simulatePressure Whether to simulate pressure based on velocity.
+ * @param options.start Cap, taper and easing for the start of the line.
+ * @param options.end Cap, taper and easing for the end of the line.
+ * @param options.last Whether to handle the points as a completed stroke.
+ */
+export function getStrokeOutlinePoints(
+  points: StrokePoint[],
+  options: Partial<StrokeOptions> = {} as Partial<StrokeOptions>,
+): number[][] {
+  if (points.length === 0) {
+    return [];
+  }
+
+  const s = getOutlineSettings(
+    options,
+    // The total length of the line
+    points[points.length - 1].runningLength,
+  );
+
+  // We can't do anything with a stroke with negative size.
+  if (s.size <= 0) {
+    return [];
+  }
+
+  const state = startOutline(points, s);
+
+  for (let i = 0; i < points.length; i++) {
+    addOutlinePoint(state, points, i, s);
+  }
+
+  return closeOutline(state, points, s);
 }
 
 /**
@@ -796,4 +954,184 @@ export function getStroke(
   options: StrokeOptions = {} as StrokeOptions,
 ): number[][] {
   return getStrokeOutlinePoints(getStrokePoints(points, options), options);
+}
+
+// Reading past the end of a point without pressure is a slow lookup. A
+// negative pressure reads as none, like a missing one does.
+const pressureOf = (
+  points: readonly (readonly number[])[],
+  pressures: readonly number[] | undefined,
+  i: number,
+): number =>
+  pressures ? pressures[i] : points[i].length > 2 ? points[i][2] : -1;
+
+/**
+ * `getStroke` for a stroke that grows one point at a time, as it does while
+ * it is drawn. It keeps the work for the part of the stroke that later
+ * points can no longer change, and redoes only the rest:
+ * - stroke points from every input but the last, as streamline only looks
+ *   back;
+ * - the outline of a stroke point once its successor is one of those, the
+ *   first ten (which seed the pressure) are, and it is farther from the end
+ *   than the end noise cut and the end taper, which a longer stroke only
+ *   moves away from it.
+ *
+ * The outline is the one `getStroke` returns for the same points and
+ * options. Inputs are compared with the ones read before, so any change
+ * other than appending starts over.
+ */
+export class IncrementalStroke {
+  private readonly options: StrokeOptions;
+  private readonly t: number;
+  private readonly size: number;
+  private readonly isComplete: boolean;
+  private readonly growable: boolean;
+
+  /** inputs read as not the last, as `[x, y, pressure]` */
+  private inputs: number[][] = [];
+  private strokePoints: StrokePointsState | null = null;
+  /** the outline after the stroke points before `outlined` */
+  private outline: OutlineState | null = null;
+  private outlined = 0;
+
+  constructor(options: StrokeOptions) {
+    const { streamline = 0.5, size = 16, last = false, start, end } = options;
+    this.options = options;
+    this.t = 0.15 + (1 - streamline) * 0.85;
+    this.size = size;
+    this.isComplete = last;
+    // tapers of `true` follow the stroke's whole length
+    this.growable = start?.taper !== true && end?.taper !== true && size > 0;
+  }
+
+  /**
+   * @param points `[x, y]` or `[x, y, pressure]` inputs
+   * @param pressures the inputs' pressures, if not in `points`
+   */
+  getOutline(
+    points: readonly (readonly number[])[],
+    pressures?: readonly number[],
+  ): number[][] {
+    const input = (i: number) => [
+      points[i][0],
+      points[i][1],
+      pressureOf(points, pressures, i),
+    ];
+
+    // `getStrokePoints` pads strokes of one or two points
+    if (points.length < 3 || !this.growable) {
+      this.reset();
+      return getStroke(
+        points.map((_, i) => input(i)),
+        this.options,
+      );
+    }
+
+    if (!this.isGrowing(points, pressures)) {
+      this.reset();
+    }
+
+    const max = points.length - 1;
+    const state = (this.strokePoints ??= startStrokePoints(
+      this.read(input(0)),
+    ));
+    for (let i = this.inputs.length; i < max; i++) {
+      addStrokePoint(state, this.read(input(i)), this.t, this.size);
+    }
+
+    const strokePoints = finishStrokePoints(
+      state,
+      getLastStrokePoint(state, input(max), this.t, this.isComplete),
+    );
+
+    const s = getOutlineSettings(
+      this.options,
+      strokePoints[strokePoints.length - 1].runningLength,
+    );
+
+    const settled = this.settleOutline(strokePoints, s);
+
+    const tail: OutlineState = {
+      ...(this.outline ?? startOutline(strokePoints, s)),
+      leftPts: [],
+      rightPts: [],
+    };
+    for (let i = settled; i < strokePoints.length; i++) {
+      addOutlinePoint(tail, strokePoints, i, s);
+    }
+    if (this.outline) {
+      tail.leftPts = this.outline.leftPts.concat(tail.leftPts);
+      tail.rightPts = this.outline.rightPts.concat(tail.rightPts);
+    }
+
+    return closeOutline(tail, strokePoints, s);
+  }
+
+  /**
+   * Extend the kept outline over the stroke points later points cannot
+   * change, and return how many stroke points it covers.
+   */
+  private settleOutline(strokePoints: StrokePoint[], s: OutlineSettings) {
+    const kept = this.strokePoints!.strokePoints;
+    if (kept.length < 10) {
+      return this.outlined;
+    }
+
+    // Every later stroke is at least this long
+    const minLength = kept[kept.length - 1].runningLength;
+    const endCut = Math.min(3, (this.size / 4.25) * 3);
+
+    let last = kept.length - 2;
+    while (
+      last >= this.outlined &&
+      (minLength - kept[last].runningLength < endCut ||
+        minLength - kept[last].runningLength < s.taperEnd)
+    ) {
+      last--;
+    }
+    if (last < this.outlined) {
+      return this.outlined;
+    }
+
+    const outline = (this.outline ??= startOutline(strokePoints, s));
+    for (let i = this.outlined; i <= last; i++) {
+      addOutlinePoint(outline, strokePoints, i, s);
+    }
+    this.outlined = last + 1;
+    return this.outlined;
+  }
+
+  private read(input: number[]) {
+    this.inputs.push(input);
+    return input;
+  }
+
+  private isGrowing(
+    points: readonly (readonly number[])[],
+    pressures?: readonly number[],
+  ) {
+    const { inputs } = this;
+    if (inputs.length >= points.length) {
+      return false;
+    }
+    for (let i = 0; i < inputs.length; i++) {
+      const read = inputs[i];
+      const point = points[i];
+      if (
+        read[0] !== point[0] ||
+        read[1] !== point[1] ||
+        read[2] !== pressureOf(points, pressures, i)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private reset() {
+    this.inputs = [];
+    this.strokePoints = null;
+    this.outline = null;
+    this.outlined = 0;
+  }
 }
