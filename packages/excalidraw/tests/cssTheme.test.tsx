@@ -13,10 +13,31 @@ import { restoreElements } from "../data/restore";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
-import { Pointer, UI } from "./helpers/ui";
-import { act, render } from "./test-utils";
+import { Keyboard, Pointer, UI } from "./helpers/ui";
+import { act, fireEvent, GlobalTestState, render } from "./test-utils";
 
 const { h } = window;
+
+/** the color the static canvas last painted its background with */
+const paintedBackground = () => {
+  const events: { type: string; props: { value?: string } }[] = (
+    GlobalTestState.canvas.getContext("2d") as any
+  ).__getEvents();
+  const fill = events.map(({ type }) => type).lastIndexOf("fillRect");
+  return events
+    .slice(0, fill)
+    .filter(({ type }) => type === "fillStyle")
+    .at(-1)?.props.value;
+};
+
+const pickCanvasBackground = async (color: string) => {
+  API.setAppState({ openMenu: "canvas" });
+  await act(async () => {});
+  fireEvent.click(
+    document.querySelector(`[data-testid="color-top-pick-${color}"]`)!,
+  );
+  await act(async () => {});
+};
 
 const styleOf = (properties: Record<string, string>) => ({
   getPropertyValue: (name: string) => properties[name] ?? "",
@@ -462,6 +483,31 @@ describe("css prop", () => {
     ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
     expect(swatches).toContain("#ebe4d6");
     expect(swatches).not.toContain("#ffffff");
+  });
+
+  it("paints a canvas the user set to white in white", async () => {
+    await render(<Excalidraw css=":scope { --canvas-background: #ebe4d6; }" />);
+    expect(paintedBackground()).toBe("#ebe4d6");
+
+    await pickCanvasBackground("#ffffff");
+
+    expect(paintedBackground()).toBe("#ffffff");
+    const swatches = [
+      ...document.querySelectorAll<HTMLElement>(".active-color"),
+    ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
+    expect(swatches).toContain("#ffffff");
+    expect(swatches).not.toContain("#ebe4d6");
+  });
+
+  it("shows the theme's canvas again when the white pick is undone", async () => {
+    await render(<Excalidraw css=":scope { --canvas-background: #ebe4d6; }" />);
+    await pickCanvasBackground("#ffffff");
+    expect(paintedBackground()).toBe("#ffffff");
+
+    Keyboard.undo();
+    await act(async () => {});
+
+    expect(paintedBackground()).toBe("#ebe4d6");
   });
 
   it("reads the dark mode values of an editor that starts dark", async () => {
