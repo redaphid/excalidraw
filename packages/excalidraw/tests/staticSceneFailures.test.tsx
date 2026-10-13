@@ -42,10 +42,12 @@ const paintFramedThenOutside = ({
     height: 50,
     frameId: frame.id,
   });
+  // farther from the middle of the view than the framed one, so its bitmap
+  // is built second
   const after = API.createElement({
     type: "rectangle",
-    x: 300,
-    y: 300,
+    x: 400,
+    y: 400,
     width: 50,
     height: 50,
   });

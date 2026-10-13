@@ -396,6 +396,7 @@ import {
   isGridModeEnabled,
 } from "../snapping";
 import { Renderer } from "../scene/Renderer";
+import { cancelStaticSceneRepaint } from "../renderer/staticScene";
 import {
   type SetViewportOptions,
   getViewportForZoomWithScrollConstraints,
@@ -4076,6 +4077,7 @@ class App extends React.Component<AppProps, AppState> {
     (this.ownerWindow as any).launchQueue?.setConsumer(() => {});
 
     cancelSettledBitmaps(this.canvas);
+    cancelStaticSceneRepaint(this.canvas);
     this.renderer.destroy();
     this.scene.destroy();
     this.scene = new Scene();

@@ -21,6 +21,7 @@ import {
 } from "@excalidraw/element";
 
 import {
+  buildSceneBitmaps,
   cacheSettledBitmaps,
   getRenderElementWithPositionOverride,
   resolveElementRenderState,
@@ -277,6 +278,9 @@ const renderLinkIcon = (
 /**
  * Paints elements as the static scene does: the painted ones in order, then
  * the iframe-like ones over all of them, then pending flowchart nodes.
+ * Builds a few of the bitmaps they lack first ({@link buildSceneBitmaps}) and
+ * returns whether some are still missing, for the caller to paint again on a
+ * later frame.
  */
 export const renderSceneElements = ({
   context,
@@ -285,7 +289,7 @@ export const renderSceneElements = ({
   elementsMap,
   allElementsMap,
   appState,
-  renderConfig,
+  renderConfig: sceneRenderConfig,
 }: {
   context: CanvasRenderingContext2D;
   rc: StaticSceneRenderConfig["rc"];
@@ -295,7 +299,17 @@ export const renderSceneElements = ({
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
 }) => {
-  const { isExporting } = renderConfig;
+  const { isExporting } = sceneRenderConfig;
+
+  const bitmaps = buildSceneBitmaps(
+    visibleElements,
+    allElementsMap,
+    sceneRenderConfig,
+    appState,
+  );
+  const renderConfig: StaticCanvasRenderConfig = bitmaps.missing.size
+    ? { ...sceneRenderConfig, elementsWithoutBitmap: bitmaps.missing }
+    : sceneRenderConfig;
 
   const inFrameGroupsMap = new Map<string, boolean>();
 
@@ -483,18 +497,32 @@ export const renderSceneElements = ({
       console.error(error);
     }
   });
+
+  return bitmaps.pending;
 };
 
-const _renderStaticScene = ({
-  canvas,
-  rc,
-  elementsMap,
-  allElementsMap,
-  visibleElements,
-  scale,
-  appState: unsnappedAppState,
-  renderConfig,
-}: StaticSceneRenderConfig) => {
+/** the last scene each canvas was asked to paint */
+const latestStaticScene = new WeakMap<
+  HTMLCanvasElement,
+  StaticSceneRenderConfig
+>();
+
+/** Drops the repaint this canvas has pending, for an editor that unmounts. */
+export const cancelStaticSceneRepaint = (canvas: HTMLCanvasElement) => {
+  latestStaticScene.delete(canvas);
+};
+
+const _renderStaticScene = (config: StaticSceneRenderConfig) => {
+  const {
+    canvas,
+    rc,
+    elementsMap,
+    allElementsMap,
+    visibleElements,
+    scale,
+    appState: unsnappedAppState,
+    renderConfig,
+  } = config;
   if (canvas === null) {
     return;
   }
@@ -566,7 +594,7 @@ const _renderStaticScene = ({
     }
   });
 
-  renderSceneElements({
+  const bitmapsLeft = renderSceneElements({
     context,
     rc,
     elements: visibleElements,
@@ -583,6 +611,19 @@ const _renderStaticScene = ({
     renderConfig,
     appState,
   );
+
+  if (bitmapsLeft) {
+    // the same scene again with the next few bitmaps, after the next frame's
+    // own work, unless that asked for a newer scene: the newer one builds
+    // them itself, and painting both would paint the frame twice
+    requestAnimationFrame(() =>
+      setTimeout(() => {
+        if (latestStaticScene.get(canvas) === config) {
+          _renderStaticScene(config);
+        }
+      }),
+    );
+  }
 };
 
 /** throttled to animation framerate */
@@ -599,6 +640,9 @@ export const renderStaticScene = (
   renderConfig: StaticSceneRenderConfig,
   throttle?: boolean,
 ) => {
+  if (renderConfig.canvas) {
+    latestStaticScene.set(renderConfig.canvas, renderConfig);
+  }
   if (throttle) {
     renderStaticSceneThrottled(renderConfig);
     return;
