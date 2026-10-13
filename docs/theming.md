@@ -227,7 +227,7 @@ Two groups of properties are read:
 - **Canvas colors** repaint the canvases: background, grid, selection, handles, frames, and the shadow and edge of sticky notes.
 - **New-element defaults** are written to `appState` (`currentItemStrokeWidthKey`, `currentItemRoughness`, and the rest). The toolbar and the properties panel start on them, and new elements take them. Elements already in the scene keep their own style.
 
-New-element defaults are written when they differ from the last read. A light and dark toggle that changes nothing keeps the picks the user made since. When the scene loads, the defaults are written again, because loading restores `appState`.
+New-element defaults are written when they differ from the last read. A light and dark toggle that changes nothing keeps the picks the user made since. When the scene loads, the defaults fill only what its `appState` did not save, so a returning user keeps their last stroke width, roughness and the rest. Quick swatches are filled per list: a list the user customized stays, a list they never touched takes the theme's.
 
 A value the editor can't parse is ignored, and the built-in value stays.
 
