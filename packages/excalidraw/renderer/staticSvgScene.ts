@@ -203,7 +203,10 @@ const renderElementToSvg = (
 
       const shadow = createPath(
         getStickyNotePathCommands(element, {
-          shadow: { x: STICKY_NOTE_SHADOW_OFFSET, y: STICKY_NOTE_SHADOW_OFFSET },
+          shadow: {
+            x: STICKY_NOTE_SHADOW_OFFSET,
+            y: STICKY_NOTE_SHADOW_OFFSET,
+          },
         }),
         "#000",
         STICKY_NOTE_SHADOW_OPACITY,

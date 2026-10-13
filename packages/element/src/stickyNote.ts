@@ -23,6 +23,8 @@ import {
 
 import { clamp } from "@excalidraw/math";
 
+import type { CanvasTheme } from "@excalidraw/excalidraw/cssTheme";
+
 import { updateBoundElements } from "./binding";
 import { newElementWith } from "./mutateElement";
 import { getElementDetailScale } from "./authoring";
@@ -31,8 +33,6 @@ import { computeBoundTextPosition, getBoundTextElement } from "./textElement";
 import { measureText } from "./textMeasurements";
 import { wrapText } from "./textWrapping";
 import { isStickyNoteElement, isTextElement } from "./typeChecks";
-
-import type { CanvasTheme } from "@excalidraw/excalidraw/cssTheme";
 
 import type { Scene } from "./Scene";
 import type { VerticalResizeAnchor } from "./sizeHelpers";

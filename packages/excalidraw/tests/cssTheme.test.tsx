@@ -280,12 +280,14 @@ describe("css prop", () => {
   it("gives new sticky notes the theme's paper, ink and chrome", async () => {
     await render(
       <Excalidraw
-        css={`:scope {
-  --sticky-note-background-color: #f2e6c4;
-  --sticky-note-stroke-color: #14181f;
-  --color-picks-sticky-note-background: #f2e6c4 #dfe8d6;
-  --canvas-sticky-note-shadow: none;
-}`}
+        css={`
+          :scope {
+            --sticky-note-background-color: #f2e6c4;
+            --sticky-note-stroke-color: #14181f;
+            --color-picks-sticky-note-background: #f2e6c4 #dfe8d6;
+            --canvas-sticky-note-shadow: none;
+          }
+        `}
       />,
     );
 

@@ -298,18 +298,20 @@ describe("generateThemeCss sticky notes", () => {
       }),
     );
     const [dusk, clay] = picks(css, "--color-picks-sticky-note-background");
-    const ink = applyDarkModeFilter(property(css, "--sticky-note-stroke-color")!);
+    const ink = applyDarkModeFilter(
+      property(css, "--sticky-note-stroke-color")!,
+    );
 
     expect(property(css, "--sticky-note-background-color")).toBe(
       removeDarkModeFilter("#2c3440"),
     );
     expect(dusk).toBe(removeDarkModeFilter("#2c3440"));
-    expect(contrastRatio(ink, applyDarkModeFilter(dusk))).toBeGreaterThanOrEqual(
-      4.5,
-    );
-    expect(contrastRatio(ink, applyDarkModeFilter(clay))).toBeGreaterThanOrEqual(
-      4.5,
-    );
+    expect(
+      contrastRatio(ink, applyDarkModeFilter(dusk)),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(ink, applyDarkModeFilter(clay)),
+    ).toBeGreaterThanOrEqual(4.5);
     expect(warnings).toContainEqual(
       expect.objectContaining({ token: "color.note.clay", from: "#9a8f80" }),
     );

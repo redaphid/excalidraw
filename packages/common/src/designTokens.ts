@@ -1225,7 +1225,8 @@ export const THEME_TOKENS_SCHEMA = {
                 },
                 edge: {
                   enum: NOTE_EDGES,
-                  description: "default: follows surface.border (bold gives ink)",
+                  description:
+                    "default: follows surface.border (bold gives ink)",
                 },
               },
             },

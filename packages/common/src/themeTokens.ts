@@ -58,13 +58,15 @@ const SHADOWS: Record<ThemeSpec["surface"]["shadow"], (ink: string) => string> =
  * units. soft and hairline are the editor's built-in look; hard is the
  * offset block of a brutalist panel.
  */
-const NOTE_SHADOWS: Record<ThemeSpec["note"]["shadow"], (ink: string) => string> =
-  {
-    none: () => "none",
-    soft: () => "3 3 rgba(0, 0, 0, 0.16)",
-    lifted: () => "6 8 rgba(0, 0, 0, 0.2)",
-    hard: (ink) => `5 5 ${ink}`,
-  };
+const NOTE_SHADOWS: Record<
+  ThemeSpec["note"]["shadow"],
+  (ink: string) => string
+> = {
+  none: () => "none",
+  soft: () => "3 3 rgba(0, 0, 0, 0.16)",
+  lifted: () => "6 8 rgba(0, 0, 0, 0.2)",
+  hard: (ink) => `5 5 ${ink}`,
+};
 const NOTE_EDGES: Record<ThemeSpec["note"]["edge"], (ink: string) => string> = {
   none: () => "none",
   hairline: () => "0.5 rgba(0, 0, 0, 0.08)",
@@ -318,7 +320,9 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --canvas-frame-color: ${rgba(elementInk, tokens.frame.alpha)};
   --canvas-frame-width: ${tokens.frame.width};
   --canvas-frame-name-color: ${muted};
-  --canvas-sticky-note-shadow: ${NOTE_SHADOWS[tokens.note.shadow](noteInkShown)};
+  --canvas-sticky-note-shadow: ${NOTE_SHADOWS[tokens.note.shadow](
+    noteInkShown,
+  )};
   --canvas-sticky-note-edge: ${NOTE_EDGES[tokens.note.edge](noteInkShown)};
   --color-selection: ${accent};
 
