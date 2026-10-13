@@ -1333,7 +1333,8 @@ export type PointerDownState = Readonly<{
   // The previous pointer position
   lastCoords: { x: number; y: number };
   // original element frozen snapshots so we can access the original
-  // element attribute values at time of pointerdown
+  // element attribute values at time of pointerdown; empty unless the
+  // selection or lasso tool is active
   originalElements: Map<string, NonDeleted<ExcalidrawElement>>;
   resize: {
     // Handle when resizing, might change during the pointer interaction

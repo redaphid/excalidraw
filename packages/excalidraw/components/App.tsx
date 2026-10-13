@@ -8542,12 +8542,14 @@ ${css}
       ),
       // we need to duplicate because we'll be updating this state
       lastCoords: { ...origin },
-      originalElements: this.scene
-        .getNonDeletedElements()
-        .reduce((acc, element) => {
-          acc.set(element.id, deepCopyElement(element));
-          return acc;
-        }, new Map() as PointerDownState["originalElements"]),
+      // only selection-like tools keep a selection to drag, resize or crop;
+      // every other tool clears it, so nothing would read these copies
+      originalElements: isSelectionLikeTool(this.state.activeTool.type)
+        ? this.scene.getNonDeletedElements().reduce((acc, element) => {
+            acc.set(element.id, deepCopyElement(element));
+            return acc;
+          }, new Map() as PointerDownState["originalElements"])
+        : new Map(),
       resize: {
         handleType: false,
         isResizing: false,
