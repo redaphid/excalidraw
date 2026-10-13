@@ -256,14 +256,15 @@ describe("idle slices building elements near the view", () => {
     vi.spyOn(performance, "now").mockImplementation(() => now);
   };
 
-  it("end inside their idle period, short of a long task", async () => {
+  /** a board with 30 elements near the view, past the zoom's settle delay,
+   * on a clock that moves only while a bitmap is built */
+  const nearBoardBuilding = async () => {
     const near = Array.from({ length: 30 }, (_, i) =>
       rectangleAt(VIEW + 10 + i * 5),
     );
     paint(board([rectangleAt(10), ...near]));
     await settle();
     expect(idle).toHaveLength(1);
-
     freezeClock();
     const createElement = document.createElement.bind(document);
     vi.spyOn(document, "createElement").mockImplementation(
@@ -274,10 +275,16 @@ describe("idle slices building elements near the view", () => {
         return createElement(tag, options);
       },
     );
+    return near;
+  };
 
+  it("take at most half of a whole idle period, short of a long task", async () => {
+    const near = await nearBoardBuilding();
     const sliceStart = now;
     idle.shift()!(period(LONG_TASK_MS));
-    expect(now - sliceStart).toBeLessThan(LONG_TASK_MS);
+    expect(now - sliceStart).toBeLessThanOrEqual(
+      LONG_TASK_MS / 2 + MS_PER_BITMAP,
+    );
     expect(near.filter(isBuilt).length).toBeGreaterThan(0);
     expect(near.filter(isBuilt).length).toBeLessThan(near.length);
 
@@ -285,6 +292,14 @@ describe("idle slices building elements near the view", () => {
       idle.shift()!(period(LONG_TASK_MS));
     }
     expect(near.filter(isBuilt)).toHaveLength(near.length);
+  });
+
+  it("end before the next frame is due", async () => {
+    await nearBoardBuilding();
+    const betweenFrames = 11;
+    const sliceStart = now;
+    idle.shift()!(period(betweenFrames));
+    expect(now - sliceStart).toBeLessThanOrEqual(betweenFrames);
   });
 
   it("reach the end of a big board while a pan re-arms the build every frame", async () => {

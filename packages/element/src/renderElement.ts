@@ -1257,9 +1257,12 @@ const ZOOM_SETTLE_MS = 150;
 const SETTLED_BUILD_SLICE_MS = 8;
 /**
  * How much of an idle period a slice leaves unused, so the build it starts
- * last still ends inside the period and the slice stays short of a long task.
+ * last still ends before the next frame is due.
  */
 const IDLE_HEADROOM_MS = 4;
+/** The most of an idle period one slice takes, half a long task, so a slice
+ * and the build it starts last stay short of one. */
+const IDLE_SLICE_MS = 25;
 /** How far past each edge of the view, as a fraction of the view, elements
  * get their bitmaps ahead of a pan. */
 const BUILD_AHEAD_VIEW_FRACTION = 0.5;
@@ -1292,9 +1295,14 @@ const scheduleSettledBuild = (delay: number) => {
     const timer = setTimeout(() => scheduleSettledBuild(0), delay);
     cancelScheduledBuild = () => clearTimeout(timer);
   } else if (typeof requestIdleCallback === "function") {
-    const idle = requestIdleCallback((deadline) =>
-      runSettledBuild(() => deadline.timeRemaining() > IDLE_HEADROOM_MS),
-    );
+    const idle = requestIdleCallback((deadline) => {
+      const until = performance.now() + IDLE_SLICE_MS;
+      runSettledBuild(
+        () =>
+          deadline.timeRemaining() > IDLE_HEADROOM_MS &&
+          performance.now() < until,
+      );
+    });
     cancelScheduledBuild = () => cancelIdleCallback(idle);
   } else {
     const timer = setTimeout(() => {
