@@ -29,6 +29,14 @@
             },
             "pen": { "type": "object", "additionalProperties": false, "properties": { "pressure": { "type": "boolean", "description": "false draws freehand at a constant width" } } },
             "surface": { "type": "object", "additionalProperties": false, "properties": { "border": { "enum": ["none", "hairline", "bold"] }, "shadow": { "enum": ["none", "soft", "long", "hard"] } } },
+            "note": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "shadow": { "enum": ["none", "soft", "lifted", "hard"], "description": "default: follows surface.shadow (long gives lifted)" },
+                "edge": { "enum": ["none", "hairline", "ink"], "description": "default: follows surface.border (bold gives ink)" }
+              }
+            },
             "washes": { "type": "array", "description": "the four background swatches, as names of color.palette tokens", "items": { "type": "string" }, "minItems": 4, "maxItems": 4 },
             "backdrop": { "type": "string", "description": "a CSS background behind a transparent canvas, such as a gradient" },
             "extra": { "type": "string", "description": "CSS appended verbatim; prefix each selector with :scope" }
@@ -271,6 +279,76 @@
                 "$deprecated": { "type": ["boolean", "string"] }
               }
             }
+          }
+        },
+        "note": {
+          "type": "object",
+          "description": "1 to 5 sticky note papers in order, the first the default; default: the first five background washes",
+          "patternProperties": {
+            "^[^${}.][^{}.]*$": {
+              "type": "object",
+              "description": "a note paper",
+              "properties": {
+                "$value": {
+                  "anyOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "required": ["colorSpace", "components"],
+                          "properties": {
+                            "colorSpace": { "type": "string", "description": "srgb is read directly; other spaces use hex" },
+                            "components": { "type": "array", "items": { "anyOf": [{ "type": "number" }, { "const": "none" }] } },
+                            "alpha": { "type": "number", "minimum": 0, "maximum": 1 },
+                            "hex": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+                          }
+                        },
+                        { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
+                      ]
+                    },
+                    { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
+                    { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
+                  ]
+                },
+                "$ref": { "type": "string", "pattern": "^#/" },
+                "$type": { "type": "string" },
+                "$description": { "type": "string" },
+                "$extensions": { "type": "object" },
+                "$deprecated": { "type": ["boolean", "string"] }
+              }
+            }
+          }
+        },
+        "noteInk": {
+          "type": "object",
+          "description": "sticky note text; default: ink",
+          "properties": {
+            "$value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "required": ["colorSpace", "components"],
+                      "properties": {
+                        "colorSpace": { "type": "string", "description": "srgb is read directly; other spaces use hex" },
+                        "components": { "type": "array", "items": { "anyOf": [{ "type": "number" }, { "const": "none" }] } },
+                        "alpha": { "type": "number", "minimum": 0, "maximum": 1 },
+                        "hex": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+                      }
+                    },
+                    { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", "description": "a hex string, as in the drafts before 2025.10" }
+                  ]
+                },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
+                { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
+              ]
+            },
+            "$ref": { "type": "string", "pattern": "^#/" },
+            "$type": { "type": "string" },
+            "$description": { "type": "string" },
+            "$extensions": { "type": "object" },
+            "$deprecated": { "type": ["boolean", "string"] }
           }
         }
       }

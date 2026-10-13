@@ -16,6 +16,8 @@
   --canvas-frame-color: rgba(57, 255, 106, 0.45);
   --canvas-frame-width: 1;
   --canvas-frame-name-color: #23943f;
+  --canvas-sticky-note-shadow: none;
+  --canvas-sticky-note-edge: 0.5 rgba(0, 0, 0, 0.08);
   --color-selection: #5dff8a;
 
   --element-stroke-color: #006700;
@@ -47,6 +49,11 @@
     #f2ebdb #d8c2a2 #be9565 #9c5e1a #7a2800,
     #f2eff9 #dacae8 #bfa2d5 #9f72bf #7f41a8,
     #d7f3eb #9fd5c9 #5eb3a3 #128b74 #006246;
+
+  --sticky-note-background-color: #ffcfcc;
+  --sticky-note-stroke-color: #006700;
+  --color-picks-sticky-note-background: #ffcfcc #abcfd7 #95dca6 #d8c2a2 #dacae8;
+  --color-picks-sticky-note-stroke: #006700 #fa4e4e #003d65 #006700 #7a2800;
 
   --ui-font: "Cascadia", system-ui, sans-serif;
   --text-primary-color: #39ff6a;
