@@ -1,6 +1,5 @@
 import {
   applyDarkModeFilter,
-  COLOR_PALETTE,
   COLOR_WHITE,
   FRAME_STYLE,
   THEME,
@@ -43,6 +42,7 @@ import {
   ELEMENT_LINK_IMG,
   getLinkHandleFromCoords,
 } from "../components/hyperlink/helpers";
+import { getThemeCanvasBackground } from "../cssTheme";
 
 import {
   bootstrapCanvas,
@@ -518,12 +518,10 @@ const _renderStaticScene = ({
     theme: appState.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
-    // a theme restyles the default canvas only, not a background the user
-    // picked
-    themeBackgroundColor:
-      appState.viewBackgroundColor === COLOR_PALETTE.white
-        ? renderConfig.canvasTheme?.background
-        : undefined,
+    themeBackgroundColor: getThemeCanvasBackground(
+      appState,
+      renderConfig.canvasTheme,
+    ),
   });
 
   // Apply zoom

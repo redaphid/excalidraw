@@ -9,6 +9,7 @@ import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 import type { LocalPoint } from "@excalidraw/math";
 
 import { readCssTheme } from "../cssTheme";
+import { serializeAsJSON } from "../data/json";
 import { restoreElements } from "../data/restore";
 import { Excalidraw } from "../index";
 
@@ -500,13 +501,36 @@ describe("css prop", () => {
   });
 
   it("shows the theme's canvas again when the white pick is undone", async () => {
-    await render(<Excalidraw css=":scope { --canvas-background: #ebe4d6; }" />);
+    await render(
+      <Excalidraw
+        handleKeyboardGlobally
+        css=":scope { --canvas-background: #ebe4d6; }"
+      />,
+    );
     await pickCanvasBackground("#ffffff");
     expect(paintedBackground()).toBe("#ffffff");
 
     Keyboard.undo();
     await act(async () => {});
 
+    expect(paintedBackground()).toBe("#ebe4d6");
+  });
+
+  it("keeps a white pick in a saved file, and themes a file without one", async () => {
+    const css = ":scope { --canvas-background: #ebe4d6; }";
+    await render(<Excalidraw css={css} />);
+    await pickCanvasBackground("#ffffff");
+    const picked = JSON.parse(serializeAsJSON([], h.state, {}, "local"));
+
+    await render(<Excalidraw css={css} initialData={picked} />);
+    expect(paintedBackground()).toBe("#ffffff");
+
+    await render(
+      <Excalidraw
+        css={css}
+        initialData={{ appState: { viewBackgroundColor: "#ffffff" } }}
+      />,
+    );
     expect(paintedBackground()).toBe("#ebe4d6");
   });
 
