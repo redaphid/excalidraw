@@ -143,6 +143,82 @@ describe("readCssTheme", () => {
     expect(theme.palettes).toEqual({});
   });
 
+  it("parses sticky note defaults, picks, shadow and edge", () => {
+    const theme = readCssTheme(
+      styleOf({
+        "--sticky-note-background-color": "#f2e6c4",
+        "--sticky-note-stroke-color": "#14181f",
+        "--color-picks-sticky-note-background":
+          "#f2e6c4 #dfe8d6 #d8e1ea #efd9cf #e9e2f0 #ffffff",
+        "--color-picks-sticky-note-stroke": "#14181f #9e3833",
+        "--canvas-sticky-note-shadow": "5 -2.5 rgba(20, 24, 31, 0.3)",
+        "--canvas-sticky-note-edge": "1.5 #14181f",
+      }),
+    );
+
+    expect(theme.appState).toEqual({
+      currentItemStickynoteBackgroundColor: "#f2e6c4",
+      currentItemStickynoteStrokeColor: "#14181f",
+      colorTopPicks: {
+        stickyNoteBackground: [
+          "#f2e6c4",
+          "#dfe8d6",
+          "#d8e1ea",
+          "#efd9cf",
+          "#e9e2f0",
+        ],
+        stickyNoteStroke: ["#14181f", "#9e3833"],
+      },
+    });
+    expect(theme.canvas).toEqual({
+      stickyNoteShadowX: 5,
+      stickyNoteShadowY: -2.5,
+      stickyNoteShadowColor: "rgba(20, 24, 31, 0.3)",
+      stickyNoteEdgeWidth: 1.5,
+      stickyNoteEdgeColor: "#14181f",
+    });
+  });
+
+  it("reads a sticky note shadow and edge of none as transparent", () => {
+    expect(
+      readCssTheme(
+        styleOf({
+          "--canvas-sticky-note-shadow": "none",
+          "--canvas-sticky-note-edge": "none",
+        }),
+      ).canvas,
+    ).toEqual({
+      stickyNoteShadowX: 0,
+      stickyNoteShadowY: 0,
+      stickyNoteShadowColor: "transparent",
+      stickyNoteEdgeWidth: 0,
+      stickyNoteEdgeColor: "transparent",
+    });
+  });
+
+  it.each([
+    ["--sticky-note-background-color", "transparent"],
+    ["--sticky-note-background-color", "rgb(1, 2, 3)"],
+    ["--sticky-note-stroke-color", "ink"],
+    ["--color-picks-sticky-note-background", "#ffdf6b transparent"],
+    ["--color-picks-sticky-note-stroke", "#111 not-a-color"],
+    ["--canvas-sticky-note-shadow", "3 rgba(0, 0, 0, 0.16)"],
+    ["--canvas-sticky-note-shadow", "3 3"],
+    ["--canvas-sticky-note-shadow", "40 3 #000"],
+    ["--canvas-sticky-note-shadow", "soft"],
+    ["--canvas-sticky-note-edge", "0 #000"],
+    ["--canvas-sticky-note-edge", "-1 #000"],
+    ["--canvas-sticky-note-edge", "hairline"],
+    ["--canvas-sticky-note-edge", "1"],
+  ])("leaves out a malformed %s of %s", (name, value) => {
+    expect(readCssTheme(styleOf({ [name]: value }))).toEqual({
+      canvas: {},
+      appState: {},
+      pen: {},
+      palettes: {},
+    });
+  });
+
   it("is empty when no property is set", () => {
     expect(readCssTheme(styleOf({}))).toEqual({
       canvas: {},
@@ -199,6 +275,34 @@ describe("css prop", () => {
 
     const arrow = UI.createElement("arrow", { width: 80, height: 0 });
     expect(arrow.endArrowhead).toBe("triangle");
+  });
+
+  it("gives new sticky notes the theme's paper, ink and chrome", async () => {
+    await render(
+      <Excalidraw
+        css={`:scope {
+  --sticky-note-background-color: #f2e6c4;
+  --sticky-note-stroke-color: #14181f;
+  --color-picks-sticky-note-background: #f2e6c4 #dfe8d6;
+  --canvas-sticky-note-shadow: none;
+}`}
+      />,
+    );
+
+    expect(h.app.cssTheme.canvas).toMatchObject({
+      stickyNoteShadowColor: "transparent",
+    });
+    expect(h.state.colorTopPicks.stickyNoteBackground).toEqual([
+      "#f2e6c4",
+      "#dfe8d6",
+    ]);
+    UI.clickTool("stickynote");
+    const mouse = new Pointer("mouse");
+    mouse.downAt(300, 300);
+    mouse.up();
+    const note = h.elements.find((element) => element.type === "stickynote")!;
+    expect(note.backgroundColor).toBe("#f2e6c4");
+    expect(note.strokeColor).toBe("#14181f");
   });
 
   it("gives new freedraw strokes the theme's pen", async () => {

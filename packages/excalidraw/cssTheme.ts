@@ -61,6 +61,8 @@ export type CssThemeAppState = Partial<
     | "currentItemArrowType"
     | "currentItemStrokeVariability"
     | "currentItemFreedrawStrokeWidth"
+    | "currentItemStickynoteBackgroundColor"
+    | "currentItemStickynoteStrokeColor"
   >
 > & {
   /** merged over the user's pins: the lists a theme leaves out are kept */
@@ -118,6 +120,10 @@ const oneOf =
 const elementColor = (value: string) =>
   HEX_COLOR.test(value) || value === "transparent" ? value : undefined;
 
+/** a sticky note is never transparent */
+const opaqueColor = (value: string) =>
+  HEX_COLOR.test(value) ? value : undefined;
+
 const positiveNumber = (value: string) => {
   const number = Number(value);
   return value !== "" && Number.isFinite(number) && number > 0
@@ -149,6 +155,67 @@ const colorList = (value: string) => {
   return colors.length && colors.every((color) => elementColor(color))
     ? colors
     : undefined;
+};
+
+const opaqueColorList = (value: string) => {
+  const colors = colorList(value);
+  return colors?.every((color) => opaqueColor(color))
+    ? colors.slice(0, 5)
+    : undefined;
+};
+
+/** past the cached bitmap's padding (`getCanvasPadding`) a shadow is cut off */
+const MAX_STICKY_NOTE_SHADOW_OFFSET = 16;
+const MAX_STICKY_NOTE_EDGE_WIDTH = 8;
+
+/** a number, then a color that may hold spaces, as `rgba(0, 0, 0, 0.2)` */
+const numbersThenColor = (value: string, count: number) => {
+  const parts = value.split(/\s+/);
+  const numbers = parts.slice(0, count).map(Number);
+  return parts.length > count &&
+    numbers.every((number, i) => parts[i] !== "" && Number.isFinite(number))
+    ? { numbers, color: parts.slice(count).join(" ") }
+    : undefined;
+};
+
+/** `none`, or `<x> <y> <color>` */
+const stickyNoteShadow = (
+  value: string,
+): Pick<
+  CanvasTheme,
+  "stickyNoteShadowX" | "stickyNoteShadowY" | "stickyNoteShadowColor"
+> => {
+  if (value === "none") {
+    return {
+      stickyNoteShadowX: 0,
+      stickyNoteShadowY: 0,
+      stickyNoteShadowColor: "transparent",
+    };
+  }
+  const parsed = numbersThenColor(value, 2);
+  return parsed?.numbers.every(
+    (offset) => Math.abs(offset) <= MAX_STICKY_NOTE_SHADOW_OFFSET,
+  )
+    ? {
+        stickyNoteShadowX: parsed.numbers[0],
+        stickyNoteShadowY: parsed.numbers[1],
+        stickyNoteShadowColor: parsed.color,
+      }
+    : {};
+};
+
+/** `none`, or `<width> <color>` */
+const stickyNoteEdge = (
+  value: string,
+): Pick<CanvasTheme, "stickyNoteEdgeWidth" | "stickyNoteEdgeColor"> => {
+  if (value === "none") {
+    return { stickyNoteEdgeWidth: 0, stickyNoteEdgeColor: "transparent" };
+  }
+  const parsed = numbersThenColor(value, 1);
+  const width = parsed?.numbers[0] ?? 0;
+  return parsed && width > 0 && width <= MAX_STICKY_NOTE_EDGE_WIDTH
+    ? { stickyNoteEdgeWidth: width, stickyNoteEdgeColor: parsed.color }
+    : {};
 };
 
 const isColorTuple = (colors: string[]): colors is [...ColorTuple] =>
@@ -210,6 +277,8 @@ export const readCssTheme = (style: {
     handleFill: color("--canvas-handle-fill"),
     frameColor: color("--canvas-frame-color"),
     frameWidth: positiveNumber(read("--canvas-frame-width")),
+    ...stickyNoteShadow(read("--canvas-sticky-note-shadow")),
+    ...stickyNoteEdge(read("--canvas-sticky-note-edge")),
   });
 
   const appState: CssThemeAppState = definedEntries({
@@ -249,13 +318,24 @@ export const readCssTheme = (style: {
     currentItemFreedrawStrokeWidth: positiveNumber(
       read("--element-freedraw-width"),
     ),
+    currentItemStickynoteBackgroundColor: opaqueColor(
+      read("--sticky-note-background-color"),
+    ),
+    currentItemStickynoteStrokeColor: opaqueColor(
+      read("--sticky-note-stroke-color"),
+    ),
   });
 
-  if (strokePicks || backgroundPicks) {
-    appState.colorTopPicks = definedEntries({
-      elementStroke: strokePicks,
-      elementBackground: backgroundPicks,
-    });
+  const colorTopPicks = definedEntries({
+    elementStroke: strokePicks,
+    elementBackground: backgroundPicks,
+    stickyNoteStroke: opaqueColorList(read("--color-picks-sticky-note-stroke")),
+    stickyNoteBackground: opaqueColorList(
+      read("--color-picks-sticky-note-background"),
+    ),
+  });
+  if (Object.keys(colorTopPicks).length) {
+    appState.colorTopPicks = colorTopPicks;
   }
 
   const palettes = definedEntries({
