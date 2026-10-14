@@ -65,7 +65,7 @@ describe("exportToCanvas", async () => {
       expect(appState.zoom.value).toBe(1);
     });
 
-    it("leaves the caller's elements as they were when false, out of index order or not", async () => {
+    it("leaves the caller's elements as they were when false and out of index order", async () => {
       const box = { x: 0, y: 0, width: 100, height: 100 };
       const frame = { ...newFrameElement(box), index: "a0" };
       const child = {
