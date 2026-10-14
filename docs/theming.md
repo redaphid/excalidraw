@@ -150,7 +150,9 @@ Values with a plain meaning are standard tokens at known paths. Every token is o
 | `stroke.roughness` | `number` | 0 architect, 1 artist, 2 cartoonist | 1 |
 | `pen.width`, `pen.thinning`, `pen.taper`, `pen.streamline` | `number` | the freehand pen | the editor's pen |
 | `surface.radius` | `dimension` | panel corner radius | 8px |
-| `frame.width`, `frame.alpha` | `dimension`, `number` | frame outlines | 1px, 0.35 |
+| `frame.width`, `frame.alpha` | `dimension`, `number` | frame outlines | 1px, 0.2 |
+| `frame.radius` | `dimension` | frame corner radius, in screen pixels | 4px |
+| `frame.nameSize` | `dimension` | frame name font size, in screen pixels | 12px |
 
 The choices only this editor has live in `$extensions["com.hypnodroid.draw"]`: `name`, `mode` (light or dark; by default dark when the canvas is dark), `stroke` (`width`, `roundness`, `arrowhead`, `arrowType`, `fill`), `pen.pressure`, `surface` (`border`, `shadow`), `note` (`shadow`: `none`, `soft`, `lifted` or `hard`; `edge`: `none`, `hairline` (1 unit of the note ink at 14%), `ink` (2 units of it) or `accent` (1 unit of the accent); by default they follow `surface.shadow` and `surface.border`, with `long` giving `lifted` and `bold` giving `ink`), `washes` (four palette token names for the background swatches), `backdrop` and `extra` CSS. The spec asks that extensions hold only data that is not crucial to a token's value, so each one has a default. The root `$description` is the theme's description.
 
@@ -245,11 +247,19 @@ A value the editor can't parse is ignored, and the built-in value stays.
 | `--canvas-handle-fill` | any CSS color: inside of the resize handles | `#ffffff` |
 | `--canvas-frame-color` | any CSS color | `#bbbbbb` |
 | `--canvas-frame-width` | outline width in screen pixels | `2` |
+| `--canvas-frame-radius` | corner radius in screen pixels, 0 for square | `8` |
 | `--canvas-frame-name-color` | any CSS color (frame names are DOM) | `#999999` |
+| `--canvas-frame-name-size` | name font size in screen pixels; names are set in `--ui-font` | `14` |
 | `--canvas-sticky-note-shadow` | `none`, or `<x> <y> [<blur>] <color>`: the offset in scene units at detail scale 1 (each at most 16 either way), an optional blur radius as in `box-shadow` (the larger offset plus the blur is held to 20, the room around a note's cached bitmap; a larger blur shrinks to fit) and any CSS color | `3 3 rgba(0, 0, 0, 0.16)` |
 | `--canvas-sticky-note-edge` | `none`, or `<width> <color>`: the line just inside a note's outline, in scene units (above 0, at most 8) | `0.5 rgba(0, 0, 0, 0.08)` |
 
-`--canvas-background` replaces only the default white background that nobody picked. When the user picks a canvas background, white included, the editor paints that one. The pick is recorded in `appState.viewBackgroundColorPicked`, which is saved, exported and undone with `viewBackgroundColor`. A host that persists `viewBackgroundColor` by hand must persist this flag beside it, or a picked white turns back into the theme's canvas on reload. A scene that sets white without the flag, such as a file from upstream Excalidraw, shows the theme's canvas. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in outline.
+`--canvas-background` replaces only the default white background that nobody picked. When the user picks a canvas background, white included, the editor paints that one. The pick is recorded in `appState.viewBackgroundColorPicked`, which is saved, exported and undone with `viewBackgroundColor`. A host that persists `viewBackgroundColor` by hand must persist this flag beside it, or a picked white turns back into the theme's canvas on reload. A scene that sets white without the flag, such as a file from upstream Excalidraw, shows the theme's canvas. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in outline. An exported frame name takes the theme's name size, in the built-in color.
+
+### Frames on a host's own layer
+
+`frameRendering.enabled` shows and hides every frame: outline, name and clipping. The editor toggles it from Preferences, Show frames, from the command palette and with Shift+Alt+F. It is not saved to local storage: a host that wants it per device sets `initialData.appState.frameRendering`, reads it back from `onChange`, and can set it at any time with `updateScene` or `excalidrawAPI.updateFrameRendering`.
+
+A host that draws frames itself, such as on a zoom layer of its own, calls `renderFrameOverlay(context, { frames, appState, canvasTheme, dpr, pinnedIds })` from `@excalidraw/excalidraw`. It strokes the outlines and draws the names in screen space at the current zoom, so the line width, radius and name size stay constant in screen pixels, and it hides crowded names by the rules the editor's own labels follow. It honors `frameRendering.enabled`, `.outline` and `.name`. `canvasTheme` is `readCssTheme(getComputedStyle(container)).canvas`; without it the built-in frame style applies.
 
 Theme colors are painted as written in both light and dark mode. The dark-mode filter does not apply to them.
 

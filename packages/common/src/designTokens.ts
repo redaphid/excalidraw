@@ -79,7 +79,7 @@ export type ThemeSpec = {
     panel?: string;
     active?: string;
   };
-  frame: { width: number; alpha: number };
+  frame: { width: number; alpha: number; radius: number; nameSize: number };
   note: {
     /** displayed colors, the default paper first; empty: the palette's washes */
     papers: string[];
@@ -154,7 +154,9 @@ const DEFAULTS = {
   penWidth: FREEDRAW_STROKE_WIDTH[DEFAULT_ELEMENT_STROKE_WIDTH_KEY],
   radius: 8,
   frameWidth: 1,
-  frameAlpha: 0.35,
+  frameAlpha: 0.2,
+  frameRadius: 4,
+  frameNameSize: 12,
 } as const;
 
 /** the names a designer's export may give each role */
@@ -345,6 +347,8 @@ const PROFILE_TYPES: Readonly<Record<string, string>> = {
   "surface.radius": "dimension",
   "frame.width": "dimension",
   "frame.alpha": "number",
+  "frame.radius": "dimension",
+  "frame.nameSize": "dimension",
 };
 
 /** the `$type` the profile gives a token path, if it reads one there */
@@ -960,6 +964,18 @@ export const readThemeTokens = (
         inRange(0, 1),
         DEFAULTS.frameAlpha,
       ),
+      radius: orDefault(
+        "frame.radius",
+        "dimension",
+        readDimension(),
+        DEFAULTS.frameRadius,
+      ),
+      nameSize: orDefault(
+        "frame.nameSize",
+        "dimension",
+        readDimension({ aboveMin: true }),
+        DEFAULTS.frameNameSize,
+      ),
     },
     note: {
       papers: papers.map(({ color }) => color),
@@ -1306,6 +1322,8 @@ export const THEME_TOKENS_SCHEMA = {
     frame: group("frames", {
       width: dimension("frame outline width"),
       alpha: number("frame outline opacity", 0, 1),
+      radius: dimension("frame corner radius, in screen pixels"),
+      nameSize: dimension("frame name font size, in screen pixels"),
     }),
   },
 } as const;

@@ -24,6 +24,7 @@ import type {
 } from "@excalidraw/element/types";
 import type { ExportRegion } from "@excalidraw/excalidraw/scene/export";
 import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
+import type { CanvasTheme } from "@excalidraw/excalidraw/cssTheme";
 
 export { MIME_TYPES };
 
@@ -34,6 +35,8 @@ type ExportOpts = {
   files: BinaryFiles | null;
   maxWidthOrHeight?: number;
   exportingFrame?: NonDeleted<ExcalidrawFrameLikeElement> | null;
+  /** the editor's theme: frame names take its size */
+  canvasTheme?: CanvasTheme;
   getDimensions?: (
     width: number,
     height: number,
@@ -49,6 +52,7 @@ export const exportToCanvas = ({
   exportPadding,
   exportingFrame,
   region,
+  canvasTheme,
   restoreElements: shouldRestoreElements = true,
 }: ExportOpts & {
   exportPadding?: number;
@@ -80,6 +84,7 @@ export const exportToCanvas = ({
       viewBackgroundColor,
       exportingFrame,
       region,
+      canvasTheme,
     },
     (width: number, height: number) => {
       const canvas = document.createElement("canvas");
@@ -196,6 +201,7 @@ export const exportToSvg = async ({
   exportingFrame,
   skipInliningFonts,
   reuseImages,
+  canvasTheme,
 }: Omit<ExportOpts, "getDimensions"> & {
   exportPadding?: number;
   renderEmbeddables?: boolean;
@@ -219,6 +225,7 @@ export const exportToSvg = async ({
     renderEmbeddables,
     skipInliningFonts,
     reuseImages,
+    canvasTheme,
   });
 };
 

@@ -359,7 +359,9 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --canvas-handle-fill: ${panel};
   --canvas-frame-color: ${rgba(elementInk, tokens.frame.alpha)};
   --canvas-frame-width: ${tokens.frame.width};
+  --canvas-frame-radius: ${tokens.frame.radius};
   --canvas-frame-name-color: ${muted};
+  --canvas-frame-name-size: ${tokens.frame.nameSize};
   --canvas-sticky-note-shadow: ${NOTE_SHADOWS[tokens.note.shadow](
     noteInkShown,
   )};

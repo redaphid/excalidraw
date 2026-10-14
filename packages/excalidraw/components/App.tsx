@@ -34,7 +34,6 @@ import {
   ELEMENT_SHIFT_TRANSLATE_AMOUNT,
   ELEMENT_TRANSLATE_AMOUNT,
   EVENT,
-  FONT_FAMILY,
   FRAME_STYLE,
   IMAGE_MIME_TYPES,
   IMAGE_RENDER_TIMEOUT,
@@ -277,6 +276,7 @@ import type {
   SceneElementsMap,
   NonDeletedSceneElementsMap,
   ExcalidrawBindableElement,
+  FontString,
 } from "@excalidraw/element/types";
 
 import type { TransformHandleDirection } from "@excalidraw/element";
@@ -343,6 +343,7 @@ import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
 import { EMPTY_CSS_THEME, readCssTheme } from "../cssTheme";
+import { getFrameStyle } from "../frameStyle";
 import { getCenter, getDistance } from "../gesture";
 import {
   copyElementRenderOverrides,
@@ -2162,17 +2163,15 @@ class App extends React.Component<AppProps, AppState> {
   private frameNameWidths = new Map<string, number>();
 
   private getFrameNameWidth = (name: string) => {
-    const width =
-      this.frameNameWidths.get(name) ??
-      getTextWidth(
-        name,
-        getFontString({
-          fontSize: FRAME_STYLE.nameFontSize,
-          fontFamily: FONT_FAMILY.Assistant,
-        }),
-      );
+    const { nameSize, nameFontFamily } = getFrameStyle(
+      this.cssTheme.canvas,
+      this.state.theme,
+    );
+    const font = `${nameSize}px ${nameFontFamily}` as FontString;
+    const key = `${font}\n${name}`;
+    const width = this.frameNameWidths.get(key) ?? getTextWidth(name, font);
     if (this.ownerDocument.fonts?.status !== "loading") {
-      this.frameNameWidths.set(name, width);
+      this.frameNameWidths.set(key, width);
     }
     return width;
   };
@@ -2229,6 +2228,7 @@ class App extends React.Component<AppProps, AppState> {
     }
 
     const isDarkTheme = this.state.theme === THEME.DARK;
+    const frameStyle = getFrameStyle(this.cssTheme.canvas, this.state.theme);
     const nonDeletedFramesLikes = this.scene.getNonDeletedFramesLikes();
 
     const focusedSearchMatch =
@@ -2366,14 +2366,10 @@ class App extends React.Component<AppProps, AppState> {
               padding: `${FRAME_NAME_EDIT_PADDING}px`,
               borderRadius: 4,
               boxShadow: "inset 0 0 0 1px var(--color-primary)",
-              fontFamily: "Assistant",
-              fontSize: `${FRAME_STYLE.nameFontSize}px`,
+              fontFamily: frameStyle.nameFontFamily,
+              fontSize: `${frameStyle.nameSize}px`,
               transform: `translate(-${FRAME_NAME_EDIT_PADDING}px, ${FRAME_NAME_EDIT_PADDING}px)`,
-              color: `var(--canvas-frame-name-color, ${
-                isDarkTheme
-                  ? FRAME_STYLE.nameColorDarkTheme
-                  : FRAME_STYLE.nameColorLightTheme
-              })`,
+              color: frameStyle.nameColor,
               overflow: "hidden",
               maxWidth: `${
                 this.ownerDocument.body.clientWidth -
@@ -2413,12 +2409,9 @@ class App extends React.Component<AppProps, AppState> {
             }px`,
             left: `${x1 - this.state.offsetLeft}px`,
             zIndex: 2,
-            fontSize: FRAME_STYLE.nameFontSize,
-            color: `var(--canvas-frame-name-color, ${
-              isDarkTheme
-                ? FRAME_STYLE.nameColorDarkTheme
-                : FRAME_STYLE.nameColorLightTheme
-            })`,
+            fontSize: frameStyle.nameSize,
+            fontFamily: frameStyle.nameFontFamily,
+            color: frameStyle.nameColor,
             lineHeight: FRAME_STYLE.nameLineHeight,
             width: "max-content",
             maxWidth:
@@ -2944,6 +2937,7 @@ class App extends React.Component<AppProps, AppState> {
         name: this.getName(),
         viewBackgroundColor: this.state.viewBackgroundColor,
         exportingFrame: opts.exportingFrame,
+        canvasTheme: this.cssTheme.canvas,
       },
     )
       .catch(muteFSAbortError)

@@ -1571,14 +1571,16 @@ const drawElement = (
                 : applyDarkModeFilter("#1d8264");
           }
 
-          if (FRAME_STYLE.radius && context.roundRect) {
+          const radius =
+            renderConfig.canvasTheme?.frameRadius ?? FRAME_STYLE.radius;
+          if (radius && context.roundRect) {
             context.beginPath();
             context.roundRect(
               0,
               0,
               element.width,
               element.height,
-              FRAME_STYLE.radius / appState.zoom.value,
+              radius / appState.zoom.value,
             );
             context.stroke();
             context.closePath();

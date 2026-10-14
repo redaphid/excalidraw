@@ -122,6 +122,22 @@ describe("generateThemeCss", () => {
     });
   });
 
+  describe("when the tokens leave out the frame radius and name size", () => {
+    let css: string;
+
+    beforeEach(() => {
+      css = generateThemeCss(tokens()).css;
+    });
+
+    it("writes a small radius", () => {
+      expect(property(css, "--canvas-frame-radius")).toBe("4");
+    });
+
+    it("writes a small name size", () => {
+      expect(property(css, "--canvas-frame-name-size")).toBe("12");
+    });
+  });
+
   it("moves illegible text until it passes, and names the token", () => {
     const { css, warnings } = generateThemeCss(tokens({ ink: "#c8c0b0" }));
     const text = property(css, "--text-primary-color")!;

@@ -224,6 +224,13 @@
     "alpha": {
       "$type": "number",
       "$value": 0.42
+    },
+    "radius": {
+      "$type": "dimension",
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      }
     }
   }
 }

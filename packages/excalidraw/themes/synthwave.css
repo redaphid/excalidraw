@@ -12,7 +12,9 @@
   --canvas-handle-fill: #1b0b33;
   --canvas-frame-color: rgba(255, 79, 216, 0.7);
   --canvas-frame-width: 1.5;
+  --canvas-frame-radius: 4;
   --canvas-frame-name-color: #ff9ce9;
+  --canvas-frame-name-size: 12;
   --canvas-sticky-note-shadow: none;
   --canvas-sticky-note-edge: 1.25 rgba(63, 240, 255, 0.9);
   --color-selection: #3ff0ff;

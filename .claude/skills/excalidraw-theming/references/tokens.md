@@ -28,6 +28,7 @@ Colors are 2025.10 color objects, `{ "colorSpace": "srgb", "components": [r, g, 
 | `pen.thinning`, `pen.taper`, `pen.streamline` | `number` | optional: pressure thinning -1 to 1, taper in stroke widths, smoothing 0 to 1 | new freedraw strokes |
 | `surface.radius` | `dimension` | panel corner radius | panels, popovers, dialogs |
 | `frame.width`, `frame.alpha` | `dimension`, `number` | outline width, alpha of ink | frame outlines |
+| `frame.radius`, `frame.nameSize` | `dimension` | corner radius and name size, in screen pixels | frame outlines and names |
 
 The root `$description` is one or two sentences on the look. It becomes the CSS header comment.
 
