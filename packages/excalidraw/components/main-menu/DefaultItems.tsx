@@ -19,6 +19,7 @@ import {
   actionToggleTheme,
   actionToggleZenMode,
 } from "../../actions";
+import { actionupdateFrameRendering } from "../../actions/actionFrame";
 import { actionToggleViewMode } from "../../actions/actionToggleViewMode";
 import { resolveInputDevice } from "../../appState";
 
@@ -600,6 +601,25 @@ export const PreferencesToggleGridModeItem = () => {
   );
 };
 
+export const ToggleFrames = () => {
+  const { t } = useI18n();
+  const actionManager = useExcalidrawActionManager();
+  const appState = useUIAppState();
+
+  return (
+    <DropdownMenuItemCheckbox
+      checked={appState.frameRendering.enabled}
+      shortcut={getShortcutFromShortcutName("updateFrameRendering")}
+      onSelect={(event) => {
+        actionManager.executeAction(actionupdateFrameRendering);
+        event.preventDefault();
+      }}
+    >
+      {t("labels.showFrames")}
+    </DropdownMenuItemCheckbox>
+  );
+};
+
 export const PreferencesToggleZenModeItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
@@ -678,6 +698,7 @@ export const Preferences = ({
             <PreferencesToggleToolLockItem />
             <PreferencesToggleSnapModeItem />
             <PreferencesToggleGridModeItem />
+            <ToggleFrames />
             <PreferencesToggleZenModeItem />
             <PreferencesToggleViewModeItem />
             <PreferencesToggleElementPropertiesItem />
@@ -700,6 +721,7 @@ Preferences.ToggleArrowBinding = PreferencesToggleArrowBindingItem;
 Preferences.ToggleMidpointSnapping = PreferencesToggleMidpointSnappingItem;
 Preferences.ToggleShowHints = PreferencesToggleShowHintsItem;
 Preferences.ToggleGridMode = PreferencesToggleGridModeItem;
+Preferences.ToggleFrames = ToggleFrames;
 Preferences.ToggleZenMode = PreferencesToggleZenModeItem;
 Preferences.ToggleViewMode = PreferencesToggleViewModeItem;
 Preferences.ToggleElementProperties = PreferencesToggleElementPropertiesItem;
