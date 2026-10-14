@@ -269,7 +269,7 @@ export const exportToCanvas = async (
       arrayToMap(elementsForRender),
     ),
     allElementsMap: toBrandedType<NonDeletedSceneElementsMap>(
-      arrayToMap(syncInvalidIndices(elements)),
+      arrayToMap(syncInvalidIndices(elements.map((e) => ({ ...e })))),
     ),
     visibleElements: elementsForRender,
     scale,
