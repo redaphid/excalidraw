@@ -1,6 +1,6 @@
 import { FRAME_STYLE } from "@excalidraw/common";
 
-import { getFrameLikeTitle } from "@excalidraw/element";
+import { getFrameLikeTitle, isMagicFrameElement } from "@excalidraw/element";
 
 import type { ExcalidrawFrameLikeElement } from "@excalidraw/element/types";
 
@@ -33,24 +33,58 @@ export type FrameOverlayOptions = {
   pinnedIds?: ReadonlySet<string>;
 };
 
+type Box = { x: number; y: number; width: number; height: number };
+
 const ELLIPSIS = "…";
 
+/** hosts call this every frame: widths and truncations are kept per font */
+const MAX_CACHED = 4096;
+const widths = new Map<string, number>();
+const truncations = new Map<string, string>();
+
+const remember = <T>(cache: Map<string, T>, key: string, value: T) => {
+  if (globalThis.document?.fonts?.status === "loading") {
+    return value;
+  }
+  if (cache.size >= MAX_CACHED) {
+    cache.clear();
+  }
+  cache.set(key, value);
+  return value;
+};
+
+const measure = (context: CanvasRenderingContext2D, text: string) => {
+  const key = `${context.font}\n${text}`;
+  return (
+    widths.get(key) ?? remember(widths, key, context.measureText(text).width)
+  );
+};
+
+const fits = (context: CanvasRenderingContext2D, text: string, max: number) =>
+  measure(context, text) <= max;
+
+// the longest prefix that fits with an ellipsis, by binary search
 const truncate = (
   context: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
 ) => {
-  if (context.measureText(text).width <= maxWidth) {
-    return text;
+  const key = `${context.font}\n${maxWidth}\n${text}`;
+  const known = truncations.get(key);
+  if (known !== undefined) {
+    return known;
   }
-  let end = text.length;
-  while (
-    end > 0 &&
-    context.measureText(text.slice(0, end) + ELLIPSIS).width > maxWidth
-  ) {
-    end--;
+  if (fits(context, text, maxWidth)) {
+    return remember(truncations, key, text);
   }
-  return end ? text.slice(0, end) + ELLIPSIS : "";
+  let [low, high] = [0, text.length - 1];
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    const fitsMid = fits(context, text.slice(0, mid) + ELLIPSIS, maxWidth);
+    low = fitsMid ? mid : low;
+    high = fitsMid ? high : mid - 1;
+  }
+  return remember(truncations, key, low ? text.slice(0, low) + ELLIPSIS : "");
 };
 
 /**
@@ -93,15 +127,17 @@ export const renderFrameOverlay = (
   context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   if (frameRendering.outline) {
-    context.strokeStyle = style.color;
     context.lineWidth = style.width;
+    const trace = context.roundRect
+      ? (f: Box) =>
+          context.roundRect?.(f.x, f.y, f.width, f.height, style.radius)
+      : (f: Box) => context.rect(f.x, f.y, f.width, f.height);
     for (const f of visible) {
+      context.strokeStyle = isMagicFrameElement(f.frame)
+        ? style.magicColor
+        : style.color;
       context.beginPath();
-      if (style.radius && context.roundRect) {
-        context.roundRect(f.x, f.y, f.width, f.height, style.radius);
-      } else {
-        context.rect(f.x, f.y, f.width, f.height);
-      }
+      trace(f);
       context.stroke();
     }
   }
@@ -118,7 +154,7 @@ export const renderFrameOverlay = (
         y: f.y,
         width: f.width,
         height: f.height,
-        labelWidth: context.measureText(f.name).width,
+        labelWidth: measure(context, f.name),
       })),
       { width, height },
       pinned,

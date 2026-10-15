@@ -3,7 +3,7 @@ import React from "react";
 import { CODES } from "@excalidraw/common";
 
 import { Excalidraw, MainMenu } from "../index";
-import { getDefaultAppState } from "../appState";
+import { API } from "../tests/helpers/api";
 import { Keyboard } from "../tests/helpers/ui";
 import { act, fireEvent, render, screen } from "../tests/test-utils";
 
@@ -11,9 +11,12 @@ import type { AppState } from "../types";
 
 const { h } = window;
 
-const hiddenFrames = {
-  ...getDefaultAppState().frameRendering,
+// outline and clip off, so a toggle that resets them to the defaults shows
+const hiddenFrames: AppState["frameRendering"] = {
   enabled: false,
+  outline: false,
+  name: true,
+  clip: false,
 };
 
 describe("show frames", () => {
@@ -28,7 +31,7 @@ describe("show frames", () => {
         handleKeyboardGlobally
       >
         <MainMenu>
-          <MainMenu.DefaultItems.ToggleFrames />
+          <MainMenu.DefaultItems.PreferencesToggleFramesItem />
         </MainMenu>
       </Excalidraw>,
     );
@@ -64,16 +67,35 @@ describe("show frames", () => {
   });
 
   describe("when the menu item is picked", () => {
-    let item: HTMLElement;
-
     beforeEach(async () => {
       act(() => h.setState({ openMenu: "canvas" }));
-      item = await screen.findByText("Show frames");
-      fireEvent.click(item);
+      fireEvent.click(await screen.findByText("Show frames"));
     });
 
     it("shows frames", () => {
       expect(h.state.frameRendering.enabled).toBe(true);
+    });
+  });
+
+  describe("when the host shows frames with updateScene", () => {
+    beforeEach(() => {
+      API.updateScene({
+        appState: { frameRendering: { ...hiddenFrames, enabled: true } },
+      });
+    });
+
+    it("tells the host through onChange", () => {
+      expect(lastFrameRendering().enabled).toBe(true);
+    });
+  });
+
+  describe("when the host shows frames with updateFrameRendering", () => {
+    beforeEach(() => {
+      act(() => h.app.updateFrameRendering({ enabled: true }));
+    });
+
+    it("keeps the other flags and tells the host through onChange", () => {
+      expect(lastFrameRendering()).toEqual({ ...hiddenFrames, enabled: true });
     });
   });
 });

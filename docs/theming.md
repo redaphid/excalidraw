@@ -150,7 +150,7 @@ Values with a plain meaning are standard tokens at known paths. Every token is o
 | `stroke.roughness` | `number` | 0 architect, 1 artist, 2 cartoonist | 1 |
 | `pen.width`, `pen.thinning`, `pen.taper`, `pen.streamline` | `number` | the freehand pen | the editor's pen |
 | `surface.radius` | `dimension` | panel corner radius | 8px |
-| `frame.width`, `frame.alpha` | `dimension`, `number` | frame outlines | 1px, 0.2 |
+| `frame.width`, `frame.alpha` | `dimension`, `number` | frame outlines | 1px, 0.2 (0.35 on a dark canvas) |
 | `frame.radius` | `dimension` | frame corner radius, in screen pixels | 4px |
 | `frame.nameSize` | `dimension` | frame name font size, in screen pixels | 12px |
 
@@ -245,7 +245,7 @@ A value the editor can't parse is ignored, and the built-in value stays.
 | `--canvas-grid-style` | `dashed` or `solid` minor lines | `dashed` |
 | `--color-selection` | any CSS color: selection outlines, handles, lasso | `#6965db` |
 | `--canvas-handle-fill` | any CSS color: inside of the resize handles | `#ffffff` |
-| `--canvas-frame-color` | any CSS color | `#bbbbbb` |
+| `--canvas-frame-color` | any CSS color | `#bbbbbb`, `#5e5e5e` in dark mode |
 | `--canvas-frame-width` | outline width in screen pixels | `2` |
 | `--canvas-frame-radius` | corner radius in screen pixels, 0 for square | `8` |
 | `--canvas-frame-name-color` | any CSS color (frame names are DOM) | `#999999` |

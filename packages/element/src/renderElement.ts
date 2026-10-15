@@ -1558,10 +1558,9 @@ const drawElement = (
             appState.zoom.value;
           context.strokeStyle =
             renderConfig.canvasTheme?.frameColor ??
-            applyDarkModeFilter(
-              FRAME_STYLE.strokeColor,
-              appState.theme === THEME.DARK,
-            );
+            (appState.theme === THEME.DARK
+              ? FRAME_STYLE.strokeColorDarkTheme
+              : FRAME_STYLE.strokeColor);
 
           // TODO change later to only affect AI frames
           if (isMagicFrameElement(element)) {

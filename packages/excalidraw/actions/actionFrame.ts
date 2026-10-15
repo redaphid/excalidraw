@@ -110,10 +110,7 @@ export const actionupdateFrameRendering = register({
   icon: frameToolIcon,
   keywords: ["frames", "outline", "hide"],
   viewMode: true,
-  trackEvent: {
-    category: "canvas",
-    predicate: (appState) => appState.frameRendering.enabled,
-  },
+  trackEvent: { category: "canvas" },
   perform: (elements, appState) => {
     return {
       elements,

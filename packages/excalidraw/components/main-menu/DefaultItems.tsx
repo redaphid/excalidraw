@@ -601,7 +601,7 @@ export const PreferencesToggleGridModeItem = () => {
   );
 };
 
-export const ToggleFrames = () => {
+export const PreferencesToggleFramesItem = () => {
   const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
@@ -698,7 +698,7 @@ export const Preferences = ({
             <PreferencesToggleToolLockItem />
             <PreferencesToggleSnapModeItem />
             <PreferencesToggleGridModeItem />
-            <ToggleFrames />
+            <PreferencesToggleFramesItem />
             <PreferencesToggleZenModeItem />
             <PreferencesToggleViewModeItem />
             <PreferencesToggleElementPropertiesItem />
@@ -721,7 +721,7 @@ Preferences.ToggleArrowBinding = PreferencesToggleArrowBindingItem;
 Preferences.ToggleMidpointSnapping = PreferencesToggleMidpointSnappingItem;
 Preferences.ToggleShowHints = PreferencesToggleShowHintsItem;
 Preferences.ToggleGridMode = PreferencesToggleGridModeItem;
-Preferences.ToggleFrames = ToggleFrames;
+Preferences.ToggleFrames = PreferencesToggleFramesItem;
 Preferences.ToggleZenMode = PreferencesToggleZenModeItem;
 Preferences.ToggleViewMode = PreferencesToggleViewModeItem;
 Preferences.ToggleElementProperties = PreferencesToggleElementPropertiesItem;

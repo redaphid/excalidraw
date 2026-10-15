@@ -208,6 +208,9 @@ export const DARK_THEME_FILTER = "invert(93%) hue-rotate(180deg)";
 
 export const FRAME_STYLE = {
   strokeColor: "#bbb" as ExcalidrawElement["strokeColor"],
+  // #bbb through the dark filter is #4c4c4c, 2.2:1 on the dark canvas; this
+  // is about 3:1, still well behind the ink
+  strokeColorDarkTheme: "#5e5e5e",
   strokeWidth: 2 as ExcalidrawElement["strokeWidth"],
   strokeStyle: "solid" as ExcalidrawElement["strokeStyle"],
   fillStyle: "solid" as ExcalidrawElement["fillStyle"],

@@ -25,16 +25,27 @@ const canvasTheme = { frameWidth: 1, frameNameSize: 12, frameRadius: 4 };
 const record = () => {
   const context = document.createElement("canvas").getContext("2d")!;
   const strokes: number[] = [];
+  const strokeColors: string[] = [];
   const names: string[] = [];
   const fonts: string[] = [];
+  const texts: [string, number, number][] = [];
+  const rects: number[][] = [];
+  // the canvas mock has no roundRect
+  context.roundRect = (x, y, width, height, radii) => {
+    rects.push([x, y, width, height, Number(radii)]);
+  };
   vi.spyOn(context, "stroke").mockImplementation(() => {
     strokes.push(context.lineWidth);
+    strokeColors.push(String(context.strokeStyle));
   });
-  vi.spyOn(context, "fillText").mockImplementation((text: string) => {
-    names.push(text);
-    fonts.push(context.font);
-  });
-  return { context, strokes, names, fonts };
+  vi.spyOn(context, "fillText").mockImplementation(
+    (text: string, x: number, y: number) => {
+      names.push(text);
+      fonts.push(context.font);
+      texts.push([text, x, y]);
+    },
+  );
+  return { context, strokes, strokeColors, names, fonts, texts, rects };
 };
 
 const appStateAt = (
@@ -122,6 +133,46 @@ describe("renderFrameOverlay", () => {
         strokes: recorded.strokes.length,
         names: recorded.names,
       }).toEqual({ strokes: 2, names: [] });
+    });
+  });
+
+  describe("when the view is zoomed four times and scrolled", () => {
+    beforeEach(() => {
+      renderFrameOverlay(recorded.context, {
+        frames,
+        appState: { ...appStateAt(4), scrollX: -20, scrollY: -30 },
+        canvasTheme,
+      });
+    });
+
+    it("outlines the frame in screen pixels with the theme's radius", () => {
+      expect(recorded.rects).toEqual([[80, 120, 1600, 1200, 4]]);
+    });
+
+    it("draws the name just above the frame", () => {
+      // 3px offset plus half the line box's 1.25 leading on 12px
+      expect(recorded.texts).toEqual([["The Rusty Conquistador", 80, 115.5]]);
+    });
+  });
+
+  describe("when one of the frames is a wireframe-to-code frame", () => {
+    beforeEach(() => {
+      const magic = API.createElement({
+        type: "magicframe",
+        x: 40,
+        y: 600,
+        width: 400,
+        height: 300,
+      });
+      renderFrameOverlay(recorded.context, {
+        frames: [frames[0], magic],
+        appState: appStateAt(1),
+        canvasTheme: { ...canvasTheme, frameColor: "#2f9e44" },
+      });
+    });
+
+    it("strokes it in the editor's mint and the other in the theme", () => {
+      expect(recorded.strokeColors).toEqual(["#2f9e44", "#7affd7"]);
     });
   });
 

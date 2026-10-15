@@ -79,7 +79,13 @@ export type ThemeSpec = {
     panel?: string;
     active?: string;
   };
-  frame: { width: number; alpha: number; radius: number; nameSize: number };
+  frame: {
+    width: number;
+    /** absent: 0.2 on a light canvas, 0.35 on a dark one */
+    alpha?: number;
+    radius: number;
+    nameSize: number;
+  };
   note: {
     /** displayed colors, the default paper first; empty: the palette's washes */
     papers: string[];
@@ -154,7 +160,6 @@ const DEFAULTS = {
   penWidth: FREEDRAW_STROKE_WIDTH[DEFAULT_ELEMENT_STROKE_WIDTH_KEY],
   radius: 8,
   frameWidth: 1,
-  frameAlpha: 0.2,
   frameRadius: 4,
   frameNameSize: 12,
 } as const;
@@ -958,12 +963,6 @@ export const readThemeTokens = (
         readDimension({ aboveMin: true }),
         DEFAULTS.frameWidth,
       ),
-      alpha: orDefault(
-        "frame.alpha",
-        "number",
-        inRange(0, 1),
-        DEFAULTS.frameAlpha,
-      ),
       radius: orDefault(
         "frame.radius",
         "dimension",
@@ -976,6 +975,9 @@ export const readThemeTokens = (
         readDimension({ aboveMin: true }),
         DEFAULTS.frameNameSize,
       ),
+      ...definedEntries({
+        alpha: ifPresent("frame.alpha", "number", inRange(0, 1)),
+      }),
     },
     note: {
       papers: papers.map(({ color }) => color),

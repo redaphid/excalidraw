@@ -16,7 +16,12 @@ export const getFrameStyle = (
 ) => ({
   color:
     canvasTheme?.frameColor ??
-    applyDarkModeFilter(FRAME_STYLE.strokeColor, theme === THEME.DARK),
+    (theme === THEME.DARK
+      ? FRAME_STYLE.strokeColorDarkTheme
+      : FRAME_STYLE.strokeColor),
+  /** the editor draws wireframe-to-code frames in its own mint */
+  magicColor:
+    theme === THEME.LIGHT ? "#7affd7" : applyDarkModeFilter("#1d8264"),
   width: canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth,
   radius: canvasTheme?.frameRadius ?? FRAME_STYLE.radius,
   nameColor:
