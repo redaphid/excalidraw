@@ -1,4 +1,4 @@
-import { FRAME_STYLE, THEME, applyDarkModeFilter } from "@excalidraw/common";
+import { FRAME_STYLE, THEME } from "@excalidraw/common";
 
 import type { Theme } from "@excalidraw/element/types";
 
@@ -21,7 +21,9 @@ export const getFrameStyle = (
       : FRAME_STYLE.strokeColor),
   /** the editor draws wireframe-to-code frames in its own mint */
   magicColor:
-    theme === THEME.LIGHT ? "#7affd7" : applyDarkModeFilter("#1d8264"),
+    theme === THEME.LIGHT
+      ? FRAME_STYLE.magicStrokeColor
+      : FRAME_STYLE.magicStrokeColorDarkTheme,
   width: canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth,
   radius: canvasTheme?.frameRadius ?? FRAME_STYLE.radius,
   nameColor:

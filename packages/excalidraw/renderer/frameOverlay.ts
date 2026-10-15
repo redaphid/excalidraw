@@ -128,9 +128,9 @@ export const renderFrameOverlay = (
 
   if (frameRendering.outline) {
     context.lineWidth = style.width;
-    const trace = context.roundRect
-      ? (f: Box) =>
-          context.roundRect?.(f.x, f.y, f.width, f.height, style.radius)
+    const roundRect = context.roundRect?.bind(context);
+    const trace = roundRect
+      ? (f: Box) => roundRect(f.x, f.y, f.width, f.height, style.radius)
       : (f: Box) => context.rect(f.x, f.y, f.width, f.height);
     for (const f of visible) {
       context.strokeStyle = isMagicFrameElement(f.frame)

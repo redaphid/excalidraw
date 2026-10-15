@@ -1566,8 +1566,8 @@ const drawElement = (
           if (isMagicFrameElement(element)) {
             context.strokeStyle =
               appState.theme === THEME.LIGHT
-                ? "#7affd7"
-                : applyDarkModeFilter("#1d8264");
+                ? FRAME_STYLE.magicStrokeColor
+                : FRAME_STYLE.magicStrokeColorDarkTheme;
           }
 
           const radius =

@@ -207,6 +207,77 @@ describe("renderFrameOverlay", () => {
       ).toEqual(["12px", "12px", "12px"]);
     });
   });
+
+  describe("when the context has no roundRect", () => {
+    let rects: number[][];
+
+    beforeEach(() => {
+      rects = [];
+      recorded.context.roundRect = undefined;
+      vi.spyOn(recorded.context, "rect").mockImplementation((...args) => {
+        rects.push(args);
+      });
+      renderFrameOverlay(recorded.context, {
+        frames: [frames[0]],
+        appState: appStateAt(1),
+        canvasTheme,
+      });
+    });
+
+    it("outlines the frame with a square rectangle", () => {
+      expect(rects).toEqual([[40, 60, 400, 300]]);
+    });
+  });
+
+  // The view's current frame shows its name however long it is, so it is
+  // the one that truncates. Each character is 10px wide; the font is this
+  // block's own, so cached widths from other tests do not apply.
+  describe("when the current frame is narrower than its name", () => {
+    const name =
+      "Thunderwrench HVAC Co. and the Rusty Conquistador of the Lair";
+
+    const drawCurrent = (width: number, frameName: string) => {
+      vi.spyOn(recorded.context, "measureText").mockImplementation(
+        (text) => ({ width: text.length * 10 } as TextMetrics),
+      );
+      renderFrameOverlay(recorded.context, {
+        frames: [
+          {
+            ...API.createElement({
+              type: "frame",
+              x: 600 - width / 2,
+              y: 0,
+              width,
+              height: 1000,
+            }),
+            name: frameName,
+          },
+        ],
+        appState: appStateAt(1),
+        canvasTheme: { ...canvasTheme, frameNameFontFamily: "TruncationProbe" },
+      });
+    };
+
+    describe("when part of the name fits", () => {
+      beforeEach(() => {
+        drawCurrent(300, name);
+      });
+
+      it("draws the longest prefix that fits with an ellipsis", () => {
+        expect(recorded.names).toEqual([`${name.slice(0, 29)}…`]);
+      });
+    });
+
+    describe("when not even one letter and the ellipsis fit", () => {
+      beforeEach(() => {
+        drawCurrent(15, "The Lair");
+      });
+
+      it("draws nothing", () => {
+        expect(recorded.names).toEqual([""]);
+      });
+    });
+  });
 });
 
 describe("renderFrameOverlay beside the editor's frame names", () => {
