@@ -14,7 +14,9 @@
   --canvas-handle-fill: #ffffff;
   --canvas-frame-color: #000000;
   --canvas-frame-width: 1;
+  --canvas-frame-radius: 4;
   --canvas-frame-name-color: #000000;
+  --canvas-frame-name-size: 12;
   --canvas-sticky-note-shadow: none;
   --canvas-sticky-note-edge: 1.5 #000000;
   --color-selection: #000000;

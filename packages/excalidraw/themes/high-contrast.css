@@ -12,7 +12,9 @@
   --canvas-handle-fill: #000000;
   --canvas-frame-color: #ffffff;
   --canvas-frame-width: 2;
+  --canvas-frame-radius: 4;
   --canvas-frame-name-color: #ffffff;
+  --canvas-frame-name-size: 12;
   --color-selection: #ffff00;
   --element-stroke-color: #000000;
   --element-background-color: transparent;

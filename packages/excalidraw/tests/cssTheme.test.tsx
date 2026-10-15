@@ -143,6 +143,46 @@ describe("readCssTheme", () => {
     expect(theme.canvas.frameWidth).toBe(1);
   });
 
+  describe("when the theme styles frames", () => {
+    let canvas: ReturnType<typeof readCssTheme>["canvas"];
+
+    beforeEach(() => {
+      canvas = readCssTheme(
+        styleOf({
+          "--canvas-frame-radius": "0",
+          "--canvas-frame-name-color": "#5a5f66",
+          "--canvas-frame-name-size": "11",
+          "--ui-font": "Inter, sans-serif",
+        }),
+      ).canvas;
+    });
+
+    it("keeps a square radius", () => {
+      expect(canvas.frameRadius).toBe(0);
+    });
+
+    it("reads the name's color, size and font", () => {
+      expect(canvas).toEqual(
+        expect.objectContaining({
+          frameNameColor: "#5a5f66",
+          frameNameSize: 11,
+          frameNameFontFamily: "Inter, sans-serif",
+        }),
+      );
+    });
+  });
+
+  it("ignores a negative frame radius and a zero name size", () => {
+    expect(
+      readCssTheme(
+        styleOf({
+          "--canvas-frame-radius": "-2",
+          "--canvas-frame-name-size": "0",
+        }),
+      ).canvas,
+    ).toEqual({});
+  });
+
   it("parses the pen, ignoring thinning outside -1..1", () => {
     expect(
       readCssTheme(

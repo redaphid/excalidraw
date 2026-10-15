@@ -36,6 +36,13 @@ export type CanvasTheme = Readonly<{
   frameColor?: string;
   /** frame outline width in screen pixels */
   frameWidth?: number;
+  /** frame corner radius in screen pixels */
+  frameRadius?: number;
+  frameNameColor?: string;
+  /** frame name font size in screen pixels */
+  frameNameSize?: number;
+  /** CSS font-family list frame names are set in: the theme's UI font */
+  frameNameFontFamily?: string;
   /** the sticky note shadow's offset, in scene units at detail scale 1 */
   stickyNoteShadowX?: number;
   stickyNoteShadowY?: number;
@@ -147,6 +154,13 @@ const opaqueColor = (value: string) =>
 const positiveNumber = (value: string) => {
   const number = Number(value);
   return value !== "" && Number.isFinite(number) && number > 0
+    ? number
+    : undefined;
+};
+
+const nonNegativeNumber = (value: string) => {
+  const number = Number(value);
+  return value !== "" && Number.isFinite(number) && number >= 0
     ? number
     : undefined;
 };
@@ -313,6 +327,11 @@ export const readCssTheme = (style: {
     handleFill: color("--canvas-handle-fill"),
     frameColor: color("--canvas-frame-color"),
     frameWidth: positiveNumber(read("--canvas-frame-width")),
+    frameRadius: nonNegativeNumber(read("--canvas-frame-radius")),
+    frameNameColor: color("--canvas-frame-name-color"),
+    frameNameSize: positiveNumber(read("--canvas-frame-name-size")),
+    frameNameFontFamily:
+      style.getPropertyValue("--ui-font").trim() || undefined,
     ...stickyNoteShadow(read("--canvas-sticky-note-shadow")),
     ...stickyNoteEdge(read("--canvas-sticky-note-edge")),
   });

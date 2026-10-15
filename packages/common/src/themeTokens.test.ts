@@ -122,6 +122,48 @@ describe("generateThemeCss", () => {
     });
   });
 
+  describe("when the tokens leave out the frame radius and name size", () => {
+    let css: string;
+
+    beforeEach(() => {
+      css = generateThemeCss(tokens()).css;
+    });
+
+    it("writes a small radius", () => {
+      expect(property(css, "--canvas-frame-radius")).toBe("4");
+    });
+
+    it("writes a small name size", () => {
+      expect(property(css, "--canvas-frame-name-size")).toBe("12");
+    });
+  });
+
+  describe("when the tokens leave out the frame alpha", () => {
+    const frameAlpha = (overrides: Overrides) => {
+      const { frame, ...rest } = tokens(overrides);
+      const { alpha, ...width } = frame as Record<string, unknown>;
+      return property(
+        generateThemeCss({ ...rest, frame: width }).css,
+        "--canvas-frame-color",
+      )!.match(/([\d.]+)\)$/)?.[1];
+    };
+
+    it("keeps a light canvas's frames faint", () => {
+      expect(frameAlpha({})).toBe("0.2");
+    });
+
+    it("gives a dark canvas's frames a little more", () => {
+      expect(
+        frameAlpha({
+          mode: "dark",
+          canvas: "#121212",
+          ink: "#e8e8e8",
+          panel: "#1e1e1e",
+        }),
+      ).toBe("0.35");
+    });
+  });
+
   it("moves illegible text until it passes, and names the token", () => {
     const { css, warnings } = generateThemeCss(tokens({ ink: "#c8c0b0" }));
     const text = property(css, "--text-primary-color")!;

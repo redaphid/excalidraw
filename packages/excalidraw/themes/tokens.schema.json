@@ -681,6 +681,52 @@
             "$extensions": { "type": "object" },
             "$deprecated": { "type": ["boolean", "string"] }
           }
+        },
+        "radius": {
+          "type": "object",
+          "description": "frame corner radius, in screen pixels",
+          "properties": {
+            "$value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    { "type": "object", "required": ["value", "unit"], "properties": { "value": { "type": "number" }, "unit": { "enum": ["px", "rem"] } } },
+                    { "type": "string", "pattern": "^-?[0-9.]+(px|rem)$" }
+                  ]
+                },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
+                { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
+              ]
+            },
+            "$ref": { "type": "string", "pattern": "^#/" },
+            "$type": { "type": "string" },
+            "$description": { "type": "string" },
+            "$extensions": { "type": "object" },
+            "$deprecated": { "type": ["boolean", "string"] }
+          }
+        },
+        "nameSize": {
+          "type": "object",
+          "description": "frame name font size, in screen pixels",
+          "properties": {
+            "$value": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    { "type": "object", "required": ["value", "unit"], "properties": { "value": { "type": "number" }, "unit": { "enum": ["px", "rem"] } } },
+                    { "type": "string", "pattern": "^-?[0-9.]+(px|rem)$" }
+                  ]
+                },
+                { "type": "string", "pattern": "^\\{[^{}]+\\}$", "description": "an alias, {group.token}" },
+                { "type": "object", "required": ["$ref"], "properties": { "$ref": { "type": "string", "pattern": "^#/" } } }
+              ]
+            },
+            "$ref": { "type": "string", "pattern": "^#/" },
+            "$type": { "type": "string" },
+            "$description": { "type": "string" },
+            "$extensions": { "type": "object" },
+            "$deprecated": { "type": ["boolean", "string"] }
+          }
         }
       }
     }

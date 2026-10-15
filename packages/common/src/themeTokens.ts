@@ -43,6 +43,10 @@ export const contrastRatio = (a: string, b: string) => {
   return (high + 0.05) / (low + 0.05);
 };
 
+// a frame outline sits behind the ink; light ink on a dark canvas needs a
+// little more of it to stay visible
+const FRAME_ALPHA = { light: 0.2, dark: 0.35 } as const;
+
 const SHADOWS: Record<ThemeSpec["surface"]["shadow"], (ink: string) => string> =
   {
     none: (ink) => `0 0 0 1px ${rgba(ink, 0.14)}`,
@@ -357,9 +361,14 @@ ${tokens.description.replace(/(.{1,72})(\s|$)/g, " * $1\n").trimEnd()}
   --canvas-grid-bold-color: ${rgba(tokens.grid.color, tokens.grid.major)};
   --canvas-grid-style: ${tokens.grid.style};
   --canvas-handle-fill: ${panel};
-  --canvas-frame-color: ${rgba(elementInk, tokens.frame.alpha)};
+  --canvas-frame-color: ${rgba(
+    elementInk,
+    tokens.frame.alpha ?? FRAME_ALPHA[mode],
+  )};
   --canvas-frame-width: ${tokens.frame.width};
+  --canvas-frame-radius: ${tokens.frame.radius};
   --canvas-frame-name-color: ${muted};
+  --canvas-frame-name-size: ${tokens.frame.nameSize};
   --canvas-sticky-note-shadow: ${NOTE_SHADOWS[tokens.note.shadow](
     noteInkShown,
   )};

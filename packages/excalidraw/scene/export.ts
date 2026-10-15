@@ -61,6 +61,7 @@ import { renderSceneToSvg } from "../renderer/staticSvgScene";
 import type { RenderableElementsMap } from "./types";
 
 import type { AppState, BinaryFiles } from "../types";
+import type { CanvasTheme } from "../cssTheme";
 
 const truncateText = (
   element: NonDeleted<ExcalidrawTextElement>,
@@ -104,7 +105,7 @@ const truncateText = (
  */
 const addFrameLabelsAsTextElements = (
   elements: readonly NonDeletedExcalidrawElement[],
-  opts: Pick<AppState, "exportWithDarkMode">,
+  opts: Pick<AppState, "exportWithDarkMode"> & { canvasTheme?: CanvasTheme },
 ) => {
   const nextElements: NonDeletedExcalidrawElement[] = [];
   for (const element of elements) {
@@ -114,7 +115,7 @@ const addFrameLabelsAsTextElements = (
           x: element.x,
           y: element.y - FRAME_STYLE.nameOffsetY,
           fontFamily: FONT_FAMILY.Helvetica,
-          fontSize: FRAME_STYLE.nameFontSize,
+          fontSize: opts.canvasTheme?.frameNameSize ?? FRAME_STYLE.nameFontSize,
           lineHeight:
             FRAME_STYLE.nameLineHeight as ExcalidrawTextElement["lineHeight"],
           strokeColor: opts.exportWithDarkMode
@@ -152,11 +153,13 @@ const prepareElementsForRender = ({
   exportingFrame,
   frameRendering,
   exportWithDarkMode,
+  canvasTheme,
 }: {
   elements: readonly NonDeletedExcalidrawElement[];
   exportingFrame: ExcalidrawFrameLikeElement | null | undefined;
   frameRendering: AppState["frameRendering"];
   exportWithDarkMode: AppState["exportWithDarkMode"];
+  canvasTheme?: CanvasTheme;
 }) => {
   let nextElements: readonly NonDeletedExcalidrawElement[];
 
@@ -169,6 +172,7 @@ const prepareElementsForRender = ({
   } else if (frameRendering.enabled && frameRendering.name) {
     nextElements = addFrameLabelsAsTextElements(elements, {
       exportWithDarkMode,
+      canvasTheme,
     });
   } else {
     nextElements = elements;
@@ -199,12 +203,15 @@ export const exportToCanvas = async (
     viewBackgroundColor,
     exportingFrame,
     region,
+    canvasTheme,
   }: {
     exportBackground: boolean;
     exportPadding?: number;
     viewBackgroundColor: string;
     exportingFrame?: NonDeleted<ExcalidrawFrameLikeElement> | null;
     region?: ExportRegion;
+    /** the editor's theme: frame names take its size */
+    canvasTheme?: CanvasTheme;
   },
   createCanvas: (
     width: number,
@@ -237,6 +244,7 @@ export const exportToCanvas = async (
     exportingFrame,
     exportWithDarkMode: appState.exportWithDarkMode,
     frameRendering,
+    canvasTheme,
   });
 
   if (exportingFrame || region) {
@@ -326,6 +334,8 @@ export const exportToSvg = async (
     exportingFrame?: NonDeleted<ExcalidrawFrameLikeElement> | null;
     skipInliningFonts?: true;
     reuseImages?: boolean;
+    /** the editor's theme: frame names take its size */
+    canvasTheme?: CanvasTheme;
   },
 ): Promise<SVGSVGElement> => {
   const frameRendering = getFrameRenderingConfig(
@@ -348,6 +358,7 @@ export const exportToSvg = async (
     exportingFrame,
     exportWithDarkMode,
     frameRendering,
+    canvasTheme: opts?.canvasTheme,
   });
 
   if (exportingFrame) {

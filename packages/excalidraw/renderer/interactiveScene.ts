@@ -977,12 +977,13 @@ const renderFrameHighlight = (
   appState: InteractiveCanvasAppState,
   frame: NonDeleted<ExcalidrawFrameLikeElement>,
   elementsMap: ElementsMap,
+  renderConfig: InteractiveCanvasRenderConfig,
 ) => {
   const [x1, y1, x2, y2] = getElementAbsoluteCoords(frame, elementsMap);
   const width = x2 - x1;
   const height = y2 - y1;
 
-  context.strokeStyle = getThemedColor("rgb(0,118,255)", appState.theme);
+  context.strokeStyle = renderConfig.selectionColor;
   context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
 
   context.save();
@@ -997,7 +998,8 @@ const renderFrameHighlight = (
     y1 + height / 2,
     frame.angle,
     false,
-    FRAME_STYLE.radius / appState.zoom.value,
+    (renderConfig.canvasTheme.frameRadius ?? FRAME_STYLE.radius) /
+      appState.zoom.value,
   );
   context.restore();
 };
@@ -1755,6 +1757,7 @@ const _renderInteractiveScene = ({
       appState,
       appState.frameToHighlight,
       elementsMap,
+      renderConfig,
     );
   }
 

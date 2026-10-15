@@ -601,3 +601,11 @@ export function useExcalidrawStateValue(
 export { _useOnAppStateChange as useOnExcalidrawStateChange };
 
 export { applyDarkModeFilter, getStrokeWidthByKey };
+
+export { renderFrameOverlay } from "./renderer/frameOverlay";
+export type {
+  FrameOverlayAppState,
+  FrameOverlayOptions,
+} from "./renderer/frameOverlay";
+export { readCssTheme } from "./cssTheme";
+export type { CanvasTheme, CssTheme } from "./cssTheme";

@@ -179,7 +179,8 @@ export const frameClip = (
       0,
       frame.width,
       frame.height,
-      FRAME_STYLE.radius / appState.zoom.value,
+      (renderConfig.canvasTheme?.frameRadius ?? FRAME_STYLE.radius) /
+        appState.zoom.value,
     );
   } else {
     context.rect(0, 0, frame.width, frame.height);

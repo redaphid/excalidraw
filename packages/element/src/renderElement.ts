@@ -1558,27 +1558,28 @@ const drawElement = (
             appState.zoom.value;
           context.strokeStyle =
             renderConfig.canvasTheme?.frameColor ??
-            applyDarkModeFilter(
-              FRAME_STYLE.strokeColor,
-              appState.theme === THEME.DARK,
-            );
+            (appState.theme === THEME.DARK
+              ? FRAME_STYLE.strokeColorDarkTheme
+              : FRAME_STYLE.strokeColor);
 
           // TODO change later to only affect AI frames
           if (isMagicFrameElement(element)) {
             context.strokeStyle =
               appState.theme === THEME.LIGHT
-                ? "#7affd7"
-                : applyDarkModeFilter("#1d8264");
+                ? FRAME_STYLE.magicStrokeColor
+                : FRAME_STYLE.magicStrokeColorDarkTheme;
           }
 
-          if (FRAME_STYLE.radius && context.roundRect) {
+          const radius =
+            renderConfig.canvasTheme?.frameRadius ?? FRAME_STYLE.radius;
+          if (radius && context.roundRect) {
             context.beginPath();
             context.roundRect(
               0,
               0,
               element.width,
               element.height,
-              FRAME_STYLE.radius / appState.zoom.value,
+              radius / appState.zoom.value,
             );
             context.stroke();
             context.closePath();

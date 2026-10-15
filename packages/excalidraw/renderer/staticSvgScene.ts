@@ -782,10 +782,9 @@ const renderElementToSvg = (
         rect.setAttribute("fill", "none");
         rect.setAttribute(
           "stroke",
-          applyDarkModeFilter(
-            FRAME_STYLE.strokeColor,
-            renderConfig.theme === THEME.DARK,
-          ),
+          renderConfig.theme === THEME.DARK
+            ? FRAME_STYLE.strokeColorDarkTheme
+            : FRAME_STYLE.strokeColor,
         );
         rect.setAttribute("stroke-width", FRAME_STYLE.strokeWidth.toString());
 
