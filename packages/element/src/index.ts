@@ -72,6 +72,7 @@ export * from "./dragElements";
 export * from "./duplicate";
 export * from "./elbowArrow";
 export * from "./elementLink";
+export * from "./elementsRTree";
 export * from "./embeddable";
 export * from "./flowchart";
 export * from "./arrows/focus";
