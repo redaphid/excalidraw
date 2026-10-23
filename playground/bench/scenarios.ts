@@ -11,6 +11,8 @@ export type Scenario = {
   scene: SceneName;
   steps: number;
   tool: "hand" | "selection" | "freedraw" | "rectangle" | "arrow";
+  /** the pen's stroke variability, constant (the editor default) unless set */
+  variability?: "constant" | "variable";
   begin: (api: ExcalidrawImperativeAPI, canvas: HTMLCanvasElement) => void;
   midway?: (
     api: ExcalidrawImperativeAPI,
@@ -20,6 +22,7 @@ export type Scenario = {
   midwayStep?: number;
   step: (canvas: HTMLCanvasElement, i: number) => void;
   end: (canvas: HTMLCanvasElement) => void;
+  minStepIntervalMs?: number;
 };
 
 type PointerInit = {
@@ -275,10 +278,22 @@ export const SCENARIOS: Scenario[] = [
   zoom("freedraw", 40, 100, 3, (_, canvas) => center(canvas)),
   pinch("freedraw", 160),
   freedraw("freedraw", 240),
+  gesture("freedraw/freedraw-long", "freedraw", "freedraw", 1000, loops),
+  {
+    ...gesture(
+      "freedraw/freedraw-long-variable",
+      "freedraw",
+      "freedraw",
+      1000,
+      loops,
+    ),
+    variability: "variable",
+  },
   zoom("deep", 0, 130, 10, deepAnchor),
   pinch("deep", 120),
   pan("deep", 120),
   settlePan("labels", 6, 60, 300),
+  { ...pan("big", 240), minStepIntervalMs: 16 },
 ];
 
 /** gestures for checking that a change paints what master paints: shapes

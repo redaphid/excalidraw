@@ -997,17 +997,17 @@ describe("textWysiwyg", () => {
         code: CODES.MINUS,
         ctrlKey: true,
       });
-      expect(h.state.zoom.value).toBe(0.9);
+      expect(h.state.zoom.value).toBeCloseTo(1 / 1.1, 6);
       fireEvent.keyDown(textarea, {
         code: CODES.NUM_SUBTRACT,
         ctrlKey: true,
       });
-      expect(h.state.zoom.value).toBe(0.8);
+      expect(h.state.zoom.value).toBeCloseTo(1 / 1.1 ** 2, 6);
       fireEvent.keyDown(textarea, {
         code: CODES.NUM_ADD,
         ctrlKey: true,
       });
-      expect(h.state.zoom.value).toBe(0.9);
+      expect(h.state.zoom.value).toBeCloseTo(1 / 1.1, 6);
       fireEvent.keyDown(textarea, {
         code: CODES.EQUAL,
         ctrlKey: true,

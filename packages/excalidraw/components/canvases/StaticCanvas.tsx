@@ -91,6 +91,7 @@ export const getRelevantAppStateProps = (
     theme: appState.theme,
     shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
     viewBackgroundColor: appState.viewBackgroundColor,
+    viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
     exportScale: appState.exportScale,
     selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
     gridSize: appState.gridSize,

@@ -43,12 +43,8 @@ const declarationFiles = (dir) =>
     .filter((file) => file.endsWith(".d.ts"))
     .map((file) => path.join(dir, file));
 
-const localizeDeclarations = (dir, id, manifest) => {
+const localizeDeclarations = (dir, id) => {
   const types = path.join(dir, "dist", "types");
-  const declared = Object.keys({
-    ...manifest.dependencies,
-    ...manifest.peerDependencies,
-  });
   const resolve = (target) =>
     [`${target}.d.ts`, `${target}/index.d.ts`]
       .map((candidate) => path.join(types, candidate))
@@ -56,7 +52,7 @@ const localizeDeclarations = (dir, id, manifest) => {
   for (const file of declarationFiles(types)) {
     const source = fs.readFileSync(file, "utf-8");
     const localized = source.replace(SPECIFIER, (whole, prefix, specifier) => {
-      const target = declarationTarget(specifier, id, declared);
+      const target = declarationTarget(specifier, id);
       const resolved = target && resolve(target);
       if (!resolved) {
         return whole;
@@ -111,11 +107,7 @@ const pack = ({ version }) => {
     });
     fs.mkdirSync(unpacked(id), { recursive: true });
     tar(`-xzf ${id}.tgz --strip-components=1 -C ${unpacked(id)}`, work);
-    localizeDeclarations(
-      unpacked(id),
-      id,
-      readJson(path.join(unpacked(id), "package.json")),
-    );
+    localizeDeclarations(unpacked(id), id);
   }
   const packed = Object.fromEntries(
     LOCKSTEP.map((id) => [
