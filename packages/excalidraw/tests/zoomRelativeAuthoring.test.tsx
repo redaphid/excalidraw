@@ -3,6 +3,8 @@ import {
   elementWithCanvasCache,
   getBoundTextMaxWidth,
   getCornerRadius,
+  getElementBounds,
+  getElementLineSegments,
   isTextElement,
   setCustomTextMetricsProvider,
   ShapeCache,
@@ -338,6 +340,79 @@ describe("authoringUnits: screen", () => {
       }).toEqual({ zoom, selected });
     }
   });
+
+  it.each([
+    ["rectangle", "sharp"],
+    ["diamond", "sharp"],
+    ["diamond", "round"],
+  ] as const)(
+    "outlines a %s with %s corners the same on screen at 1x, 100x and 100,000x",
+    (type, roundness) => {
+      const outlineOnScreen = (zoom: number) => {
+        atZoom(zoom);
+        API.setAppState({ currentItemRoundness: roundness });
+        const shape = UI.createElement(type, {
+          x: 100,
+          y: 100,
+          width: 120,
+          height: 80,
+        });
+        const [x1, y1, x2, y2] = getElementBounds(
+          shape.get(),
+          h.app.scene.getNonDeletedElementsMap(),
+        );
+        UI.clickTool("selection");
+        const selectedAt: string[] = [];
+        for (const y of [102, 121]) {
+          for (let x = 82; x <= 238; x += 4) {
+            API.clearSelection();
+            mouse.clickAt(x, y);
+            if (h.state.selectedElementIds[shape.id]) {
+              selectedAt.push(`${x},${y}`);
+            }
+          }
+        }
+        return {
+          bounds: [x1, y1, x2, y2].map((value) => Math.round(value * zoom)),
+          selectedAt,
+        };
+      };
+      const atOneX = outlineOnScreen(1);
+      expect(atOneX.selectedAt.length).toBeGreaterThan(0);
+      for (const zoom of [100, 100_000]) {
+        expect({ zoom, ...outlineOnScreen(zoom) }).toEqual({
+          zoom,
+          ...atOneX,
+        });
+      }
+    },
+    30_000,
+  );
+
+  it("lassos a sharp rectangle the same at 1x, 100x and 100,000x", () => {
+    for (const zoom of [1, 100, 100_000]) {
+      atZoom(zoom);
+      API.setAppState({ currentItemRoundness: "sharp" });
+      const rectangle = UI.createElement("rectangle", {
+        x: 100,
+        y: 100,
+        width: 120,
+        height: 80,
+      });
+      API.clearSelection();
+      act(() => h.app.setActiveTool({ type: "lasso" }));
+      mouse.downAt(90, 90);
+      mouse.moveTo(230, 90);
+      mouse.moveTo(230, 190);
+      mouse.moveTo(90, 190);
+      mouse.moveTo(90, 95);
+      mouse.upAt();
+      expect({
+        zoom,
+        selected: !!h.state.selectedElementIds[rectangle.id],
+      }).toEqual({ zoom, selected: true });
+    }
+  });
 });
 
 describe("authoringUnits: screen, a long new text", () => {
@@ -643,6 +718,46 @@ describe("authoringUnits: screen, what an element made far in keeps", () => {
       expect(elementWithCanvasCache.get(rectangle.get())).toBe(cached);
     },
   );
+
+  it("draws and outlines a diamond made far in with its 1x vertices", () => {
+    const onScreenAt = (zoom: number) => (value: number) =>
+      Math.round(value * zoom * 1e6) / 1e6;
+    const verticesOnScreen = (zoom: number) => {
+      atZoom(zoom);
+      API.setAppState({ currentItemRoundness: "sharp" });
+      const diamond = UI.createElement("diamond", {
+        x: 200,
+        y: 150,
+        width: 160,
+        height: 120,
+      }).get();
+      const toScreen = onScreenAt(zoom);
+      const drawn = ShapeCache.generateElementShape(diamond, null) as Drawable;
+      const outline = getElementLineSegments(
+        diamond,
+        h.app.scene.getNonDeletedElementsMap(),
+      );
+      return {
+        // with no roughness, each stroke starts on a vertex
+        drawn: drawn.sets[0].ops
+          .filter((op) => op.op === "move")
+          .map(({ data: [x, y] }) => [
+            toScreen(diamond.x + x),
+            toScreen(diamond.y + y),
+          ]),
+        outline: outline.map((segment) =>
+          segment.map((point) => point.map(toScreen)),
+        ),
+      };
+    };
+    const atOneX = verticesOnScreen(1);
+    for (const zoom of [100, 100_000, 1_000_000]) {
+      expect({ zoom, ...verticesOnScreen(zoom) }).toEqual({
+        zoom,
+        ...atOneX,
+      });
+    }
+  });
 });
 
 describe("authoringUnits: scene (default)", () => {

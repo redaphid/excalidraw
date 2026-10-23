@@ -135,7 +135,10 @@ const ExtraToolsDropdown = ({
           </DropdownMenu.Item>
         )}
         <DropdownMenu.Item
-          onSelect={() => app.setActiveTool({ type: "frame" })}
+          onSelect={() => {
+            app.setActiveTool({ type: "frame" });
+            app.frameNavigation.frameToolPicked();
+          }}
           icon={frameToolIcon}
           shortcut={KEYS.F.toLocaleUpperCase()}
           data-testid="toolbar-frame"
