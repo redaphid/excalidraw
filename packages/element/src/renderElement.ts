@@ -822,7 +822,8 @@ const keptBitmaps = new Map<
 let keptPixels = 0;
 let staticFrame = 0;
 
-const releaseBitmap = (element: ExcalidrawElement) => {
+/** Drops the element's bitmap, if it has one, and frees its memory. */
+export const releaseBitmap = (element: ExcalidrawElement) => {
   const kept = keptBitmaps.get(element);
   const cached = elementWithCanvasCache.get(element);
   elementWithCanvasCache.delete(element);

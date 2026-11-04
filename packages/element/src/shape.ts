@@ -48,7 +48,7 @@ import type {
 import { getElementDetailScale, getNominalSize } from "./authoring";
 import { getStroke, getStrokePoints } from "./perfectFreehand";
 
-import { elementWithCanvasCache } from "./renderElement";
+import { releaseBitmap } from "./renderElement";
 
 import {
   canBecomePolygon,
@@ -111,7 +111,7 @@ export class ShapeCache {
 
   public static delete = (element: ExcalidrawElement) => {
     ShapeCache.cache.delete(element);
-    elementWithCanvasCache.delete(element);
+    releaseBitmap(element);
   };
 
   public static destroy = () => {
@@ -144,7 +144,7 @@ export class ShapeCache {
       return cachedShape;
     }
 
-    elementWithCanvasCache.delete(element);
+    releaseBitmap(element);
 
     const shape = generateAtDetailScale(element, (nominal) =>
       _generateElementShape(

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 
 import { isShallowEqual } from "@excalidraw/common";
+import { forgetElementBitmaps } from "@excalidraw/element";
 
 import type {
   NonDeletedExcalidrawElement,
@@ -33,6 +34,18 @@ type StaticCanvasProps = {
 const StaticCanvas = (props: StaticCanvasProps) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const isComponentMounted = useRef(false);
+  const redraw = useRef(() => {});
+
+  // A restored context is blank, and so are the element bitmaps drawn with it.
+  useEffect(() => {
+    const canvas = props.canvas;
+    const restored = () => {
+      forgetElementBitmaps();
+      redraw.current();
+    };
+    canvas.addEventListener("contextrestored", restored);
+    return () => canvas.removeEventListener("contextrestored", restored);
+  }, [props.canvas]);
 
   useEffect(() => {
     props.canvas.style.width = `${props.appState.width}px`;
@@ -56,19 +69,18 @@ const StaticCanvas = (props: StaticCanvasProps) => {
       canvas.classList.add("excalidraw__canvas", "static");
     }
 
-    renderStaticScene(
-      {
-        canvas,
-        rc: props.rc,
-        scale: props.scale,
-        elementsMap: props.elementsMap,
-        allElementsMap: props.allElementsMap,
-        visibleElements: props.visibleElements,
-        appState: props.appState,
-        renderConfig: props.renderConfig,
-      },
-      isRenderThrottlingEnabled(),
-    );
+    const scene = {
+      canvas,
+      rc: props.rc,
+      scale: props.scale,
+      elementsMap: props.elementsMap,
+      allElementsMap: props.allElementsMap,
+      visibleElements: props.visibleElements,
+      appState: props.appState,
+      renderConfig: props.renderConfig,
+    };
+    redraw.current = () => renderStaticScene(scene, false);
+    renderStaticScene(scene, isRenderThrottlingEnabled());
   });
 
   return <div className="excalidraw__canvas-wrapper" ref={wrapperRef} />;
