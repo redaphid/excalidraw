@@ -806,6 +806,118 @@ export const elementWithCanvasCache = new WeakMap<
 >();
 
 /**
+ * The most element bitmaps kept at once, and the most pixels they may hold
+ * together. A browser gives canvases a fixed share of GPU memory; past it,
+ * Chrome drops every canvas context on the page at once and hands them back
+ * blank. Over a board of thousands of shapes, one bitmap per shape gets there.
+ */
+export const MAX_ELEMENT_BITMAPS = 4096;
+export const MAX_ELEMENT_BITMAP_PIXELS = 64 * 1024 * 1024;
+
+/** Each kept bitmap's size and the static frame it was last drawn in, least recently drawn first. */
+const keptBitmaps = new Map<
+  ExcalidrawElement,
+  { pixels: number; frame: number }
+>();
+let keptPixels = 0;
+let staticFrame = 0;
+
+const releaseBitmap = (element: ExcalidrawElement) => {
+  const kept = keptBitmaps.get(element);
+  const cached = elementWithCanvasCache.get(element);
+  elementWithCanvasCache.delete(element);
+  if (!kept) {
+    return;
+  }
+  keptBitmaps.delete(element);
+  keptPixels -= kept.pixels;
+  if (cached) {
+    // frees its memory now rather than whenever it is collected
+    cached.canvas.width = 0;
+    cached.canvas.height = 0;
+  }
+};
+
+const keepBitmap = (
+  element: ExcalidrawElement,
+  elementWithCanvas: ExcalidrawElementWithCanvas,
+) => {
+  const pixels =
+    elementWithCanvas.canvas.width * elementWithCanvas.canvas.height;
+  keptBitmaps.set(element, { pixels, frame: staticFrame });
+  keptPixels += pixels;
+  elementWithCanvasCache.set(element, elementWithCanvas);
+};
+
+const touchBitmap = (element: ExcalidrawElement) => {
+  const kept = keptBitmaps.get(element);
+  if (!kept) {
+    return;
+  }
+  keptBitmaps.delete(element);
+  kept.frame = staticFrame;
+  keptBitmaps.set(element, kept);
+};
+
+/**
+ * Makes room for a bitmap of `pixels` by releasing the least recently drawn
+ * ones from earlier frames. False when the bitmaps drawn this frame alone fill
+ * the budget: the element then draws directly, so a view of more shapes than
+ * the budget never rebuilds bitmaps it is about to evict.
+ */
+const roomForBitmap = (pixels: number) => {
+  const fits = () =>
+    keptBitmaps.size < MAX_ELEMENT_BITMAPS &&
+    keptPixels + pixels <= MAX_ELEMENT_BITMAP_PIXELS;
+  for (const [element, kept] of keptBitmaps) {
+    if (fits()) {
+      return true;
+    }
+    if (kept.frame === staticFrame) {
+      return false;
+    }
+    releaseBitmap(element);
+  }
+  return fits();
+};
+
+/** Whether the element has a bitmap kept, or room for one at this zoom. */
+const hasBitmapRoom = (
+  element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
+  zoom: Zoom,
+) => {
+  if (keptBitmaps.has(element) || element.type === "image") {
+    return true;
+  }
+  const { width, height } = cappedElementCanvasSize(element, elementsMap, zoom);
+  return roomForBitmap(width * height);
+};
+
+/** The number of element bitmaps kept and the pixels they hold. */
+export const getElementBitmapUsage = () => ({
+  bitmaps: keptBitmaps.size,
+  pixels: keptPixels,
+});
+
+/**
+ * Forgets every element bitmap and pending build. Call when the canvas
+ * context is restored: the browser hands the bitmaps back blank, and they
+ * would still match the zoom.
+ */
+export const forgetElementBitmaps = () => {
+  for (const element of keptBitmaps.keys()) {
+    elementWithCanvasCache.delete(element);
+  }
+  keptBitmaps.clear();
+  keptPixels = 0;
+  zoomHeld = { zoom: NaN, since: 0 };
+  settledBuild = null;
+  cancelScheduledBuild?.();
+  cancelScheduledBuild = null;
+};
+
+/**
  * While the zoom animates (`shouldCacheIgnoreZoom`), a cached bitmap is
  * reused at other zooms until it would be shown more than this many times
  * larger or smaller than it was drawn. Shrunk further, a bitmap drawn deep
@@ -861,6 +973,13 @@ const generateElementWithCanvas = (
     (isStickyNoteElement(element) &&
       prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme)
   ) {
+    releaseBitmap(element);
+    if (
+      element.type !== "image" &&
+      !hasBitmapRoom(element, elementsMap, zoom)
+    ) {
+      return null;
+    }
     const elementWithCanvas = generateElementCanvas(
       element,
       elementsMap,
@@ -873,10 +992,11 @@ const generateElementWithCanvas = (
       return null;
     }
 
-    elementWithCanvasCache.set(element, elementWithCanvas);
+    keepBitmap(element, elementWithCanvas);
 
     return elementWithCanvas;
   }
+  touchBitmap(element);
   return prevElementWithCanvas;
 };
 
@@ -1351,8 +1471,14 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     );
     // a bitmap larger than the screen costs more memory than it saves time
     if (scale === appState.zoom.value && width * height <= screenArea) {
-      generateElementWithCanvas(element, elementsMap, renderConfig, appState);
-      return true;
+      return (
+        generateElementWithCanvas(
+          element,
+          elementsMap,
+          renderConfig,
+          appState,
+        ) !== null
+      );
     }
     ShapeCache.generateElementShape(element, renderConfig);
     return false;
@@ -1447,6 +1573,9 @@ export const cacheSettledBitmaps = (
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState,
 ) => {
+  if (!renderConfig.isExporting) {
+    staticFrame++;
+  }
   if (renderConfig.isExporting || appState.shouldCacheIgnoreZoom) {
     zoomHeld = { zoom: NaN, since: 0 };
     settledBuild = null;
@@ -1499,7 +1628,8 @@ export const renderElement = (
   const drawsDirectly =
     renderConfig.isExporting ||
     (shouldDrawDirectly(element, allElementsMap, appState) &&
-      !settledElementCanvas(element, allElementsMap, appState));
+      !settledElementCanvas(element, allElementsMap, appState)) ||
+    !hasBitmapRoom(element, allElementsMap, appState.zoom);
 
   context.save();
   context.globalAlpha =
