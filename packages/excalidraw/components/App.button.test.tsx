@@ -804,6 +804,95 @@ describe("button element", () => {
       });
     });
 
+    describe("when the label is wider than the room in a tiny button", () => {
+      const grown = () => {
+        const [button, label] = convertToExcalidrawElements(
+          [
+            {
+              type: "rectangle",
+              x: 0,
+              y: 0,
+              width: 20,
+              height: 40,
+              customData: { isButton: true },
+              label: { text: "Go" },
+            },
+          ],
+          { regenerateIds: false },
+        ) as [ExcalidrawButtonElement, ExcalidrawTextElementWithContainer];
+        API.setElements([button, label]);
+        act(() => {
+          redrawTextBoundingBox(
+            h.elements[1] as ExcalidrawTextElementWithContainer,
+            h.elements[0] as ExcalidrawButtonElement,
+            h.app.scene,
+          );
+        });
+        return h.elements as [
+          ExcalidrawButtonElement,
+          ExcalidrawTextElementWithContainer,
+        ];
+      };
+
+      it("grows the button", () => {
+        const [nextButton] = grown();
+        expect(nextButton.width).toBeGreaterThan(20);
+      });
+
+      it("leaves the label room right of the icon", () => {
+        const [nextButton, nextLabel] = grown();
+        expect(
+          getBoundTextMaxWidth(nextButton, nextLabel),
+        ).toBeGreaterThanOrEqual(nextLabel.width);
+      });
+
+      it("keeps the label inside the button", () => {
+        const [nextButton, nextLabel] = grown();
+        expect(nextLabel.x + nextLabel.width).toBeLessThanOrEqual(
+          nextButton.width,
+        );
+      });
+
+      it("keeps the label clear of the icon", () => {
+        const [nextButton, nextLabel] = grown();
+        expect(nextLabel.x).toBeGreaterThanOrEqual(
+          getButtonIcon(nextButton).corners[1][0],
+        );
+      });
+    });
+
+    describe("the icon", () => {
+      const labelledAt = (width: number, height: number) => ({
+        ...newButton({ width, height }),
+        boundElements: [{ id: "label-rusty", type: "text" as const }],
+      });
+      const iconHeight = (width: number, height: number) => {
+        const { corners, cornerWidth } = getButtonIcon(
+          labelledAt(width, height),
+        );
+        return corners[2][1] - corners[0][1] + cornerWidth;
+      };
+
+      it("is about 26 tall at normal scale", () => {
+        expect(iconHeight(400, 80)).toBeCloseTo(25.8);
+      });
+
+      it("keeps that size whatever the height, once it fits", () => {
+        expect(iconHeight(400, 400)).toBeCloseTo(iconHeight(400, 80));
+      });
+
+      it("fits a short button", () => {
+        expect(iconHeight(400, 24)).toBeLessThan(24);
+      });
+
+      it("stays inside the slot of a narrow button", () => {
+        const button = labelledAt(60, 80);
+        expect(getButtonIcon(button).corners[1][0]).toBeLessThan(
+          getButtonLabelLeft(button),
+        );
+      });
+    });
+
     describe("when the label wraps taller than the button", () => {
       const grownButton = () => {
         const [button, label] = convertToExcalidrawElements(

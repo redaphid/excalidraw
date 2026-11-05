@@ -2,11 +2,11 @@ import { getElementDetailScale } from "./authoring";
 
 import type { ExcalidrawButtonElement } from "./types";
 
-const ICON_SLOT = 44;
-const ICON_SIZE = 20;
-const ICON_MARGIN_TO_SLOT = 0.32;
+const ICON_SLOT = 56;
+const ICON_SIZE = 30;
+const ICON_MARGIN_TO_SLOT = 0.2;
 const SLOT_TO_WIDTH = 0.4;
-const ICON_TO_SLOT = 0.5;
+const ICON_TO_SLOT = 0.6;
 const ICON_TO_HEIGHT = 0.6;
 const UNLABELLED_ICON_TO_BUTTON = 0.4;
 const ICON_CORNER_TO_ICON = 0.14;
