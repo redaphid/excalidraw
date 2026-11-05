@@ -440,6 +440,21 @@ describe("button element", () => {
     });
   });
 
+  describe("when the host turns interaction off", () => {
+    beforeEach(async () => {
+      unmountComponent();
+      await render(
+        <Excalidraw onButtonClick={onButtonClick} interaction={false} />,
+      );
+      API.setElements([newButton()]);
+    });
+
+    it("does not fire", () => {
+      mouse.clickAt(200, 140);
+      expect(onButtonClick).not.toHaveBeenCalled();
+    });
+  });
+
   describe("at extreme zoom", () => {
     const ZOOM = 1_000_000;
     // a button a millionth of the scene's size, deep inside it

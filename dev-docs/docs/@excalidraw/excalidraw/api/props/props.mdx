@@ -3,7 +3,7 @@
 All `props` are _optional_.
 
 | Name | Type | Default | Description |
-| --- | --- | --- | --- |
+| --- | --- | --- | --- | --- |
 | [`initialData`](/docs/@excalidraw/excalidraw/api/props/initialdata) | `object` &#124; `null` &#124; <code>Promise<object &#124; null></code> | `null` | The initial data with which app loads. |
 | [`excalidrawAPI`](/docs/@excalidraw/excalidraw/api/props/excalidraw-api) | `function` | \_ | Callback triggered with the excalidraw api once rendered |
 | [`isCollaborating`](#iscollaborating) | `boolean` | \_ | This indicates if the app is in `collaboration` mode |
@@ -14,6 +14,7 @@ All `props` are _optional_.
 | [`onPaste`](#onpaste) | `function` | \_ | Callback to be triggered if passed when something is pasted into the scene |
 | [`onLibraryChange`](#onlibrarychange) | `function` | \_ | The callback if supplied is triggered when the library is updated and receives the library items. |
 | [`generateLinkForSelection`](#generatelinkforselection) | `function` | \_ | Allows you to override `url` generation when linking to Excalidraw elements. |
+| [`onButtonClick`](#onbuttonclick) | `function` | \_ | The callback if supplied is triggered when a button element is clicked. |
 | [`onLinkOpen`](#onlinkopen) | `function` | \_ | The callback if supplied is triggered when any link is opened. |
 | [`langCode`](#langcode) | `string` | `en` | Language code string to be used in Excalidraw |
 | [`renderTopRightUI`](/docs/@excalidraw/excalidraw/api/props/render-props#rendertoprightui) | `function` | \_ | Render function that renders custom UI in top right corner |
@@ -31,7 +32,7 @@ All `props` are _optional_.
 | [`generateIdForFile`](#generateidforfile) | `function` | \_ | Allows you to override `id` generation for files added on canvas |
 | [`validateEmbeddable`](#validateembeddable) | `string[]` \| `boolean` \| `RegExp` \| `RegExp[]` \| <code>((link: string) => boolean &#124; undefined)</code> | \_ | use for custom src url validation |
 | [`renderEmbeddable`](/docs/@excalidraw/excalidraw/api/props/render-props#renderEmbeddable) | `function` | \_ | Render function that can override the built-in `<iframe>` |
-| [`renderScrollbars`] | `boolean`| | `false` | Indicates whether scrollbars will be shown
+| [`renderScrollbars`] | `boolean` |  | `false` | Indicates whether scrollbars will be shown |
 
 ### Storing custom data on Excalidraw elements
 
@@ -151,6 +152,36 @@ This prop if passed will be used to replace the default link generation function
 ```tsx
 (id: string, type: "element" | "group") => string;
 ```
+
+### onButtonClick
+
+```tsx
+onButtonClick?: (
+  element: NonDeleted<ExcalidrawButtonElement>,
+  event: PointerEvent,
+) => void;
+```
+
+A button is a rectangle with `customData: { isButton: true }`, drawn with a play icon to the left of its bound text and with its own colors. Give it `roundness: { type: ROUNDNESS.ADAPTIVE_RADIUS }` for rounded corners. A client that doesn't know buttons shows and keeps it as a rectangle with its label.
+
+```tsx
+convertToExcalidrawElements([
+  {
+    type: "rectangle",
+    x: 100,
+    y: 100,
+    width: 200,
+    height: 80,
+    roundness: { type: ROUNDNESS.ADAPTIVE_RADIUS },
+    customData: { isButton: true },
+    label: { text: "Run" },
+  },
+]);
+```
+
+With this prop set, a press and release with the selection, lasso or hand tool, or in view mode, calls it and changes nothing else: the element isn't selected, the scene and the undo stack stay as they were. A drag from a button doesn't call it. It does nothing with the selection or lasso tool, and pans with the hand tool or in view mode.
+
+To edit a button, select it with a box selection or a shift click. A selected button moves, resizes, deletes and edits its label like any rectangle, and pressing it doesn't call the prop. Without the prop, a button is handled as a plain rectangle.
 
 ### onLinkOpen
 

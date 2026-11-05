@@ -8,9 +8,9 @@ import {
 import { getElementBounds, isButtonElement } from "@excalidraw/element";
 import { pointDistance, pointFrom } from "@excalidraw/math";
 
-import { isHandToolActive } from "../appState";
-
 import type { ExcalidrawElement } from "@excalidraw/element/types";
+
+import { isHandToolActive } from "../appState";
 
 import type { ButtonHighlight } from "../scene/types";
 import type App from "./App";
