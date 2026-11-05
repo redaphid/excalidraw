@@ -1,0 +1,90 @@
+{
+  "none@1x": {
+    "total": 5.23385,
+    "script": 2.2089583333333334,
+    "style": 0,
+    "layout": 0,
+    "paint": 0,
+    "prepaint": 0.8832416666666667,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 73.66489166666666
+  },
+  "css@1x": {
+    "total": 11.1367,
+    "script": 2.210366666666667,
+    "style": 4.260633333333334,
+    "layout": 0.127325,
+    "paint": 0.7169000000000001,
+    "prepaint": 1.2217416666666667,
+    "paints": 3,
+    "styledElements": 196,
+    "wallMs": 45.476375
+  },
+  "css-lean@1x": {
+    "total": 7.138208333333334,
+    "script": 2.578333333333333,
+    "style": 0.6037333333333332,
+    "layout": 0.132975,
+    "paint": 0.687575,
+    "prepaint": 1.4005666666666667,
+    "paints": 3,
+    "styledElements": 2,
+    "wallMs": 46.059441666666665
+  },
+  "canvas@1x": {
+    "total": 4.584041666666667,
+    "script": 2.105941666666667,
+    "style": 0,
+    "layout": 0,
+    "paint": 0,
+    "prepaint": 0.737225,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 44.376783333333336
+  },
+  "none@100000x": {
+    "total": 5.396141666666667,
+    "script": 2.438616666666667,
+    "style": 0,
+    "layout": 0,
+    "paint": 0,
+    "prepaint": 0.8276,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 43.738325
+  },
+  "css@100000x": {
+    "total": 10.566808333333334,
+    "script": 2.1991916666666667,
+    "style": 3.9424583333333336,
+    "layout": 0.12476666666666666,
+    "paint": 0.7534083333333333,
+    "prepaint": 1.1604083333333333,
+    "paints": 3,
+    "styledElements": 196,
+    "wallMs": 44.57859166666666
+  },
+  "css-lean@100000x": {
+    "total": 7.3816999999999995,
+    "script": 2.7829166666666665,
+    "style": 0.6212333333333333,
+    "layout": 0.13085833333333333,
+    "paint": 0.7525499999999999,
+    "prepaint": 1.3842500000000002,
+    "paints": 3,
+    "styledElements": 2,
+    "wallMs": 44.11931666666667
+  },
+  "canvas@100000x": {
+    "total": 5.061891666666667,
+    "script": 2.3032916666666665,
+    "style": 0,
+    "layout": 0,
+    "paint": 0,
+    "prepaint": 0.8234916666666667,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 50.188
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "none@1x": {
+    "total": 35.69853333333333,
+    "script": 15.76085,
+    "style": 0,
+    "layout": 0,
+    "paint": 1.3431250000000001,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 61.60768333333333
+  },
+  "css@1x": {
+    "total": 83.58099999999999,
+    "script": 15.735516666666665,
+    "style": 34.74429166666666,
+    "layout": 0.7855083333333333,
+    "paint": 8.781741666666667,
+    "paints": 3,
+    "styledElements": 196,
+    "wallMs": 106.29109166666667
+  },
+  "css-lean@1x": {
+    "total": 41.998325,
+    "script": 14.698974999999999,
+    "style": 2.6725333333333334,
+    "layout": 0.9095666666666666,
+    "paint": 8.618166666666667,
+    "paints": 3,
+    "styledElements": 2,
+    "wallMs": 65.56114166666667
+  },
+  "canvas@1x": {
+    "total": 28.977491666666666,
+    "script": 12.837441666666667,
+    "style": 0,
+    "layout": 0,
+    "paint": 1.1117,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 68.25334166666667
+  },
+  "none@100000x": {
+    "total": 52.98770833333333,
+    "script": 23.97511666666667,
+    "style": 0,
+    "layout": 0,
+    "paint": 1.7787250000000001,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 93.78665
+  },
+  "css@100000x": {
+    "total": 85.434925,
+    "script": 16.223775,
+    "style": 31.55689166666667,
+    "layout": 1.0169000000000001,
+    "paint": 10.299308333333332,
+    "paints": 3,
+    "styledElements": 196,
+    "wallMs": 126.07475833333334
+  },
+  "css-lean@100000x": {
+    "total": 44.419525,
+    "script": 14.886058333333333,
+    "style": 2.6048,
+    "layout": 1.1803583333333334,
+    "paint": 8.701783333333333,
+    "paints": 3,
+    "styledElements": 2,
+    "wallMs": 78.9972
+  },
+  "canvas@100000x": {
+    "total": 31.911733333333334,
+    "script": 14.464716666666668,
+    "style": 0,
+    "layout": 0,
+    "paint": 1.06315,
+    "paints": 0,
+    "styledElements": 0,
+    "wallMs": 53.063875
+  }
+}
