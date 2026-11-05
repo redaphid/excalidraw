@@ -100,6 +100,28 @@ describe("a new element drawn inside a frame", () => {
     }
 
     mouse.upAt(260, 120);
+    // the static canvas still holds what lies below the stroke
+    expect(takePainted()).toEqual({
+      static: [stroke.id, frame.id, above.id, embeddable.id],
+      newElement: [],
+    });
+  });
+
+  it("repaints in full on release when an element below changed while the static canvas held", async () => {
+    const { embeddable, frame, below, above } = await board();
+    UI.clickTool("freedraw");
+    const mouse = new Pointer("mouse");
+    mouse.downAt(200, 60);
+    mouse.moveTo(220, 80);
+    const stroke = h.state.newElement!;
+    h.app.scene.mutateElement(
+      h.app.scene.getElement(below.id)!,
+      { strokeColor: "#e03131" },
+      { informMutation: false, isDragging: false },
+    );
+    takePainted();
+
+    mouse.upAt(240, 90);
     expect(takePainted()).toEqual({
       static: [below.id, stroke.id, frame.id, above.id, embeddable.id],
       newElement: [],
@@ -121,5 +143,30 @@ describe("a new element drawn inside a frame", () => {
       newElement: [stroke.id, frame.id, above.id, embeddable.id],
     });
     mouse.upAt(240, 90);
+  });
+});
+
+describe("a new element drawn outside any frame", () => {
+  it("paints only itself over the static canvas on release", async () => {
+    await render(<Excalidraw />);
+    const rectangle = API.createElement({
+      type: "rectangle",
+      x: 20,
+      y: 20,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rectangle]);
+    API.setAppState({ width: 1000, height: 800 });
+    UI.clickTool("freedraw");
+    const mouse = new Pointer("mouse");
+    mouse.downAt(300, 300);
+    mouse.moveTo(320, 340);
+    const stroke = h.state.newElement!;
+    expect(stroke.frameId).toBe(null);
+    takePainted();
+
+    mouse.upAt(360, 380);
+    expect(takePainted()).toEqual({ static: [stroke.id], newElement: [] });
   });
 });
