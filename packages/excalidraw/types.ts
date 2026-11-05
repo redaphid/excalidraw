@@ -14,6 +14,7 @@ import type { MaybeTransformHandleType } from "@excalidraw/element";
 import type {
   PointerType,
   ExcalidrawLinearElement,
+  ExcalidrawButtonElement,
   NonDeletedExcalidrawElement,
   NonDeleted,
   TextAlign,
@@ -1053,6 +1054,15 @@ export interface ExcalidrawProps {
   autoFocus?: boolean;
   generateIdForFile?: (file: File) => string | Promise<string>;
   generateLinkForSelection?: (id: string, type: "element" | "group") => string;
+  /**
+   * A press and release without movement on a rectangle with
+   * `customData: { isButton: true }`. Without this prop such an element is
+   * only drawn as a button and handled as a plain rectangle.
+   */
+  onButtonClick?: (
+    element: NonDeleted<ExcalidrawButtonElement>,
+    event: PointerEvent,
+  ) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{

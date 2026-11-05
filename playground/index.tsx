@@ -4,7 +4,10 @@ import { createRoot } from "react-dom/client";
 import { debounce } from "@excalidraw/common";
 import { Excalidraw } from "@excalidraw/excalidraw";
 
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import type {
+  ExcalidrawImperativeAPI,
+  ExcalidrawProps,
+} from "@excalidraw/excalidraw/types";
 
 import { THEMES } from "./themes";
 import {
@@ -22,6 +25,7 @@ declare global {
   interface Window {
     /** for scripted drivers such as scripts/theme-screenshots */
     excalidrawAPI?: ExcalidrawImperativeAPI | null;
+    onPlaygroundButtonClick?: ExcalidrawProps["onButtonClick"];
   }
 }
 
@@ -92,6 +96,9 @@ const Playground = () => {
   const theme = THEMES.find(({ id }) => id === themeId);
   return (
     <Excalidraw
+      onButtonClick={(element, event) =>
+        window.onPlaygroundButtonClick?.(element, event)
+      }
       css={theme?.css}
       theme={theme?.mode}
       renderTopRightUI={

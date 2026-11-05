@@ -45,6 +45,7 @@ import type {
 } from "@excalidraw/excalidraw/scene/types";
 
 import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
+import { getButtonIcon } from "./button";
 import { getUncroppedImageElement } from "./cropElement";
 import { getElementDetailScale } from "./authoring";
 import { LinearElementEditor } from "./linearElementEditor";
@@ -67,6 +68,7 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  isButtonElement,
   isStickyNoteElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
@@ -83,6 +85,7 @@ import {
 } from "./stickyNote";
 
 import type {
+  ExcalidrawButtonElement,
   ExcalidrawElement,
   ExcalidrawTextElement,
   NonDeleted,
@@ -232,6 +235,8 @@ export interface ExcalidrawElementWithCanvas {
   containingFrameOpacity: number;
   /** the theme a sticky note's shadow and edge were drawn with */
   canvasTheme: StaticCanvasRenderConfig["canvasTheme"];
+  /** a button's icon sits beside its label, which is its own element */
+  buttonLabelVersion: number | undefined;
 }
 
 const cappedElementCanvasSize = (
@@ -340,7 +345,7 @@ const generateElementCanvas = (
 
   const rc = rough.canvas(canvas);
 
-  drawElementOnCanvas(element, rc, context, renderConfig);
+  drawElementOnCanvas(element, elementsMap, rc, context, renderConfig);
 
   context.restore();
 
@@ -356,6 +361,7 @@ const generateElementCanvas = (
       getContainingFrame(element, elementsMap)?.opacity || 100,
     imageCrop: isImageElement(element) ? element.crop : null,
     canvasTheme: renderConfig.canvasTheme,
+    buttonLabelVersion: getButtonLabelVersion(element, elementsMap),
   };
 };
 
@@ -517,8 +523,34 @@ const getFreeDrawPath2D = (
   return path2D;
 };
 
+const drawButtonIcon = (
+  button: NonDeleted<ExcalidrawButtonElement>,
+  elementsMap: ElementsMap,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  const { corners, cornerWidth } = getButtonIcon(
+    button,
+    getBoundTextElement(button, elementsMap),
+  );
+  context.save();
+  context.fillStyle = context.strokeStyle = applyDarkModeFilter(
+    button.strokeColor,
+    renderConfig.theme === THEME.DARK,
+  );
+  context.lineJoin = "round";
+  context.lineWidth = cornerWidth;
+  context.beginPath();
+  corners.forEach(([x, y]) => context.lineTo(x, y));
+  context.closePath();
+  context.fill();
+  context.stroke();
+  context.restore();
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
   rc: RoughCanvas,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
@@ -587,6 +619,9 @@ const drawElementOnCanvas = (
       context.lineCap = "round";
 
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      if (isButtonElement(element)) {
+        drawButtonIcon(element, elementsMap, context, renderConfig);
+      }
       break;
     }
     case "arrow":
@@ -832,6 +867,14 @@ const withinRescaleRedrawBudget = (zoom: number) => {
   return now < rescaleRedrawFrame.until;
 };
 
+const getButtonLabelVersion = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+) =>
+  isButtonElement(element)
+    ? getBoundTextElement(element, elementsMap)?.version
+    : undefined;
+
 const generateElementWithCanvas = (
   element: NonDeletedExcalidrawElement,
   elementsMap: NonDeletedSceneElementsMap,
@@ -858,6 +901,8 @@ const generateElementWithCanvas = (
     prevElementWithCanvas.theme !== appState.theme ||
     prevElementWithCanvas.imageCrop !== imageCrop ||
     prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity ||
+    prevElementWithCanvas.buttonLabelVersion !==
+      getButtonLabelVersion(element, elementsMap) ||
     (isStickyNoteElement(element) &&
       prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme)
   ) {
@@ -1604,7 +1649,7 @@ const drawElement = (
           context.translate(cx, cy);
           context.rotate(element.angle);
           context.translate(-shiftX, -shiftY);
-          drawElementOnCanvas(element, rc, context, renderConfig);
+          drawElementOnCanvas(element, elementsMap, rc, context, renderConfig);
         } finally {
           context.restore();
         }
@@ -1715,7 +1760,13 @@ const drawElement = (
               context.clip("evenodd");
               context.rotate(element.angle);
               context.translate(-shiftX, -shiftY);
-              drawElementOnCanvas(element, rc, context, renderConfig);
+              drawElementOnCanvas(
+                element,
+                elementsMap,
+                rc,
+                context,
+                renderConfig,
+              );
             } finally {
               context.restore();
             }
@@ -1728,7 +1779,13 @@ const drawElement = (
             }
 
             context.translate(-shiftX, -shiftY);
-            drawElementOnCanvas(element, rc, context, renderConfig);
+            drawElementOnCanvas(
+              element,
+              elementsMap,
+              rc,
+              context,
+              renderConfig,
+            );
           }
         } finally {
           context.restore();

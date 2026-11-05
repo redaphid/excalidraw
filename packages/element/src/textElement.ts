@@ -19,6 +19,7 @@ import {
   updateOriginalContainerCache,
 } from "./containerCache";
 import { getElementDetailScale } from "./authoring";
+import { getButtonLabelInset } from "./button";
 import { LinearElementEditor } from "./linearElementEditor";
 import { getPositionAfterHeightChange } from "./sizeHelpers";
 
@@ -28,6 +29,7 @@ import { wrapText } from "./textWrapping";
 import {
   isBoundToContainer,
   isArrowElement,
+  isButtonElement,
   isStickyNoteElement,
   isTextElement,
 } from "./typeChecks";
@@ -258,6 +260,11 @@ export const computeBoundTextPosition = (
     );
   }
   const containerCoords = getContainerCoords(container);
+  const contentX =
+    containerCoords.x +
+    (isButtonElement(container)
+      ? getButtonLabelInset(boundTextElement.fontSize)
+      : 0);
   const maxContainerHeight = getBoundTextMaxHeight(container, boundTextElement);
   const maxContainerWidth = getBoundTextMaxWidth(container, boundTextElement);
 
@@ -285,27 +292,27 @@ export const computeBoundTextPosition = (
       (maxContainerHeight / 2 - boundTextElement.height / 2);
   }
   if (boundTextElement.textAlign === TEXT_ALIGN.LEFT) {
-    x = containerCoords.x;
+    x = contentX;
   } else if (boundTextElement.textAlign === TEXT_ALIGN.RIGHT) {
-    x = containerCoords.x + (maxContainerWidth - boundTextElement.width);
+    x = contentX + (maxContainerWidth - boundTextElement.width);
   } else {
-    x =
-      containerCoords.x + (maxContainerWidth / 2 - boundTextElement.width / 2);
+    x = contentX + (maxContainerWidth / 2 - boundTextElement.width / 2);
   }
   const angle = (container.angle ?? 0) as Radians;
 
   if (angle !== 0) {
     // A sticky's footer makes its body asymmetric. The body still rotates
     // about the note's center, rather than about its own (higher) center.
-    const contentCenter = isStickyNoteElement(container)
-      ? pointFrom(
-          container.x + container.width / 2,
-          container.y + container.height / 2,
-        )
-      : pointFrom(
-          containerCoords.x + maxContainerWidth / 2,
-          containerCoords.y + maxContainerHeight / 2,
-        );
+    const contentCenter =
+      isStickyNoteElement(container) || isButtonElement(container)
+        ? pointFrom(
+            container.x + container.width / 2,
+            container.y + container.height / 2,
+          )
+        : pointFrom(
+            containerCoords.x + maxContainerWidth / 2,
+            containerCoords.y + maxContainerHeight / 2,
+          );
     const textCenter = pointFrom(
       x + boundTextElement.width / 2,
       y + boundTextElement.height / 2,
@@ -585,7 +592,13 @@ export const getBoundTextMaxWidth = (
       getBoundTextPadding(container) * 2
     );
   }
-  return width - getBoundTextPadding(container) * 2;
+  return (
+    width -
+    getBoundTextPadding(container) * 2 -
+    (isButtonElement(container) && boundTextElement
+      ? getButtonLabelInset(boundTextElement.fontSize)
+      : 0)
+  );
 };
 
 export const getBoundTextMaxHeight = (
