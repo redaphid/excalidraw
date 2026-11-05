@@ -103,6 +103,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     autoFocus = false,
     generateIdForFile,
     onButtonClick,
+    onButtonHighlight,
     onLinkOpen,
     generateLinkForSelection,
     onPointerDown,
@@ -251,6 +252,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           autoFocus={autoFocus}
           generateIdForFile={generateIdForFile}
           onButtonClick={onButtonClick}
+          onButtonHighlight={onButtonHighlight}
           onLinkOpen={onLinkOpen}
           generateLinkForSelection={generateLinkForSelection}
           onPointerDown={onPointerDown}

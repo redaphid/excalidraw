@@ -19,7 +19,7 @@ import {
   updateOriginalContainerCache,
 } from "./containerCache";
 import { getElementDetailScale } from "./authoring";
-import { getButtonLabelInset } from "./button";
+import { getButtonLabelLeft } from "./button";
 import { LinearElementEditor } from "./linearElementEditor";
 import { getPositionAfterHeightChange } from "./sizeHelpers";
 
@@ -247,6 +247,14 @@ export const handleBindTextResize = (
   }
 };
 
+const getButtonLabelInset = (container: ExcalidrawElement) =>
+  isButtonElement(container)
+    ? Math.max(
+        0,
+        getButtonLabelLeft(container) - getBoundTextPadding(container),
+      )
+    : 0;
+
 export const computeBoundTextPosition = (
   container: ExcalidrawElement,
   boundTextElement: ExcalidrawTextElementWithContainer,
@@ -260,11 +268,7 @@ export const computeBoundTextPosition = (
     );
   }
   const containerCoords = getContainerCoords(container);
-  const contentX =
-    containerCoords.x +
-    (isButtonElement(container)
-      ? getButtonLabelInset(boundTextElement.fontSize)
-      : 0);
+  const contentX = containerCoords.x + getButtonLabelInset(container);
   const maxContainerHeight = getBoundTextMaxHeight(container, boundTextElement);
   const maxContainerWidth = getBoundTextMaxWidth(container, boundTextElement);
 
@@ -593,11 +597,7 @@ export const getBoundTextMaxWidth = (
     );
   }
   return (
-    width -
-    getBoundTextPadding(container) * 2 -
-    (isButtonElement(container) && boundTextElement
-      ? getButtonLabelInset(boundTextElement.fontSize)
-      : 0)
+    width - getBoundTextPadding(container) * 2 - getButtonLabelInset(container)
   );
 };
 

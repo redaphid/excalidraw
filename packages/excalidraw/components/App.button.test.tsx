@@ -6,6 +6,8 @@ import {
   getButtonIcon,
   duplicateElements,
   getBoundTextMaxWidth,
+  getBoundTextPadding,
+  getButtonLabelLeft,
   computeBoundTextPosition,
   isButtonElement,
 } from "@excalidraw/element";
@@ -269,7 +271,7 @@ describe("button element", () => {
     });
 
     it("is a pointer over the icon", () => {
-      const [[x, y]] = getButtonIcon(newButton(), null).corners;
+      const [[x, y]] = getButtonIcon(newButton()).corners;
       mouse.moveTo(100 + x + 2, 100 + y + 2);
       expect(cursor()).toBe(CURSOR_TYPE.POINTER);
     });
@@ -284,6 +286,46 @@ describe("button element", () => {
       mouse.moveTo(200, 140);
       mouse.moveTo(50, 50);
       expect(cursor()).not.toBe(CURSOR_TYPE.POINTER);
+    });
+
+    it("goes back to grab with the hand tool", () => {
+      UI.clickTool("hand");
+      mouse.moveTo(50, 50);
+      const atRest = cursor();
+      mouse.moveTo(200, 140);
+      mouse.moveTo(50, 50);
+      expect(cursor()).toBe(atRest);
+    });
+
+    it("rests on grab with the hand tool", () => {
+      UI.clickTool("hand");
+      mouse.moveTo(200, 140);
+      mouse.moveTo(50, 50);
+      expect(cursor()).toBe(CURSOR_TYPE.GRAB);
+    });
+
+    it("goes back to grab in view mode", () => {
+      API.setAppState({ viewModeEnabled: true });
+      mouse.moveTo(200, 140);
+      mouse.moveTo(50, 50);
+      expect(cursor()).toBe(CURSOR_TYPE.GRAB);
+    });
+
+    it("rests on grab in view mode after a camera change", () => {
+      API.setAppState({ viewModeEnabled: true });
+      mouse.moveTo(200, 140);
+      act(() => {
+        h.setState({ scrollX: 40 });
+      });
+      expect(cursor()).toBe(CURSOR_TYPE.GRAB);
+    });
+
+    it("goes back with the hand tool when released off a tiny button", () => {
+      API.setElements([newButton({ width: 5, height: 5 })]);
+      UI.clickTool("hand");
+      mouse.downAt(102, 102);
+      mouse.upAt(109, 102);
+      expect(cursor()).toBe(CURSOR_TYPE.GRAB);
     });
 
     it("is not a pointer for another tool", () => {
@@ -328,6 +370,50 @@ describe("button element", () => {
       mouse.moveTo(200, 140);
       fireEvent.pointerLeave(GlobalTestState.interactiveCanvas);
       expect(h.app.button.highlight).toBeNull();
+    });
+  });
+
+  describe("a host listening for the highlight", () => {
+    const onButtonHighlight = vi.fn();
+
+    beforeEach(async () => {
+      unmountComponent();
+      onButtonHighlight.mockReset();
+      await render(
+        <Excalidraw
+          onButtonClick={onButtonClick}
+          onButtonHighlight={onButtonHighlight}
+        />,
+      );
+      API.setElements([newButton()]);
+    });
+
+    it("hears the press during the pointer down", () => {
+      mouse.downAt(200, 140);
+      expect(onButtonHighlight).toHaveBeenLastCalledWith({
+        id: "button-thunderwrench",
+        pressed: true,
+      });
+    });
+
+    it("hears the hover", () => {
+      mouse.moveTo(200, 140);
+      expect(onButtonHighlight).toHaveBeenLastCalledWith({
+        id: "button-thunderwrench",
+        pressed: false,
+      });
+    });
+
+    it("hears the end", () => {
+      mouse.moveTo(200, 140);
+      mouse.moveTo(50, 50);
+      expect(onButtonHighlight).toHaveBeenLastCalledWith(null);
+    });
+
+    it("hears nothing new while the state stays the same", () => {
+      mouse.moveTo(200, 140);
+      mouse.moveTo(210, 140);
+      expect(onButtonHighlight).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -671,16 +757,20 @@ describe("button element", () => {
 
     it("sits to the right of the icon", () => {
       const [button, label] = newLabelledButton();
-      const { corners } = getButtonIcon(button, label);
-      expect(corners[1][0]).toBeLessThan(label.x);
+      expect(getButtonIcon(button).corners[1][0]).toBeLessThan(label.x);
     });
 
-    it("centers the icon and label as a group", () => {
+    it("stays inside the button", () => {
       const [button, label] = newLabelledButton();
-      const { corners, cornerWidth } = getButtonIcon(button, label);
-      const left = corners[0][0] - cornerWidth;
-      const right = button.width - (label.x + label.width);
-      expect(Math.abs(left - right)).toBeLessThan(label.fontSize / 2);
+      expect(label.x + label.width).toBeLessThan(button.width);
+    });
+
+    it("is centered in the room the icon leaves", () => {
+      const [button, label] = newLabelledButton();
+      const left = getButtonLabelLeft(button);
+      expect(label.x + label.width / 2).toBeCloseTo(
+        (left + button.width - getBoundTextPadding(button)) / 2,
+      );
     });
 
     it("keeps its offset when the button is rotated", () => {
@@ -717,6 +807,19 @@ describe("button element", () => {
   });
 
   describe("export", () => {
+    const newLabelledButtonForExport = () =>
+      convertToExcalidrawElements([
+        {
+          type: "rectangle",
+          x: 0,
+          y: 0,
+          width: 300,
+          height: 80,
+          customData: { isButton: true },
+          label: { text: "Run" },
+        },
+      ]) as NonDeleted<ExcalidrawElement>[];
+
     it("draws the icon into an SVG", async () => {
       const svg = await exportToSvg({
         elements: [newLiveButton()],
@@ -724,6 +827,26 @@ describe("button element", () => {
         files: null,
       });
       expect(svg.querySelector("polygon")).not.toBeNull();
+    });
+
+    it("draws the icon in the same place without the label", async () => {
+      const elements = newLabelledButtonForExport();
+      const [withLabel, withoutLabel] = await Promise.all(
+        [elements, [elements[0]]].map((set) =>
+          exportToSvg({ elements: set, appState: {}, files: null }),
+        ),
+      );
+      expect(
+        withoutLabel.querySelector("polygon")?.getAttribute("points"),
+      ).toBe(withLabel.querySelector("polygon")?.getAttribute("points"));
+    });
+
+    it("centers the icon of a button with no label", () => {
+      const button = newButton();
+      const { corners, cornerWidth } = getButtonIcon(button);
+      expect(
+        (corners[0][0] - cornerWidth + corners[1][0] + cornerWidth) / 2,
+      ).toBeCloseTo(button.width / 2);
     });
 
     it("draws no icon on a plain rectangle", async () => {

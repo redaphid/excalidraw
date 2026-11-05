@@ -100,6 +100,7 @@ export class AppButton {
       return;
     }
     this.highlight = highlight;
+    this.app.props.onButtonHighlight?.(highlight);
     this.app.triggerRender();
   };
 
@@ -164,6 +165,9 @@ export class AppButton {
     const id = this.getButtonIdAt(event);
     if (id) {
       this.app.cursor.set(CURSOR_TYPE.POINTER);
+    } else if (this.highlight && this.app.pan.isNavigating()) {
+      // App's own handling stops short of the cursor while navigating
+      this.app.cursor.reset();
     }
     this.setHighlight(id ? { id, pressed: false } : null);
   };
@@ -176,6 +180,9 @@ export class AppButton {
     }
     this.press = null;
     const id = this.getButtonIdAt(event);
+    if (!id) {
+      this.app.cursor.reset();
+    }
     this.setHighlight(
       id && event.pointerType === "mouse" ? { id, pressed: false } : null,
     );
@@ -195,7 +202,7 @@ export class AppButton {
   handleViewChange = () => {
     if (!this.press && this.highlight) {
       this.setHighlight(null);
-      this.app.cursor.applyForTool();
+      this.app.cursor.reset();
     }
   };
 

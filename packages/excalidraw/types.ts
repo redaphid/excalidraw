@@ -1059,6 +1059,13 @@ export interface ExcalidrawProps {
    * only drawn as a button and handled as a plain rectangle.
    */
   onButtonClick?: (elementId: ExcalidrawElement["id"]) => void;
+  /**
+   * The hover or pressed state the canvas now shows on a button, called during
+   * the pointer event, for a host with a layer of its own over the canvas.
+   */
+  onButtonHighlight?: (
+    highlight: { id: ExcalidrawElement["id"]; pressed: boolean } | null,
+  ) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{

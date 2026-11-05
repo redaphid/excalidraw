@@ -104,14 +104,10 @@ const maybeWrapNodesInFrameClipPath = (
 
 const createButtonIconNode = (
   button: NonDeleted<ExcalidrawButtonElement>,
-  elementsMap: RenderableElementsMap,
   svgRoot: SVGElement,
   renderConfig: SVGRenderConfig,
 ) => {
-  const { corners, cornerWidth } = getButtonIcon(
-    button,
-    getBoundTextElement(button, elementsMap),
-  );
+  const { corners, cornerWidth } = getButtonIcon(button);
   const color = applyDarkModeFilter(
     button.strokeColor,
     renderConfig.theme === THEME.DARK,
@@ -330,9 +326,7 @@ const renderElementToSvg = (
         }) rotate(${degree} ${cx} ${cy})`,
       );
       if (isButtonElement(element)) {
-        node.appendChild(
-          createButtonIconNode(element, elementsMap, svgRoot, renderConfig),
-        );
+        node.appendChild(createButtonIconNode(element, svgRoot, renderConfig));
       }
 
       const g = maybeWrapNodesInFrameClipPath(
