@@ -4465,6 +4465,14 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
+    if (
+      prevState.scrollX !== this.state.scrollX ||
+      prevState.scrollY !== this.state.scrollY ||
+      prevState.zoom !== this.state.zoom ||
+      prevState.activeTool !== this.state.activeTool
+    ) {
+      this.button.handleViewChange();
+    }
     const renderOverridesUpdatePending = this.renderOverridesUpdatePending;
     this.renderOverridesUpdatePending = false;
     // Only a requested visual update can skip the document pipeline. Real
@@ -9110,7 +9118,7 @@ ${css}
     return hitElement != null && this.state.selectedElementIds[hitElement.id];
   }
 
-  public isHittingCommonBoundingBoxOfSelectedElements(
+  private isHittingCommonBoundingBoxOfSelectedElements(
     point: Readonly<{ x: number; y: number }>,
     selectedElements: readonly ExcalidrawElement[],
   ): boolean {

@@ -156,13 +156,10 @@ This prop if passed will be used to replace the default link generation function
 ### onButtonClick
 
 ```tsx
-onButtonClick?: (
-  element: NonDeleted<ExcalidrawButtonElement>,
-  event: PointerEvent,
-) => void;
+onButtonClick?: (elementId: string) => void;
 ```
 
-A button is a rectangle with `customData: { isButton: true }`, drawn with a play icon to the left of its bound text and with its own colors. Give it `roundness: { type: ROUNDNESS.ADAPTIVE_RADIUS }` for rounded corners. A client that doesn't know buttons shows and keeps it as a rectangle with its label.
+A button is a rectangle with `customData: { isButton: true }`, drawn with a play icon to the left of its bound text and with its own colors. Give it `roundness: { type: ROUNDNESS.ADAPTIVE_RADIUS }` for rounded corners. A client that doesn't know buttons shows and keeps it as a rectangle with its label. A duplicate or a paste gets a new id and isn't a button: the copy loses the marker and keeps the rest of its `customData`.
 
 ```tsx
 convertToExcalidrawElements([
@@ -179,9 +176,11 @@ convertToExcalidrawElements([
 ]);
 ```
 
-With this prop set, a press and release with the selection, lasso or hand tool, or in view mode, calls it and changes nothing else: the element isn't selected, the scene and the undo stack stay as they were. A drag from a button doesn't call it. It does nothing with the selection or lasso tool, and pans with the hand tool or in view mode.
+With this prop set, a press and release with the selection or hand tool, or in view mode, calls it once with the element's id and changes nothing else: the element isn't selected, and the scene and the undo stack stay as they were. It isn't called with other tools or while text is being edited. The topmost element under the pointer takes the press, so a filled shape above a button covers it, and an unfilled one covers it only along its stroke.
 
-To edit a button, select it with a box selection or a shift click. A selected button moves, resizes, deletes and edits its label like any rectangle, and pressing it doesn't call the prop. Without the prop, a button is handled as a plain rectangle.
+Past 10 screen pixels a press is whatever it would have been on a plain rectangle: a move, or a pan with the hand tool or in view mode. A second finger cancels the click and reaches the pinch.
+
+A press with a modifier key or the right button is handled as on a plain rectangle, so shift+click selects a button and box selection includes it. A selected button resizes and deletes like a rectangle, and a plain click on it still calls the prop. A double click is two clicks and opens no editor: to edit the label, select the button and press Enter. Without the prop, a button is handled as a plain rectangle.
 
 ### onLinkOpen
 

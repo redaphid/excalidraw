@@ -20,6 +20,8 @@ import {
   shouldRotateWithDiscreteAngle,
   THEME,
   applyDarkModeFilter,
+  isColorDark,
+  isTransparent,
 } from "@excalidraw/common";
 
 import {
@@ -131,8 +133,8 @@ const BINDING_HIGHLIGHT_RGB = {
 
 /** hovered, then pressed */
 const BUTTON_HIGHLIGHT = {
-  [THEME.LIGHT]: ["rgba(0, 0, 0, 0.08)", "rgba(0, 0, 0, 0.2)"],
-  [THEME.DARK]: ["rgba(255, 255, 255, 0.1)", "rgba(255, 255, 255, 0.25)"],
+  overLight: ["rgba(0, 0, 0, 0.08)", "rgba(0, 0, 0, 0.2)"],
+  overDark: ["rgba(255, 255, 255, 0.12)", "rgba(255, 255, 255, 0.28)"],
 };
 
 const BINDING_MIDPOINT_COLOR = {
@@ -1659,7 +1661,11 @@ const renderButtonHighlight = (
   const height = button.height * zoom;
   context.translate(x + width / 2, y + height / 2);
   context.rotate(button.angle);
-  context.fillStyle = BUTTON_HIGHLIGHT[appState.theme][pressed ? 1 : 0];
+  const isOverDark = isTransparent(button.backgroundColor)
+    ? appState.theme === THEME.DARK
+    : isColorDark(getThemedColor(button.backgroundColor, appState.theme));
+  context.fillStyle =
+    BUTTON_HIGHLIGHT[isOverDark ? "overDark" : "overLight"][pressed ? 1 : 0];
   context.beginPath();
   context.roundRect?.(
     -width / 2,

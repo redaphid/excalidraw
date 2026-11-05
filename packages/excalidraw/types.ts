@@ -14,7 +14,6 @@ import type { MaybeTransformHandleType } from "@excalidraw/element";
 import type {
   PointerType,
   ExcalidrawLinearElement,
-  ExcalidrawButtonElement,
   NonDeletedExcalidrawElement,
   NonDeleted,
   TextAlign,
@@ -1059,10 +1058,7 @@ export interface ExcalidrawProps {
    * `customData: { isButton: true }`. Without this prop such an element is
    * only drawn as a button and handled as a plain rectangle.
    */
-  onButtonClick?: (
-    element: NonDeleted<ExcalidrawButtonElement>,
-    event: PointerEvent,
-  ) => void;
+  onButtonClick?: (elementId: ExcalidrawElement["id"]) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{

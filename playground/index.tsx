@@ -96,9 +96,7 @@ const Playground = () => {
   const theme = THEMES.find(({ id }) => id === themeId);
   return (
     <Excalidraw
-      onButtonClick={(element, event) =>
-        window.onPlaygroundButtonClick?.(element, event)
-      }
+      onButtonClick={(elementId) => window.onPlaygroundButtonClick?.(elementId)}
       css={theme?.css}
       theme={theme?.mode}
       renderTopRightUI={

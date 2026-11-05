@@ -1,7 +1,6 @@
 import {
   CURSOR_TYPE,
   DRAGGING_THRESHOLD,
-  KEYS,
   POINTER_BUTTON,
   viewportCoordsToSceneCoords,
 } from "@excalidraw/common";
@@ -10,19 +9,27 @@ import { pointDistance, pointFrom } from "@excalidraw/math";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
-import { isHandToolActive } from "../appState";
-
 import type { ButtonHighlight } from "../scene/types";
 import type App from "./App";
 
 type Press = {
   id: ExcalidrawElement["id"];
   event: React.PointerEvent<HTMLElement>;
-  /** moved too far to be a click, and stays held until it is released */
-  dragged: boolean;
 };
 
-const isDrag = (press: Press, event: React.PointerEvent<HTMLElement>) =>
+type Coords = { clientX: number; clientY: number };
+
+type Modifiers = {
+  shiftKey: boolean;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+};
+
+const hasModifier = (event: Modifiers) =>
+  event.shiftKey || event.altKey || event.ctrlKey || event.metaKey;
+
+const isDrag = (press: Press, event: Coords) =>
   pointDistance(
     pointFrom(press.event.clientX, press.event.clientY),
     pointFrom(event.clientX, event.clientY),
@@ -30,7 +37,8 @@ const isDrag = (press: Press, event: React.PointerEvent<HTMLElement>) =>
 
 /**
  * A press on a button is held out of App's pointer flow, so a click leaves the
- * scene, the selection and the undo stack as they were.
+ * scene, the selection and the undo stack as they were. Anything else it turns
+ * out to be, a drag or the start of a pinch, is replayed into that flow.
  */
 export class AppButton {
   /** what the interactive canvas paints over a button */
@@ -47,7 +55,7 @@ export class AppButton {
   ) {}
 
   /** the clickable button under the coords, topmost element first */
-  private getButtonIdAt = (coords: { clientX: number; clientY: number }) => {
+  private getButtonIdAt = (coords: Coords) => {
     const { app } = this;
     const { state } = app;
     if (
@@ -57,9 +65,10 @@ export class AppButton {
       state.openDialog?.name === "elementLinkSelector" ||
       state.selectedLinearElement?.isEditing ||
       state.isCropping ||
+      state.editingTextElement ||
       !(state.viewModeEnabled
         ? !app.isActiveToolPointerCapturing()
-        : ["selection", "lasso", "hand"].includes(state.activeTool.type))
+        : ["selection", "hand"].includes(state.activeTool.type))
     ) {
       return null;
     }
@@ -79,19 +88,8 @@ export class AppButton {
       return null;
     }
 
-    if (
-      app.isHittingCommonBoundingBoxOfSelectedElements(
-        { x, y },
-        app.scene.getSelectedElements(state),
-      )
-    ) {
-      return null;
-    }
-
     const hit = app.getElementAtPosition(x, y, { includeLockedElements: true });
-    return isButtonElement(hit) && !state.selectedElementIds[hit.id]
-      ? hit.id
-      : null;
+    return isButtonElement(hit) ? hit.id : null;
   };
 
   private setHighlight = (highlight: ButtonHighlight | null) => {
@@ -133,8 +131,7 @@ export class AppButton {
     const id =
       event.button === POINTER_BUTTON.MAIN &&
       this.dependencies.getPointerCount() === 0 &&
-      (this.app.state.viewModeEnabled ||
-        !(event.shiftKey || event[KEYS.CTRL_OR_CMD]))
+      !hasModifier(event)
         ? this.getButtonIdAt(event)
         : null;
     if (!id) {
@@ -144,7 +141,7 @@ export class AppButton {
     const target = event.target as HTMLElement;
     target.setPointerCapture?.(event.pointerId);
     this.app.focusContainer();
-    this.press = { id, event, dragged: false };
+    this.press = { id, event };
     this.setHighlight({ id, pressed: true });
     return true;
   };
@@ -153,16 +150,11 @@ export class AppButton {
   handlePointerMove = (event: React.PointerEvent<HTMLElement>) => {
     const { press } = this;
     if (press?.event.pointerId === event.pointerId) {
-      this.app.cursor.set(CURSOR_TYPE.POINTER);
-      if (press.dragged || !isDrag(press, event)) {
-        return;
-      }
-      if (this.app.state.viewModeEnabled || isHandToolActive(this.app.state)) {
+      if (isDrag(press, event)) {
         this.replayPress(press.event);
         return;
       }
-      press.dragged = true;
-      this.setHighlight(null);
+      this.app.cursor.set(CURSOR_TYPE.POINTER);
       return;
     }
     if (press || event.buttons) {
@@ -187,14 +179,8 @@ export class AppButton {
     this.setHighlight(
       id && event.pointerType === "mouse" ? { id, pressed: false } : null,
     );
-    const button = this.app.scene.getNonDeletedElement(press.id);
-    if (
-      id === press.id &&
-      !press.dragged &&
-      !isDrag(press, event) &&
-      isButtonElement(button)
-    ) {
-      this.app.props.onButtonClick?.(button, event.nativeEvent);
+    if (id === press.id && !isDrag(press, event)) {
+      this.app.props.onButtonClick?.(id);
     }
     return true;
   };
@@ -205,7 +191,15 @@ export class AppButton {
     this.setHighlight(null);
   };
 
+  /** what a hover showed is out of date once the view or the tool changes */
+  handleViewChange = () => {
+    if (!this.press && this.highlight) {
+      this.setHighlight(null);
+      this.app.cursor.applyForTool();
+    }
+  };
+
   /** a double click is two clicks to a button, not a label edit */
-  isClickableAt = (coords: { clientX: number; clientY: number }) =>
-    this.getButtonIdAt(coords) !== null;
+  isClickableAt = (event: Coords & Modifiers) =>
+    !hasModifier(event) && this.getButtonIdAt(event) !== null;
 }

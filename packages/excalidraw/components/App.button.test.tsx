@@ -4,6 +4,7 @@ import { vi } from "vitest";
 import { arrayToMap, CURSOR_TYPE, KEYS, ROUNDNESS } from "@excalidraw/common";
 import {
   getButtonIcon,
+  duplicateElements,
   getBoundTextMaxWidth,
   computeBoundTextPosition,
   isButtonElement,
@@ -96,11 +97,15 @@ describe("button element", () => {
   });
 
   describe("when clicked", () => {
-    it("fires the callback with the element and the pointer event", () => {
+    it("fires once, with the element id alone", () => {
       mouse.clickAt(200, 140);
-      expect(onButtonClick).toHaveBeenCalledTimes(1);
-      expect(onButtonClick.mock.calls[0][0].id).toBe("button-thunderwrench");
-      expect(onButtonClick.mock.calls[0][1].type).toBe("pointerup");
+      expect(onButtonClick.mock.calls).toEqual([["button-thunderwrench"]]);
+    });
+
+    it("fires for each of two quick clicks", () => {
+      mouse.clickAt(200, 140);
+      mouse.clickAt(200, 140);
+      expect(onButtonClick).toHaveBeenCalledTimes(2);
     });
 
     it("fires when the fill is transparent", () => {
@@ -178,19 +183,20 @@ describe("button element", () => {
     beforeEach(() => {
       mouse.downAt(200, 140);
       mouse.moveTo(260, 160);
-      mouse.upAt(260, 160);
+      mouse.moveTo(280, 170);
+      mouse.upAt(280, 170);
     });
 
     it("does not fire", () => {
       expect(onButtonClick).not.toHaveBeenCalled();
     });
 
-    it("does not move the button", () => {
-      expect(h.elements[0].x).toBe(100);
+    it("moves the button", () => {
+      expect(h.elements[0].x).not.toBe(100);
     });
 
-    it("does not select the button", () => {
-      expect(h.state.selectedElementIds).toEqual({});
+    it("selects the button, as moving anything does", () => {
+      expect(h.state.selectedElementIds["button-thunderwrench"]).toBe(true);
     });
   });
 
@@ -199,6 +205,12 @@ describe("button element", () => {
     mouse.moveTo(260, 160);
     mouse.moveTo(200, 140);
     mouse.upAt(200, 140);
+    expect(onButtonClick).not.toHaveBeenCalled();
+  });
+
+  it("does not fire when released far away with no move between", () => {
+    mouse.downAt(200, 140);
+    mouse.upAt(290, 170);
     expect(onButtonClick).not.toHaveBeenCalled();
   });
 
@@ -329,13 +341,6 @@ describe("button element", () => {
       expect(onButtonClick).toHaveBeenCalledTimes(1);
     });
 
-    it("fires on a click with shift held", () => {
-      Keyboard.withModifierKeys({ shift: true }, () => {
-        mouse.clickAt(200, 140);
-      });
-      expect(onButtonClick).toHaveBeenCalledTimes(1);
-    });
-
     describe("and dragged", () => {
       const scrollBefore = 0;
 
@@ -403,27 +408,119 @@ describe("button element", () => {
       expect(h.state.selectedElementIds["button-thunderwrench"]).toBe(true);
     });
 
+    it("leaves alt to its own meaning", () => {
+      Keyboard.withModifierKeys({ alt: true }, () => {
+        mouse.clickAt(200, 140);
+      });
+      expect(onButtonClick).not.toHaveBeenCalled();
+    });
+
     describe("once selected", () => {
       beforeEach(() => {
         API.setSelectedElements([newLiveButton()]);
       });
 
-      it("does not fire on a click", () => {
+      it("still fires on a click", () => {
         mouse.clickAt(200, 140);
-        expect(onButtonClick).not.toHaveBeenCalled();
+        expect(onButtonClick).toHaveBeenCalledTimes(1);
+      });
+
+      it("opens no editor on a double click", () => {
+        mouse.doubleClickAt(200, 140);
+        expect(h.state.editingTextElement).toBeNull();
       });
 
       it("moves on a drag", () => {
         mouse.downAt(200, 140);
         mouse.moveTo(260, 170);
-        mouse.upAt(260, 170);
-        expect(h.elements[0].x).toBe(160);
+        mouse.moveTo(280, 180);
+        mouse.upAt(280, 180);
+        expect(h.elements[0].x).toBe(180);
       });
 
       it("deletes", () => {
         Keyboard.keyPress(KEYS.DELETE);
         expect(h.elements[0].isDeleted).toBe(true);
       });
+    });
+  });
+
+  it("does not fire while text is being edited", () => {
+    mouse.doubleClickAt(700, 300);
+    expect(h.state.editingTextElement).not.toBeNull();
+    mouse.clickAt(200, 140);
+    expect(onButtonClick).not.toHaveBeenCalled();
+  });
+
+  it("does not fire with the lasso tool", () => {
+    act(() => {
+      h.app.setActiveTool({ type: "lasso" });
+    });
+    mouse.clickAt(200, 140);
+    expect(onButtonClick).not.toHaveBeenCalled();
+  });
+
+  describe("after a change of view under a still pointer", () => {
+    it("drops the hover", () => {
+      mouse.moveTo(200, 140);
+      act(() => {
+        h.setState({ scrollX: 40 });
+      });
+      expect(h.app.button.highlight).toBeNull();
+    });
+  });
+
+  describe("a copy", () => {
+    const copyOf = (elements: readonly ExcalidrawElement[]) =>
+      duplicateElements({ type: "everything", elements });
+
+    const labelledButton = () =>
+      convertToExcalidrawElements(
+        [
+          {
+            type: "rectangle",
+            x: 0,
+            y: 0,
+            width: 300,
+            height: 80,
+            customData: { isButton: true, keptBy: "the-lair" },
+            label: { text: "Run" },
+          },
+        ],
+        { regenerateIds: false },
+      ) as [ExcalidrawButtonElement, ExcalidrawTextElementWithContainer];
+
+    it("is no longer a button", () => {
+      const { duplicatedElements } = copyOf(labelledButton());
+      expect(isButtonElement(duplicatedElements[0])).toBe(false);
+    });
+
+    it("keeps the host's other custom data", () => {
+      const { duplicatedElements } = copyOf(labelledButton());
+      expect(duplicatedElements[0].customData).toEqual({
+        keptBy: "the-lair",
+      });
+    });
+
+    it("leaves the original a button", () => {
+      const original = labelledButton();
+      copyOf(original);
+      expect(isButtonElement(original[0])).toBe(true);
+    });
+
+    it("centers the label again", () => {
+      const { duplicatedElements } = copyOf(labelledButton());
+      const [, label] =
+        duplicatedElements as ExcalidrawTextElementWithContainer[];
+      expect(label.x + label.width / 2).toBeCloseTo(150);
+    });
+
+    it("is what ctrl+d makes", () => {
+      API.setSelectedElements([newLiveButton()]);
+      Keyboard.withModifierKeys({ ctrl: true }, () => {
+        Keyboard.keyPress("d");
+      });
+      expect(h.elements.filter(isButtonElement).length).toBe(1);
     });
   });
 
