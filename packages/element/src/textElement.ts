@@ -19,7 +19,7 @@ import {
   updateOriginalContainerCache,
 } from "./containerCache";
 import { getElementDetailScale } from "./authoring";
-import { getButtonLabelLeft } from "./button";
+import { getButtonIconSlot, getButtonLabelLeft } from "./button";
 import { LinearElementEditor } from "./linearElementEditor";
 import { getPositionAfterHeightChange } from "./sizeHelpers";
 
@@ -128,10 +128,14 @@ export const redrawTextBoundingBox = (
     }
 
     if (metrics.width > maxContainerWidth) {
-      const nextWidth = computeContainerDimensionForBoundText(
-        metrics.width,
-        container,
-      );
+      const nextWidth =
+        computeContainerDimensionForBoundText(metrics.width, container) +
+        (isButtonElement(container)
+          ? Math.max(
+              0,
+              getButtonIconSlot(container) - getBoundTextPadding(container),
+            )
+          : 0);
       scene.mutateElement(container, { width: nextWidth });
     }
 

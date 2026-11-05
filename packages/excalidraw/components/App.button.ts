@@ -165,7 +165,11 @@ export class AppButton {
     const id = this.getButtonIdAt(event);
     if (id) {
       this.app.cursor.set(CURSOR_TYPE.POINTER);
-    } else if (this.highlight && this.app.pan.isNavigating()) {
+    } else if (
+      this.highlight &&
+      this.app.pan.isNavigating() &&
+      !this.app.pan.isSpaceHeld()
+    ) {
       // App's own handling stops short of the cursor while navigating
       this.app.cursor.reset();
     }

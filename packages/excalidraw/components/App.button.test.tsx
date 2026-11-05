@@ -8,6 +8,7 @@ import {
   getBoundTextMaxWidth,
   getBoundTextPadding,
   getButtonLabelLeft,
+  redrawTextBoundingBox,
   computeBoundTextPosition,
   isButtonElement,
 } from "@excalidraw/element";
@@ -318,6 +319,14 @@ describe("button element", () => {
         h.setState({ scrollX: 40 });
       });
       expect(cursor()).toBe(CURSOR_TYPE.GRAB);
+    });
+
+    it("stays grab when space is held and the mouse moves off a hover", () => {
+      mouse.moveTo(200, 140);
+      Keyboard.keyDown(KEYS.SPACE);
+      mouse.moveTo(205, 140);
+      expect(cursor()).toBe(CURSOR_TYPE.GRAB);
+      Keyboard.keyUp(KEYS.SPACE);
     });
 
     it("goes back with the hand tool when released off a tiny button", () => {
@@ -763,6 +772,93 @@ describe("button element", () => {
     it("stays inside the button", () => {
       const [button, label] = newLabelledButton();
       expect(label.x + label.width).toBeLessThan(button.width);
+    });
+
+    describe("when a vertical resize makes the button taller", () => {
+      it("keeps the label inside and clear of the icon", () => {
+        const [button, label] = convertToExcalidrawElements(
+          [
+            {
+              type: "rectangle",
+              x: 0,
+              y: 0,
+              width: 400,
+              height: 80,
+              customData: { isButton: true },
+              label: { text: "Launch the entire fleet at once" },
+            },
+          ],
+          { regenerateIds: false },
+        ) as [ExcalidrawButtonElement, ExcalidrawTextElementWithContainer];
+        API.setElements([button, label]);
+        UI.resize(h.elements[0] as never, "s", [0, 320]);
+        const [nextButton, nextLabel] = h.elements as [
+          ExcalidrawButtonElement,
+          ExcalidrawTextElementWithContainer,
+        ];
+        expect(nextButton.height).toBe(400);
+        expect(nextLabel.x + nextLabel.width).toBeLessThanOrEqual(400);
+        expect(nextLabel.x).toBeGreaterThanOrEqual(
+          getButtonIcon(nextButton).corners[1][0],
+        );
+      });
+    });
+
+    describe("when the label wraps taller than the button", () => {
+      const grownButton = () => {
+        const [button, label] = convertToExcalidrawElements(
+          [
+            {
+              type: "rectangle",
+              x: 0,
+              y: 0,
+              width: 100,
+              height: 40,
+              customData: { isButton: true },
+              label: { text: "Launch the rocket now" },
+            },
+          ],
+          { regenerateIds: false },
+        ) as [ExcalidrawButtonElement, ExcalidrawTextElementWithContainer];
+        API.setElements([button, label]);
+        return () => {
+          const [nextButton, nextLabel] = h.elements as [
+            ExcalidrawButtonElement,
+            ExcalidrawTextElementWithContainer,
+          ];
+          return { button: nextButton, label: nextLabel };
+        };
+      };
+
+      it("keeps the label inside the button", () => {
+        const { button, label } = grownButton()();
+        expect(label.x + label.width).toBeLessThanOrEqual(button.width);
+      });
+
+      it("keeps the label clear of the icon", () => {
+        const { button, label } = grownButton()();
+        expect(label.x).toBeGreaterThanOrEqual(
+          getButtonIcon(button).corners[1][0],
+        );
+      });
+
+      it("settles in one pass", () => {
+        const current = grownButton();
+        const before = current();
+        act(() => {
+          redrawTextBoundingBox(before.label, before.button, h.app.scene);
+        });
+        const after = current();
+        expect({
+          text: after.label.text,
+          width: after.button.width,
+          height: after.button.height,
+        }).toEqual({
+          text: before.label.text,
+          width: before.button.width,
+          height: before.button.height,
+        });
+      });
     });
 
     it("is centered in the room the icon leaves", () => {
