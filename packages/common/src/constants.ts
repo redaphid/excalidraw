@@ -208,12 +208,15 @@ export const DARK_THEME_FILTER = "invert(93%) hue-rotate(180deg)";
 
 export const FRAME_STYLE = {
   strokeColor: "#bbb" as ExcalidrawElement["strokeColor"],
-  // #bbb through the dark filter is #4c4c4c, 2.2:1 on the dark canvas; this
-  // is about 3:1, still well behind the ink
-  strokeColorDarkTheme: "#5e5e5e",
   // wireframe-to-code frames; the dark one is #1d8264 through the dark filter
   magicStrokeColor: "#7affd7",
   magicStrokeColorDarkTheme: "#4fa68c",
+  // a board without a theme strokes frames as a hairline of the default ink
+  // (#1e1e1e, #d3d3d3 through the dark filter) at the alphas a theme's frame
+  // tokens default to, so they sit behind the ink rather than as grey bars
+  outlineColor: "rgba(30, 30, 30, 0.2)",
+  outlineColorDarkTheme: "rgba(211, 211, 211, 0.35)",
+  outlineWidth: 1,
   strokeWidth: 2 as ExcalidrawElement["strokeWidth"],
   strokeStyle: "solid" as ExcalidrawElement["strokeStyle"],
   fillStyle: "solid" as ExcalidrawElement["fillStyle"],

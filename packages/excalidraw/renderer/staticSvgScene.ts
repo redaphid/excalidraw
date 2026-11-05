@@ -783,10 +783,10 @@ const renderElementToSvg = (
         rect.setAttribute(
           "stroke",
           renderConfig.theme === THEME.DARK
-            ? FRAME_STYLE.strokeColorDarkTheme
-            : FRAME_STYLE.strokeColor,
+            ? FRAME_STYLE.outlineColorDarkTheme
+            : FRAME_STYLE.outlineColor,
         );
-        rect.setAttribute("stroke-width", FRAME_STYLE.strokeWidth.toString());
+        rect.setAttribute("stroke-width", FRAME_STYLE.outlineWidth.toString());
 
         addToRoot(rect, element);
       }
