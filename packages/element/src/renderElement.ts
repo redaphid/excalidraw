@@ -1554,13 +1554,13 @@ const drawElement = (
           context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
           context.lineWidth =
-            (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth) /
+            (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.outlineWidth) /
             appState.zoom.value;
           context.strokeStyle =
             renderConfig.canvasTheme?.frameColor ??
             (appState.theme === THEME.DARK
-              ? FRAME_STYLE.strokeColorDarkTheme
-              : FRAME_STYLE.strokeColor);
+              ? FRAME_STYLE.outlineColorDarkTheme
+              : FRAME_STYLE.outlineColor);
 
           // TODO change later to only affect AI frames
           if (isMagicFrameElement(element)) {

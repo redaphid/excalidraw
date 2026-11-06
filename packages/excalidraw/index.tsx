@@ -603,6 +603,8 @@ export { _useOnAppStateChange as useOnExcalidrawStateChange };
 export { applyDarkModeFilter, getStrokeWidthByKey };
 
 export { renderFrameOverlay } from "./renderer/frameOverlay";
+export { frameNameOpacities } from "./frameNameVisibility";
+export type { FrameNameLayout } from "./frameNameVisibility";
 export type {
   FrameOverlayAppState,
   FrameOverlayOptions,
