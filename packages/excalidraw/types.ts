@@ -1053,6 +1053,21 @@ export interface ExcalidrawProps {
   autoFocus?: boolean;
   generateIdForFile?: (file: File) => string | Promise<string>;
   generateLinkForSelection?: (id: string, type: "element" | "group") => string;
+  /**
+   * A press and release without movement on a rectangle with
+   * `customData: { isButton: true }`. Without this prop such an element is
+   * drawn as a button and takes no clicks: a press selects and drags it.
+   */
+  onButtonClick?: (elementId: ExcalidrawElement["id"]) => void;
+  /**
+   * The hover or pressed state the canvas now shows on a button, for a host
+   * with a layer of its own over the canvas. Called when it changes, during the
+   * pointer event on a press or a hover, and after the update when a change of
+   * view or tool ends a hover.
+   */
+  onButtonHighlight?: (
+    highlight: { id: ExcalidrawElement["id"]; pressed: boolean } | null,
+  ) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{

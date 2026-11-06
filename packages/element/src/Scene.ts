@@ -13,6 +13,7 @@ import { isFrameLikeElement } from "@excalidraw/element";
 import { getElementsInGroup } from "@excalidraw/element";
 
 import {
+  syncAppendedIndices,
   syncInvalidIndices,
   syncMovedIndices,
   validateFractionalIndices,
@@ -358,6 +359,10 @@ export class Scene {
       );
     }
 
+    if (index === this.elements.length && this.appendElements(elements)) {
+      return;
+    }
+
     const nextElements = [
       ...this.elements.slice(0, index),
       ...elements,
@@ -367,6 +372,55 @@ export class Scene {
     syncMovedIndices(nextElements, arrayToMap(elements));
 
     this.replaceAllElements(nextElements);
+  }
+
+  /**
+   * Same result as `replaceAllElements` with the elements appended, without
+   * reading the elements before the last one: the scene's indices are synced
+   * on every replace, so only the appended ones need it, and appending keeps
+   * the maps' insertion order equal to the array order. The lists are still
+   * copied so callers memoizing on them see new arrays.
+   *
+   * @returns false, changing nothing, when the slow path is needed
+   */
+  private appendElements(elements: readonly ExcalidrawElement[]) {
+    if (
+      elements.some((element) => this.elementsMap.has(element.id)) ||
+      !syncAppendedIndices(this.elements, elements)
+    ) {
+      return false;
+    }
+
+    const nextElements = [
+      ...this.elements,
+      ...elements,
+    ] as OrderedExcalidrawElement[];
+    validateIndicesThrottled(nextElements);
+
+    const nonDeletedElements = [...this.nonDeletedElements];
+    const frames = [...this.frames];
+    const nonDeletedFramesLikes = [...this.nonDeletedFramesLikes];
+    for (const element of nextElements.slice(this.elements.length)) {
+      this.elementsMap.set(element.id, element);
+      if (isFrameLikeElement(element)) {
+        frames.push(element);
+      }
+      if (isNonDeletedElement(element)) {
+        nonDeletedElements.push(element);
+        this.nonDeletedElementsMap.set(element.id, element);
+        if (isFrameLikeElement(element)) {
+          nonDeletedFramesLikes.push(element);
+        }
+      }
+    }
+
+    this.elements = nextElements;
+    this.nonDeletedElements = nonDeletedElements;
+    this.frames = frames;
+    this.nonDeletedFramesLikes = nonDeletedFramesLikes;
+
+    this.triggerUpdate();
+    return true;
   }
 
   /** low-level - generally use app.insertNewElement() */
