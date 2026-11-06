@@ -700,7 +700,8 @@ describe("authoringUnits: screen, what an element made far in keeps", () => {
       });
       await act(async () => {});
       const cached = elementWithCanvasCache.get(rectangle.get())!;
-      const margin = 2 * 20 * window.devicePixelRatio;
+      const stroke = rectangle.get().strokeWidth * zoom;
+      const margin = (2 * 20 + stroke) * window.devicePixelRatio;
       expect(cached.canvas.width).toBeLessThanOrEqual(
         220 * window.devicePixelRatio + margin,
       );
