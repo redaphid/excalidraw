@@ -1,5 +1,7 @@
 import {
+  ElementsRTree,
   getCommonFrameId,
+  getElementPaintBounds,
   getFrameChildrenInsertionIndex,
   getContainerElement,
   isElementInViewport,
@@ -7,13 +9,17 @@ import {
   isTextElement,
 } from "@excalidraw/element";
 
-import { arrayToMap, memoize, toBrandedType } from "@excalidraw/common";
+import {
+  arrayToMap,
+  memoize,
+  toBrandedType,
+  viewportCoordsToSceneCoords,
+} from "@excalidraw/common";
 
 import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
   NonDeleted,
-  NonDeletedElementsMap,
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
 
@@ -212,49 +218,63 @@ export class Renderer {
     return set;
   }
 
-  private getVisibleCanvasElements({
-    elementsMap,
-    newElement,
-    zoom,
-    offsetLeft,
-    offsetTop,
-    scrollX,
-    scrollY,
-    height,
-    width,
-  }: {
-    elementsMap: NonDeletedElementsMap;
-    newElement: AppState["newElement"];
-    zoom: AppState["zoom"];
-    offsetLeft: AppState["offsetLeft"];
-    offsetTop: AppState["offsetTop"];
-    scrollX: AppState["scrollX"];
-    scrollY: AppState["scrollY"];
-    height: AppState["height"];
-    width: AppState["width"];
-  }): readonly NonDeletedExcalidrawElement[] {
+  private visibleElementsTree = new ElementsRTree<NonDeletedExcalidrawElement>(
+    (element, elementsMap) => ({
+      bounds: getElementPaintBounds(element, elementsMap),
+      dependency: isTextElement(element)
+        ? getContainerElement(element, elementsMap)
+        : null,
+    }),
+  );
+
+  /**
+   * The elements `isElementInViewport` keeps, in z-order, plus one element
+   * kept wherever it is.
+   */
+  private getVisibleCanvasElements(
+    elements: readonly NonDeletedExcalidrawElement[],
+    elementsMap: RenderableElementsMap,
+    viewport: Omit<
+      GetRenderableElementsOpts,
+      | "editingTextElement"
+      | "newElement"
+      | "selectedElements"
+      | "selectedElementsAreBeingDragged"
+      | "frameToHighlight"
+    >,
+    alwaysIncluded: NonDeletedExcalidrawElement | undefined,
+  ) {
+    const topLeft = viewportCoordsToSceneCoords(
+      { clientX: viewport.offsetLeft, clientY: viewport.offsetTop },
+      viewport,
+    );
+    const bottomRight = viewportCoordsToSceneCoords(
+      {
+        clientX: viewport.offsetLeft + viewport.width,
+        clientY: viewport.offsetTop + viewport.height,
+      },
+      viewport,
+    );
+    const positions = this.visibleElementsTree.query(elements, elementsMap, [
+      topLeft.x,
+      topLeft.y,
+      bottomRight.x,
+      bottomRight.y,
+    ]);
+    const alwaysIncludedPosition = alwaysIncluded
+      ? elements.indexOf(alwaysIncluded)
+      : -1;
     const visibleElements: NonDeletedExcalidrawElement[] = [];
-    for (const element of elementsMap.values()) {
-      // a new element in the map (drawn inside a frame) grows without a new
-      // cull, and the split around it needs its z-order even off screen
-      if (
-        element.id === newElement?.id ||
-        isElementInViewport(
-          element,
-          width,
-          height,
-          {
-            zoom,
-            offsetLeft,
-            offsetTop,
-            scrollX,
-            scrollY,
-          },
-          elementsMap,
-        )
-      ) {
-        visibleElements.push(element);
+    let last = -1;
+    for (const position of positions) {
+      if (alwaysIncludedPosition > last && alwaysIncludedPosition < position) {
+        visibleElements.push(elements[alwaysIncludedPosition]);
       }
+      visibleElements.push(elements[position]);
+      last = position;
+    }
+    if (alwaysIncludedPosition > last) {
+      visibleElements.push(elements[alwaysIncludedPosition]);
     }
     return visibleElements;
   }
@@ -290,7 +310,11 @@ export class Renderer {
           elementsMap.set(element.id, element);
         }
       }
-      return { elementsMap, newElementCanvasElement };
+      return {
+        elementsMap,
+        renderableElements: Array.from(elementsMap.values()),
+        newElementCanvasElement,
+      };
     },
   );
 
@@ -358,7 +382,7 @@ export class Renderer {
     }) => {
       const elements = this.scene.getNonDeletedElements();
 
-      const { elementsMap, newElementCanvasElement } =
+      const { elementsMap, renderableElements, newElementCanvasElement } =
         this.getRenderableElementsMap({
           newElementFrameId: newElement?.frameId ?? null,
           elements,
@@ -366,17 +390,14 @@ export class Renderer {
           newElement,
         });
 
-      const visibleElements = this.getVisibleCanvasElements({
+      // a new element in the map (drawn inside a frame) grows without a new
+      // cull, and the split around it needs its z-order even off screen
+      const visibleElements = this.getVisibleCanvasElements(
+        renderableElements,
         elementsMap,
-        newElement,
-        zoom,
-        offsetLeft,
-        offsetTop,
-        scrollX,
-        scrollY,
-        height,
-        width,
-      });
+        { zoom, offsetLeft, offsetTop, scrollX, scrollY, height, width },
+        newElement ? elementsMap.get(newElement.id) : undefined,
+      );
 
       return {
         elementsMap,

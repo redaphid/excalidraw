@@ -29,6 +29,15 @@ export type ElementUpdate<TElement extends ExcalidrawElement> = Omit<
   "id" | "updated" | "created"
 >;
 
+let elementMutationCount = 0;
+
+/**
+ * Counts in-place version bumps, including the ones the scene isn't told
+ * about, so a cache of element geometry can tell when none happened without
+ * walking the elements.
+ */
+export const getElementMutationCount = () => elementMutationCount;
+
 /**
  * This function tracks updates of text elements for the purposes for collaboration.
  * The version is used to compare updates when more than one user is working in
@@ -142,6 +151,7 @@ export const mutateElement = <TElement extends Mutable<ExcalidrawElement>>(
   element.version = updates.version ?? element.version + 1;
   element.versionNonce = updates.versionNonce ?? randomInteger();
   element.updated = getUpdatedTimestamp();
+  elementMutationCount++;
 
   return element;
 };
@@ -192,5 +202,6 @@ export const bumpVersion = <T extends Mutable<ExcalidrawElement>>(
   element.version = (version ?? element.version) + 1;
   element.versionNonce = randomInteger();
   element.updated = getUpdatedTimestamp();
+  elementMutationCount++;
   return element;
 };
