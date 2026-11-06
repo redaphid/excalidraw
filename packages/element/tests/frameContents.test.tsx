@@ -261,6 +261,52 @@ describe("getFrameContents", () => {
     expect(contents.has("card")).toBe(false);
   });
 
+  it("leaves a group of small parts laid out around a page, though they span it", () => {
+    const captioned = (id: string, x: number, y: number, width: number) =>
+      API.createElement({
+        id,
+        x,
+        y,
+        width,
+        height: 20,
+        groupIds: ["group-id-caption"],
+      });
+    const contents = getFrameContents(
+      [
+        ...board(),
+        captioned("title", 90, 60, 220),
+        captioned("item", 120, 220, 20),
+        captioned("caption", 90, 320, 220),
+      ],
+      ["page"],
+    );
+
+    expect(contents.has("item")).toBe(false);
+  });
+
+  it("leaves a group reaching past the outer frame, though it spans a nested page", () => {
+    const spread = (id: string, x: number, y: number) =>
+      API.createElement({
+        id,
+        x,
+        y,
+        width: 20,
+        height: 20,
+        groupIds: ["group-id-spread"],
+      });
+    const contents = getFrameContents(
+      [
+        ...board(),
+        spread("inLair", 90, 90),
+        spread("inPage", 120, 220),
+        spread("pastLair", 700, 700),
+      ],
+      ["lair"],
+    );
+
+    expect(contents.has("inPage")).toBe(false);
+  });
+
   it("carries a whole group that sits inside the frame", () => {
     const grouped = (id: string, x: number) =>
       API.createElement({
