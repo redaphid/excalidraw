@@ -194,4 +194,28 @@ describe("ElementsRTree", () => {
     expect(measured).toBe(0);
     expect(result).toEqual(linear(next));
   });
+
+  it("waits for a few edits to settle before rebuilding", () => {
+    vi.useFakeTimers();
+    const elements = grid();
+    const { query } = setup(elements);
+    let next = elements;
+    const edit = (i: number) => {
+      next = next.map((element, k) =>
+        k === i ? newElementWith(element, { x: 1100, y: 1050 }) : element,
+      );
+      return query(next);
+    };
+
+    expect(edit(1).measured).toBe(1);
+    vi.advanceTimersByTime(900);
+    expect(edit(2).measured).toBe(2);
+    vi.advanceTimersByTime(900);
+    expect(query(next).measured).toBe(2);
+
+    vi.runAllTimers();
+    const { result, measured } = query(next);
+    expect(measured).toBe(0);
+    expect(result).toEqual(linear(next));
+  });
 });

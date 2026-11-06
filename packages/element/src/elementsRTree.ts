@@ -78,6 +78,7 @@ export class ElementsRTree<T extends ExcalidrawElement> {
 
   private rebuildJob: RebuildJob<T> | null = null;
   private cancelScheduledRebuild: (() => void) | null = null;
+  private waitingForQuiet = false;
 
   constructor(
     private readonly measure: (element: T, elementsMap: ElementsMap) => Bounds,
@@ -230,16 +231,19 @@ export class ElementsRTree<T extends ExcalidrawElement> {
   }
 
   private scheduleRebuild(stale: number) {
-    if (this.cancelScheduledRebuild) {
+    if (this.cancelScheduledRebuild && !this.waitingForQuiet) {
       return;
     }
-    // past this many, measuring them on every query costs more than the
-    // idle-time rebuild that would index them
+    // edits that keep coming push the rebuild back, until so many elements
+    // are outside the tree that measuring them on every query costs more
+    // than the idle-time rebuild that would index them
+    this.cancelScheduledRebuild?.();
     const threshold = 64 + (this.elements?.length ?? 0) / 64;
     this.schedule(stale > threshold ? 0 : REBUILD_QUIET_MS);
   }
 
   private schedule(delay: number) {
+    this.waitingForQuiet = delay > 0;
     if (delay > 0) {
       const timer = setTimeout(() => this.schedule(0), delay);
       this.cancelScheduledRebuild = () => clearTimeout(timer);
