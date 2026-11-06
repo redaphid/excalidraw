@@ -499,6 +499,7 @@ import type {
   ExcalidrawImperativeAPIEventMap,
   GenerateDiagramToCode,
   NullableGridSize,
+  StaticCanvasAppState,
   UIConfig,
 } from "../types";
 import type { CssTheme } from "../cssTheme";
@@ -2803,6 +2804,7 @@ class App extends React.Component<AppProps, AppState> {
                                 ? getSettledBitmapCount()
                                 : undefined,
                             }}
+                            onPainted={this.onStaticScenePainted}
                           />
                           {newElementLayer && (
                             <NewElementCanvas
@@ -11005,10 +11007,12 @@ ${css}
         let dx = pointerCoords.x - newElement.x;
         let dy = pointerCoords.y - newElement.y;
 
-        // Allows dots to avoid being flagged as infinitely small
+        // Allows dots to avoid being flagged as infinitely small. The nudge is
+        // at the stroke's own scale so a tap far in is a dot, not a dash.
         if (dx === points[0][0] && dy === points[0][1]) {
-          dy += 0.0001;
-          dx += 0.0001;
+          const nudge = 0.0001 * getElementDetailScale(newElement);
+          dy += nudge;
+          dx += nudge;
         }
 
         const pressures = newElement.simulatePressure
@@ -13235,6 +13239,30 @@ ${css}
       });
     }
   }, ZOOM_SETTLE_TIMEOUT);
+
+  private lastPaintedZoom = 0;
+
+  /**
+   * Holds a pending zoom settle until the next animation frame starts, then
+   * gives it its full timeout. Until that frame the zoomed paint is not on
+   * screen and wheel input queued meanwhile is not delivered, so a settle
+   * timed from the tick would fire before the next tick could arrive. A
+   * hidden tab starts no frames, so the settle waits until it is shown.
+   */
+  private onStaticScenePainted = (appState: StaticCanvasAppState) => {
+    const settle = this.resetShouldCacheIgnoreZoomDebounced;
+    const zoomChanged = appState.zoom.value !== this.lastPaintedZoom;
+    this.lastPaintedZoom = appState.zoom.value;
+    if (!zoomChanged || !settle.pending()) {
+      return;
+    }
+    settle.hold();
+    this.ownerWindow.requestAnimationFrame(() => {
+      if (!this.unmounted && settle.pending()) {
+        settle();
+      }
+    });
+  };
 
   private updateDOMRect = (cb?: () => void) => {
     if (this.excalidrawContainerRef?.current) {
