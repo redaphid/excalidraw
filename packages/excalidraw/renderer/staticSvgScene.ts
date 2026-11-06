@@ -780,11 +780,16 @@ const renderElementToSvg = (
         rect.setAttribute("ry", FRAME_STYLE.radius.toString());
 
         rect.setAttribute("fill", "none");
+        const dark = renderConfig.theme === THEME.DARK;
         rect.setAttribute(
           "stroke",
-          renderConfig.theme === THEME.DARK
-            ? FRAME_STYLE.outlineColorDarkTheme
-            : FRAME_STYLE.outlineColor,
+          dark ? FRAME_STYLE.outlineInkDarkTheme : FRAME_STYLE.outlineInk,
+        );
+        rect.setAttribute(
+          "stroke-opacity",
+          `${
+            dark ? FRAME_STYLE.outlineAlphaDarkTheme : FRAME_STYLE.outlineAlpha
+          }`,
         );
         rect.setAttribute("stroke-width", FRAME_STYLE.outlineWidth.toString());
 
