@@ -102,6 +102,8 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onLibraryChange,
     autoFocus = false,
     generateIdForFile,
+    onButtonClick,
+    onButtonHighlight,
     onLinkOpen,
     generateLinkForSelection,
     onPointerDown,
@@ -249,6 +251,8 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           onLibraryChange={onLibraryChange}
           autoFocus={autoFocus}
           generateIdForFile={generateIdForFile}
+          onButtonClick={onButtonClick}
+          onButtonHighlight={onButtonHighlight}
           onLinkOpen={onLinkOpen}
           generateLinkForSelection={generateLinkForSelection}
           onPointerDown={onPointerDown}
@@ -477,7 +481,7 @@ export {
   loadLibraryFromBlob,
 } from "./data/blob";
 export { mergeLibraryItems, getLibraryItemsHash } from "./data/library";
-export { isLinearElement } from "@excalidraw/element";
+export { isButtonElement, isLinearElement } from "@excalidraw/element";
 
 export {
   FONT_FAMILY,

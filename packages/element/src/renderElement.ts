@@ -45,6 +45,7 @@ import type {
 } from "@excalidraw/excalidraw/scene/types";
 
 import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
+import { getButtonIcon } from "./button";
 import { getUncroppedImageElement } from "./cropElement";
 import { getElementDetailScale } from "./authoring";
 import { LinearElementEditor } from "./linearElementEditor";
@@ -67,6 +68,7 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  isButtonElement,
   isStickyNoteElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
@@ -83,6 +85,7 @@ import {
 } from "./stickyNote";
 
 import type {
+  ExcalidrawButtonElement,
   ExcalidrawElement,
   ExcalidrawTextElement,
   NonDeleted,
@@ -524,6 +527,27 @@ const getFreeDrawPath2D = (
   return path2D;
 };
 
+const drawButtonIcon = (
+  button: NonDeleted<ExcalidrawButtonElement>,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  const { corners, cornerWidth } = getButtonIcon(button);
+  context.save();
+  context.fillStyle = context.strokeStyle = applyDarkModeFilter(
+    button.strokeColor,
+    renderConfig.theme === THEME.DARK,
+  );
+  context.lineJoin = "round";
+  context.lineWidth = cornerWidth;
+  context.beginPath();
+  corners.forEach(([x, y]) => context.lineTo(x, y));
+  context.closePath();
+  context.fill();
+  context.stroke();
+  context.restore();
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
   rc: RoughCanvas,
@@ -594,6 +618,9 @@ const drawElementOnCanvas = (
       context.lineCap = "round";
 
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      if (isButtonElement(element)) {
+        drawButtonIcon(element, context, renderConfig);
+      }
       break;
     }
     case "arrow":
