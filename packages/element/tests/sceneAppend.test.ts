@@ -10,9 +10,18 @@ import type {
 } from "@excalidraw/element/types";
 
 const board = () => [
-  API.createElement({ id: "a", type: "rectangle", index: "a0V" }),
-  API.createElement({ id: "f", type: "frame", index: "a1" }),
-  API.createElement({ id: "d", type: "ellipse", index: "a2", isDeleted: true }),
+  API.createElement({
+    id: "a",
+    type: "rectangle",
+    index: "a0V" as FractionalIndex,
+  }),
+  API.createElement({ id: "f", type: "frame", index: "a1" as FractionalIndex }),
+  API.createElement({
+    id: "d",
+    type: "ellipse",
+    index: "a2" as FractionalIndex,
+    isDeleted: true,
+  }),
 ];
 
 const added = () => [
@@ -22,10 +31,7 @@ const added = () => [
 ];
 
 // what the scene did before appends had their own path
-const insertByReplacingAll = (
-  scene: Scene,
-  elements: ExcalidrawElement[],
-) => {
+const insertByReplacingAll = (scene: Scene, elements: ExcalidrawElement[]) => {
   const next = [...scene.getElementsIncludingDeleted(), ...elements];
   syncMovedIndices(next, arrayToMap(elements));
   scene.replaceAllElements(next);
