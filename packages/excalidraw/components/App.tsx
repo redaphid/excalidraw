@@ -5681,10 +5681,16 @@ ${css}
         selectedElements = [
           ...new Set([
             ...selectedElements,
-            ...getFrameContents(
-              this.scene.getNonDeletedElementsMap(),
-              selectedElements.filter(isFrameLikeElement).map((f) => f.id),
-            ).flatMap((element) => {
+            ...[
+              ...getFrameContents(
+                this.scene.getNonDeletedElementsMap(),
+                selectedElements.filter(isFrameLikeElement).map((f) => f.id),
+              ).keys(),
+            ].flatMap((id) => {
+              const element = this.scene.getNonDeletedElementsMap().get(id);
+              if (!element) {
+                return [];
+              }
               const label = getBoundTextElement(
                 element,
                 this.scene.getNonDeletedElementsMap(),
@@ -8564,6 +8570,7 @@ ${css}
       lastCoords: { ...origin },
       // filled by snapshotGestureElements once the gesture transforms
       originalElements: new Map(),
+      frameContents: new Map(),
       resize: {
         handleType: false,
         isResizing: false,
@@ -8622,12 +8629,16 @@ ${css}
       selectedElementIds: this.state.selectedElementIds,
       includeElementsInFrames: true,
     });
+    const contents = getFrameContents(
+      elementsMap,
+      selected.filter(isFrameLikeElement).map((frame) => frame.id),
+    );
+    contents.forEach((frameId, id) =>
+      pointerDownState.frameContents.set(id, frameId),
+    );
     for (const element of [
       ...selected,
-      ...getFrameContents(
-        elementsMap,
-        selected.filter(isFrameLikeElement).map((frame) => frame.id),
-      ),
+      ...[...contents.keys()].flatMap((id) => elementsMap.get(id) ?? []),
     ]) {
       copy(element);
       copy(getBoundTextElement(element, elementsMap));
@@ -11380,6 +11391,27 @@ ${css}
             this.state,
             this,
           );
+
+          // what a frame carried joins the frame it belongs to, so a page
+          // dragged out of its outer frame is not clipped by that frame
+          pointerDownState.frameContents.forEach((frameId, id) => {
+            const element = nextElements.get(id);
+            if (!element || isFrameLikeElement(element)) {
+              return;
+            }
+            for (const each of [
+              element,
+              getBoundTextElement(element, nextElements),
+            ]) {
+              if (each && each.frameId !== frameId) {
+                this.scene.mutateElement(
+                  each,
+                  { frameId },
+                  { informMutation: false, isDragging: false },
+                );
+              }
+            }
+          });
 
           this.scene.replaceAllElements(nextElements);
         }

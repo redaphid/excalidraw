@@ -379,24 +379,30 @@ const frameArea = (frame: ExcalidrawFrameLikeElement) =>
   frame.width * frame.height;
 
 /**
- * What moves with the given frames besides themselves.
+ * What moves with the given frames besides themselves, each mapped to the
+ * frame it belongs to.
  *
- * A frame cannot hold a frame, so a frame drawn wholly inside another counts as
- * nested in it, and moves with it, along with everything that belongs to it.
- * An element belongs to the smallest frame that wholly holds it, chosen among
- * its own frame and the frames nested in that one (among all frames, for an
- * element in none), or else to its own frame. So an element its outer frame
- * claims still moves with the nested frame drawn around it, a loose element
- * moves with the frame it sits in, and another frame's element drawn on top
- * stays put. Labels are left to their containers.
+ * A frame cannot hold a frame, so a frame drawn wholly inside a larger one
+ * counts as nested in it, and moves with it, along with everything that
+ * belongs to it. An element belongs to the smallest frame that wholly holds
+ * it, chosen among its own frame and the frames nested in that one (among all
+ * frames, for an element in none), or else to its own frame; of two frames the
+ * same size, the one on top wins. So an element its outer frame claims still
+ * moves with the nested frame drawn around it, a loose element moves with the
+ * frame it sits in, and another frame's element drawn on top stays put.
+ *
+ * A group moves whole or not at all: it is carried only when every member is.
+ * A locked element is carried only by its own frame. Labels are left to their
+ * containers.
  */
 export const getFrameContents = (
   elements: ElementsMapOrArray,
   frameIds: readonly ExcalidrawFrameLikeElement["id"][],
-): NonDeletedExcalidrawElement[] => {
+): Map<ExcalidrawElement["id"], ExcalidrawFrameLikeElement["id"]> => {
   const live = getNonDeletedElements(Array.from(elements.values()));
   const elementsMap = arrayToMap(live);
   const frames = live.filter(isFrameLikeElement);
+  const layer = new Map(frames.map((frame, at) => [frame.id, at]));
   const boundsOf = new Map(
     frames.map((frame) => [frame.id, getElementBounds(frame, elementsMap)]),
   );
@@ -418,27 +424,60 @@ export const getFrameContents = (
       ...(nestedIn.get(id) ?? []).map((frame) => frame.id),
     ]),
   );
+  const smallestFirst = (
+    a: ExcalidrawFrameLikeElement,
+    b: ExcalidrawFrameLikeElement,
+  ) => frameArea(a) - frameArea(b) || layer.get(b.id)! - layer.get(a.id)!;
   const owner = (element: NonDeletedExcalidrawElement) => {
     const own = frames.find((frame) => frame.id === element.frameId);
     const bounds = getElementBounds(element, elementsMap);
     const [smallest] = (own ? [own, ...nestedIn.get(own.id)!] : frames)
       .filter((frame) => holds(frame, bounds))
-      .sort((a, b) => frameArea(a) - frameArea(b));
+      .sort(smallestFirst);
     return smallest ?? own;
   };
-  return live.filter((element) => {
-    if (frameIds.includes(element.id)) {
-      return false;
+  const carried = new Map<
+    ExcalidrawElement["id"],
+    ExcalidrawFrameLikeElement["id"]
+  >();
+  for (const element of live) {
+    if (frameIds.includes(element.id) || isBoundToContainer(element)) {
+      continue;
     }
     if (isFrameLikeElement(element)) {
-      return moving.has(element.id);
-    }
-    if (isBoundToContainer(element)) {
-      return false;
+      if (moving.has(element.id)) {
+        carried.set(element.id, element.id);
+      }
+      continue;
     }
     const frame = owner(element);
-    return frame !== undefined && moving.has(frame.id);
-  });
+    if (
+      frame &&
+      moving.has(frame.id) &&
+      (!element.locked || (element.frameId && moving.has(element.frameId)))
+    ) {
+      carried.set(element.id, frame.id);
+    }
+  }
+  const split = new Set(
+    live.flatMap((element) => {
+      const group = element.groupIds.at(-1);
+      return group &&
+        !isFrameLikeElement(element) &&
+        !isBoundToContainer(element) &&
+        !carried.has(element.id) &&
+        !frameIds.includes(element.id)
+        ? [group]
+        : [];
+    }),
+  );
+  for (const [id] of carried) {
+    const group = elementsMap.get(id)!.groupIds.at(-1);
+    if (group && split.has(group)) {
+      carried.delete(id);
+    }
+  }
+  return carried;
 };
 
 export const getFrameLikeElements = (

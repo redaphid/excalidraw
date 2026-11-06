@@ -1353,6 +1353,9 @@ export type PointerDownState = Readonly<{
   // them, before it changes them. Empty until then, so always empty in
   // `onPointerDown`, and empty in `onPointerUp` after a plain click.
   originalElements: Map<string, NonDeleted<ExcalidrawElement>>;
+  // what the selected frames carry besides their own children, each mapped to
+  // the frame it belongs to, read with `originalElements`
+  frameContents: Map<string, string>;
   resize: {
     // Handle when resizing, might change during the pointer interaction
     handleType: MaybeTransformHandleType;

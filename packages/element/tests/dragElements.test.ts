@@ -21,7 +21,8 @@ vi.mock("../src/binding", async (importOriginal) => {
 });
 
 const pointerDownStateFor = (scene: Scene): PointerDownState => {
-  const state: Pick<PointerDownState, "originalElements"> = {
+  const state: Pick<PointerDownState, "originalElements" | "frameContents"> = {
+    frameContents: new Map(),
     originalElements: new Map(
       scene
         .getNonDeletedElements()
@@ -156,6 +157,19 @@ describe("dragSelectedElements", () => {
     expect(elements.map((element) => element.version)).toEqual(
       versions.map((version) => version + 1),
     );
+  });
+
+  it("moves what the gesture found a frame carries, without looking again", () => {
+    const frame = API.createElement({ type: "frame", width: 400, height: 400 });
+    const carried = API.createElement({ x: 900, y: 0 });
+    const elements = [carried, frame];
+    const scene = new Scene(syncInvalidIndices(elements));
+    const pointerDownState = pointerDownStateFor(scene);
+    pointerDownState.frameContents.set(carried.id, frame.id);
+
+    drag(scene, [frame], undefined, pointerDownState);
+
+    expect(carried).toMatchObject({ x: 920, y: 30 });
   });
 
   it("updates an unselected bound arrow", () => {

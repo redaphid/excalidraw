@@ -16,7 +16,6 @@ import { getFrameContents } from "../src/frame";
 
 import type {
   ExcalidrawArrowElement,
-  ExcalidrawElement,
   NonDeletedExcalidrawElement,
 } from "../src/types";
 
@@ -146,8 +145,8 @@ const select = (id: string) =>
     ) as NonDeletedExcalidrawElement[],
   );
 
-const ids = (elements: readonly ExcalidrawElement[]) =>
-  elements.map((element) => element.id).sort();
+const ids = (contents: ReadonlyMap<string, string>) =>
+  [...contents.keys()].sort();
 
 describe("getFrameContents", () => {
   it("carries a nested frame and all that belongs to it with the outer frame", () => {
@@ -211,6 +210,101 @@ describe("getFrameContents", () => {
       "pageChild",
       "spill",
     ]);
+  });
+
+  it("names the frame each carried element belongs to", () => {
+    const contents = getFrameContents(board(), ["lair"]);
+
+    expect(contents.get("claimedByLair")).toBe("page");
+    expect(contents.get("loose")).toBe("page");
+    expect(contents.get("lairChild")).toBe("lair");
+  });
+
+  it("carries a group only when every member is carried", () => {
+    const grouped = (id: string, x: number) =>
+      API.createElement({
+        id,
+        x,
+        y: 220,
+        width: 20,
+        height: 20,
+        groupIds: ["group-id-band"],
+      });
+    const contents = getFrameContents(
+      [...board(), grouped("inPage", 120), grouped("pastPage", 400)],
+      ["page"],
+    );
+
+    expect(contents.has("inPage")).toBe(false);
+  });
+
+  it("carries a whole group that sits inside the frame", () => {
+    const grouped = (id: string, x: number) =>
+      API.createElement({
+        id,
+        x,
+        y: 220,
+        width: 20,
+        height: 20,
+        groupIds: ["group-id-band"],
+      });
+    const contents = getFrameContents(
+      [...board(), grouped("first", 120), grouped("second", 160)],
+      ["page"],
+    );
+
+    expect(ids(contents)).toEqual(expect.arrayContaining(["first", "second"]));
+  });
+
+  it("leaves a locked element that is not the frame's own", () => {
+    const pinned = API.createElement({
+      id: "pinned",
+      x: 120,
+      y: 220,
+      width: 20,
+      height: 20,
+      locked: true,
+    });
+
+    expect(getFrameContents([...board(), pinned], ["page"]).has("pinned")).toBe(
+      false,
+    );
+  });
+
+  it("carries a locked element of its own frame", () => {
+    const pinned = API.createElement({
+      id: "pinned",
+      x: 120,
+      y: 220,
+      width: 20,
+      height: 20,
+      locked: true,
+      frameId: "page",
+    });
+
+    expect(getFrameContents([...board(), pinned], ["page"]).has("pinned")).toBe(
+      true,
+    );
+  });
+
+  it("gives an element held by two frames the same size to the one on top", () => {
+    const twin = (id: string) =>
+      API.createElement({
+        type: "frame",
+        id,
+        x: 2000,
+        y: 0,
+        width: 100,
+        height: 100,
+      });
+    const scene = [
+      twin("below"),
+      twin("above"),
+      API.createElement({ id: "held", x: 2020, y: 20, width: 20, height: 20 }),
+    ];
+
+    expect(getFrameContents(scene, ["above"]).has("held")).toBe(true);
+    expect(getFrameContents(scene, ["below"]).has("held")).toBe(false);
   });
 });
 
@@ -336,5 +430,20 @@ describe("dragging a frame", () => {
     expect(position("claimedByLair")).toEqual([161, 160]);
     expect(position("loose")).toEqual([201, 120]);
     expect(position("valleys")).toEqual([260, 260]);
+  });
+  it("puts what a page carried out of its outer frame into the page", () => {
+    select("page");
+
+    mouse.downAt(110, 290);
+    mouse.moveTo(500, 700);
+    mouse.moveTo(1000, 1100);
+    mouse.upAt(1000, 1100);
+
+    const frameOf = (id: string) =>
+      h.elements.find((each) => each.id === id)!.frameId;
+    expect(position("claimedByLair")).toEqual([1050, 970]);
+    expect(frameOf("claimedByLair")).toBe("page");
+    expect(frameOf("loose")).toBe("page");
+    expect(frameOf("pageChild")).toBe("page");
   });
 });
