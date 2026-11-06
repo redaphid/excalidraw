@@ -189,6 +189,12 @@ export const debounce = <T extends any[]>(
     lastArgs = null;
     clearTimeout(handle);
   };
+  ret.pending = () => lastArgs !== null;
+  /** stops the timer but stays pending: the next call restarts it, and
+   * `flush` still runs the call */
+  ret.hold = () => {
+    clearTimeout(handle);
+  };
   return ret;
 };
 
