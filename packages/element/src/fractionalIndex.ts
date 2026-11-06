@@ -216,6 +216,29 @@ export const syncMovedIndices = (
 };
 
 /**
+ * Gives elements appended after an already synced array the indices that
+ * `syncMovedIndices` would on the whole array, looking only at the array's
+ * last element. Mutates the appended elements.
+ *
+ * @returns false, touching nothing, when the last element's index is invalid
+ */
+export const syncAppendedIndices = (
+  lastElement: ExcalidrawElement | undefined,
+  appendedElements: readonly ExcalidrawElement[],
+) => {
+  if (lastElement && !isValidFractionalIndex(lastElement.index, null, null)) {
+    return false;
+  }
+
+  syncMovedIndices(
+    lastElement ? [lastElement, ...appendedElements] : appendedElements,
+    arrayToMap(appendedElements),
+  );
+
+  return true;
+};
+
+/**
  * Synchronizes all invalid fractional indices within the array order by mutating elements in the passed array.
  *
  * WARN: in edge cases it could modify the elements which were not moved, as it's impossible to guess the actually moved elements from the elements array itself.
