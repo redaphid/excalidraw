@@ -115,6 +115,24 @@ describe("a thick line's cached bitmap", () => {
   });
 });
 
+describe("an image's cached bitmap", () => {
+  const image = (strokeWidth: number) =>
+    API.createElement({
+      type: "image",
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 100,
+      strokeWidth,
+    });
+
+  it("is not padded for a stroke, since an image draws none", () => {
+    expect(cachedBitmap(image(40)).canvas.width).toBe(
+      cachedBitmap(image(1)).canvas.width,
+    );
+  });
+});
+
 describe("an arrow's cached bitmap", () => {
   const arrow = (head: "start" | "end") =>
     API.createElement({

@@ -128,6 +128,8 @@ const getCanvasPadding = (element: ExcalidrawElement) => {
         window.devicePixelRatio *
         getElementDetailScale(element)
       );
+    case "image":
+      return 20 * getElementDetailScale(element);
     case "arrow":
       return (
         (element.startArrowhead || element.endArrowhead ? 40 : 20) *
