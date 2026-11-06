@@ -98,6 +98,15 @@ export type ExcalidrawRectangleElement = _ExcalidrawElementBase & {
   type: "rectangle";
 };
 
+/**
+ * A rectangle that the editor draws and handles as a button. Being a rectangle
+ * underneath, a client that doesn't know buttons shows and keeps it as a box
+ * with its label.
+ */
+export type ExcalidrawButtonElement = ExcalidrawRectangleElement & {
+  customData: { isButton: true };
+};
+
 export type ExcalidrawStickyNoteElement = _ExcalidrawElementBase &
   Readonly<{
     type: "stickynote";
