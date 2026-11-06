@@ -218,15 +218,20 @@ export const syncMovedIndices = (
 /**
  * Gives elements appended after an already synced array the indices that
  * `syncMovedIndices` would on the whole array, looking only at the array's
- * last element. Mutates the appended elements.
+ * last two elements. Mutates the appended elements.
  *
  * @returns false, touching nothing, when the last element's index is invalid
+ * or does not sort after the one before it
  */
 export const syncAppendedIndices = (
-  lastElement: ExcalidrawElement | undefined,
+  elements: readonly ExcalidrawElement[],
   appendedElements: readonly ExcalidrawElement[],
 ) => {
-  if (lastElement && !isValidFractionalIndex(lastElement.index, null, null)) {
+  const lastElement = elements.at(-1);
+  if (
+    lastElement &&
+    !isValidFractionalIndex(lastElement.index, elements.at(-2)?.index, null)
+  ) {
     return false;
   }
 

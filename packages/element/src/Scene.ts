@@ -375,17 +375,18 @@ export class Scene {
   }
 
   /**
-   * Same result as `replaceAllElements` with the elements appended, in time
-   * that does not grow with the scene: the scene's indices are synced on
-   * every replace, so only the appended ones need it, and appending keeps the
-   * maps' insertion order equal to the array order.
+   * Same result as `replaceAllElements` with the elements appended, without
+   * reading the elements before the last one: the scene's indices are synced
+   * on every replace, so only the appended ones need it, and appending keeps
+   * the maps' insertion order equal to the array order. The lists are still
+   * copied so callers memoizing on them see new arrays.
    *
    * @returns false, changing nothing, when the slow path is needed
    */
   private appendElements(elements: readonly ExcalidrawElement[]) {
     if (
       elements.some((element) => this.elementsMap.has(element.id)) ||
-      !syncAppendedIndices(this.elements[this.elements.length - 1], elements)
+      !syncAppendedIndices(this.elements, elements)
     ) {
       return false;
     }

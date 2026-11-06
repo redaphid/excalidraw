@@ -73,6 +73,17 @@ describe("appending to the scene", () => {
       },
     ],
     [
+      "after an element whose index no longer sorts after the one before it",
+      {
+        initial: board,
+        corrupt: (scene) => {
+          Object.assign(scene.getElementsIncludingDeleted().at(-1)!, {
+            index: "a0V" as FractionalIndex,
+          });
+        },
+      },
+    ],
+    [
       "an element already on the board",
       { initial: board, toAdd: () => [board()[0]] },
     ],
@@ -109,7 +120,7 @@ describe("appending to the scene", () => {
     expect(scene.getNonDeletedElementsMap().get(element.id)).toBe(element);
   });
 
-  it("does not look at the elements before the last one", () => {
+  it("reads only the last two elements", () => {
     const touched = new Set<string>();
     const elements = Array.from({ length: 1000 }, (_, i) => {
       const element = API.createElement({
@@ -129,6 +140,6 @@ describe("appending to the scene", () => {
 
     scene.insertElement(API.createElement({ type: "rectangle" }));
 
-    expect([...touched]).toEqual(["e999"]);
+    expect([...touched].sort()).toEqual(["e998", "e999"]);
   });
 });
