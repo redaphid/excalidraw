@@ -20,6 +20,8 @@ import {
   shouldRotateWithDiscreteAngle,
   THEME,
   applyDarkModeFilter,
+  isColorDark,
+  isTransparent,
 } from "@excalidraw/common";
 
 import {
@@ -33,6 +35,8 @@ import {
   getTransformHandlesFromCoords,
   hasBoundingBox,
   hitElementItself,
+  getContainingFrame,
+  getCornerRadius,
   isArrowElement,
   isBindableElement,
   isElbowArrow,
@@ -109,6 +113,7 @@ import type {
   InteractiveCanvasAppState,
 } from "../types";
 import type {
+  ButtonHighlight,
   InteractiveCanvasRenderConfig,
   InteractiveSceneRenderConfig,
   RenderableElementsMap,
@@ -125,6 +130,12 @@ const BINDING_HIGHLIGHT_RGB = {
   [THEME.LIGHT]: "106, 189, 252",
   [THEME.DARK]: "104, 182, 240",
 } as const;
+
+/** hovered, then pressed */
+const BUTTON_HIGHLIGHT = {
+  overLight: ["rgba(0, 0, 0, 0.08)", "rgba(0, 0, 0, 0.2)"],
+  overDark: ["rgba(255, 255, 255, 0.12)", "rgba(255, 255, 255, 0.28)"],
+};
 
 const BINDING_MIDPOINT_COLOR = {
   [THEME.LIGHT]: "rgba(65, 65, 65, 0.5)",
@@ -1613,6 +1624,60 @@ const renderResetAutoResizeHandle = (
   context.restore();
 };
 
+/**
+ * Worked out in viewport pixels rather than through the canvas transform, whose
+ * single precision would misplace it on a deep zoom.
+ */
+const renderButtonHighlight = (
+  context: CanvasRenderingContext2D,
+  appState: InteractiveCanvasAppState,
+  { id, pressed }: ButtonHighlight,
+  elementsMap: NonDeletedSceneElementsMap,
+) => {
+  const button = elementsMap.get(id);
+  if (!button) {
+    return;
+  }
+  const zoom = appState.zoom.value;
+  const toViewport = (element: { x: number; y: number }) => ({
+    x: (element.x + appState.scrollX) * zoom,
+    y: (element.y + appState.scrollY) * zoom,
+  });
+
+  context.save();
+  const frame = getContainingFrame(button, elementsMap);
+  if (
+    frame &&
+    appState.frameRendering.enabled &&
+    appState.frameRendering.clip
+  ) {
+    const { x, y } = toViewport(frame);
+    context.beginPath();
+    context.rect(x, y, frame.width * zoom, frame.height * zoom);
+    context.clip();
+  }
+  const { x, y } = toViewport(button);
+  const width = button.width * zoom;
+  const height = button.height * zoom;
+  context.translate(x + width / 2, y + height / 2);
+  context.rotate(button.angle);
+  const isOverDark = isTransparent(button.backgroundColor)
+    ? appState.theme === THEME.DARK
+    : isColorDark(getThemedColor(button.backgroundColor, appState.theme));
+  context.fillStyle =
+    BUTTON_HIGHLIGHT[isOverDark ? "overDark" : "overLight"][pressed ? 1 : 0];
+  context.beginPath();
+  context.roundRect?.(
+    -width / 2,
+    -height / 2,
+    width,
+    height,
+    getCornerRadius(Math.min(button.width, button.height), button) * zoom,
+  );
+  context.fill();
+  context.restore();
+};
+
 const _renderInteractiveScene = ({
   app,
   canvas,
@@ -1622,6 +1687,7 @@ const _renderInteractiveScene = ({
   allElementsMap,
   scale,
   appState: unsnappedAppState,
+  buttonHighlight,
   renderConfig,
   editorInterface,
   animationState,
@@ -2116,6 +2182,10 @@ const _renderInteractiveScene = ({
   renderSnaps(context, appState);
 
   context.restore();
+
+  if (buttonHighlight) {
+    renderButtonHighlight(context, appState, buttonHighlight, allElementsMap);
+  }
 
   renderRemoteCursors({
     context,

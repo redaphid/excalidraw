@@ -32,10 +32,15 @@ import {
   hasBoundTextElement,
   isArrowElement,
   isBoundToContainer,
+  isButtonElement,
   isFrameLikeElement,
 } from "./typeChecks";
 
-import { getBoundTextElement, getContainerElement } from "./textElement";
+import {
+  computeBoundTextPosition,
+  getBoundTextElement,
+  getContainerElement,
+} from "./textElement";
 
 import { fixDuplicatedBindingsAfterDuplication } from "./binding";
 
@@ -48,6 +53,7 @@ import type { ElementUpdate } from "./mutateElement";
 import type {
   ElementsMap,
   ExcalidrawArrowElement,
+  ExcalidrawTextElementWithContainer,
   ExcalidrawElement,
   GroupId,
   NonDeletedExcalidrawElement,
@@ -110,6 +116,12 @@ export const duplicateElement = <TElement extends ExcalidrawElement>(
 
   if (isTestEnv()) {
     __test__defineOrigId(copy, element.id);
+  }
+
+  if (isButtonElement(element)) {
+    // a button's id is what its host knows it by, and a copy has a new one
+    const { isButton, ...customData } = element.customData;
+    copy.customData = customData;
   }
 
   copy.id = randomId();
@@ -467,6 +479,26 @@ export const duplicateElements = (
       }
     }
   }
+
+  duplicatedElements.forEach((label) => {
+    const copy = isBoundToContainer(label)
+      ? getContainerElement(label, duplicateElementsMap)
+      : null;
+    if (
+      copy &&
+      isButtonElement(origElementsMap.get(duplicateIdToOrigId.get(copy.id)!))
+    ) {
+      // the copy is a plain rectangle, with no icon left to keep clear of
+      Object.assign(
+        label,
+        computeBoundTextPosition(
+          copy,
+          label as ExcalidrawTextElementWithContainer,
+          duplicateElementsMap,
+        ),
+      );
+    }
+  });
 
   return {
     duplicatedElements,
