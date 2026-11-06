@@ -1,5 +1,7 @@
 import {
+  ElementsRTree,
   getCommonFrameId,
+  getElementPaintBounds,
   getFrameChildrenInsertionIndex,
   getContainerElement,
   isElementInViewport,
@@ -7,7 +9,12 @@ import {
   isTextElement,
 } from "@excalidraw/element";
 
-import { arrayToMap, memoize, toBrandedType } from "@excalidraw/common";
+import {
+  arrayToMap,
+  memoize,
+  toBrandedType,
+  viewportCoordsToSceneCoords,
+} from "@excalidraw/common";
 
 import type {
   ExcalidrawElement,
@@ -57,7 +64,11 @@ export type NewElementSplit = {
 export class Renderer {
   private scene: Scene;
 
-  constructor(scene: Scene) {
+  constructor(
+    scene: Scene,
+    /** the window whose idle time the visible-elements index rebuilds in */
+    private getOwnerWindow: () => Window = () => window,
+  ) {
     this.scene = scene;
   }
 
@@ -212,17 +223,24 @@ export class Renderer {
     return set;
   }
 
+  private visibleElementsTree = new ElementsRTree<NonDeletedExcalidrawElement>(
+    getElementPaintBounds,
+    (element, elementsMap) =>
+      isTextElement(element) ? getContainerElement(element, elementsMap) : null,
+    () => this.getOwnerWindow(),
+  );
+
+  /**
+   * The elements `isElementInViewport` keeps, in z-order, plus the new
+   * element, which is kept wherever it is.
+   */
   private getVisibleCanvasElements({
+    elements,
     elementsMap,
     newElement,
-    zoom,
-    offsetLeft,
-    offsetTop,
-    scrollX,
-    scrollY,
-    height,
-    width,
+    ...viewport
   }: {
+    elements: readonly NonDeletedExcalidrawElement[];
     elementsMap: NonDeletedElementsMap;
     newElement: AppState["newElement"];
     zoom: AppState["zoom"];
@@ -233,30 +251,25 @@ export class Renderer {
     height: AppState["height"];
     width: AppState["width"];
   }): readonly NonDeletedExcalidrawElement[] {
-    const visibleElements: NonDeletedExcalidrawElement[] = [];
-    for (const element of elementsMap.values()) {
-      // a new element in the map (drawn inside a frame) grows without a new
-      // cull, and the split around it needs its z-order even off screen
-      if (
-        element.id === newElement?.id ||
-        isElementInViewport(
-          element,
-          width,
-          height,
-          {
-            zoom,
-            offsetLeft,
-            offsetTop,
-            scrollX,
-            scrollY,
-          },
-          elementsMap,
-        )
-      ) {
-        visibleElements.push(element);
-      }
-    }
-    return visibleElements;
+    const topLeft = viewportCoordsToSceneCoords(
+      { clientX: viewport.offsetLeft, clientY: viewport.offsetTop },
+      viewport,
+    );
+    const bottomRight = viewportCoordsToSceneCoords(
+      {
+        clientX: viewport.offsetLeft + viewport.width,
+        clientY: viewport.offsetTop + viewport.height,
+      },
+      viewport,
+    );
+    // a new element in the map (drawn inside a frame) grows without a new
+    // cull, and the split around it needs its z-order even off screen
+    return this.visibleElementsTree.query(
+      elements,
+      elementsMap,
+      [topLeft.x, topLeft.y, bottomRight.x, bottomRight.y],
+      newElement?.id ?? null,
+    );
   }
 
   // keyed on what decides its entries, so pan, zoom and in-frame drawing
@@ -273,6 +286,8 @@ export class Renderer {
       newElement: AppState["newElement"];
     }) => {
       const elementsMap = toBrandedType<RenderableElementsMap>(new Map());
+      // the map's values in order, for the cull's positional lookups
+      const renderableElements: NonDeletedExcalidrawElement[] = [];
       const newElementCanvasElement = newElement?.frameId ? null : newElement;
 
       for (const element of elements) {
@@ -288,9 +303,18 @@ export class Renderer {
           element.id !== editingTextElement.id
         ) {
           elementsMap.set(element.id, element);
+          renderableElements.push(element);
         }
       }
-      return { elementsMap, newElementCanvasElement };
+      return {
+        elementsMap,
+        // a repeated id keeps its first position in the map
+        renderableElements:
+          renderableElements.length === elementsMap.size
+            ? renderableElements
+            : Array.from(elementsMap.values()),
+        newElementCanvasElement,
+      };
     },
   );
 
@@ -358,7 +382,7 @@ export class Renderer {
     }) => {
       const elements = this.scene.getNonDeletedElements();
 
-      const { elementsMap, newElementCanvasElement } =
+      const { elementsMap, renderableElements, newElementCanvasElement } =
         this.getRenderableElementsMap({
           newElementFrameId: newElement?.frameId ?? null,
           elements,
@@ -367,6 +391,7 @@ export class Renderer {
         });
 
       const visibleElements = this.getVisibleCanvasElements({
+        elements: renderableElements,
         elementsMap,
         newElement,
         zoom,
@@ -490,5 +515,6 @@ export class Renderer {
     this._getRenderableElements.clear();
     this._getVisibleElementsWithRenderOffsets.clear();
     this._splitAtNewElement.clear();
+    this.visibleElementsTree.destroy();
   }
 }
