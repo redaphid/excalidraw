@@ -21,6 +21,7 @@ import {
   updateBoundElements,
 } from "./binding";
 import { getCommonBounds } from "./bounds";
+import { getFrameContents } from "./frame";
 import { getPerfectElementSize } from "./sizeHelpers";
 import { getBoundTextElement, getBoundTextPadding } from "./textElement";
 import { getMinTextElementWidth } from "./textMeasurements";
@@ -83,6 +84,21 @@ export const dragSelectedElements = (
   if (frames.length > 0) {
     for (const element of scene.getNonDeletedElements()) {
       if (element.frameId !== null && frames.includes(element.frameId)) {
+        elementsToUpdate.add(element);
+      }
+    }
+    // read where everything stood when the gesture began, so a frame dragged
+    // over another element neither picks it up nor drops what it carries
+    const { originalElements } = pointerDownState;
+    const elementsMap = scene.getNonDeletedElementsMap();
+    for (const { id } of getFrameContents(
+      scene
+        .getNonDeletedElements()
+        .map((element) => originalElements.get(element.id) ?? element),
+      frames,
+    )) {
+      const element = elementsMap.get(id);
+      if (element) {
         elementsToUpdate.add(element);
       }
     }

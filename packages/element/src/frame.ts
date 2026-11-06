@@ -375,6 +375,72 @@ export const getFrameChildren = (
   return frameChildren;
 };
 
+const frameArea = (frame: ExcalidrawFrameLikeElement) =>
+  frame.width * frame.height;
+
+/**
+ * What moves with the given frames besides themselves.
+ *
+ * A frame cannot hold a frame, so a frame drawn wholly inside another counts as
+ * nested in it, and moves with it, along with everything that belongs to it.
+ * An element belongs to the smallest frame that wholly holds it, chosen among
+ * its own frame and the frames nested in that one (among all frames, for an
+ * element in none), or else to its own frame. So an element its outer frame
+ * claims still moves with the nested frame drawn around it, a loose element
+ * moves with the frame it sits in, and another frame's element drawn on top
+ * stays put. Labels are left to their containers.
+ */
+export const getFrameContents = (
+  elements: ElementsMapOrArray,
+  frameIds: readonly ExcalidrawFrameLikeElement["id"][],
+): NonDeletedExcalidrawElement[] => {
+  const live = getNonDeletedElements(Array.from(elements.values()));
+  const elementsMap = arrayToMap(live);
+  const frames = live.filter(isFrameLikeElement);
+  const boundsOf = new Map(
+    frames.map((frame) => [frame.id, getElementBounds(frame, elementsMap)]),
+  );
+  const holds = (frame: ExcalidrawFrameLikeElement, bounds: Bounds) =>
+    boundsContainBounds(boundsOf.get(frame.id)!, bounds);
+  const nestedIn = new Map(
+    frames.map((outer) => [
+      outer.id,
+      frames.filter(
+        (frame) =>
+          frameArea(frame) < frameArea(outer) &&
+          holds(outer, boundsOf.get(frame.id)!),
+      ),
+    ]),
+  );
+  const moving = new Set(
+    frameIds.flatMap((id) => [
+      id,
+      ...(nestedIn.get(id) ?? []).map((frame) => frame.id),
+    ]),
+  );
+  const owner = (element: NonDeletedExcalidrawElement) => {
+    const own = frames.find((frame) => frame.id === element.frameId);
+    const bounds = getElementBounds(element, elementsMap);
+    const [smallest] = (own ? [own, ...nestedIn.get(own.id)!] : frames)
+      .filter((frame) => holds(frame, bounds))
+      .sort((a, b) => frameArea(a) - frameArea(b));
+    return smallest ?? own;
+  };
+  return live.filter((element) => {
+    if (frameIds.includes(element.id)) {
+      return false;
+    }
+    if (isFrameLikeElement(element)) {
+      return moving.has(element.id);
+    }
+    if (isBoundToContainer(element)) {
+      return false;
+    }
+    const frame = owner(element);
+    return frame !== undefined && moving.has(frame.id);
+  });
+};
+
 export const getFrameLikeElements = (
   allElements: ExcalidrawElementsIncludingDeleted,
 ): ExcalidrawFrameLikeElement[] => {

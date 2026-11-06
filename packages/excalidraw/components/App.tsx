@@ -177,6 +177,7 @@ import {
   hasBoundingBox,
   getCommonFrameId,
   getFrameChildren,
+  getFrameContents,
   getFrameChildrenInsertionIndex,
   isCursorInFrame,
   addElementsToFrame,
@@ -5662,6 +5663,21 @@ ${css}
           includeBoundTextElement: true,
           includeElementsInFrames: true,
         });
+        selectedElements = [
+          ...new Set([
+            ...selectedElements,
+            ...getFrameContents(
+              this.scene.getNonDeletedElementsMap(),
+              selectedElements.filter(isFrameLikeElement).map((f) => f.id),
+            ).flatMap((element) => {
+              const label = getBoundTextElement(
+                element,
+                this.scene.getNonDeletedElementsMap(),
+              );
+              return label ? [element, label] : [element];
+            }),
+          ]),
+        ];
 
         const arrowIdsToRemove = new Set<string>();
 
@@ -8571,10 +8587,17 @@ ${css}
         originals.set(element.id, deepCopyElement(element));
       }
     };
-    for (const element of this.scene.getSelectedElements({
+    const selected = this.scene.getSelectedElements({
       selectedElementIds: this.state.selectedElementIds,
       includeElementsInFrames: true,
-    })) {
+    });
+    for (const element of [
+      ...selected,
+      ...getFrameContents(
+        elementsMap,
+        selected.filter(isFrameLikeElement).map((frame) => frame.id),
+      ),
+    ]) {
       copy(element);
       copy(getBoundTextElement(element, elementsMap));
     }
