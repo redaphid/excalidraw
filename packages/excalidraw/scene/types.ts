@@ -109,6 +109,11 @@ export type InteractiveSceneRenderAnimationState = {
   bindingHighlight: { runtime: number } | undefined;
 };
 
+export type ButtonHighlight = {
+  id: ExcalidrawElement["id"];
+  pressed: boolean;
+};
+
 export type InteractiveSceneRenderConfig = {
   app: AppClassProperties;
   canvas: HTMLCanvasElement | null;
@@ -118,6 +123,7 @@ export type InteractiveSceneRenderConfig = {
   allElementsMap: NonDeletedSceneElementsMap;
   scale: number;
   appState: InteractiveCanvasAppState;
+  buttonHighlight: ButtonHighlight | null;
   renderConfig: InteractiveCanvasRenderConfig;
   editorInterface: EditorInterface;
   callback: (data: RenderInteractiveSceneCallback) => void;

@@ -8,7 +8,7 @@ import type {
   NormalizedZoomValue,
 } from "@excalidraw/excalidraw/types";
 
-import { COLOR_PALETTE } from "./colors";
+import { COLOR_PALETTE, setColorAlpha } from "./colors";
 
 export { DEFAULT_STICKY_NOTE_BG } from "./colors";
 
@@ -214,6 +214,16 @@ export const FRAME_STYLE = {
   // wireframe-to-code frames; the dark one is #1d8264 through the dark filter
   magicStrokeColor: "#7affd7",
   magicStrokeColorDarkTheme: "#4fa68c",
+  // a board without a theme strokes frames as a hairline of the default ink
+  // (#1e1e1e, #d3d3d3 through the dark filter) at the alphas a theme's frame
+  // tokens default to, so they sit behind the ink rather than as grey bars
+  outlineInk: "#1e1e1e",
+  outlineInkDarkTheme: "#d3d3d3",
+  outlineAlpha: 0.2,
+  outlineAlphaDarkTheme: 0.35,
+  outlineColor: setColorAlpha("#1e1e1e", 0.2),
+  outlineColorDarkTheme: setColorAlpha("#d3d3d3", 0.35),
+  outlineWidth: 1,
   strokeWidth: 2 as ExcalidrawElement["strokeWidth"],
   strokeStyle: "solid" as ExcalidrawElement["strokeStyle"],
   fillStyle: "solid" as ExcalidrawElement["fillStyle"],

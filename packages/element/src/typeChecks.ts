@@ -11,6 +11,7 @@ import type { ElementOrToolType } from "@excalidraw/excalidraw/types";
 import type { MarkNonNullable } from "@excalidraw/common/utility-types";
 
 import type {
+  ExcalidrawButtonElement,
   ExcalidrawElement,
   ExcalidrawTextElement,
   ExcalidrawEmbeddableElement,
@@ -79,6 +80,11 @@ export const isStickyNoteElement = <T extends ExcalidrawElement>(
 ): element is T & ExcalidrawStickyNoteElement => {
   return element != null && element.type === "stickynote";
 };
+
+export const isButtonElement = <T extends ExcalidrawElement>(
+  element: T | null | undefined,
+): element is T & ExcalidrawButtonElement =>
+  element?.type === "rectangle" && element.customData?.isButton === true;
 
 export const isFrameElement = <T extends ExcalidrawElement>(
   element: T | null,

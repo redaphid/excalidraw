@@ -428,6 +428,7 @@ import { AppText } from "./App.text";
 import { AppTextTool } from "./App.textTool";
 import { AppBucketFill } from "./App.bucketFill";
 import { AppToolDrag, TOOL_DRAG_PREVIEW_OPACITY } from "./App.toolDrag";
+import { AppButton } from "./App.button";
 import { AppCursor } from "./App.cursor";
 import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
@@ -707,6 +708,10 @@ class App extends React.Component<AppProps, AppState> {
   public frameNavigation: AppFrameNavigation = new AppFrameNavigation(this);
   public cursor: AppCursor = new AppCursor(this);
   public arrowText: AppArrowText = new AppArrowText(this);
+  public button: AppButton = new AppButton(this, {
+    getPointerCount: () => gesture.pointers.size,
+    pointerDown: (event) => this.handleCanvasPointerDown(event),
+  });
   public pan: AppPan = new AppPan(this, {
     getPointerCount: () => gesture.pointers.size,
     isDraggingScrollBar: () => isDraggingScrollBar,
@@ -2860,9 +2865,11 @@ class App extends React.Component<AppProps, AppState> {
                             handleCanvasRef={this.handleInteractiveCanvasRef}
                             onContextMenu={this.handleCanvasContextMenu}
                             onClick={this.handleCanvasClick}
-                            onPointerMove={this.handleCanvasPointerMove}
+                            buttonHighlight={this.button.highlight}
+                            onPointerMove={this.handleInteractivePointerMove}
                             onPointerUp={this.handleCanvasPointerUp}
                             onPointerCancel={this.handleCanvasPointerCancel}
+                            onPointerLeave={this.button.clear}
                             onTouchMove={this.handleTouchMove}
                             onPointerDown={this.handleCanvasPointerDown}
                             onDoubleClick={this.handleCanvasDoubleClick}
@@ -4460,6 +4467,14 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
+    if (
+      prevState.scrollX !== this.state.scrollX ||
+      prevState.scrollY !== this.state.scrollY ||
+      prevState.zoom !== this.state.zoom ||
+      prevState.activeTool !== this.state.activeTool
+    ) {
+      this.button.handleViewChange();
+    }
     const renderOverridesUpdatePending = this.renderOverridesUpdatePending;
     this.renderOverridesUpdatePending = false;
     // Only a requested visual update can skip the document pipeline. Real
@@ -6470,7 +6485,8 @@ ${css}
     if (
       !this.isInteractionEnabled() ||
       this.state.editingTextElement ||
-      !this.shouldHandleBrowserCanvasDoubleClick(event.type)
+      !this.shouldHandleBrowserCanvasDoubleClick(event.type) ||
+      this.button.isClickableAt(event)
     ) {
       return;
     }
@@ -7077,6 +7093,13 @@ ${css}
     this.updateFrameToHighlight(
       frame && isFrameLikeElement(frame) ? frame : null,
     );
+  };
+
+  private handleInteractivePointerMove = (
+    event: React.PointerEvent<HTMLCanvasElement>,
+  ) => {
+    this.handleCanvasPointerMove(event);
+    this.button.handlePointerMove(event);
   };
 
   private handleCanvasPointerMove = (
@@ -7806,6 +7829,10 @@ ${css}
   private handleCanvasPointerDown = (
     event: React.PointerEvent<HTMLElement>,
   ) => {
+    if (this.button.handlePointerDown(event)) {
+      return;
+    }
+
     if (
       !this.isInteractionEnabled() &&
       !this.isToolSupported(this.state.activeTool.type)
@@ -8320,6 +8347,7 @@ ${css}
   private handleCanvasPointerCancel = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
+    this.button.clear();
     this.removePointer(event);
     this.maybeCleanupAfterMissingPointerUp(event.nativeEvent);
   };
@@ -8327,6 +8355,9 @@ ${css}
   private handleCanvasPointerUp = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
+    if (this.button.handlePointerUp(event)) {
+      return;
+    }
     if (!this.isInteractionEnabled()) {
       if (this.isLinksEnabled() || this.isEmbedsEnabled()) {
         this.handleInteractiveContentPointerUp(event);
@@ -10927,10 +10958,12 @@ ${css}
         let dx = pointerCoords.x - newElement.x;
         let dy = pointerCoords.y - newElement.y;
 
-        // Allows dots to avoid being flagged as infinitely small
+        // Allows dots to avoid being flagged as infinitely small. The nudge is
+        // at the stroke's own scale so a tap far in is a dot, not a dash.
         if (dx === points[0][0] && dy === points[0][1]) {
-          dy += 0.0001;
-          dx += 0.0001;
+          const nudge = 0.0001 * getElementDetailScale(newElement);
+          dy += nudge;
+          dx += nudge;
         }
 
         const pressures = newElement.simulatePressure
