@@ -480,6 +480,40 @@ export const getFrameContents = (
   return carried;
 };
 
+/**
+ * The elements a frame move carried whose own frame stayed put, each with the
+ * frame it should join, labels included: a page moved out of its outer frame
+ * takes along what the outer frame claimed, and the outer frame's clip would
+ * otherwise hide it. Membership in a frame that moved too is left alone.
+ */
+export const getFrameJoins = (
+  elementsMap: ElementsMap,
+  contents: ReadonlyMap<
+    ExcalidrawElement["id"],
+    ExcalidrawFrameLikeElement["id"]
+  >,
+  frameIds: readonly ExcalidrawFrameLikeElement["id"][],
+) => {
+  const moving = new Set([...frameIds, ...contents.values()]);
+  const joins: [ExcalidrawElement, ExcalidrawFrameLikeElement["id"]][] = [];
+  contents.forEach((frameId, id) => {
+    const element = elementsMap.get(id);
+    if (
+      !element ||
+      isFrameLikeElement(element) ||
+      (element.frameId && moving.has(element.frameId))
+    ) {
+      return;
+    }
+    for (const each of [element, getBoundTextElement(element, elementsMap)]) {
+      if (each && each.frameId !== frameId) {
+        joins.push([each, frameId]);
+      }
+    }
+  });
+  return joins;
+};
+
 export const getFrameLikeElements = (
   allElements: ExcalidrawElementsIncludingDeleted,
 ): ExcalidrawFrameLikeElement[] => {

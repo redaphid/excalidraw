@@ -314,6 +314,32 @@ describe("dragging a frame", () => {
     return [element.x, element.y];
   };
 
+  const frameOf = (id: string) =>
+    h.elements.find((each) => each.id === id)!.frameId;
+
+  // a labelled signpost the outer frame claims, inside the page
+  const signpost = () => [
+    API.createElement({
+      id: "signpost",
+      x: 120,
+      y: 200,
+      width: 60,
+      height: 40,
+      frameId: "lair",
+      boundElements: [{ type: "text", id: "signpostLabel" }],
+    }),
+    API.createElement({
+      type: "text",
+      id: "signpostLabel",
+      x: 125,
+      y: 205,
+      width: 40,
+      height: 20,
+      containerId: "signpost",
+      frameId: "lair",
+    }),
+  ];
+
   beforeEach(async () => {
     mouse.reset();
     await render(<Excalidraw handleKeyboardGlobally={true} />);
@@ -432,6 +458,7 @@ describe("dragging a frame", () => {
     expect(position("valleys")).toEqual([260, 260]);
   });
   it("puts what a page carried out of its outer frame into the page", () => {
+    API.setElements([...board(), ...signpost()]);
     select("page");
 
     mouse.downAt(110, 290);
@@ -439,11 +466,43 @@ describe("dragging a frame", () => {
     mouse.moveTo(1000, 1100);
     mouse.upAt(1000, 1100);
 
-    const frameOf = (id: string) =>
-      h.elements.find((each) => each.id === id)!.frameId;
     expect(position("claimedByLair")).toEqual([1050, 970]);
     expect(frameOf("claimedByLair")).toBe("page");
     expect(frameOf("loose")).toBe("page");
     expect(frameOf("pageChild")).toBe("page");
+    expect(frameOf("signpostLabel")).toBe("page");
+  });
+
+  it("leaves what the outer frame claims with it when the outer frame moves", () => {
+    select("lair");
+
+    mouse.downAt(500, 50);
+    mouse.moveTo(510, 60);
+    mouse.moveTo(520, 70);
+    mouse.upAt(520, 70);
+
+    expect(frameOf("claimedByLair")).toBe("lair");
+  });
+
+  it("puts what a nudged page carries into the page", () => {
+    API.setElements([...board(), ...signpost()]);
+    select("page");
+
+    Keyboard.keyPress(KEYS.ARROW_RIGHT);
+
+    expect(frameOf("claimedByLair")).toBe("page");
+    expect(frameOf("signpostLabel")).toBe("page");
+  });
+
+  it("nudges a page out of its outer frame with all it carries", () => {
+    select("page");
+
+    Keyboard.withModifierKeys({ shift: true }, () => {
+      for (let press = 0; press < 100; press++) {
+        Keyboard.keyPress(KEYS.ARROW_RIGHT);
+      }
+    });
+
+    expect(position("page")[0] - 100).toBe(position("claimedByLair")[0] - 160);
   });
 });

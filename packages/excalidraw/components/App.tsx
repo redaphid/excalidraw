@@ -178,6 +178,7 @@ import {
   getCommonFrameId,
   getFrameChildren,
   getFrameContents,
+  getFrameJoins,
   getFrameChildrenInsertionIndex,
   isCursorInFrame,
   addElementsToFrame,
@@ -5678,15 +5679,17 @@ ${css}
           includeBoundTextElement: true,
           includeElementsInFrames: true,
         });
+        const nudgedFrames = selectedElements
+          .filter(isFrameLikeElement)
+          .map((frame) => frame.id);
+        const nudgedContents = getFrameContents(
+          this.scene.getNonDeletedElementsMap(),
+          nudgedFrames,
+        );
         selectedElements = [
           ...new Set([
             ...selectedElements,
-            ...[
-              ...getFrameContents(
-                this.scene.getNonDeletedElementsMap(),
-                selectedElements.filter(isFrameLikeElement).map((f) => f.id),
-              ).keys(),
-            ].flatMap((id) => {
+            ...[...nudgedContents.keys()].flatMap((id) => {
               const element = this.scene.getNonDeletedElementsMap().get(id);
               if (!element) {
                 return [];
@@ -5761,6 +5764,18 @@ ${css}
             simultaneouslyUpdated: selectedElements,
           });
         });
+
+        for (const [element, frameId] of getFrameJoins(
+          this.scene.getNonDeletedElementsMap(),
+          nudgedContents,
+          nudgedFrames,
+        )) {
+          this.scene.mutateElement(
+            element,
+            { frameId },
+            { informMutation: false, isDragging: false },
+          );
+        }
 
         this.scene.triggerUpdate();
 
@@ -11392,26 +11407,20 @@ ${css}
             this,
           );
 
-          // what a frame carried joins the frame it belongs to, so a page
-          // dragged out of its outer frame is not clipped by that frame
-          pointerDownState.frameContents.forEach((frameId, id) => {
-            const element = nextElements.get(id);
-            if (!element || isFrameLikeElement(element)) {
-              return;
-            }
-            for (const each of [
+          for (const [element, frameId] of getFrameJoins(
+            nextElements,
+            pointerDownState.frameContents,
+            this.scene
+              .getSelectedElements(this.state)
+              .filter(isFrameLikeElement)
+              .map((frame) => frame.id),
+          )) {
+            this.scene.mutateElement(
               element,
-              getBoundTextElement(element, nextElements),
-            ]) {
-              if (each && each.frameId !== frameId) {
-                this.scene.mutateElement(
-                  each,
-                  { frameId },
-                  { informMutation: false, isDragging: false },
-                );
-              }
-            }
-          });
+              { frameId },
+              { informMutation: false, isDragging: false },
+            );
+          }
 
           this.scene.replaceAllElements(nextElements);
         }
