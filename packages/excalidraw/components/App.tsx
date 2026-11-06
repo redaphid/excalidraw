@@ -177,6 +177,8 @@ import {
   hasBoundingBox,
   getCommonFrameId,
   getFrameChildren,
+  getFrameContents,
+  getFrameJoins,
   getFrameChildrenInsertionIndex,
   isCursorInFrame,
   addElementsToFrame,
@@ -5679,6 +5681,29 @@ ${css}
           includeBoundTextElement: true,
           includeElementsInFrames: true,
         });
+        const nudgedFrames = selectedElements
+          .filter(isFrameLikeElement)
+          .map((frame) => frame.id);
+        const nudgedContents = getFrameContents(
+          this.scene.getNonDeletedElementsMap(),
+          nudgedFrames,
+        );
+        selectedElements = [
+          ...new Set([
+            ...selectedElements,
+            ...[...nudgedContents.keys()].flatMap((id) => {
+              const element = this.scene.getNonDeletedElementsMap().get(id);
+              if (!element) {
+                return [];
+              }
+              const label = getBoundTextElement(
+                element,
+                this.scene.getNonDeletedElementsMap(),
+              );
+              return label ? [element, label] : [element];
+            }),
+          ]),
+        ];
 
         const arrowIdsToRemove = new Set<string>();
 
@@ -5741,6 +5766,18 @@ ${css}
             simultaneouslyUpdated: selectedElements,
           });
         });
+
+        for (const [element, frameId] of getFrameJoins(
+          this.scene.getNonDeletedElementsMap(),
+          nudgedContents,
+          nudgedFrames,
+        )) {
+          this.scene.mutateElement(
+            element,
+            { frameId },
+            { informMutation: false, isDragging: false },
+          );
+        }
 
         this.scene.triggerUpdate();
 
@@ -8550,6 +8587,7 @@ ${css}
       lastCoords: { ...origin },
       // filled by snapshotGestureElements once the gesture transforms
       originalElements: new Map(),
+      frameContents: new Map(),
       resize: {
         handleType: false,
         isResizing: false,
@@ -8604,10 +8642,21 @@ ${css}
         originals.set(element.id, deepCopyElement(element));
       }
     };
-    for (const element of this.scene.getSelectedElements({
+    const selected = this.scene.getSelectedElements({
       selectedElementIds: this.state.selectedElementIds,
       includeElementsInFrames: true,
-    })) {
+    });
+    const contents = getFrameContents(
+      elementsMap,
+      selected.filter(isFrameLikeElement).map((frame) => frame.id),
+    );
+    contents.forEach((frameId, id) =>
+      pointerDownState.frameContents.set(id, frameId),
+    );
+    for (const element of [
+      ...selected,
+      ...[...contents.keys()].flatMap((id) => elementsMap.get(id) ?? []),
+    ]) {
       copy(element);
       copy(getBoundTextElement(element, elementsMap));
     }
@@ -11361,6 +11410,21 @@ ${css}
             this.state,
             this,
           );
+
+          for (const [element, frameId] of getFrameJoins(
+            nextElements,
+            pointerDownState.frameContents,
+            this.scene
+              .getSelectedElements(this.state)
+              .filter(isFrameLikeElement)
+              .map((frame) => frame.id),
+          )) {
+            this.scene.mutateElement(
+              element,
+              { frameId },
+              { informMutation: false, isDragging: false },
+            );
+          }
 
           this.scene.replaceAllElements(nextElements);
         }
