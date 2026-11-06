@@ -773,3 +773,45 @@ describe("exporting a region", () => {
     ]);
   });
 });
+
+describe("exporting a frame's outline to SVG", () => {
+  describe.each([
+    ["light", "#1e1e1e", "0.2"],
+    ["dark", "#d3d3d3", "0.35"],
+  ] as const)("on a %s canvas", (theme, ink, opacity) => {
+    let outline: Element | null;
+
+    beforeEach(async () => {
+      const frame = API.createElement({
+        type: "frame",
+        id: "frame-id-rusty-conquistador",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+      });
+      const svg = await exportUtils.exportToSvg(
+        [frame],
+        {
+          exportBackground: false,
+          viewBackgroundColor: "#ffffff",
+          exportWithDarkMode: theme === "dark",
+        },
+        null,
+      );
+      outline = svg.querySelector("rect[stroke]");
+    });
+
+    it("strokes a one pixel hairline", () => {
+      expect(outline?.getAttribute("stroke-width")).toBe("1");
+    });
+
+    it("strokes it in the default ink", () => {
+      expect(outline?.getAttribute("stroke")).toBe(ink);
+    });
+
+    it("sets the ink's alpha as stroke-opacity, which SVG 1.1 reads", () => {
+      expect(outline?.getAttribute("stroke-opacity")).toBe(opacity);
+    });
+  });
+});

@@ -5,6 +5,7 @@ import {
   getCornerRadius,
   getElementBounds,
   getElementLineSegments,
+  getFreedrawOutlinePoints,
   isTextElement,
   setCustomTextMetricsProvider,
   ShapeCache,
@@ -13,6 +14,7 @@ import {
 import type {
   ExcalidrawArrowElement,
   ExcalidrawElement,
+  ExcalidrawFreeDrawElement,
   ExcalidrawTextElement,
   NonDeleted,
   NonDeletedExcalidrawElement,
@@ -159,6 +161,43 @@ describe("authoringUnits: screen", () => {
       ),
     );
   });
+
+  it.each(["variable", "constant"] as const)(
+    "taps a %s width freedraw dot the same on screen at 1x, 100,000x and 1,000,000x",
+    (variability) => {
+      const tapOnScreen = (zoom: number) => {
+        atZoom(zoom);
+        API.setAppState({
+          currentItemStrokeVariability: variability,
+          // the laser pointer draws nothing for a tap thinner than this
+          currentItemFreedrawStrokeWidth: 2,
+        });
+        UI.clickTool("freedraw");
+        mouse.clickAt(100, 100);
+        const [stroke] = latest() as ExcalidrawFreeDrawElement[];
+        const outline = getFreedrawOutlinePoints(stroke);
+        const extent = (axis: 0 | 1) => {
+          const values = outline.map((point) => point[axis] * zoom);
+          return (
+            Math.round((Math.max(...values) - Math.min(...values)) * 100) / 100
+          );
+        };
+        const [[x0, y0], [x1, y1]] = stroke.points;
+        return {
+          points: stroke.points.length,
+          tapUnderAPixel: Math.hypot(x1 - x0, y1 - y0) * zoom < 0.01,
+          width: extent(0),
+          height: extent(1),
+        };
+      };
+      const atOneX = tapOnScreen(1);
+      expect(atOneX).toMatchObject({ points: 2, tapUnderAPixel: true });
+      expect(atOneX.width).toBeGreaterThan(0);
+      for (const zoom of [100_000, 1_000_000]) {
+        expect({ zoom, ...tapOnScreen(zoom) }).toEqual({ zoom, ...atOneX });
+      }
+    },
+  );
 
   it("creates text with the same font and size on screen at any zoom", async () => {
     const sizes = [];
@@ -700,7 +739,8 @@ describe("authoringUnits: screen, what an element made far in keeps", () => {
       });
       await act(async () => {});
       const cached = elementWithCanvasCache.get(rectangle.get())!;
-      const margin = 2 * 20 * window.devicePixelRatio;
+      const stroke = rectangle.get().strokeWidth * zoom;
+      const margin = (2 * 20 + stroke) * window.devicePixelRatio;
       expect(cached.canvas.width).toBeLessThanOrEqual(
         220 * window.devicePixelRatio + margin,
       );

@@ -495,6 +495,7 @@ const _renderStaticScene = ({
   scale,
   appState: unsnappedAppState,
   renderConfig,
+  onPainted,
 }: StaticSceneRenderConfig) => {
   if (canvas === null) {
     return;
@@ -583,6 +584,8 @@ const _renderStaticScene = ({
     renderConfig,
     appState,
   );
+
+  onPainted?.(unsnappedAppState);
 };
 
 /** throttled to animation framerate */
