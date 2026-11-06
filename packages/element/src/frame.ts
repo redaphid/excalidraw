@@ -392,6 +392,8 @@ const frameArea = (frame: ExcalidrawFrameLikeElement) =>
  * frame it sits in, and another frame's element drawn on top stays put.
  *
  * A group moves whole or not at all: it is carried only when every member is.
+ * A group whose bounds hold a moving frame is that frame's surroundings, such
+ * as a card a page was fitted into, so it holds nothing back.
  * A locked element is carried only by its own frame. Labels are left to their
  * containers.
  */
@@ -459,21 +461,32 @@ export const getFrameContents = (
       carried.set(element.id, frame.id);
     }
   }
-  const split = new Set(
-    live.flatMap((element) => {
-      const group = element.groupIds.at(-1);
-      return group &&
-        !isFrameLikeElement(element) &&
-        !isBoundToContainer(element) &&
-        !carried.has(element.id) &&
-        !frameIds.includes(element.id)
-        ? [group]
-        : [];
-    }),
+  const groupBounds = new Map<string, Bounds>();
+  const surrounds = (group: string) => {
+    if (!groupBounds.has(group)) {
+      groupBounds.set(
+        group,
+        getCommonBounds(getElementsInGroup(live, group), elementsMap),
+      );
+    }
+    return [...moving].some((id) =>
+      boundsContainBounds(groupBounds.get(group)!, boundsOf.get(id)!),
+    );
+  };
+  const incomplete = new Set(
+    live.flatMap((element) =>
+      isFrameLikeElement(element) ||
+      isBoundToContainer(element) ||
+      carried.has(element.id)
+        ? []
+        : element.groupIds,
+    ),
   );
   for (const [id] of carried) {
-    const group = elementsMap.get(id)!.groupIds.at(-1);
-    if (group && split.has(group)) {
+    const group = elementsMap
+      .get(id)!
+      .groupIds.findLast((each) => !surrounds(each));
+    if (group && incomplete.has(group)) {
       carried.delete(id);
     }
   }

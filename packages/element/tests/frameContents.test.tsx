@@ -238,6 +238,29 @@ describe("getFrameContents", () => {
     expect(contents.has("inPage")).toBe(false);
   });
 
+  it("carries a page's contents out of the card group the page was fitted into", () => {
+    const carded = (id: string, x: number, y: number, size: number) =>
+      API.createElement({
+        id,
+        x,
+        y,
+        width: size,
+        height: size,
+        groupIds: ["group-id-card"],
+      });
+    const contents = getFrameContents(
+      [
+        ...board(),
+        carded("card", 90, 90, 220),
+        carded("cardItem", 120, 230, 20),
+      ],
+      ["page"],
+    );
+
+    expect(contents.has("cardItem")).toBe(true);
+    expect(contents.has("card")).toBe(false);
+  });
+
   it("carries a whole group that sits inside the frame", () => {
     const grouped = (id: string, x: number) =>
       API.createElement({
