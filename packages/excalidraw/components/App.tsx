@@ -496,6 +496,7 @@ import type {
   ExcalidrawImperativeAPIEventMap,
   GenerateDiagramToCode,
   NullableGridSize,
+  StaticCanvasAppState,
   UIConfig,
 } from "../types";
 import type { CssTheme } from "../cssTheme";
@@ -2796,6 +2797,7 @@ class App extends React.Component<AppProps, AppState> {
                                 ? getSettledBitmapCount()
                                 : undefined,
                             }}
+                            onPainted={this.onStaticScenePainted}
                           />
                           {newElementLayer && (
                             <NewElementCanvas
@@ -13140,6 +13142,34 @@ ${css}
       });
     }
   }, ZOOM_SETTLE_TIMEOUT);
+
+  private lastPaintedZoom = 0;
+
+  /**
+   * Holds a pending zoom settle from when the frame for a new zoom is painted
+   * until the browser starts the next animation frame, and gives it its full
+   * timeout from there. That frame starts once the paint is on screen, and
+   * input that arrived meanwhile is delivered with it, so the settle waits
+   * for the zoom to hold still on screen rather than for time to pass since
+   * the tick. Counted from the tick, a frame that took longer than the
+   * timeout to reach the screen left no time for the next tick to arrive:
+   * the settle redrew every bitmap at the new zoom mid-gesture, that frame
+   * was slower still, and every later tick of the gesture settled too.
+   */
+  private onStaticScenePainted = (appState: StaticCanvasAppState) => {
+    const settle = this.resetShouldCacheIgnoreZoomDebounced;
+    const zoomChanged = appState.zoom.value !== this.lastPaintedZoom;
+    this.lastPaintedZoom = appState.zoom.value;
+    if (!zoomChanged || !settle.pending()) {
+      return;
+    }
+    settle.hold();
+    requestAnimationFrame(() => {
+      if (!this.unmounted && settle.pending()) {
+        settle();
+      }
+    });
+  };
 
   private updateDOMRect = (cb?: () => void) => {
     if (this.excalidrawContainerRef?.current) {
