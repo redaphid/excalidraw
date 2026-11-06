@@ -13164,7 +13164,7 @@ ${css}
       return;
     }
     settle.hold();
-    requestAnimationFrame(() => {
+    this.ownerWindow.requestAnimationFrame(() => {
       if (!this.unmounted && settle.pending()) {
         settle();
       }
