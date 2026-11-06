@@ -10925,10 +10925,12 @@ ${css}
         let dx = pointerCoords.x - newElement.x;
         let dy = pointerCoords.y - newElement.y;
 
-        // Allows dots to avoid being flagged as infinitely small
+        // Allows dots to avoid being flagged as infinitely small. The nudge is
+        // at the stroke's own scale so a tap far in is a dot, not a dash.
         if (dx === points[0][0] && dy === points[0][1]) {
-          dy += 0.0001;
-          dx += 0.0001;
+          const nudge = 0.0001 * getElementDetailScale(newElement);
+          dy += nudge;
+          dx += nudge;
         }
 
         const pressures = newElement.simulatePressure
