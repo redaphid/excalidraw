@@ -13146,15 +13146,11 @@ ${css}
   private lastPaintedZoom = 0;
 
   /**
-   * Holds a pending zoom settle from when the frame for a new zoom is painted
-   * until the browser starts the next animation frame, and gives it its full
-   * timeout from there. That frame starts once the paint is on screen, and
-   * input that arrived meanwhile is delivered with it, so the settle waits
-   * for the zoom to hold still on screen rather than for time to pass since
-   * the tick. Counted from the tick, a frame that took longer than the
-   * timeout to reach the screen left no time for the next tick to arrive:
-   * the settle redrew every bitmap at the new zoom mid-gesture, that frame
-   * was slower still, and every later tick of the gesture settled too.
+   * Holds a pending zoom settle until the next animation frame starts, then
+   * gives it its full timeout. Until that frame the zoomed paint is not on
+   * screen and wheel input queued meanwhile is not delivered, so a settle
+   * timed from the tick would fire before the next tick could arrive. A
+   * hidden tab starts no frames, so the settle waits until it is shown.
    */
   private onStaticScenePainted = (appState: StaticCanvasAppState) => {
     const settle = this.resetShouldCacheIgnoreZoomDebounced;
