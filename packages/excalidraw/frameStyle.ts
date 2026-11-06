@@ -17,14 +17,14 @@ export const getFrameStyle = (
   color:
     canvasTheme?.frameColor ??
     (theme === THEME.DARK
-      ? FRAME_STYLE.strokeColorDarkTheme
-      : FRAME_STYLE.strokeColor),
+      ? FRAME_STYLE.outlineColorDarkTheme
+      : FRAME_STYLE.outlineColor),
   /** the editor draws wireframe-to-code frames in its own mint */
   magicColor:
     theme === THEME.LIGHT
       ? FRAME_STYLE.magicStrokeColor
       : FRAME_STYLE.magicStrokeColorDarkTheme,
-  width: canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth,
+  width: canvasTheme?.frameWidth ?? FRAME_STYLE.outlineWidth,
   radius: canvasTheme?.frameRadius ?? FRAME_STYLE.radius,
   nameColor:
     canvasTheme?.frameNameColor ??

@@ -106,6 +106,10 @@ const isPendingImageElement = (
   isInitializedImageElement(element) &&
   !renderConfig.imageCache.has(element.fileId);
 
+/** Half a stroke paints outside the element's bounds, in device pixels. */
+const strokeReach = (element: ExcalidrawElement) =>
+  (element.strokeWidth * window.devicePixelRatio) / 2;
+
 /**
  * Room around an element's cache bitmap for paint past its bounds. The fixed
  * sizes are details (see `getElementDetailScale`); in scene units, an element
@@ -127,13 +131,16 @@ const getCanvasPadding = (element: ExcalidrawElement) => {
         window.devicePixelRatio *
         getElementDetailScale(element)
       );
+    case "image":
+      return 20 * getElementDetailScale(element);
     case "arrow":
-      if (element.endArrowhead || element.endArrowhead) {
-        return 40 * getElementDetailScale(element);
-      }
-      return 20 * getElementDetailScale(element);
+      return (
+        (element.startArrowhead || element.endArrowhead ? 40 : 20) *
+          getElementDetailScale(element) +
+        strokeReach(element)
+      );
     default:
-      return 20 * getElementDetailScale(element);
+      return 20 * getElementDetailScale(element) + strokeReach(element);
   }
 };
 
@@ -1581,13 +1588,13 @@ const drawElement = (
           context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
           context.lineWidth =
-            (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.strokeWidth) /
+            (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.outlineWidth) /
             appState.zoom.value;
           context.strokeStyle =
             renderConfig.canvasTheme?.frameColor ??
             (appState.theme === THEME.DARK
-              ? FRAME_STYLE.strokeColorDarkTheme
-              : FRAME_STYLE.strokeColor);
+              ? FRAME_STYLE.outlineColorDarkTheme
+              : FRAME_STYLE.outlineColor);
 
           // TODO change later to only affect AI frames
           if (isMagicFrameElement(element)) {
