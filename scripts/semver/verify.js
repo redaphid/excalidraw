@@ -108,16 +108,19 @@ const verifyInstalled = (project, channel, version) => {
   }
 };
 
-const bundle = (project, options, failure) => {
+// Vite resolves the development condition in its dev server and production in
+// a build. Each points at its own dist, so both have to bundle.
+const MODES = ["development", "production"];
+
+const bundle = (project, mode, options, failure) => {
   try {
     buildSync({
       absWorkingDir: project,
       bundle: true,
-      // What Vite resolves in a production build, so index.css resolves.
-      conditions: ["production"],
+      conditions: [mode],
       define: {
-        "import.meta.env.DEV": "false",
-        "import.meta.env.PROD": "true",
+        "import.meta.env.DEV": String(mode === "development"),
+        "import.meta.env.PROD": String(mode === "production"),
       },
       logLevel: "error",
       ...options,
@@ -131,18 +134,21 @@ const bundle = (project, options, failure) => {
 // esbuild fails on a named import the bundle does not export.
 const verifyBundles = (project, channel) => {
   fs.cpSync(FIXTURE, project, { recursive: true });
-  bundle(
-    project,
-    {
-      entryPoints: ["bundle.ts"],
-      format: "esm",
-      outdir: "out",
-      loader: { ".woff2": "file" },
-    },
-    `a bundler cannot build draw's imports from ${channel.tarball(
-      "excalidraw",
-    )} installed alone`,
-  );
+  for (const mode of MODES) {
+    bundle(
+      project,
+      mode,
+      {
+        entryPoints: ["bundle.ts"],
+        format: "esm",
+        outdir: `out-${mode}`,
+        loader: { ".woff2": "file" },
+      },
+      `a bundler cannot build draw's imports from ${channel.tarball(
+        "excalidraw",
+      )} installed alone, under the ${mode} condition`,
+    );
+  }
 };
 
 // draw imports the sample themes as text at build time through ./themes/*.
@@ -172,6 +178,7 @@ const verifyThemesImport = (project, channel, files) => {
   )}`;
   bundle(
     project,
+    "production",
     {
       entryPoints: ["themes.js"],
       format: "cjs",
@@ -227,7 +234,9 @@ const verify = ({ version }) => {
       console.info(
         `${channel.label}: ${channel.tarball(
           "excalidraw",
-        )} installs alone at ${version} and bundles draw's imports`,
+        )} installs alone at ${version} and bundles draw's imports for ${MODES.join(
+          " and ",
+        )}`,
       );
       verifyThemesImport(editor, channel, themes);
       console.info(
