@@ -64,7 +64,11 @@ export type NewElementSplit = {
 export class Renderer {
   private scene: Scene;
 
-  constructor(scene: Scene) {
+  constructor(
+    scene: Scene,
+    /** the window whose idle time the visible-elements index rebuilds in */
+    private getOwnerWindow: () => Window = () => window,
+  ) {
     this.scene = scene;
   }
 
@@ -223,6 +227,7 @@ export class Renderer {
     getElementPaintBounds,
     (element, elementsMap) =>
       isTextElement(element) ? getContainerElement(element, elementsMap) : null,
+    () => this.getOwnerWindow(),
   );
 
   /**

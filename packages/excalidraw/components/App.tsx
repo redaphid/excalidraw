@@ -918,7 +918,7 @@ class App extends React.Component<AppProps, AppState> {
 
     this.canvas = this.ownerDocument.createElement("canvas");
     this.rc = rough.canvas(this.canvas);
-    this.renderer = new Renderer(this.scene);
+    this.renderer = new Renderer(this.scene, () => this.ownerWindow);
     this.visibleElements = [];
 
     this.store = new Store(this);
@@ -4095,7 +4095,7 @@ class App extends React.Component<AppProps, AppState> {
     this.scene.destroy();
     this.scene = new Scene();
     this.fonts = new Fonts(this.scene, this.ownerDocument);
-    this.renderer = new Renderer(this.scene);
+    this.renderer = new Renderer(this.scene, () => this.ownerWindow);
     this.files = {};
     this.imageCache.clear();
     this.resizeObserver?.disconnect();
