@@ -101,6 +101,8 @@ export type StaticSceneRenderConfig = {
   scale: number;
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
+  /** called once the scene has been painted, with the state it shows */
+  onPainted?: (appState: StaticCanvasAppState) => void;
 };
 
 export type InteractiveSceneRenderAnimationState = {
