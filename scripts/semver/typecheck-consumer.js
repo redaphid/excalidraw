@@ -3,6 +3,8 @@ const path = require("path");
 
 const { execSync } = require("child_process");
 
+const { urlTarball } = require("./packages");
+
 const ROOT = path.resolve(__dirname, "../..");
 const OUT_DIR = path.join(ROOT, "release");
 const FIXTURE = path.join(__dirname, "consumer");
@@ -20,7 +22,7 @@ const typecheckConsumer = ({ version }) => {
     fs.mkdirSync(into, { recursive: true });
     // Relative names only: Git for Windows' GNU tar reads "D:\..." as a host.
     execSync(
-      `tar -xzf excalidraw-${id}-${version}.tgz --strip-components=1 -C ${path
+      `tar -xzf ${urlTarball(id, version)} --strip-components=1 -C ${path
         .relative(OUT_DIR, into)
         .split(path.sep)
         .join("/")}`,

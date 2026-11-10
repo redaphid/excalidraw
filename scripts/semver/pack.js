@@ -9,19 +9,17 @@ const {
   declarationTarget,
   LOCKSTEP,
   registryManifest,
+  registryTarball,
   siblingClosure,
   sourceName,
   urlManifest,
+  urlTarball,
 } = require("./packages");
 
 const ROOT = path.resolve(__dirname, "../..");
 const PACKAGES_DIR = path.join(ROOT, "packages");
 const OUT_DIR = path.join(ROOT, "release");
 const REGISTRY_DIR = path.join(OUT_DIR, "registry");
-
-const urlTarball = (id, version) => `excalidraw-${id}-${version}.tgz`;
-const registryTarball = (id, version) =>
-  `redaphid-excalidraw-${id}-${version}.tgz`;
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf-8"));
 

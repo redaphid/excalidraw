@@ -62,6 +62,7 @@ import type { ContextMenuItems } from "./components/ContextMenu";
 import type { SnapLine } from "./snapping";
 import type { ImportedDataState } from "./data/types";
 import type { SetViewportOptions } from "./viewport";
+import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
 
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
@@ -1053,6 +1054,21 @@ export interface ExcalidrawProps {
   autoFocus?: boolean;
   generateIdForFile?: (file: File) => string | Promise<string>;
   generateLinkForSelection?: (id: string, type: "element" | "group") => string;
+  /**
+   * A press and release without movement on a rectangle with
+   * `customData: { isButton: true }`. Without this prop such an element is
+   * drawn as a button and takes no clicks: a press selects and drags it.
+   */
+  onButtonClick?: (elementId: ExcalidrawElement["id"]) => void;
+  /**
+   * The hover or pressed state the canvas now shows on a button, for a host
+   * with a layer of its own over the canvas. Called when it changes, during the
+   * pointer event on a press or a hover, and after the update when a change of
+   * view or tool ends a hover.
+   */
+  onButtonHighlight?: (
+    highlight: { id: ExcalidrawElement["id"]; pressed: boolean } | null,
+  ) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{
@@ -1097,6 +1113,19 @@ export interface ExcalidrawProps {
    * `handleKeyboardGlobally` is set.
    */
   frameNavigation?: FrameNavigation;
+  /**
+   * Turns on MIDI knobs: a controller's knobs turn the selection's stroke
+   * width, opacity, sloppiness, font size, position, size, scale, angle and
+   * hues, the next shape's style with nothing selected, and the view's zoom
+   * and pan. Laid out for a Midi Fighter Twister's first bank by default;
+   * any knob can be rebound with `excalidrawAPI.midi.learn(target)`.
+   *
+   * The editor connects on mount only when the browser already allows MIDI;
+   * otherwise call `excalidrawAPI.midi.connect()` from a user gesture.
+   * Compared by `bindings` and `onBindingsChange` identity, so it may be
+   * inlined.
+   */
+  midi?: boolean | MidiOptions;
   /**
    * Rendered inside the UserList "who's here" dropdown (desktop) and inline
    * in the mobile menu's collaborators section, below a divider. Accepts a
@@ -1208,6 +1237,29 @@ export type UIOptions = Partial<{
 
 export type Slide = { frameId: string; included: boolean };
 
+export type MidiOptions = {
+  /** which knob turns what; the Twister layout (`TWISTER_LAYOUT`) when left
+   * out. Give it with `onBindingsChange` to keep learned knobs. */
+  bindings?: readonly MidiBinding[];
+  /** a knob learned or the layout reset: the whole new set */
+  onBindingsChange?: (bindings: MidiBinding[]) => void;
+  /** how knob values are read (default `"auto"`) */
+  encoding?: MidiEncoding;
+  /** channels between a knob and its push switch: a press resets the knob's
+   * target (default 1, the Twister's; `null` turns presses off) */
+  switchChannelOffset?: number | null;
+  /** how far one detent moves a target, overriding `MIDI_TARGETS[id].step`
+   * (its units are the target's: px, degrees, percent, a ratio, or detents
+   * per choice) */
+  steps?: Partial<Record<MidiTargetId, number>>;
+  /** quick turns count for more (default true) */
+  acceleration?: boolean;
+  /** LED ring updates to the controller (default true) */
+  feedback?: boolean;
+  /** a toast naming the value as a knob turns (default true) */
+  toasts?: boolean;
+};
+
 export type FrameNavigation = {
   /** bookmarked frame ids, in order; the host keeps them */
   bookmarks?: readonly string[];
@@ -1285,6 +1337,7 @@ export type AppClassProperties = {
   dismissLinearEditor: App["dismissLinearEditor"];
   flowchart: App["flowchart"];
   frameNavigation: App["frameNavigation"];
+  midi: App["midi"];
   toggleSidebar: App["toggleSidebar"];
   drawShape: App["drawShape"];
   arrowText: App["arrowText"];
@@ -1338,6 +1391,9 @@ export type PointerDownState = Readonly<{
   // them, before it changes them. Empty until then, so always empty in
   // `onPointerDown`, and empty in `onPointerUp` after a plain click.
   originalElements: Map<string, NonDeleted<ExcalidrawElement>>;
+  // what the selected frames carry besides their own children, each mapped to
+  // the frame it belongs to, read with `originalElements`
+  frameContents: Map<string, string>;
   resize: {
     // Handle when resizing, might change during the pointer interaction
     handleType: MaybeTransformHandleType;
@@ -1435,6 +1491,20 @@ export interface ExcalidrawImperativeAPI {
   >["getSceneElementsMapIncludingDeleted"];
   history: {
     clear: InstanceType<typeof App>["resetHistory"];
+  };
+  /** MIDI knobs, with `props.midi` set: `connect()` from a user gesture asks
+   * for access, `learn(target)` binds the next knob turned */
+  midi: Pick<
+    InstanceType<typeof App>["midi"],
+    | "connect"
+    | "disconnect"
+    | "learn"
+    | "cancelLearn"
+    | "setBindings"
+    | "resetBindings"
+  > & {
+    readonly connected: boolean;
+    readonly bindings: readonly MidiBinding[];
   };
   getSceneElements: InstanceType<typeof App>["getSceneElements"];
   getAppState: () => InstanceType<typeof App>["state"];
