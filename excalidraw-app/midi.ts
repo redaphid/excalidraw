@@ -1,3 +1,4 @@
+import { midiSettingsToOptions, useStoredMidi } from "@excalidraw/excalidraw";
 import { useMemo } from "react";
 
 import type {
@@ -6,8 +7,8 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { CommandPaletteItem } from "@excalidraw/excalidraw/components/CommandPalette/types";
 
-import { MIDI_CONFIG_HASH } from "./midi-config/MidiConfigPage";
-import { useStoredMidi } from "./midi-config/storage";
+/** the app's route for midi:config */
+export const MIDI_CONFIG_HASH = "#midi";
 
 const CATEGORY = "MIDI";
 
@@ -20,16 +21,7 @@ export const useMidiKnobs = (excalidrawAPI: ExcalidrawImperativeAPI | null) => {
   const { bindings, setBindings, settings } = useStoredMidi();
 
   const midi: MidiOptions = useMemo(
-    () => ({
-      bindings,
-      onBindingsChange: setBindings,
-      encoding: settings.encoding,
-      acceleration: settings.acceleration,
-      feedback: settings.feedback,
-      toasts: settings.toasts,
-      switchChannelOffset: settings.switchChannelOffset || null,
-      steps: settings.steps,
-    }),
+    () => midiSettingsToOptions(bindings, settings, setBindings),
     [bindings, setBindings, settings],
   );
 

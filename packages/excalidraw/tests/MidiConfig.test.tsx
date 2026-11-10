@@ -1,4 +1,3 @@
-import { TWISTER_LAYOUT } from "@excalidraw/excalidraw";
 import {
   act,
   fireEvent,
@@ -7,10 +6,11 @@ import {
   waitFor,
 } from "@testing-library/react";
 
-import type { MidiBinding } from "@excalidraw/excalidraw";
+import { knobName, MidiConfig } from "../components/MidiConfig/MidiConfig";
+import { TWISTER_LAYOUT } from "../midi";
+import { MIDI_STORAGE_KEYS } from "../midiSettings";
 
-import { STORAGE_KEYS } from "../app_constants";
-import { knobName, MidiConfigPage } from "../midi-config/MidiConfigPage";
+import type { MidiBinding } from "../midi";
 
 /** the knob the hand reached for, as the booth's Twister reports it */
 let speak: ((bytes: number[]) => void) | null = null;
@@ -18,8 +18,7 @@ let speak: ((bytes: number[]) => void) | null = null;
 const stored = <T,>(key: string): T =>
   JSON.parse(localStorage.getItem(key) ?? "null");
 
-const bindings = () =>
-  stored<MidiBinding[] | null>(STORAGE_KEYS.LOCAL_STORAGE_MIDI_BINDINGS);
+const bindings = () => stored<MidiBinding[] | null>(MIDI_STORAGE_KEYS.bindings);
 
 const search = () => screen.getByLabelText("Search properties");
 
@@ -68,13 +67,13 @@ describe("midi:config", () => {
   });
 
   it("shows the Twister layout until something is learned", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     expect(screen.getByTestId("knob-1:1").textContent).toContain("Opacity");
     expect(screen.getByTestId("knob-1:15").textContent).toContain("Select");
   });
 
   it("binds a turned knob to the property typed for it", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     await connect();
 
     // the twentieth knob: bank 2, fifth along
@@ -99,7 +98,7 @@ describe("midi:config", () => {
   });
 
   it("learns the next knob for a property picked first", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     await connect();
 
     fireEvent.change(search(), { target: { value: "undo" } });
@@ -119,7 +118,7 @@ describe("midi:config", () => {
   });
 
   it("takes a knob's press as that knob, not its switch", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     await connect();
 
     act(() => speak!([0xb1, 33, 127]));
@@ -127,7 +126,7 @@ describe("midi:config", () => {
   });
 
   it("unbinds a knob", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     fireEvent.change(search(), { target: { value: "opacity" } });
     fireEvent.click(screen.getByLabelText("Unbind B1·2"));
     expect(bindings()).toEqual(
@@ -136,22 +135,21 @@ describe("midi:config", () => {
   });
 
   it("filters properties and preferences alike", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     fireEvent.change(search(), { target: { value: "accel" } });
     expect(screen.queryByTestId("row-opacity")).toBeNull();
     expect(screen.getByTestId("pref-acceleration")).not.toBeNull();
   });
 
   it("edits a step in place and marks it changed, about:config style", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     const input = screen.getByLabelText("Opacity step");
     fireEvent.change(input, { target: { value: "5" } });
     fireEvent.blur(input);
 
     expect(
-      stored<{ steps: Record<string, number> }>(
-        STORAGE_KEYS.LOCAL_STORAGE_MIDI_SETTINGS,
-      ).steps.opacity,
+      stored<{ steps: Record<string, number> }>(MIDI_STORAGE_KEYS.settings)
+        .steps.opacity,
     ).toBe(5);
     expect(screen.getByTestId("row-opacity").className).toContain(
       "is-modified",
@@ -164,12 +162,11 @@ describe("midi:config", () => {
   });
 
   it("flips a true/false preference on a double click", async () => {
-    render(<MidiConfigPage />);
+    render(<MidiConfig />);
     fireEvent.doubleClick(screen.getByTestId("pref-acceleration"));
     expect(
-      stored<{ acceleration: boolean }>(
-        STORAGE_KEYS.LOCAL_STORAGE_MIDI_SETTINGS,
-      ).acceleration,
+      stored<{ acceleration: boolean }>(MIDI_STORAGE_KEYS.settings)
+        .acceleration,
     ).toBe(false);
   });
 });

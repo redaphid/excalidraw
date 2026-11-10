@@ -601,6 +601,16 @@ export {
   withBinding,
   withoutBinding,
 } from "./midi";
+export { MidiConfig } from "./components/MidiConfig/MidiConfig";
+export {
+  DEFAULT_MIDI_SETTINGS,
+  MIDI_STORAGE_KEYS,
+  loadMidiBindings,
+  loadMidiSettings,
+  midiSettingsToOptions,
+  useStoredMidi,
+} from "./midiSettings";
+export type { MidiSettings, MidiStorageKeys } from "./midiSettings";
 export type {
   MidiBinding,
   MidiControlChange,

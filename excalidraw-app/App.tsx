@@ -6,6 +6,7 @@ import {
   reconcileElements,
   useEditorInterface,
   ExcalidrawAPIProvider,
+  MidiConfig,
   useExcalidrawAPI,
 } from "@excalidraw/excalidraw";
 import { trackEvent } from "@excalidraw/excalidraw/analytics";
@@ -133,8 +134,7 @@ import { isBrowserStorageStateNewer } from "./data/tabSync";
 import { ShareDialog, shareDialogStateAtom } from "./share/ShareDialog";
 import CollabError, { collabErrorIndicatorAtom } from "./collab/CollabError";
 import { useHandleAppTheme } from "./useHandleAppTheme";
-import { useMidiKnobs } from "./midi";
-import { MIDI_CONFIG_HASH, MidiConfigPage } from "./midi-config/MidiConfigPage";
+import { MIDI_CONFIG_HASH, useMidiKnobs } from "./midi";
 import { getPreferredLanguage } from "./app-language/language-detector";
 import { useAppLangCode } from "./app-language/language-state";
 import DebugCanvas, {
@@ -1325,7 +1325,7 @@ const ExcalidrawApp = () => {
     return <ExcalidrawPlusIframeExport />;
   }
   if (hash === MIDI_CONFIG_HASH) {
-    return <MidiConfigPage />;
+    return <MidiConfig />;
   }
 
   return (

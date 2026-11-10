@@ -1,3 +1,6 @@
+import clsx from "clsx";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import {
   bindingKey,
   MIDI_TARGET_IDS,
@@ -8,29 +11,25 @@ import {
   TWISTER_LAYOUT,
   withBinding,
   withoutBinding,
-} from "@excalidraw/excalidraw";
-import clsx from "clsx";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+} from "../../midi";
+import {
+  DEFAULT_MIDI_SETTINGS,
+  MIDI_ENCODINGS,
+  MIDI_STORAGE_KEYS,
+  useStoredMidi,
+} from "../../midiSettings";
+
+import { fuzzyFilter } from "./fuzzy";
+
+import "./MidiConfig.scss";
 
 import type {
   MidiBinding,
   MidiControlChange,
   MidiEncoding,
   MidiTargetId,
-} from "@excalidraw/excalidraw";
-
-import { fuzzyFilter } from "./fuzzy";
-import {
-  DEFAULT_MIDI_SETTINGS,
-  MIDI_ENCODINGS,
-  useStoredMidi,
-} from "./storage";
-
-import "./MidiConfigPage.scss";
-
-import type { MidiSettings } from "./storage";
-
-export const MIDI_CONFIG_HASH = "#midi";
+} from "../../midi";
+import type { MidiSettings, MidiStorageKeys } from "../../midiSettings";
 
 const BANKS = [1, 2, 3, 4] as const;
 const KNOBS_PER_BANK = 16;
@@ -201,10 +200,20 @@ const StepInput = ({
  * midi:config — every property a knob can turn, found by fuzzy search and
  * bound by turning the knob: turn it, type a few letters, press Enter. The
  * preferences below it edit in place, about:config style, and every change
- * reaches open editor tabs at once.
+ * reaches open editor tabs at once. A whole page: mount it on a route of its
+ * own, outside `<Excalidraw>`, with an editor reading `useStoredMidi`.
  */
-export const MidiConfigPage = () => {
-  const { bindings, setBindings, settings, setSettings } = useStoredMidi();
+export const MidiConfig = ({
+  backHref = "/",
+  storageKeys = MIDI_STORAGE_KEYS,
+}: {
+  /** where "back to drawing" goes; null hides it */
+  backHref?: string | null;
+  /** where bindings and preferences are kept (`useStoredMidi`'s keys) */
+  storageKeys?: MidiStorageKeys;
+} = {}) => {
+  const { bindings, setBindings, settings, setSettings } =
+    useStoredMidi(storageKeys);
   const [query, setQuery] = useState("");
   const [armed, setArmed] = useState<Knob | null>(null);
   const [learning, setLearning] = useState<MidiTargetId | null>(null);
@@ -363,9 +372,11 @@ export const MidiConfigPage = () => {
             </button>
           )}
         </div>
-        <a className="midi-config__back" href="/">
-          ← back to drawing
-        </a>
+        {backHref !== null && (
+          <a className="midi-config__back" href={backHref}>
+            ← back to drawing
+          </a>
+        )}
       </header>
 
       <section className="midi-config__twister" aria-label="Twister knobs">

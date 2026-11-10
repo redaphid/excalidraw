@@ -42,8 +42,6 @@ export const STORAGE_KEYS = {
   LOCAL_STORAGE_COLLAB: "excalidraw-collab",
   LOCAL_STORAGE_THEME: "excalidraw-theme",
   LOCAL_STORAGE_DEBUG: "excalidraw-debug",
-  LOCAL_STORAGE_MIDI_BINDINGS: "excalidraw-midi-bindings",
-  LOCAL_STORAGE_MIDI_SETTINGS: "excalidraw-midi-settings",
   VERSION_DATA_STATE: "version-dataState",
   VERSION_FILES: "version-files",
 

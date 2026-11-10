@@ -21,6 +21,30 @@ draw.hypnodroid.com turns it on. Open the command palette (`Ctrl/Cmd+/`) and run
 - **Preferences** (`midi.encoding`, `midi.acceleration`, `midi.feedback`, `midi.toasts`, `midi.switchChannelOffset`) are rows too, filtered by the same search. Double-click a true/false row to flip it.
 - Bindings and preferences live in `localStorage["excalidraw-midi-bindings"]` and `["excalidraw-midi-settings"]`. Every change reaches open editor tabs at once, so the page can sit in one tab while the drawing answers in another.
 
+### In another host
+
+`<MidiConfig>` is exported from `@excalidraw/excalidraw`. It is a whole page, so mount it on a route of its own, outside `<Excalidraw>`, and give the editor the same stored values:
+
+```tsx
+import {
+  Excalidraw,
+  MidiConfig,
+  midiSettingsToOptions,
+  useStoredMidi,
+} from "@excalidraw/excalidraw";
+
+// the config route
+<MidiConfig backHref="/" />;
+
+// the editor
+const { bindings, setBindings, settings } = useStoredMidi();
+const midi = useMemo(
+  () => midiSettingsToOptions(bindings, settings, setBindings),
+  [bindings, settings, setBindings],
+);
+<Excalidraw midi={midi} />;
+```
+
 ## Properties
 
 | Group | Properties |
@@ -79,4 +103,5 @@ The editor answers each device that has spoken on the output port of the same na
 - `packages/excalidraw/midi.ts`: pure. Message parsing, encoder decoding and detection, acceleration, ring positions, bindings and the Twister layout.
 - `packages/excalidraw/components/App.midi.ts`: the editor side. Web MIDI connection, turns, resets, rings, learning.
 - `excalidraw-app/midi.ts`: the editor's knobs and command palette entries.
-- `excalidraw-app/midi-config/`: midi:config (`MidiConfigPage.tsx`), its fuzzy matcher, and the stored bindings and preferences shared with the editor across tabs.
+- `packages/excalidraw/components/MidiConfig/`: midi:config (`<MidiConfig>`) and its fuzzy matcher.
+- `packages/excalidraw/midiSettings.ts`: the stored bindings and preferences, shared across tabs (`useStoredMidi`, `midiSettingsToOptions`).

@@ -1,17 +1,25 @@
-import {
-  isMidiTargetId,
-  MIDI_TARGET_IDS,
-  TWISTER_LAYOUT,
-} from "@excalidraw/excalidraw";
+/**
+ * MIDI bindings and preferences kept in the browser, for hosts that want
+ * them to persist: midi:config (`<MidiConfig>`) edits them, and an editor
+ * reads them through `useStoredMidi` and `midiSettingsToOptions`. Tabs share
+ * them through storage events, so a config page in one tab rebinds the
+ * knobs of an editor in another.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 
-import type {
-  MidiBinding,
-  MidiEncoding,
-  MidiTargetId,
-} from "@excalidraw/excalidraw";
+import { isMidiTargetId, MIDI_TARGET_IDS, TWISTER_LAYOUT } from "./midi";
 
-import { STORAGE_KEYS } from "../app_constants";
+import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
+import type { MidiOptions } from "./types";
+
+/** where they are kept, unless a host names its own keys */
+export const MIDI_STORAGE_KEYS = {
+  bindings: "excalidraw-midi-bindings",
+  settings: "excalidraw-midi-settings",
+} as const;
+
+export type MidiStorageKeys = { bindings: string; settings: string };
 
 /** the preferences the config page edits, besides the bindings */
 export type MidiSettings = {
@@ -71,15 +79,18 @@ const write = (key: string, value: unknown) => {
 };
 
 /** the knobs this browser learned, or the Twister layout */
-export const loadMidiBindings = (): MidiBinding[] => {
-  const saved = read(STORAGE_KEYS.LOCAL_STORAGE_MIDI_BINDINGS);
+export const loadMidiBindings = (
+  keys: MidiStorageKeys = MIDI_STORAGE_KEYS,
+): MidiBinding[] => {
+  const saved = read(keys.bindings);
   return Array.isArray(saved) ? saved.filter(isBinding) : [...TWISTER_LAYOUT];
 };
 
 /** this browser's preferences, each one checked, the rest defaults */
-export const loadMidiSettings = (): MidiSettings => {
-  const saved = (read(STORAGE_KEYS.LOCAL_STORAGE_MIDI_SETTINGS) ??
-    {}) as Partial<MidiSettings>;
+export const loadMidiSettings = (
+  keys: MidiStorageKeys = MIDI_STORAGE_KEYS,
+): MidiSettings => {
+  const saved = (read(keys.settings) ?? {}) as Partial<MidiSettings>;
   const steps: MidiSettings["steps"] = {};
   for (const id of MIDI_TARGET_IDS) {
     const step = saved.steps?.[id];
@@ -110,35 +121,59 @@ export const loadMidiSettings = (): MidiSettings => {
   };
 };
 
+/** the editor's `midi` prop for stored bindings and settings */
+export const midiSettingsToOptions = (
+  bindings: readonly MidiBinding[],
+  settings: MidiSettings,
+  onBindingsChange?: (bindings: MidiBinding[]) => void,
+): MidiOptions => ({
+  bindings,
+  onBindingsChange,
+  encoding: settings.encoding,
+  acceleration: settings.acceleration,
+  feedback: settings.feedback,
+  toasts: settings.toasts,
+  switchChannelOffset: settings.switchChannelOffset || null,
+  steps: settings.steps,
+});
+
 /**
  * The stored bindings and settings, kept in step with every other tab: the
  * config page in one tab rebinds the knobs of an editor in another.
  */
-export const useStoredMidi = () => {
-  const [bindings, setBindingsState] = useState(loadMidiBindings);
-  const [settings, setSettingsState] = useState(loadMidiSettings);
+export const useStoredMidi = (keys: MidiStorageKeys = MIDI_STORAGE_KEYS) => {
+  const { bindings: bindingsKey, settings: settingsKey } = keys;
+  const [bindings, setBindingsState] = useState(() => loadMidiBindings(keys));
+  const [settings, setSettingsState] = useState(() => loadMidiSettings(keys));
 
   useEffect(() => {
+    const keys = { bindings: bindingsKey, settings: settingsKey };
     const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEYS.LOCAL_STORAGE_MIDI_BINDINGS) {
-        setBindingsState(loadMidiBindings());
-      } else if (event.key === STORAGE_KEYS.LOCAL_STORAGE_MIDI_SETTINGS) {
-        setSettingsState(loadMidiSettings());
+      if (event.key === bindingsKey) {
+        setBindingsState(loadMidiBindings(keys));
+      } else if (event.key === settingsKey) {
+        setSettingsState(loadMidiSettings(keys));
       }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [bindingsKey, settingsKey]);
 
-  const setBindings = useCallback((next: MidiBinding[]) => {
-    setBindingsState(next);
-    write(STORAGE_KEYS.LOCAL_STORAGE_MIDI_BINDINGS, next);
-  }, []);
+  const setBindings = useCallback(
+    (next: MidiBinding[]) => {
+      setBindingsState(next);
+      write(bindingsKey, next);
+    },
+    [bindingsKey],
+  );
 
-  const setSettings = useCallback((next: MidiSettings) => {
-    setSettingsState(next);
-    write(STORAGE_KEYS.LOCAL_STORAGE_MIDI_SETTINGS, next);
-  }, []);
+  const setSettings = useCallback(
+    (next: MidiSettings) => {
+      setSettingsState(next);
+      write(settingsKey, next);
+    },
+    [settingsKey],
+  );
 
   return { bindings, setBindings, settings, setSettings };
 };
