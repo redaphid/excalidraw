@@ -180,7 +180,7 @@ const resizeGroup = (
   }
 };
 
-const handleDimensionChange: DragInputCallbackType<
+export const handleDimensionChange: DragInputCallbackType<
   MultiDimensionProps["property"]
 > = ({
   accumulatedChange,
@@ -426,7 +426,7 @@ const handleDimensionChange: DragInputCallbackType<
   scene.triggerUpdate();
 };
 
-const handleDragFinished: DragFinishedCallbackType = ({
+export const handleDragFinished: DragFinishedCallbackType = ({
   setAppState,
   app,
   originalElements,

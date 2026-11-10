@@ -6,6 +6,7 @@ import {
   reconcileElements,
   useEditorInterface,
   ExcalidrawAPIProvider,
+  MidiConfig,
   useExcalidrawAPI,
 } from "@excalidraw/excalidraw";
 import { trackEvent } from "@excalidraw/excalidraw/analytics";
@@ -133,6 +134,7 @@ import { isBrowserStorageStateNewer } from "./data/tabSync";
 import { ShareDialog, shareDialogStateAtom } from "./share/ShareDialog";
 import CollabError, { collabErrorIndicatorAtom } from "./collab/CollabError";
 import { useHandleAppTheme } from "./useHandleAppTheme";
+import { MIDI_CONFIG_HASH, useMidiKnobs } from "./midi";
 import { getPreferredLanguage } from "./app-language/language-detector";
 import { useAppLangCode } from "./app-language/language-state";
 import DebugCanvas, {
@@ -374,6 +376,7 @@ const initializeScene = async (opts: {
 
 const ExcalidrawWrapper = () => {
   const excalidrawAPI = useExcalidrawAPI();
+  const { midi, commands: midiCommands } = useMidiKnobs(excalidrawAPI);
 
   const [errorMessage, setErrorMessage] = useState("");
   const isCollabDisabled = isRunningInIframe();
@@ -947,6 +950,7 @@ const ExcalidrawWrapper = () => {
     >
       <Excalidraw
         viewportStatusFrame={viewportStatusFrame}
+        midi={midi}
         userToFollow={userToFollow}
         onChange={onChange}
         onExport={onExport}
@@ -1287,6 +1291,7 @@ const ExcalidrawWrapper = () => {
                 }
               },
             },
+            ...midiCommands,
           ]}
         />
         {isVisualDebuggerEnabled() && excalidrawAPI && (
@@ -1301,11 +1306,26 @@ const ExcalidrawWrapper = () => {
   );
 };
 
+/** the location hash, kept current */
+const useLocationHash = () => {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  return hash;
+};
+
 const ExcalidrawApp = () => {
+  const hash = useLocationHash();
   const isCloudExportWindow =
     window.location.pathname === "/excalidraw-plus-export";
   if (isCloudExportWindow) {
     return <ExcalidrawPlusIframeExport />;
+  }
+  if (hash === MIDI_CONFIG_HASH) {
+    return <MidiConfig />;
   }
 
   return (

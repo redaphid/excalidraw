@@ -40,7 +40,7 @@ const _shouldKeepAspectRatio = (element: ExcalidrawElement) => {
   return element.type === "image";
 };
 
-const handleDimensionChange: DragInputCallbackType<
+export const handleDimensionChange: DragInputCallbackType<
   DimensionDragInputProps["property"]
 > = ({
   accumulatedChange,
@@ -284,7 +284,7 @@ const handleDimensionChange: DragInputCallbackType<
   }
 };
 
-const handleDragFinished: DragFinishedCallbackType = ({
+export const handleDragFinished: DragFinishedCallbackType = ({
   setAppState,
   app,
   originalElements,
