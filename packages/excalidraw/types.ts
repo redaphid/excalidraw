@@ -62,6 +62,7 @@ import type { ContextMenuItems } from "./components/ContextMenu";
 import type { SnapLine } from "./snapping";
 import type { ImportedDataState } from "./data/types";
 import type { SetViewportOptions } from "./viewport";
+import type { MidiBinding, MidiEncoding } from "./midi";
 
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
@@ -1113,6 +1114,19 @@ export interface ExcalidrawProps {
    */
   frameNavigation?: FrameNavigation;
   /**
+   * Turns on MIDI knobs: a controller's knobs turn the selection's stroke
+   * width, opacity, sloppiness, font size, position, size, scale, angle and
+   * hues, the next shape's style with nothing selected, and the view's zoom
+   * and pan. Laid out for a Midi Fighter Twister's first bank by default;
+   * any knob can be rebound with `excalidrawAPI.midi.learn(target)`.
+   *
+   * The editor connects on mount only when the browser already allows MIDI;
+   * otherwise call `excalidrawAPI.midi.connect()` from a user gesture.
+   * Compared by `bindings` and `onBindingsChange` identity, so it may be
+   * inlined.
+   */
+  midi?: boolean | MidiOptions;
+  /**
    * Rendered inside the UserList "who's here" dropdown (desktop) and inline
    * in the mobile menu's collaborators section, below a divider. Accepts a
    * render function — called with `isMobile` so hosts can render different
@@ -1223,6 +1237,25 @@ export type UIOptions = Partial<{
 
 export type Slide = { frameId: string; included: boolean };
 
+export type MidiOptions = {
+  /** which knob turns what; the Twister layout (`TWISTER_LAYOUT`) when left
+   * out. Give it with `onBindingsChange` to keep learned knobs. */
+  bindings?: readonly MidiBinding[];
+  /** a knob learned or the layout reset: the whole new set */
+  onBindingsChange?: (bindings: MidiBinding[]) => void;
+  /** how knob values are read (default `"auto"`) */
+  encoding?: MidiEncoding;
+  /** channels between a knob and its push switch: a press resets the knob's
+   * target (default 1, the Twister's; `null` turns presses off) */
+  switchChannelOffset?: number | null;
+  /** quick turns count for more (default true) */
+  acceleration?: boolean;
+  /** LED ring updates to the controller (default true) */
+  feedback?: boolean;
+  /** a toast naming the value as a knob turns (default true) */
+  toasts?: boolean;
+};
+
 export type FrameNavigation = {
   /** bookmarked frame ids, in order; the host keeps them */
   bookmarks?: readonly string[];
@@ -1300,6 +1333,7 @@ export type AppClassProperties = {
   dismissLinearEditor: App["dismissLinearEditor"];
   flowchart: App["flowchart"];
   frameNavigation: App["frameNavigation"];
+  midi: App["midi"];
   toggleSidebar: App["toggleSidebar"];
   drawShape: App["drawShape"];
   arrowText: App["arrowText"];
@@ -1453,6 +1487,20 @@ export interface ExcalidrawImperativeAPI {
   >["getSceneElementsMapIncludingDeleted"];
   history: {
     clear: InstanceType<typeof App>["resetHistory"];
+  };
+  /** MIDI knobs, with `props.midi` set: `connect()` from a user gesture asks
+   * for access, `learn(target)` binds the next knob turned */
+  midi: Pick<
+    InstanceType<typeof App>["midi"],
+    | "connect"
+    | "disconnect"
+    | "learn"
+    | "cancelLearn"
+    | "setBindings"
+    | "resetBindings"
+  > & {
+    readonly connected: boolean;
+    readonly bindings: readonly MidiBinding[];
   };
   getSceneElements: InstanceType<typeof App>["getSceneElements"];
   getAppState: () => InstanceType<typeof App>["state"];

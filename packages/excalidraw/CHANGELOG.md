@@ -13,6 +13,11 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### MIDI knobs (2026-11-10)
+
+- New `midi` prop: a MIDI controller's knobs turn the selection's stroke width, opacity, sloppiness, font size, position, size, scale, angle, stroke hue and background hue, the next shape's style with nothing selected, and the view's zoom and pan; one knob steps the selection through the scene. Laid out for a Midi Fighter Twister's first bank by default (`TWISTER_LAYOUT`); pressing a knob resets its target. Each turn lands as one undo step.
+- `excalidrawAPI.midi`: `connect()`, `learn(target)` to bind the next knob turned, `setBindings`, `resetBindings`. Absolute, relative and two's-complement encoders, detected automatically; LED ring feedback to controllers that take it. See `docs/midi-knobs.md`.
+
 ### Wheel navigation (2026-09-13) [#XXXX](https://github.com/excalidraw/excalidraw/pull/XXXX)
 
 - Scrolling while holding the wheel (middle) mouse button zooms the canvas around the pointer, the same as ctrl/cmd+wheel — a wheel-button pan can be zoomed one-handed, without reaching for a modifier.

@@ -386,6 +386,20 @@ export const colorToHex = (color: string): string | null => {
   return rgbToHex(r, g, b, a);
 };
 
+/**
+ * @returns the color turned `degrees` around the hue wheel, keeping its
+ *  saturation, lightness and alpha; the input unchanged when it isn't a valid
+ *  color or carries no hue to turn (transparent, or a gray)
+ */
+export const spinColorHue = (color: string, degrees: number): string => {
+  const tc = tinycolor(color);
+  if (!tc.isValid() || tc.getAlpha() === 0 || tc.toHsl().s === 0) {
+    return color;
+  }
+  const { r, g, b, a } = tc.spin(degrees).toRgb();
+  return rgbToHex(r, g, b, a);
+};
+
 export const isTransparent = (color: string) => {
   return tinycolor(color).getAlpha() === 0;
 };

@@ -27,7 +27,7 @@ interface PositionProps {
   appState: AppState;
 }
 
-const handlePositionChange: DragInputCallbackType<"x" | "y"> = ({
+export const handlePositionChange: DragInputCallbackType<"x" | "y"> = ({
   accumulatedChange,
   instantChange,
   originalElements,

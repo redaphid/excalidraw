@@ -120,6 +120,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     renderScrollbars,
     viewportStatusFrame,
     frameNavigation,
+    midi,
     currentUserControls,
     imageOptions,
   } = props;
@@ -268,6 +269,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           renderScrollbars={renderScrollbars}
           viewportStatusFrame={viewportStatusFrame}
           frameNavigation={frameNavigation}
+          midi={midi}
           currentUserControls={currentUserControls}
           imageOptions={normalizedImageOptions}
         >
@@ -292,6 +294,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     ui: prevUI,
     activeTool: prevActiveTool,
     frameNavigation: prevFrameNavigation,
+    midi: prevMidi,
     ...prev
   } = prevProps;
   const {
@@ -302,6 +305,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     ui: nextUI,
     activeTool: nextActiveTool,
     frameNavigation: nextFrameNavigation,
+    midi: nextMidi,
     ...next
   } = nextProps;
 
@@ -388,6 +392,24 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
       isSlidesSame);
 
   if (!isFrameNavigationSame) {
+    return false;
+  }
+
+  // compare `midi` by its switches, bindings and callback so that hosts
+  // inlining the object don't bust the memo every render
+  const isMidiSame =
+    prevMidi === nextMidi ||
+    (typeof prevMidi === "object" &&
+      typeof nextMidi === "object" &&
+      prevMidi.bindings === nextMidi.bindings &&
+      prevMidi.onBindingsChange === nextMidi.onBindingsChange &&
+      prevMidi.encoding === nextMidi.encoding &&
+      prevMidi.switchChannelOffset === nextMidi.switchChannelOffset &&
+      prevMidi.feedback === nextMidi.feedback &&
+      prevMidi.acceleration === nextMidi.acceleration &&
+      prevMidi.toasts === nextMidi.toasts);
+
+  if (!isMidiSame) {
     return false;
   }
 
@@ -565,6 +587,19 @@ export { Fonts } from "./fonts/Fonts";
 export { setCustomTextMetricsProvider } from "@excalidraw/element";
 
 export { CommandPalette } from "./components/CommandPalette/CommandPalette";
+
+export {
+  MIDI_TARGETS,
+  MIDI_TARGET_IDS,
+  TWISTER_LAYOUT,
+  isMidiTargetId,
+} from "./midi";
+export type {
+  MidiBinding,
+  MidiEncoding,
+  MidiTarget,
+  MidiTargetId,
+} from "./midi";
 
 export {
   renderSpreadsheet,

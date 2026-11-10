@@ -133,6 +133,7 @@ import { isBrowserStorageStateNewer } from "./data/tabSync";
 import { ShareDialog, shareDialogStateAtom } from "./share/ShareDialog";
 import CollabError, { collabErrorIndicatorAtom } from "./collab/CollabError";
 import { useHandleAppTheme } from "./useHandleAppTheme";
+import { useMidiKnobs } from "./midi";
 import { getPreferredLanguage } from "./app-language/language-detector";
 import { useAppLangCode } from "./app-language/language-state";
 import DebugCanvas, {
@@ -374,6 +375,7 @@ const initializeScene = async (opts: {
 
 const ExcalidrawWrapper = () => {
   const excalidrawAPI = useExcalidrawAPI();
+  const { midi, commands: midiCommands } = useMidiKnobs(excalidrawAPI);
 
   const [errorMessage, setErrorMessage] = useState("");
   const isCollabDisabled = isRunningInIframe();
@@ -947,6 +949,7 @@ const ExcalidrawWrapper = () => {
     >
       <Excalidraw
         viewportStatusFrame={viewportStatusFrame}
+        midi={midi}
         userToFollow={userToFollow}
         onChange={onChange}
         onExport={onExport}
@@ -1287,6 +1290,7 @@ const ExcalidrawWrapper = () => {
                 }
               },
             },
+            ...midiCommands,
           ]}
         />
         {isVisualDebuggerEnabled() && excalidrawAPI && (

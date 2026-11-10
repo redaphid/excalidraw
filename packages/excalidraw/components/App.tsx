@@ -436,6 +436,7 @@ import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
 import { AppFlowchart } from "./App.flowchart";
 import { AppFrameNavigation } from "./App.frameNavigation";
+import { AppMidi } from "./App.midi";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -708,6 +709,7 @@ class App extends React.Component<AppProps, AppState> {
   public toolDrag: AppToolDrag = new AppToolDrag(this);
   public flowchart: AppFlowchart = new AppFlowchart(this);
   public frameNavigation: AppFrameNavigation = new AppFrameNavigation(this);
+  public midi: AppMidi = new AppMidi(this);
   public cursor: AppCursor = new AppCursor(this);
   public arrowText: AppArrowText = new AppArrowText(this);
   public button: AppButton = new AppButton(this, {
@@ -832,6 +834,7 @@ class App extends React.Component<AppProps, AppState> {
       history: {
         clear: this.resetHistory,
       },
+      midi: this.midi,
       setViewport: this.viewport.setViewport,
       getViewportOffsets: this.viewport.getOffsets,
       setElementRenderOverrides: this.setElementRenderOverrides,
@@ -4027,6 +4030,7 @@ class App extends React.Component<AppProps, AppState> {
     this.scene.onUpdate(this.triggerRender);
     this.scene.onUpdate(() => this.frameNavigation.sceneUpdated.trigger());
     this.addEventListeners();
+    this.midi.mount();
 
     if (this.props.autoFocus && this.excalidrawContainerRef.current) {
       this.focusContainer();
@@ -4072,6 +4076,7 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   public componentWillUnmount() {
+    this.midi.disconnect();
     // we're recreating the api object reference so that the
     // <ExcalidrawAPIContext.Provider/> picks up on it
     this.api = { ...this.api, isDestroyed: true };
@@ -4469,6 +4474,12 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
+    this.midi.handleStateChange(prevState);
+    if (prevProps.midi && !this.props.midi) {
+      this.midi.disconnect();
+    } else if (!prevProps.midi && this.props.midi) {
+      this.midi.mount();
+    }
     if (
       prevState.scrollX !== this.state.scrollX ||
       prevState.scrollY !== this.state.scrollY ||
