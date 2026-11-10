@@ -208,6 +208,28 @@ describe("renderFrameOverlay", () => {
     });
   });
 
+  describe("when the board has no theme", () => {
+    describe.each([
+      ["light", "rgba(30, 30, 30, 0.2)"],
+      ["dark", "rgba(211, 211, 211, 0.35)"],
+    ] as const)("on a %s canvas", (theme, ink) => {
+      beforeEach(() => {
+        renderFrameOverlay(recorded.context, {
+          frames: frames.slice(0, 1),
+          appState: { ...appStateAt(16), theme },
+        });
+      });
+
+      it("strokes a one pixel hairline", () => {
+        expect(recorded.strokes).toEqual([1]);
+      });
+
+      it("strokes it in the default ink at low alpha, not grey", () => {
+        expect(recorded.strokeColors).toEqual([ink]);
+      });
+    });
+  });
+
   describe("when the context has no roundRect", () => {
     let rects: number[][];
 

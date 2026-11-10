@@ -245,15 +245,15 @@ A value the editor can't parse is ignored, and the built-in value stays.
 | `--canvas-grid-style` | `dashed` or `solid` minor lines | `dashed` |
 | `--color-selection` | any CSS color: selection outlines, handles, lasso | `#6965db` |
 | `--canvas-handle-fill` | any CSS color: inside of the resize handles | `#ffffff` |
-| `--canvas-frame-color` | any CSS color | `#bbbbbb`, `#5e5e5e` in dark mode |
-| `--canvas-frame-width` | outline width in screen pixels | `2` |
+| `--canvas-frame-color` | any CSS color | `rgba(30, 30, 30, 0.2)`, `rgba(211, 211, 211, 0.35)` in dark mode |
+| `--canvas-frame-width` | outline width in screen pixels | `1` |
 | `--canvas-frame-radius` | corner radius in screen pixels, 0 for square | `8` |
 | `--canvas-frame-name-color` | any CSS color (frame names are DOM) | `#999999` |
 | `--canvas-frame-name-size` | name font size in screen pixels; names are set in `--ui-font` | `14` |
 | `--canvas-sticky-note-shadow` | `none`, or `<x> <y> [<blur>] <color>`: the offset in scene units at detail scale 1 (each at most 16 either way), an optional blur radius as in `box-shadow` (the larger offset plus the blur is held to 20, the room around a note's cached bitmap; a larger blur shrinks to fit) and any CSS color | `3 3 rgba(0, 0, 0, 0.16)` |
 | `--canvas-sticky-note-edge` | `none`, or `<width> <color>`: the line just inside a note's outline, in scene units (above 0, at most 8) | `0.5 rgba(0, 0, 0, 0.08)` |
 
-`--canvas-background` replaces only the default white background that nobody picked. When the user picks a canvas background, white included, the editor paints that one. The pick is recorded in `appState.viewBackgroundColorPicked`, which is saved, exported and undone with `viewBackgroundColor`. A host that persists `viewBackgroundColor` by hand must persist this flag beside it, or a picked white turns back into the theme's canvas on reload. A scene that sets white without the flag, such as a file from upstream Excalidraw, shows the theme's canvas. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in outline. An exported frame name takes the theme's name size, in the built-in color.
+`--canvas-background` replaces only the default white background that nobody picked. When the user picks a canvas background, white included, the editor paints that one. The pick is recorded in `appState.viewBackgroundColorPicked`, which is saved, exported and undone with `viewBackgroundColor`. A host that persists `viewBackgroundColor` by hand must persist this flag beside it, or a picked white turns back into the theme's canvas on reload. A scene that sets white without the flag, such as a file from upstream Excalidraw, shows the theme's canvas. Exports never use theme colors: an exported sticky note has the built-in shadow and edge, as an exported frame has the built-in hairline outline. An exported frame name takes the theme's name size, in the built-in color.
 
 ### Frames on a host's own layer
 

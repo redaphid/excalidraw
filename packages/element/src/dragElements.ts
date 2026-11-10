@@ -86,6 +86,13 @@ export const dragSelectedElements = (
         elementsToUpdate.add(element);
       }
     }
+    const elementsMap = scene.getNonDeletedElementsMap();
+    for (const id of pointerDownState.frameContents.keys()) {
+      const element = elementsMap.get(id);
+      if (element) {
+        elementsToUpdate.add(element);
+      }
+    }
   }
 
   const origElements: ExcalidrawElement[] = [];

@@ -28,6 +28,7 @@ type StaticCanvasProps = {
   scale: number;
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
+  onPainted?: (appState: StaticCanvasAppState) => void;
 };
 
 const StaticCanvas = (props: StaticCanvasProps) => {
@@ -66,6 +67,7 @@ const StaticCanvas = (props: StaticCanvasProps) => {
         visibleElements: props.visibleElements,
         appState: props.appState,
         renderConfig: props.renderConfig,
+        onPainted: props.onPainted,
       },
       isRenderThrottlingEnabled(),
     );

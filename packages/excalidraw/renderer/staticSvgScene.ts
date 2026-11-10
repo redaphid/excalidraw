@@ -30,6 +30,7 @@ import {
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
+import { getButtonIcon, isButtonElement } from "@excalidraw/element";
 import { getLineHeightInPx } from "@excalidraw/element";
 import {
   isArrowElement,
@@ -52,8 +53,10 @@ import {
 import { getElementAbsoluteCoords } from "@excalidraw/element";
 
 import type {
+  ExcalidrawButtonElement,
   ExcalidrawElement,
   ExcalidrawTextElementWithContainer,
+  NonDeleted,
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
 
@@ -97,6 +100,25 @@ const maybeWrapNodesInFrameClipPath = (
   }
 
   return null;
+};
+
+const createButtonIconNode = (
+  button: NonDeleted<ExcalidrawButtonElement>,
+  svgRoot: SVGElement,
+  renderConfig: SVGRenderConfig,
+) => {
+  const { corners, cornerWidth } = getButtonIcon(button);
+  const color = applyDarkModeFilter(
+    button.strokeColor,
+    renderConfig.theme === THEME.DARK,
+  );
+  const icon = svgRoot.ownerDocument.createElementNS(SVG_NS, "polygon");
+  icon.setAttribute("points", corners.join(" "));
+  icon.setAttribute("fill", color);
+  icon.setAttribute("stroke", color);
+  icon.setAttribute("stroke-width", `${cornerWidth}`);
+  icon.setAttribute("stroke-linejoin", "round");
+  return icon;
 };
 
 const renderElementToSvg = (
@@ -303,6 +325,9 @@ const renderElementToSvg = (
           offsetY || 0
         }) rotate(${degree} ${cx} ${cy})`,
       );
+      if (isButtonElement(element)) {
+        node.appendChild(createButtonIconNode(element, svgRoot, renderConfig));
+      }
 
       const g = maybeWrapNodesInFrameClipPath(
         element,
@@ -780,13 +805,18 @@ const renderElementToSvg = (
         rect.setAttribute("ry", FRAME_STYLE.radius.toString());
 
         rect.setAttribute("fill", "none");
+        const dark = renderConfig.theme === THEME.DARK;
         rect.setAttribute(
           "stroke",
-          renderConfig.theme === THEME.DARK
-            ? FRAME_STYLE.strokeColorDarkTheme
-            : FRAME_STYLE.strokeColor,
+          dark ? FRAME_STYLE.outlineInkDarkTheme : FRAME_STYLE.outlineInk,
         );
-        rect.setAttribute("stroke-width", FRAME_STYLE.strokeWidth.toString());
+        rect.setAttribute(
+          "stroke-opacity",
+          `${
+            dark ? FRAME_STYLE.outlineAlphaDarkTheme : FRAME_STYLE.outlineAlpha
+          }`,
+        );
+        rect.setAttribute("stroke-width", FRAME_STYLE.outlineWidth.toString());
 
         addToRoot(rect, element);
       }

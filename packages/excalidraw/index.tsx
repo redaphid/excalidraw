@@ -102,6 +102,8 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onLibraryChange,
     autoFocus = false,
     generateIdForFile,
+    onButtonClick,
+    onButtonHighlight,
     onLinkOpen,
     generateLinkForSelection,
     onPointerDown,
@@ -118,6 +120,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     renderScrollbars,
     viewportStatusFrame,
     frameNavigation,
+    midi,
     currentUserControls,
     imageOptions,
   } = props;
@@ -249,6 +252,8 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           onLibraryChange={onLibraryChange}
           autoFocus={autoFocus}
           generateIdForFile={generateIdForFile}
+          onButtonClick={onButtonClick}
+          onButtonHighlight={onButtonHighlight}
           onLinkOpen={onLinkOpen}
           generateLinkForSelection={generateLinkForSelection}
           onPointerDown={onPointerDown}
@@ -264,6 +269,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           renderScrollbars={renderScrollbars}
           viewportStatusFrame={viewportStatusFrame}
           frameNavigation={frameNavigation}
+          midi={midi}
           currentUserControls={currentUserControls}
           imageOptions={normalizedImageOptions}
         >
@@ -288,6 +294,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     ui: prevUI,
     activeTool: prevActiveTool,
     frameNavigation: prevFrameNavigation,
+    midi: prevMidi,
     ...prev
   } = prevProps;
   const {
@@ -298,6 +305,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
     ui: nextUI,
     activeTool: nextActiveTool,
     frameNavigation: nextFrameNavigation,
+    midi: nextMidi,
     ...next
   } = nextProps;
 
@@ -384,6 +392,25 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
       isSlidesSame);
 
   if (!isFrameNavigationSame) {
+    return false;
+  }
+
+  // compare `midi` by its switches, bindings and callback so that hosts
+  // inlining the object don't bust the memo every render
+  const isMidiSame =
+    prevMidi === nextMidi ||
+    (typeof prevMidi === "object" &&
+      typeof nextMidi === "object" &&
+      prevMidi.bindings === nextMidi.bindings &&
+      prevMidi.onBindingsChange === nextMidi.onBindingsChange &&
+      prevMidi.encoding === nextMidi.encoding &&
+      prevMidi.switchChannelOffset === nextMidi.switchChannelOffset &&
+      prevMidi.feedback === nextMidi.feedback &&
+      prevMidi.acceleration === nextMidi.acceleration &&
+      prevMidi.steps === nextMidi.steps &&
+      prevMidi.toasts === nextMidi.toasts);
+
+  if (!isMidiSame) {
     return false;
   }
 
@@ -477,7 +504,7 @@ export {
   loadLibraryFromBlob,
 } from "./data/blob";
 export { mergeLibraryItems, getLibraryItemsHash } from "./data/library";
-export { isLinearElement } from "@excalidraw/element";
+export { isButtonElement, isLinearElement } from "@excalidraw/element";
 
 export {
   FONT_FAMILY,
@@ -563,6 +590,37 @@ export { setCustomTextMetricsProvider } from "@excalidraw/element";
 export { CommandPalette } from "./components/CommandPalette/CommandPalette";
 
 export {
+  MIDI_TARGETS,
+  MIDI_TARGET_IDS,
+  TWISTER_LAYOUT,
+  bindingKey,
+  isMidiTargetId,
+  midiTargetPath,
+  midiTargetStep,
+  parseMidiMessage,
+  withBinding,
+  withoutBinding,
+} from "./midi";
+export { MidiConfig } from "./components/MidiConfig/MidiConfig";
+export {
+  DEFAULT_MIDI_SETTINGS,
+  MIDI_STORAGE_KEYS,
+  loadMidiBindings,
+  loadMidiSettings,
+  midiSettingsToOptions,
+  useStoredMidi,
+} from "./midiSettings";
+export type { MidiSettings, MidiStorageKeys } from "./midiSettings";
+export type {
+  MidiBinding,
+  MidiControlChange,
+  MidiEncoding,
+  MidiTarget,
+  MidiTargetGroup,
+  MidiTargetId,
+} from "./midi";
+
+export {
   renderSpreadsheet,
   tryParseSpreadsheet,
   isSpreadsheetValidForChartType,
@@ -603,6 +661,8 @@ export { _useOnAppStateChange as useOnExcalidrawStateChange };
 export { applyDarkModeFilter, getStrokeWidthByKey };
 
 export { renderFrameOverlay } from "./renderer/frameOverlay";
+export { frameNameOpacities } from "./frameNameVisibility";
+export type { FrameNameLayout } from "./frameNameVisibility";
 export type {
   FrameOverlayAppState,
   FrameOverlayOptions,

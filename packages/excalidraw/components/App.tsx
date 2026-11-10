@@ -177,6 +177,8 @@ import {
   hasBoundingBox,
   getCommonFrameId,
   getFrameChildren,
+  getFrameContents,
+  getFrameJoins,
   getFrameChildrenInsertionIndex,
   isCursorInFrame,
   addElementsToFrame,
@@ -428,11 +430,13 @@ import { AppText } from "./App.text";
 import { AppTextTool } from "./App.textTool";
 import { AppBucketFill } from "./App.bucketFill";
 import { AppToolDrag, TOOL_DRAG_PREVIEW_OPACITY } from "./App.toolDrag";
+import { AppButton } from "./App.button";
 import { AppCursor } from "./App.cursor";
 import { AppDrawShape } from "./App.drawshape";
 import { AppDuplicate } from "./App.duplicate";
 import { AppFlowchart } from "./App.flowchart";
 import { AppFrameNavigation } from "./App.frameNavigation";
+import { AppMidi } from "./App.midi";
 import { AppPan } from "./App.pan";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -496,6 +500,7 @@ import type {
   ExcalidrawImperativeAPIEventMap,
   GenerateDiagramToCode,
   NullableGridSize,
+  StaticCanvasAppState,
   UIConfig,
 } from "../types";
 import type { CssTheme } from "../cssTheme";
@@ -704,8 +709,13 @@ class App extends React.Component<AppProps, AppState> {
   public toolDrag: AppToolDrag = new AppToolDrag(this);
   public flowchart: AppFlowchart = new AppFlowchart(this);
   public frameNavigation: AppFrameNavigation = new AppFrameNavigation(this);
+  public midi: AppMidi = new AppMidi(this);
   public cursor: AppCursor = new AppCursor(this);
   public arrowText: AppArrowText = new AppArrowText(this);
+  public button: AppButton = new AppButton(this, {
+    getPointerCount: () => gesture.pointers.size,
+    pointerDown: (event) => this.handleCanvasPointerDown(event),
+  });
   public pan: AppPan = new AppPan(this, {
     getPointerCount: () => gesture.pointers.size,
     isDraggingScrollBar: () => isDraggingScrollBar,
@@ -824,6 +834,7 @@ class App extends React.Component<AppProps, AppState> {
       history: {
         clear: this.resetHistory,
       },
+      midi: this.midi,
       setViewport: this.viewport.setViewport,
       getViewportOffsets: this.viewport.getOffsets,
       setElementRenderOverrides: this.setElementRenderOverrides,
@@ -2796,6 +2807,7 @@ class App extends React.Component<AppProps, AppState> {
                                 ? getSettledBitmapCount()
                                 : undefined,
                             }}
+                            onPainted={this.onStaticScenePainted}
                           />
                           {newElementLayer && (
                             <NewElementCanvas
@@ -2858,9 +2870,11 @@ class App extends React.Component<AppProps, AppState> {
                             handleCanvasRef={this.handleInteractiveCanvasRef}
                             onContextMenu={this.handleCanvasContextMenu}
                             onClick={this.handleCanvasClick}
-                            onPointerMove={this.handleCanvasPointerMove}
+                            buttonHighlight={this.button.highlight}
+                            onPointerMove={this.handleInteractivePointerMove}
                             onPointerUp={this.handleCanvasPointerUp}
                             onPointerCancel={this.handleCanvasPointerCancel}
+                            onPointerLeave={this.button.clear}
                             onTouchMove={this.handleTouchMove}
                             onPointerDown={this.handleCanvasPointerDown}
                             onDoubleClick={this.handleCanvasDoubleClick}
@@ -4016,6 +4030,7 @@ class App extends React.Component<AppProps, AppState> {
     this.scene.onUpdate(this.triggerRender);
     this.scene.onUpdate(() => this.frameNavigation.sceneUpdated.trigger());
     this.addEventListeners();
+    this.midi.mount();
 
     if (this.props.autoFocus && this.excalidrawContainerRef.current) {
       this.focusContainer();
@@ -4061,6 +4076,7 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   public componentWillUnmount() {
+    this.midi.disconnect();
     // we're recreating the api object reference so that the
     // <ExcalidrawAPIContext.Provider/> picks up on it
     this.api = { ...this.api, isDestroyed: true };
@@ -4458,6 +4474,20 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
+    this.midi.handleStateChange(prevState);
+    if (prevProps.midi && !this.props.midi) {
+      this.midi.disconnect();
+    } else if (!prevProps.midi && this.props.midi) {
+      this.midi.mount();
+    }
+    if (
+      prevState.scrollX !== this.state.scrollX ||
+      prevState.scrollY !== this.state.scrollY ||
+      prevState.zoom !== this.state.zoom ||
+      prevState.activeTool !== this.state.activeTool
+    ) {
+      this.button.handleViewChange();
+    }
     const renderOverridesUpdatePending = this.renderOverridesUpdatePending;
     this.renderOverridesUpdatePending = false;
     // Only a requested visual update can skip the document pipeline. Real
@@ -5662,6 +5692,29 @@ ${css}
           includeBoundTextElement: true,
           includeElementsInFrames: true,
         });
+        const nudgedFrames = selectedElements
+          .filter(isFrameLikeElement)
+          .map((frame) => frame.id);
+        const nudgedContents = getFrameContents(
+          this.scene.getNonDeletedElementsMap(),
+          nudgedFrames,
+        );
+        selectedElements = [
+          ...new Set([
+            ...selectedElements,
+            ...[...nudgedContents.keys()].flatMap((id) => {
+              const element = this.scene.getNonDeletedElementsMap().get(id);
+              if (!element) {
+                return [];
+              }
+              const label = getBoundTextElement(
+                element,
+                this.scene.getNonDeletedElementsMap(),
+              );
+              return label ? [element, label] : [element];
+            }),
+          ]),
+        ];
 
         const arrowIdsToRemove = new Set<string>();
 
@@ -5724,6 +5777,18 @@ ${css}
             simultaneouslyUpdated: selectedElements,
           });
         });
+
+        for (const [element, frameId] of getFrameJoins(
+          this.scene.getNonDeletedElementsMap(),
+          nudgedContents,
+          nudgedFrames,
+        )) {
+          this.scene.mutateElement(
+            element,
+            { frameId },
+            { informMutation: false, isDragging: false },
+          );
+        }
 
         this.scene.triggerUpdate();
 
@@ -6468,7 +6533,8 @@ ${css}
     if (
       !this.isInteractionEnabled() ||
       this.state.editingTextElement ||
-      !this.shouldHandleBrowserCanvasDoubleClick(event.type)
+      !this.shouldHandleBrowserCanvasDoubleClick(event.type) ||
+      this.button.isClickableAt(event)
     ) {
       return;
     }
@@ -7075,6 +7141,13 @@ ${css}
     this.updateFrameToHighlight(
       frame && isFrameLikeElement(frame) ? frame : null,
     );
+  };
+
+  private handleInteractivePointerMove = (
+    event: React.PointerEvent<HTMLCanvasElement>,
+  ) => {
+    this.handleCanvasPointerMove(event);
+    this.button.handlePointerMove(event);
   };
 
   private handleCanvasPointerMove = (
@@ -7804,6 +7877,10 @@ ${css}
   private handleCanvasPointerDown = (
     event: React.PointerEvent<HTMLElement>,
   ) => {
+    if (this.button.handlePointerDown(event)) {
+      return;
+    }
+
     if (
       !this.isInteractionEnabled() &&
       !this.isToolSupported(this.state.activeTool.type)
@@ -8318,6 +8395,7 @@ ${css}
   private handleCanvasPointerCancel = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
+    this.button.clear();
     this.removePointer(event);
     this.maybeCleanupAfterMissingPointerUp(event.nativeEvent);
   };
@@ -8325,6 +8403,9 @@ ${css}
   private handleCanvasPointerUp = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
+    if (this.button.handlePointerUp(event)) {
+      return;
+    }
     if (!this.isInteractionEnabled()) {
       if (this.isLinksEnabled() || this.isEmbedsEnabled()) {
         this.handleInteractiveContentPointerUp(event);
@@ -8517,6 +8598,7 @@ ${css}
       lastCoords: { ...origin },
       // filled by snapshotGestureElements once the gesture transforms
       originalElements: new Map(),
+      frameContents: new Map(),
       resize: {
         handleType: false,
         isResizing: false,
@@ -8571,10 +8653,21 @@ ${css}
         originals.set(element.id, deepCopyElement(element));
       }
     };
-    for (const element of this.scene.getSelectedElements({
+    const selected = this.scene.getSelectedElements({
       selectedElementIds: this.state.selectedElementIds,
       includeElementsInFrames: true,
-    })) {
+    });
+    const contents = getFrameContents(
+      elementsMap,
+      selected.filter(isFrameLikeElement).map((frame) => frame.id),
+    );
+    contents.forEach((frameId, id) =>
+      pointerDownState.frameContents.set(id, frameId),
+    );
+    for (const element of [
+      ...selected,
+      ...[...contents.keys()].flatMap((id) => elementsMap.get(id) ?? []),
+    ]) {
       copy(element);
       copy(getBoundTextElement(element, elementsMap));
     }
@@ -10925,10 +11018,12 @@ ${css}
         let dx = pointerCoords.x - newElement.x;
         let dy = pointerCoords.y - newElement.y;
 
-        // Allows dots to avoid being flagged as infinitely small
+        // Allows dots to avoid being flagged as infinitely small. The nudge is
+        // at the stroke's own scale so a tap far in is a dot, not a dash.
         if (dx === points[0][0] && dy === points[0][1]) {
-          dy += 0.0001;
-          dx += 0.0001;
+          const nudge = 0.0001 * getElementDetailScale(newElement);
+          dy += nudge;
+          dx += nudge;
         }
 
         const pressures = newElement.simulatePressure
@@ -11326,6 +11421,21 @@ ${css}
             this.state,
             this,
           );
+
+          for (const [element, frameId] of getFrameJoins(
+            nextElements,
+            pointerDownState.frameContents,
+            this.scene
+              .getSelectedElements(this.state)
+              .filter(isFrameLikeElement)
+              .map((frame) => frame.id),
+          )) {
+            this.scene.mutateElement(
+              element,
+              { frameId },
+              { informMutation: false, isDragging: false },
+            );
+          }
 
           this.scene.replaceAllElements(nextElements);
         }
@@ -13140,6 +13250,30 @@ ${css}
       });
     }
   }, ZOOM_SETTLE_TIMEOUT);
+
+  private lastPaintedZoom = 0;
+
+  /**
+   * Holds a pending zoom settle until the next animation frame starts, then
+   * gives it its full timeout. Until that frame the zoomed paint is not on
+   * screen and wheel input queued meanwhile is not delivered, so a settle
+   * timed from the tick would fire before the next tick could arrive. A
+   * hidden tab starts no frames, so the settle waits until it is shown.
+   */
+  private onStaticScenePainted = (appState: StaticCanvasAppState) => {
+    const settle = this.resetShouldCacheIgnoreZoomDebounced;
+    const zoomChanged = appState.zoom.value !== this.lastPaintedZoom;
+    this.lastPaintedZoom = appState.zoom.value;
+    if (!zoomChanged || !settle.pending()) {
+      return;
+    }
+    settle.hold();
+    this.ownerWindow.requestAnimationFrame(() => {
+      if (!this.unmounted && settle.pending()) {
+        settle();
+      }
+    });
+  };
 
   private updateDOMRect = (cb?: () => void) => {
     if (this.excalidrawContainerRef?.current) {
