@@ -134,6 +134,7 @@ import { ShareDialog, shareDialogStateAtom } from "./share/ShareDialog";
 import CollabError, { collabErrorIndicatorAtom } from "./collab/CollabError";
 import { useHandleAppTheme } from "./useHandleAppTheme";
 import { useMidiKnobs } from "./midi";
+import { MIDI_CONFIG_HASH, MidiConfigPage } from "./midi-config/MidiConfigPage";
 import { getPreferredLanguage } from "./app-language/language-detector";
 import { useAppLangCode } from "./app-language/language-state";
 import DebugCanvas, {
@@ -1305,11 +1306,26 @@ const ExcalidrawWrapper = () => {
   );
 };
 
+/** the location hash, kept current */
+const useLocationHash = () => {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  return hash;
+};
+
 const ExcalidrawApp = () => {
+  const hash = useLocationHash();
   const isCloudExportWindow =
     window.location.pathname === "/excalidraw-plus-export";
   if (isCloudExportWindow) {
     return <ExcalidrawPlusIframeExport />;
+  }
+  if (hash === MIDI_CONFIG_HASH) {
+    return <MidiConfigPage />;
   }
 
   return (

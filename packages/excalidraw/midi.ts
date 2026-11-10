@@ -26,17 +26,43 @@ export const MIDI_TARGET_IDS = [
   "panX",
   "panY",
   "select",
+  "strokeSaturation",
+  "strokeLightness",
+  "backgroundSaturation",
+  "backgroundLightness",
+  "strokeStyle",
+  "fillStyle",
+  "roundness",
+  "textAlign",
+  "layer",
+  "history",
+  "gridStep",
 ] as const;
 
 export type MidiTargetId = typeof MIDI_TARGET_IDS[number];
 
+export type MidiTargetGroup =
+  | "shape"
+  | "style"
+  | "colour"
+  | "text"
+  | "view"
+  | "edit";
+
 export type MidiTarget = {
   id: MidiTargetId;
+  group: MidiTargetGroup;
   label: string;
+  /** a line for the config page */
+  description: string;
   /** how far one detent moves the target: screen px for position, size and
-   * pan; degrees for angle and hue; percent for opacity; and for the sizes
-   * that grow by a ratio (stroke width, scale, zoom) the fraction they grow by */
+   * pan; degrees for angle and hue; percent for opacity, saturation and
+   * lightness; for the sizes that grow by a ratio (stroke width, scale,
+   * zoom) the fraction they grow by; and for a choice (`options`), the
+   * detents it takes to move to the next one */
   step: number;
+  /** a choice turned through in order rather than a number */
+  options?: readonly string[];
   /** the span the LED ring shows; targets without one have their ring
    * recentred after each turn, a jog wheel rather than a gauge */
   ring?: { min: number; max: number; log?: boolean };
@@ -46,74 +72,203 @@ export type MidiTarget = {
   needsSelection?: boolean;
 };
 
+const target = (
+  id: MidiTargetId,
+  group: MidiTargetGroup,
+  label: string,
+  description: string,
+  rest: Omit<MidiTarget, "id" | "group" | "label" | "description">,
+): MidiTarget => ({ id, group, label, description, ...rest });
+
+const PERCENT = { min: 0, max: 100 };
+
 export const MIDI_TARGETS: Readonly<Record<MidiTargetId, MidiTarget>> = {
-  strokeWidth: {
-    id: "strokeWidth",
-    label: "Stroke width",
-    step: 0.06,
-    ring: { min: 0.25, max: 32, log: true },
-    reset: 2,
-  },
-  opacity: {
-    id: "opacity",
-    label: "Opacity",
+  strokeWidth: target(
+    "strokeWidth",
+    "style",
+    "Stroke width",
+    "Thickens or thins the outline by ratio; the next shape's pen size with nothing selected",
+    { step: 0.06, ring: { min: 0.25, max: 32, log: true }, reset: 2 },
+  ),
+  opacity: target(
+    "opacity",
+    "style",
+    "Opacity",
+    "How see-through the selection (or the next shape) is",
+    { step: 2, ring: PERCENT, reset: 100 },
+  ),
+  roughness: target(
+    "roughness",
+    "style",
+    "Sloppiness",
+    "From architect-straight (0) through artist (1) to cartoonist (2) and beyond",
+    { step: 0.05, ring: { min: 0, max: 4 }, reset: 1 },
+  ),
+  fontSize: target(
+    "fontSize",
+    "text",
+    "Font size",
+    "The size of selected text and labels, or of the next text",
+    { step: 1, ring: { min: 4, max: 200, log: true }, reset: 20 },
+  ),
+  x: target("x", "shape", "X", "Moves the selection left and right", {
     step: 2,
-    ring: { min: 0, max: 100 },
-    reset: 100,
-  },
-  roughness: {
-    id: "roughness",
-    label: "Sloppiness",
-    step: 0.05,
-    ring: { min: 0, max: 4 },
-    reset: 1,
-  },
-  fontSize: {
-    id: "fontSize",
-    label: "Font size",
-    step: 1,
-    ring: { min: 4, max: 200, log: true },
-    reset: 20,
-  },
-  x: { id: "x", label: "X", step: 2, needsSelection: true },
-  y: { id: "y", label: "Y", step: 2, needsSelection: true },
-  width: { id: "width", label: "Width", step: 2, needsSelection: true },
-  height: { id: "height", label: "Height", step: 2, needsSelection: true },
-  scale: { id: "scale", label: "Scale", step: 0.01, needsSelection: true },
-  angle: {
-    id: "angle",
-    label: "Angle",
-    step: 1,
-    ring: { min: 0, max: 360 },
-    reset: 0,
     needsSelection: true,
-  },
-  strokeHue: {
-    id: "strokeHue",
-    label: "Stroke hue",
-    step: 3,
+  }),
+  y: target("y", "shape", "Y", "Moves the selection up and down", {
+    step: 2,
     needsSelection: true,
-  },
-  backgroundHue: {
-    id: "backgroundHue",
-    label: "Background hue",
-    step: 3,
+  }),
+  width: target("width", "shape", "Width", "Stretches the selection across", {
+    step: 2,
     needsSelection: true,
-  },
-  zoom: {
-    id: "zoom",
-    label: "Zoom",
+  }),
+  height: target("height", "shape", "Height", "Stretches the selection down", {
+    step: 2,
+    needsSelection: true,
+  }),
+  scale: target(
+    "scale",
+    "shape",
+    "Scale",
+    "Grows or shrinks the whole selection about its centre",
+    { step: 0.01, needsSelection: true },
+  ),
+  angle: target(
+    "angle",
+    "shape",
+    "Angle",
+    "Rotates the selection about its centre",
+    { step: 1, ring: { min: 0, max: 360 }, reset: 0, needsSelection: true },
+  ),
+  strokeHue: target(
+    "strokeHue",
+    "colour",
+    "Stroke hue",
+    "Turns the outline colour round the colour wheel",
+    { step: 3, needsSelection: true },
+  ),
+  backgroundHue: target(
+    "backgroundHue",
+    "colour",
+    "Background hue",
+    "Turns the fill colour round the colour wheel",
+    { step: 3, needsSelection: true },
+  ),
+  zoom: target("zoom", "view", "Zoom", "Zooms about the middle of the view", {
     step: 0.02,
     ring: { min: 0.1, max: 30, log: true },
     reset: 1,
-  },
-  panX: { id: "panX", label: "Pan ↔", step: 12 },
-  panY: { id: "panY", label: "Pan ↕", step: 12 },
-  select: { id: "select", label: "Select", step: 1 },
+  }),
+  panX: target("panX", "view", "Pan ↔", "Scrolls the view sideways", {
+    step: 12,
+  }),
+  panY: target("panY", "view", "Pan ↕", "Scrolls the view up and down", {
+    step: 12,
+  }),
+  select: target(
+    "select",
+    "edit",
+    "Select",
+    "Steps the selection through the scene, a group at a time",
+    { step: 1 },
+  ),
+  strokeSaturation: target(
+    "strokeSaturation",
+    "colour",
+    "Stroke saturation",
+    "From grey to vivid, for the outline colour",
+    { step: 2, ring: PERCENT, needsSelection: true },
+  ),
+  strokeLightness: target(
+    "strokeLightness",
+    "colour",
+    "Stroke lightness",
+    "From black to white, for the outline colour",
+    { step: 2, ring: PERCENT, needsSelection: true },
+  ),
+  backgroundSaturation: target(
+    "backgroundSaturation",
+    "colour",
+    "Background saturation",
+    "From grey to vivid, for the fill colour",
+    { step: 2, ring: PERCENT, needsSelection: true },
+  ),
+  backgroundLightness: target(
+    "backgroundLightness",
+    "colour",
+    "Background lightness",
+    "From black to white, for the fill colour",
+    { step: 2, ring: PERCENT, needsSelection: true },
+  ),
+  strokeStyle: target(
+    "strokeStyle",
+    "style",
+    "Stroke style",
+    "Solid, dashed or dotted outline",
+    { step: 4, options: ["solid", "dashed", "dotted"], reset: 0 },
+  ),
+  fillStyle: target(
+    "fillStyle",
+    "style",
+    "Fill style",
+    "Hachure, cross-hatch, solid or zigzag fill",
+    {
+      step: 4,
+      options: ["hachure", "cross-hatch", "solid", "zigzag"],
+      reset: 0,
+    },
+  ),
+  roundness: target("roundness", "style", "Edges", "Sharp or round corners", {
+    step: 4,
+    options: ["sharp", "round"],
+    reset: 1,
+  }),
+  textAlign: target(
+    "textAlign",
+    "text",
+    "Text align",
+    "Left, centre or right aligned text",
+    { step: 4, options: ["left", "center", "right"], reset: 0 },
+  ),
+  layer: target(
+    "layer",
+    "edit",
+    "Layer",
+    "Brings the selection forward or sends it back, one layer a click",
+    { step: 2, needsSelection: true },
+  ),
+  history: target(
+    "history",
+    "edit",
+    "Undo / redo",
+    "Scrubs through history: back to undo, forward to redo",
+    { step: 2 },
+  ),
+  gridStep: target("gridStep", "view", "Grid size", "The spacing of the grid", {
+    step: 1,
+    ring: { min: 1, max: 100 },
+    reset: 5,
+  }),
 };
 
 export const isMidiTargetId = (id: unknown): id is MidiTargetId =>
   typeof id === "string" && (MIDI_TARGET_IDS as readonly string[]).includes(id);
+
+/** the target's name in config: `style.opacity`, `colour.strokeHue`… */
+export const midiTargetPath = (id: MidiTargetId) =>
+  `${MIDI_TARGETS[id].group}.${id}`;
+
+/** how far a detent moves `id`, with a host's override */
+export const midiTargetStep = (
+  id: MidiTargetId,
+  steps?: Partial<Record<MidiTargetId, number>>,
+) => {
+  const step = steps?.[id];
+  return typeof step === "number" && Number.isFinite(step) && step > 0
+    ? step
+    : MIDI_TARGETS[id].step;
+};
 
 // -----------------------------------------------------------------------------
 // messages
@@ -241,6 +396,13 @@ export const accelerate = (steps: number, sinceLastMs: number | undefined) => {
 
 /** where on its ring (0–127) a value sits */
 export const ringPosition = (target: MidiTarget, value: number) => {
+  if (target.options) {
+    // a choice: its options spread evenly round the ring
+    const last = target.options.length - 1;
+    return last > 0
+      ? Math.round((Math.max(0, Math.min(last, value)) / last) * 127)
+      : 0;
+  }
   const ring = target.ring;
   if (!ring) {
     return 64;
@@ -250,6 +412,22 @@ export const ringPosition = (target: MidiTarget, value: number) => {
       Math.log(ring.max / ring.min)
     : (value - ring.min) / (ring.max - ring.min);
   return Math.round(Math.max(0, Math.min(1, t)) * 127);
+};
+
+/**
+ * Detents gathered into whole moves for a choice: a knob has to travel
+ * `detentsPerMove` clicks before the next option comes up, so a choice
+ * doesn't flicker under the hand. The remainder carries to the next turn.
+ */
+export const gatherDetents = (
+  carry: number,
+  detents: number,
+  detentsPerMove: number,
+): { moves: number; carry: number } => {
+  const total = carry + detents;
+  const per = Math.max(1, detentsPerMove);
+  const moves = Math.trunc(total / per);
+  return { moves, carry: total - moves * per };
 };
 
 // -----------------------------------------------------------------------------
@@ -324,6 +502,23 @@ export const resolveCommand = (
  *   scale        │ angle   │ stroke hue │ background hue
  *   zoom         │ pan ↔   │ pan ↕      │ select
  */
-export const TWISTER_LAYOUT: readonly MidiBinding[] = MIDI_TARGET_IDS.map(
-  (target, cc) => ({ channel: 1, cc, target }),
-);
+export const TWISTER_LAYOUT: readonly MidiBinding[] = (
+  [
+    "strokeWidth",
+    "opacity",
+    "roughness",
+    "fontSize",
+    "x",
+    "y",
+    "width",
+    "height",
+    "scale",
+    "angle",
+    "strokeHue",
+    "backgroundHue",
+    "zoom",
+    "panX",
+    "panY",
+    "select",
+  ] as const
+).map((target, cc) => ({ channel: 1, cc, target }));

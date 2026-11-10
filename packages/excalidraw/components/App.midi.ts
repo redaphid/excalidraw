@@ -1,7 +1,10 @@
 import {
   cloneJSON,
   DEFAULT_FONT_SIZE,
+  DEFAULT_GRID_STEP,
+  getColorSaturationLightness,
   getStrokeWidthByKey,
+  setColorSaturationLightness,
   spinColorHue,
 } from "@excalidraw/common";
 import {
@@ -41,14 +44,26 @@ import {
   bindingsToMap,
   controlChangeBytes,
   decodeTurn,
+  gatherDetents,
   MIDI_TARGETS,
+  midiTargetStep,
   parseMidiMessage,
   resolveCommand,
   ringPosition,
   TWISTER_LAYOUT,
   withBinding,
 } from "../midi";
-import { getNormalizedZoom } from "../scene";
+import {
+  actionChangeFillStyle,
+  actionChangeRoundness,
+  actionChangeStrokeStyle,
+  actionChangeTextAlign,
+} from "../actions/actionProperties";
+import {
+  actionBringForward,
+  actionSendBackward,
+} from "../actions/actionZindex";
+import { getNormalizedGridStep, getNormalizedZoom } from "../scene";
 import { getViewportForZoomWithScrollConstraints } from "../viewport";
 
 import {
@@ -92,6 +107,36 @@ const STYLE_TARGETS = new Set<MidiTargetId>([
 ]);
 const VIEW_TARGETS = new Set<MidiTargetId>(["zoom", "panX", "panY"]);
 
+/** the choices a knob turns through, and the action that makes each */
+const CHOICE_ACTIONS = {
+  strokeStyle: actionChangeStrokeStyle,
+  fillStyle: actionChangeFillStyle,
+  roundness: actionChangeRoundness,
+  textAlign: actionChangeTextAlign,
+} as const;
+type ChoiceTargetId = keyof typeof CHOICE_ACTIONS;
+const isChoiceTarget = (id: MidiTargetId): id is ChoiceTargetId =>
+  id in CHOICE_ACTIONS;
+
+/** the colour component a knob sets */
+const COLOUR_COMPONENTS: Partial<
+  Record<
+    MidiTargetId,
+    {
+      property: "strokeColor" | "backgroundColor";
+      component: "saturation" | "lightness";
+    }
+  >
+> = {
+  strokeSaturation: { property: "strokeColor", component: "saturation" },
+  strokeLightness: { property: "strokeColor", component: "lightness" },
+  backgroundSaturation: {
+    property: "backgroundColor",
+    component: "saturation",
+  },
+  backgroundLightness: { property: "backgroundColor", component: "lightness" },
+};
+
 /** a turn in progress on the selection, measured from where it began */
 type Turn = {
   target: MidiTargetId;
@@ -132,6 +177,8 @@ export class AppMidi {
   private learning: MidiTargetId | null = null;
   private uncontrolledBindings: MidiBinding[] | null = null;
   private lastSelection = "";
+  /** detents toward the next move of a stepped target */
+  private carry = new Map<MidiTargetId, number>();
 
   constructor(private app: App) {}
 
@@ -160,6 +207,11 @@ export class AppMidi {
 
   private get encoding(): MidiEncoding {
     return this.options?.encoding ?? "auto";
+  }
+
+  /** how far a detent moves `id`, with the host's override */
+  stepOf(id: MidiTargetId) {
+    return midiTargetStep(id, this.options?.steps);
   }
 
   // ---------------------------------------------------------------------------
@@ -378,6 +430,23 @@ export class AppMidi {
       this.cycleSelection(detents);
       return;
     }
+    if (id === "gridStep") {
+      this.setGridStep(this.app.state.gridStep + detents * this.stepOf(id));
+      return;
+    }
+    if (id === "history" || id === "layer" || isChoiceTarget(id)) {
+      const { moves, carry } = gatherDetents(
+        this.carry.get(id) ?? 0,
+        detents,
+        this.stepOf(id),
+      );
+      this.carry.set(id, carry);
+      if (moves) {
+        this.endTurn();
+        this.move(id, moves);
+      }
+      return;
+    }
 
     const selected = this.selected();
     if (!selected.length) {
@@ -546,14 +615,22 @@ export class AppMidi {
       case "y":
       case "width":
       case "height":
-        this.statsDrag(turn, turn.target, (detents * target.step) / zoom);
+        this.statsDrag(
+          turn,
+          turn.target,
+          (detents * this.stepOf(target.id)) / zoom,
+        );
         return;
       case "fontSize":
-        this.statsDrag(turn, "fontSize", detents * target.step * authoring);
+        this.statsDrag(
+          turn,
+          "fontSize",
+          detents * this.stepOf(target.id) * authoring,
+        );
         return;
       case "scale": {
         const box = getCommonBoundingBox(turn.originalElements);
-        const factor = (1 + target.step) ** detents;
+        const factor = (1 + this.stepOf(target.id)) ** detents;
         if (box.width * factor < 1 || box.height * factor < 1) {
           return;
         }
@@ -574,11 +651,11 @@ export class AppMidi {
         return;
       }
       case "angle": {
-        this.rotate(turn, detents * target.step);
+        this.rotate(turn, detents * this.stepOf(target.id));
         return;
       }
       case "strokeWidth": {
-        const factor = (1 + target.step) ** detents;
+        const factor = (1 + this.stepOf(target.id)) ** detents;
         this.eachSelected(turn, false, (original) => ({
           strokeWidth: Math.max(
             0.05 * authoring,
@@ -592,7 +669,10 @@ export class AppMidi {
           opacity: Math.round(
             Math.max(
               0,
-              Math.min(100, original.opacity + detents * target.step),
+              Math.min(
+                100,
+                original.opacity + detents * this.stepOf(target.id),
+              ),
             ),
           ),
         }));
@@ -602,7 +682,10 @@ export class AppMidi {
           roughness: round(
             Math.max(
               0,
-              Math.min(4, original.roughness + detents * target.step),
+              Math.min(
+                4,
+                original.roughness + detents * this.stepOf(target.id),
+              ),
             ),
           ),
         }));
@@ -611,7 +694,7 @@ export class AppMidi {
         this.eachSelected(turn, true, (original) => ({
           strokeColor: spinColorHue(
             original.strokeColor,
-            detents * target.step,
+            detents * this.stepOf(target.id),
           ),
         }));
         return;
@@ -619,9 +702,28 @@ export class AppMidi {
         this.eachSelected(turn, false, (original) => ({
           backgroundColor: spinColorHue(
             original.backgroundColor,
-            detents * target.step,
+            detents * this.stepOf(target.id),
           ),
         }));
+        return;
+      case "strokeSaturation":
+      case "strokeLightness":
+      case "backgroundSaturation":
+      case "backgroundLightness": {
+        const { property, component } = COLOUR_COMPONENTS[turn.target]!;
+        this.eachSelected(turn, property === "strokeColor", (original) => {
+          const color = original[property];
+          const current = getColorSaturationLightness(color);
+          return current
+            ? {
+                [property]: setColorSaturationLightness(color, {
+                  [component]:
+                    current[component] + detents * this.stepOf(target.id),
+                }),
+              }
+            : {};
+        });
+      }
     }
   }
 
@@ -701,6 +803,54 @@ export class AppMidi {
     );
   }
 
+  /** a stepped target moved by whole steps: undo or redo, a layer up or
+   * down, or the next choice along; each move its own undo step */
+  private move(id: MidiTargetId, moves: number) {
+    const { actionManager } = this.app;
+    const target = MIDI_TARGETS[id];
+    if (id === "history") {
+      const action = actionManager.actions[moves < 0 ? "undo" : "redo"];
+      for (let i = 0; i < Math.abs(moves); i++) {
+        actionManager.executeAction(action, "api");
+      }
+      this.toast(moves < 0 ? "Undo" : "Redo");
+      return;
+    }
+    if (id === "layer") {
+      if (!this.selected().length) {
+        return;
+      }
+      const action = moves < 0 ? actionSendBackward : actionBringForward;
+      for (let i = 0; i < Math.abs(moves); i++) {
+        actionManager.executeAction(action, "api");
+      }
+      this.toast(moves < 0 ? "Sent backward" : "Brought forward");
+      return;
+    }
+    if (isChoiceTarget(id) && target.options) {
+      const last = target.options.length - 1;
+      const index = Math.max(0, Math.min(last, (this.read(id) ?? 0) + moves));
+      this.choose(id, index);
+    }
+  }
+
+  private choose(id: ChoiceTargetId, index: number) {
+    const option = MIDI_TARGETS[id].options![index];
+    this.app.actionManager.executeAction(
+      CHOICE_ACTIONS[id] as any,
+      "api",
+      option,
+    );
+    this.sendRing(id);
+    this.toast(`${MIDI_TARGETS[id].label} ${option}`);
+  }
+
+  private setGridStep(next: number) {
+    const gridStep = getNormalizedGridStep(next);
+    this.app.setState({ gridStep }, () => this.sendRing("gridStep"));
+    this.toast(`Grid size ${gridStep}`);
+  }
+
   private turnNextStyle(id: MidiTargetId, detents: number) {
     const { state } = this.app;
     const target = MIDI_TARGETS[id];
@@ -712,7 +862,7 @@ export class AppMidi {
             0.05,
             round(
               state.currentItemFreedrawStrokeWidth *
-                (1 + target.step) ** detents,
+                (1 + this.stepOf(target.id)) ** detents,
               3,
             ),
           ),
@@ -722,7 +872,10 @@ export class AppMidi {
         next = {
           currentItemOpacity: Math.max(
             0,
-            Math.min(100, state.currentItemOpacity + detents * target.step),
+            Math.min(
+              100,
+              state.currentItemOpacity + detents * this.stepOf(target.id),
+            ),
           ),
         };
         break;
@@ -731,7 +884,10 @@ export class AppMidi {
           currentItemRoughness: round(
             Math.max(
               0,
-              Math.min(4, state.currentItemRoughness + detents * target.step),
+              Math.min(
+                4,
+                state.currentItemRoughness + detents * this.stepOf(target.id),
+              ),
             ),
           ),
         };
@@ -742,7 +898,7 @@ export class AppMidi {
             4,
             Math.round(
               (state.currentItemFontSize || DEFAULT_FONT_SIZE) +
-                detents * target.step,
+                detents * this.stepOf(target.id),
             ),
           ),
         };
@@ -763,7 +919,7 @@ export class AppMidi {
     }
     if (id === "zoom") {
       const nextZoom = getNormalizedZoom(
-        state.zoom.value * (1 + target.step) ** detents,
+        state.zoom.value * (1 + this.stepOf(target.id)) ** detents,
       );
       this.app.syncActionResult({
         appState: {
@@ -783,7 +939,7 @@ export class AppMidi {
       this.toast(`Zoom ${Math.round(nextZoom * 100)}%`);
       return;
     }
-    const delta = (detents * target.step) / state.zoom.value;
+    const delta = (detents * this.stepOf(target.id)) / state.zoom.value;
     this.app.setState({
       scrollX: id === "panX" ? state.scrollX - delta : state.scrollX,
       scrollY: id === "panY" ? state.scrollY - delta : state.scrollY,
@@ -876,7 +1032,7 @@ export class AppMidi {
         const current = app.state.zoom.value;
         this.turnView(
           "zoom",
-          Math.log(1 / current) / Math.log(1 + target.step),
+          Math.log(1 / current) / Math.log(1 + this.stepOf(target.id)),
         );
       }
       return;
@@ -893,6 +1049,16 @@ export class AppMidi {
         },
         captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
+      return;
+    }
+    if (id === "gridStep") {
+      this.setGridStep(DEFAULT_GRID_STEP);
+      return;
+    }
+    if (isChoiceTarget(id)) {
+      this.endTurn();
+      this.carry.delete(id);
+      this.choose(id, target.reset ?? 0);
       return;
     }
     if (target.reset === undefined) {
@@ -964,7 +1130,24 @@ export class AppMidi {
     if (id === "zoom") {
       return state.zoom.value;
     }
+    if (id === "gridStep") {
+      return state.gridStep;
+    }
     const [element] = this.app.scene.getSelectedElements(state);
+    const options = MIDI_TARGETS[id].options;
+    if (options) {
+      const value = this.readChoice(id, element, state);
+      const index = value === null ? -1 : options.indexOf(value);
+      return index === -1 ? null : index;
+    }
+    const colour = COLOUR_COMPONENTS[id];
+    if (colour) {
+      return element
+        ? getColorSaturationLightness(element[colour.property])?.[
+            colour.component
+          ] ?? null
+        : null;
+    }
     if (!element) {
       switch (id) {
         case "opacity":
@@ -1001,6 +1184,37 @@ export class AppMidi {
     return null;
   }
 
+  /** the option a choice is on: the first selected element's, or the next
+   * shape's */
+  private readChoice(
+    id: MidiTargetId,
+    element: NonDeletedExcalidrawElement | undefined,
+    state: AppState,
+  ): string | null {
+    const elementsMap = this.app.scene.getNonDeletedElementsMap();
+    switch (id) {
+      case "strokeStyle":
+        return element?.strokeStyle ?? state.currentItemStrokeStyle;
+      case "fillStyle":
+        return element?.fillStyle ?? state.currentItemFillStyle;
+      case "roundness":
+        return element
+          ? element.roundness
+            ? "round"
+            : "sharp"
+          : state.currentItemRoundness;
+      case "textAlign": {
+        const text =
+          element &&
+          (isTextElement(element)
+            ? element
+            : getBoundTextElement(element, elementsMap));
+        return text ? text.textAlign : state.currentItemTextAlign;
+      }
+    }
+    return null;
+  }
+
   private describe(id: MidiTargetId, turn: Turn) {
     const value = this.read(id);
     if (value !== null) {
@@ -1009,13 +1223,13 @@ export class AppMidi {
     const target = MIDI_TARGETS[id];
     switch (id) {
       case "scale":
-        return `×${round((1 + target.step) ** turn.detents)}`;
+        return `×${round((1 + this.stepOf(target.id)) ** turn.detents)}`;
       case "strokeHue":
       case "backgroundHue":
-        return `${Math.round(turn.detents * target.step)}°`;
+        return `${Math.round(turn.detents * this.stepOf(target.id))}°`;
       default: {
         const amount = Math.round(
-          (turn.detents * target.step) / this.app.state.zoom.value,
+          (turn.detents * this.stepOf(target.id)) / this.app.state.zoom.value,
         );
         return amount >= 0 ? `+${amount}` : `${amount}`;
       }

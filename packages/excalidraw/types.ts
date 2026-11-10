@@ -62,7 +62,7 @@ import type { ContextMenuItems } from "./components/ContextMenu";
 import type { SnapLine } from "./snapping";
 import type { ImportedDataState } from "./data/types";
 import type { SetViewportOptions } from "./viewport";
-import type { MidiBinding, MidiEncoding } from "./midi";
+import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
 
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
@@ -1248,6 +1248,10 @@ export type MidiOptions = {
   /** channels between a knob and its push switch: a press resets the knob's
    * target (default 1, the Twister's; `null` turns presses off) */
   switchChannelOffset?: number | null;
+  /** how far one detent moves a target, overriding `MIDI_TARGETS[id].step`
+   * (its units are the target's: px, degrees, percent, a ratio, or detents
+   * per choice) */
+  steps?: Partial<Record<MidiTargetId, number>>;
   /** quick turns count for more (default true) */
   acceleration?: boolean;
   /** LED ring updates to the controller (default true) */

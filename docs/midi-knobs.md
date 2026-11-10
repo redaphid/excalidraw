@@ -8,7 +8,31 @@ A MIDI controller's knobs can turn what the stats panel and the styles panel set
 <Excalidraw midi={{ bindings, onBindingsChange: setBindings }} />
 ```
 
-draw.hypnodroid.com turns it on and keeps the bindings in `localStorage["excalidraw-midi-bindings"]`. Open the command palette (`Ctrl/Cmd+/`) and run **Connect MIDI controller**, or any **Bind a MIDI knob to …** entry.
+draw.hypnodroid.com turns it on. Open the command palette (`Ctrl/Cmd+/`) and run **Connect MIDI controller**, or **MIDI knob settings (midi:config)** to bind knobs.
+
+## midi:config
+
+`/#midi` is a settings page in the spirit of Firefox's about:config: every property a knob can turn, and every MIDI preference, in one searchable list.
+
+- **Turn, type, Enter.** Turn a knob and it lights up on the Twister map (the bank switches to it) and is armed. Type a few letters of a property (`opa`, `bg light`, `undo`, `sw` for stroke width) and press Enter to bind the armed knob to the top match; arrow keys move down the list. Pressing a knob arms it too.
+- **Or pick first.** A row's **learn** button binds the next knob turned to that property.
+- **Search** is fuzzy over each property's name, label and description. Letters may skip ahead within a word (`bg` finds background) but moving to another word lands on its first letter (`bgl` finds background lightness), so a long description doesn't match by scattering letters.
+- **Steps.** Each property's sensitivity (how far one click moves it) is edited in place. A value changed from its default reads bold, about:config style, with ↺ to put it back.
+- **Preferences** (`midi.encoding`, `midi.acceleration`, `midi.feedback`, `midi.toasts`, `midi.switchChannelOffset`) are rows too, filtered by the same search. Double-click a true/false row to flip it.
+- Bindings and preferences live in `localStorage["excalidraw-midi-bindings"]` and `["excalidraw-midi-settings"]`. Every change reaches open editor tabs at once, so the page can sit in one tab while the drawing answers in another.
+
+## Properties
+
+| Group | Properties |
+| --- | --- |
+| `shape` | x, y, width, height, scale, angle |
+| `style` | stroke width, opacity, sloppiness, stroke style, fill style, edges |
+| `colour` | stroke and background hue, saturation and lightness |
+| `text` | font size, text align |
+| `view` | zoom, pan ↔, pan ↕, grid size |
+| `edit` | select (steps through shapes), layer (forward and back), undo / redo |
+
+Choices (stroke style, fill style, edges, text align) move one option per four clicks by default, so they don't flicker under the hand; layer and undo / redo move one step per two clicks. Each click of undo / redo or layer is its own undo step.
 
 ## The Twister layout
 
@@ -26,7 +50,7 @@ Pressing a knob resets its target: stroke width to medium, opacity to 100%, slop
 ## What a turn does
 
 - **With a selection**, a knob turns the selection. Position, size and font size go through the stats panel's own drag handlers, so groups, frames, bound text, crops and arrow bindings behave as they do when dragging a stats field; angle goes through the rotation handle's transform, and scale resizes the whole selection about its centre. Every turn is measured from where it began, so turning a knob back lands exactly where it started.
-- **With nothing selected**, the style knobs set the next shape's style (opacity, sloppiness, font size, pen width) and the geometry knobs do nothing.
+- **With nothing selected**, the style knobs set the next shape's style (opacity, sloppiness, font size, pen width, stroke and fill style, edges, text align) and the geometry and colour knobs do nothing.
 - **Zoom and pan** work whatever is selected, in view mode too. **Select** steps the selection through the scene in stacking order, a group at a time, and pans to it when it's off screen.
 - **Undo**: a turn ends after 450 ms without a click, on a selection change, or when another knob is turned, and what it changed becomes one undo step.
 
@@ -45,7 +69,7 @@ The editor answers each device that has spoken on the output port of the same na
 
 ## API
 
-- `props.midi`: `true`, or `MidiOptions` (`bindings`, `onBindingsChange`, `encoding`, `switchChannelOffset`, `feedback`, `acceleration`, `toasts`).
+- `props.midi`: `true`, or `MidiOptions` (`bindings`, `onBindingsChange`, `encoding`, `switchChannelOffset`, `feedback`, `acceleration`, `toasts`, `steps`).
 - `excalidrawAPI.midi.connect()`: asks for MIDI access; call it from a user gesture. On mount the editor connects by itself only if the browser already allows MIDI, so a page without a controller never prompts.
 - `excalidrawAPI.midi.learn(target)`: binds the next knob turned. `cancelLearn()`, `setBindings(bindings)`, `resetBindings()`, `bindings`, `connected`.
 - `MIDI_TARGETS`, `MIDI_TARGET_IDS`, `TWISTER_LAYOUT` and the `MidiBinding` / `MidiTargetId` types are exported from `@excalidraw/excalidraw`.
@@ -54,4 +78,5 @@ The editor answers each device that has spoken on the output port of the same na
 
 - `packages/excalidraw/midi.ts`: pure. Message parsing, encoder decoding and detection, acceleration, ring positions, bindings and the Twister layout.
 - `packages/excalidraw/components/App.midi.ts`: the editor side. Web MIDI connection, turns, resets, rings, learning.
-- `excalidraw-app/midi.ts`: the app's stored bindings and command palette entries.
+- `excalidraw-app/midi.ts`: the editor's knobs and command palette entries.
+- `excalidraw-app/midi-config/`: midi:config (`MidiConfigPage.tsx`), its fuzzy matcher, and the stored bindings and preferences shared with the editor across tabs.

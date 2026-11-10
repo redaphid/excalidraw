@@ -407,6 +407,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
       prevMidi.switchChannelOffset === nextMidi.switchChannelOffset &&
       prevMidi.feedback === nextMidi.feedback &&
       prevMidi.acceleration === nextMidi.acceleration &&
+      prevMidi.steps === nextMidi.steps &&
       prevMidi.toasts === nextMidi.toasts);
 
   if (!isMidiSame) {
@@ -592,12 +593,20 @@ export {
   MIDI_TARGETS,
   MIDI_TARGET_IDS,
   TWISTER_LAYOUT,
+  bindingKey,
   isMidiTargetId,
+  midiTargetPath,
+  midiTargetStep,
+  parseMidiMessage,
+  withBinding,
+  withoutBinding,
 } from "./midi";
 export type {
   MidiBinding,
+  MidiControlChange,
   MidiEncoding,
   MidiTarget,
+  MidiTargetGroup,
   MidiTargetId,
 } from "./midi";
 

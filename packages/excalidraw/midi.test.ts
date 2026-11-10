@@ -3,7 +3,10 @@ import {
   bindingsToMap,
   controlChangeBytes,
   decodeTurn,
+  gatherDetents,
   isMidiTargetId,
+  midiTargetPath,
+  midiTargetStep,
   MIDI_TARGETS,
   MIDI_TARGET_IDS,
   parseMidiMessage,
@@ -255,5 +258,46 @@ describe("resolveCommand", () => {
     expect(
       resolveCommand(twister, { channel: 1, cc: 48, value: 65 }, 1),
     ).toBeNull();
+  });
+});
+
+describe("stepped targets", () => {
+  it("gather detents into whole moves, carrying the rest", () => {
+    expect(gatherDetents(0, 3, 4)).toEqual({ moves: 0, carry: 3 });
+    expect(gatherDetents(3, 3, 4)).toEqual({ moves: 1, carry: 2 });
+    expect(gatherDetents(0, -9, 4)).toEqual({ moves: -2, carry: -1 });
+  });
+
+  it("spread their options round the ring", () => {
+    expect(ringPosition(MIDI_TARGETS.strokeStyle, 0)).toBe(0);
+    expect(ringPosition(MIDI_TARGETS.strokeStyle, 1)).toBe(64);
+    expect(ringPosition(MIDI_TARGETS.strokeStyle, 2)).toBe(127);
+  });
+});
+
+describe("config names and steps", () => {
+  it("names each target by its group, about:config style", () => {
+    expect(midiTargetPath("opacity")).toBe("style.opacity");
+    expect(midiTargetPath("backgroundLightness")).toBe(
+      "colour.backgroundLightness",
+    );
+    const paths = MIDI_TARGET_IDS.map(midiTargetPath);
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+
+  it("takes a host's step over the default, but not a nonsense one", () => {
+    expect(midiTargetStep("opacity")).toBe(2);
+    expect(midiTargetStep("opacity", { opacity: 10 })).toBe(10);
+    expect(midiTargetStep("opacity", { opacity: 0 })).toBe(2);
+    expect(midiTargetStep("opacity", { opacity: NaN })).toBe(2);
+  });
+
+  it("keeps the Twister's first bank where the hand learned it", () => {
+    expect(TWISTER_LAYOUT.map((b) => b.target).slice(0, 4)).toEqual([
+      "strokeWidth",
+      "opacity",
+      "roughness",
+      "fontSize",
+    ]);
   });
 });

@@ -1,3 +1,4 @@
+import { getColorSaturationLightness } from "@excalidraw/common";
 import { CaptureUpdateAction } from "@excalidraw/element";
 import { radiansToDegrees } from "@excalidraw/math";
 
@@ -227,6 +228,117 @@ describe("MIDI knobs", () => {
       turn(KNOB.opacity, -5);
       expect(h.elements[0].opacity).toBe(90);
       expect(h.state.currentItemOpacity).toBe(90);
+    });
+  });
+
+  describe("the properties past the first bank", () => {
+    const bind = async (extra: Partial<MidiOptions> = {}) => {
+      await renderWithKnobs({
+        ...options,
+        ...extra,
+        bindings: [
+          { channel: 1, cc: 16, target: "strokeStyle" },
+          { channel: 1, cc: 17, target: "fillStyle" },
+          { channel: 1, cc: 18, target: "backgroundLightness" },
+          { channel: 1, cc: 19, target: "layer" },
+          { channel: 1, cc: 20, target: "history" },
+          { channel: 1, cc: 21, target: "gridStep" },
+          { channel: 1, cc: 22, target: "opacity" },
+        ],
+      });
+    };
+
+    it("turns through a choice four clicks at a time, and a press resets it", async () => {
+      await bind();
+      const rect = lantern();
+      API.updateScene({
+        elements: [rect],
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      API.setSelectedElements([rect]);
+
+      turn(16, 3);
+      expect(h.elements[0].strokeStyle).toBe("solid");
+      turn(16, 1);
+      expect(h.elements[0].strokeStyle).toBe("dashed");
+      turn(16, 8);
+      expect(h.elements[0].strokeStyle).toBe("dotted");
+      press(16);
+      expect(h.elements[0].strokeStyle).toBe("solid");
+    });
+
+    it("sets the next shape's fill with nothing selected", async () => {
+      await bind();
+      // from the default solid, two choices back
+      turn(17, -8);
+      expect(h.state.currentItemFillStyle).toBe("hachure");
+    });
+
+    it("lightens the fill without touching its hue", async () => {
+      await bind();
+      const rect = lantern();
+      API.updateScene({
+        elements: [rect],
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      API.setSelectedElements([rect]);
+
+      const before = getColorSaturationLightness(rect.backgroundColor)!;
+      turn(18, -10);
+      const after = getColorSaturationLightness(h.elements[0].backgroundColor)!;
+      expect(after.lightness).toBeCloseTo(before.lightness - 20, 0);
+    });
+
+    it("sends a shape back through the layers", async () => {
+      await bind();
+      const keel = API.createElement({ type: "rectangle", id: "keel" });
+      const mast = API.createElement({ type: "ellipse", id: "mast" });
+      API.updateScene({
+        elements: [keel, mast],
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      API.setSelectedElements([mast]);
+
+      turn(19, -2);
+      expect(h.elements.map((e) => e.id)).toEqual(["mast", "keel"]);
+    });
+
+    it("scrubs back through history", async () => {
+      await bind();
+      const rect = lantern();
+      API.updateScene({
+        elements: [rect],
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      API.setSelectedElements([rect]);
+
+      turn(22, -10);
+      rest();
+      expect(h.elements[0].opacity).toBe(80);
+      turn(20, -2);
+      expect(h.elements[0].opacity).toBe(100);
+      turn(20, 2);
+      expect(h.elements[0].opacity).toBe(80);
+    });
+
+    it("sizes the grid", async () => {
+      await bind();
+      turn(21, 5);
+      expect(h.state.gridStep).toBe(10);
+      press(21);
+      expect(h.state.gridStep).toBe(5);
+    });
+
+    it("moves as far a click as the host says", async () => {
+      await bind({ steps: { opacity: 10 } });
+      const rect = lantern();
+      API.updateScene({
+        elements: [rect],
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      API.setSelectedElements([rect]);
+      turn(22, -3);
+      expect(h.elements[0].opacity).toBe(70);
     });
   });
 
