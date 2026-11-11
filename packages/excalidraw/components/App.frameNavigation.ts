@@ -150,6 +150,40 @@ export class AppFrameNavigation {
     });
   };
 
+  /** the drawer can sit beside the canvas; on a phone it would cover it */
+  private besideCanvas = () =>
+    this.enabled && this.app.editorInterface.formFactor !== "phone";
+
+  /** The user picked the frame tool (F, the toolbar, the command palette),
+   * even with it already in hand: the drawer opens beside it so each frame
+   * drawn shows up in the list, and stays open after the tool changes. The
+   * way back from the eraser or the hand never comes here, so a drawer
+   * closed meanwhile stays closed. Call it after `setActiveTool`. */
+  frameToolPicked = () => {
+    if (!this.besideCanvas()) {
+      return;
+    }
+    // queued behind the tool change, so a pick the editor refused (a tool
+    // the host holds) opens nothing
+    this.app.setState((state) =>
+      state.activeTool.type === "frame" && !this.isDrawerOpen(state)
+        ? {
+            openSidebar: {
+              name: DEFAULT_SIDEBAR.name,
+              tab: FRAMES_SIDEBAR_TAB,
+            },
+          }
+        : null,
+    );
+  };
+
+  /** An undocked drawer closes on a press outside it, and starting a frame
+   * on the canvas is one: with the frame tool in hand it stays open. */
+  keepsDrawerOpen = () =>
+    this.besideCanvas() &&
+    this.isDrawerOpen() &&
+    this.app.state.activeTool.type === "frame";
+
   private step = (direction: Direction) => {
     const model = this.model();
     const heading = this.heading;

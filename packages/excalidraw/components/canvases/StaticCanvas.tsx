@@ -28,6 +28,7 @@ type StaticCanvasProps = {
   scale: number;
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
+  onPainted?: (appState: StaticCanvasAppState) => void;
 };
 
 const StaticCanvas = (props: StaticCanvasProps) => {
@@ -66,6 +67,7 @@ const StaticCanvas = (props: StaticCanvasProps) => {
         visibleElements: props.visibleElements,
         appState: props.appState,
         renderConfig: props.renderConfig,
+        onPainted: props.onPainted,
       },
       isRenderThrottlingEnabled(),
     );
@@ -89,6 +91,7 @@ const getRelevantAppStateProps = (appState: AppState): StaticCanvasAppState => {
     theme: appState.theme,
     shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
     viewBackgroundColor: appState.viewBackgroundColor,
+    viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
     exportScale: appState.exportScale,
     selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
     gridSize: appState.gridSize,

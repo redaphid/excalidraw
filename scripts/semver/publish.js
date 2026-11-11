@@ -8,6 +8,7 @@ const {
   LOCKSTEP,
   PUBLISH_ORDER,
   registryName,
+  registryTarball,
   sourceName,
 } = require("./packages");
 
@@ -65,8 +66,7 @@ const failed = (what, result) =>
 // order, and skips a version the registry already has, so a rerun after a
 // failure publishes only what is missing.
 const publish = ({ version, dir, run, dryRun = false }) => {
-  const tarball = (id) =>
-    path.join(dir, `redaphid-excalidraw-${id}-${version}.tgz`);
+  const tarball = (id) => path.join(dir, registryTarball(id, version));
   for (const id of PUBLISH_ORDER) {
     const result = run("tar", ["-xzOf", tarball(id), "package/package.json"]);
     if (result.status !== 0) {

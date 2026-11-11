@@ -1,0 +1,348 @@
+.midi-config {
+  --mc-bg: #fbfaf7;
+  --mc-panel: #ffffff;
+  --mc-ink: #1e1e1e;
+  --mc-muted: #6b6b6b;
+  --mc-line: #e4e1da;
+  --mc-accent: #6965db;
+  --mc-accent-soft: #e9e8fb;
+  --mc-warn: #e8590c;
+  --mc-mono: "Cascadia", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  @media (prefers-color-scheme: dark) {
+    --mc-bg: #121212;
+    --mc-panel: #1c1c1f;
+    --mc-ink: #e3e3e8;
+    --mc-muted: #9a9aa3;
+    --mc-line: #2e2e33;
+    --mc-accent: #a8a5ff;
+    --mc-accent-soft: #2b2a4a;
+  }
+
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 24px max(16px, calc((100vw - 980px) / 2)) 64px;
+  background: var(--mc-bg);
+  color: var(--mc-ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+    border: 1px solid var(--mc-line);
+    background: var(--mc-panel);
+    border-radius: 6px;
+    padding: 2px 8px;
+
+    &:hover {
+      border-color: var(--mc-accent);
+    }
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+
+    h1 {
+      margin: 0;
+      font: 600 22px var(--mc-mono);
+
+      span {
+        color: var(--mc-accent);
+      }
+    }
+  }
+
+  &__status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mc-muted);
+  }
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mc-muted);
+
+    .is-connected & {
+      background: #2f9e44;
+    }
+  }
+
+  &__back {
+    margin-left: auto;
+    color: var(--mc-accent);
+    text-decoration: none;
+  }
+
+  // ---------------------------------------------------------------------------
+  // the Twister
+
+  &__twister {
+    background: var(--mc-panel);
+    border: 1px solid var(--mc-line);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  &__banks {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+
+    .is-active {
+      background: var(--mc-accent);
+      border-color: var(--mc-accent);
+      color: var(--mc-panel);
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  &__knob {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    align-items: center;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 10px;
+    min-width: 0;
+    transition: background 0.3s, border-color 0.3s;
+
+    &.is-armed {
+      border-color: var(--mc-accent);
+      box-shadow: 0 0 0 2px var(--mc-accent-soft);
+    }
+
+    &.is-flash {
+      background: var(--mc-accent-soft);
+      transition: none;
+    }
+  }
+
+  &__knob-ring {
+    grid-row: span 2;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 3px solid var(--mc-line);
+
+    .is-bound & {
+      border-color: var(--mc-accent);
+      border-bottom-color: var(--mc-line);
+    }
+  }
+
+  &__knob-name {
+    font: 11px var(--mc-mono);
+    color: var(--mc-muted);
+  }
+
+  &__knob-target {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    .midi-config__knob:not(.is-bound) & {
+      color: var(--mc-muted);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // finding a property
+
+  &__prompt {
+    margin: 16px 0 8px;
+    color: var(--mc-muted);
+
+    &.is-waiting {
+      color: var(--mc-accent);
+      font-weight: 600;
+    }
+  }
+
+  &__search {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--mc-line);
+    border-radius: 8px;
+    background: var(--mc-panel);
+    font: 15px var(--mc-mono);
+
+    &:focus {
+      outline: 2px solid var(--mc-accent);
+      outline-offset: -1px;
+    }
+  }
+
+  &__table {
+    width: 100%;
+    margin-top: 12px;
+    border-collapse: collapse;
+    background: var(--mc-panel);
+    border: 1px solid var(--mc-line);
+    border-radius: 8px;
+    overflow: hidden;
+
+    th {
+      text-align: left;
+      font-weight: 500;
+      color: var(--mc-muted);
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--mc-line);
+    }
+
+    td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--mc-line);
+      vertical-align: middle;
+    }
+
+    tr.is-highlight td {
+      background: var(--mc-accent-soft);
+    }
+
+    tr.is-learning td {
+      box-shadow: inset 3px 0 0 var(--mc-accent);
+    }
+
+    // about:config: a value changed from its default reads bold
+    tr.is-modified .midi-config__path {
+      font-weight: 700;
+    }
+  }
+
+  &__path {
+    font: 13px var(--mc-mono);
+  }
+
+  &__description {
+    color: var(--mc-muted);
+    font-size: 12px;
+  }
+
+  &__knobs {
+    white-space: nowrap;
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 6px;
+    padding: 1px 2px 1px 8px;
+    border-radius: 999px;
+    background: var(--mc-accent-soft);
+    font: 12px var(--mc-mono);
+
+    button {
+      border: none;
+      background: none;
+      padding: 0 6px;
+    }
+  }
+
+  &__bind {
+    font-size: 12px;
+    color: var(--mc-accent);
+  }
+
+  &__step {
+    white-space: nowrap;
+
+    input {
+      width: 80px;
+      padding: 2px 6px;
+      border: 1px solid var(--mc-line);
+      border-radius: 6px;
+      background: var(--mc-bg);
+      font-family: var(--mc-mono);
+    }
+
+    button {
+      margin-left: 4px;
+    }
+  }
+
+  &__prefs {
+    margin-top: 24px;
+
+    select,
+    input {
+      padding: 2px 6px;
+      border: 1px solid var(--mc-line);
+      border-radius: 6px;
+      background: var(--mc-bg);
+      font-family: var(--mc-mono);
+    }
+
+    input {
+      width: 64px;
+    }
+  }
+
+  &__toggle {
+    font-family: var(--mc-mono);
+    min-width: 64px;
+  }
+
+  &__footer {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
+
+  @media (max-width: 640px) {
+    &__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    // a phone stacks each row's knobs under its property
+    &__table {
+      table-layout: fixed;
+    }
+
+    &__table td {
+      overflow-wrap: anywhere;
+    }
+
+    &__knobs {
+      white-space: normal;
+    }
+
+    &__chip {
+      margin-bottom: 4px;
+    }
+
+    &__table th:nth-child(3),
+    &__table td:nth-child(3) {
+      display: none;
+    }
+  }
+}

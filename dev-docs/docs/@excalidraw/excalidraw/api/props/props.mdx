@@ -14,6 +14,8 @@ All `props` are _optional_.
 | [`onPaste`](#onpaste) | `function` | \_ | Callback to be triggered if passed when something is pasted into the scene |
 | [`onLibraryChange`](#onlibrarychange) | `function` | \_ | The callback if supplied is triggered when the library is updated and receives the library items. |
 | [`generateLinkForSelection`](#generatelinkforselection) | `function` | \_ | Allows you to override `url` generation when linking to Excalidraw elements. |
+| [`onButtonClick`](#onbuttonclick) | `function` | \_ | The callback if supplied is triggered when a button element is clicked. |
+| [`onButtonHighlight`](#onbuttonhighlight) | `function` | \_ | The callback if supplied is triggered when the hover or pressed state of a button element changes. |
 | [`onLinkOpen`](#onlinkopen) | `function` | \_ | The callback if supplied is triggered when any link is opened. |
 | [`langCode`](#langcode) | `string` | `en` | Language code string to be used in Excalidraw |
 | [`renderTopRightUI`](/docs/@excalidraw/excalidraw/api/props/render-props#rendertoprightui) | `function` | \_ | Render function that renders custom UI in top right corner |
@@ -151,6 +153,45 @@ This prop if passed will be used to replace the default link generation function
 ```tsx
 (id: string, type: "element" | "group") => string;
 ```
+
+### onButtonClick
+
+```tsx
+onButtonClick?: (elementId: string) => void;
+```
+
+A button is a rectangle with `customData: { isButton: true }`, drawn with a play icon at its left, in its own colors. The icon keeps a fixed size, scaled by the button's `authoringScale`, and shrinks to fit a small button. Its bound text is centered in the room to the right of the icon, and with no bound text the icon is centered and sized from the button. Give it `roundness: { type: ROUNDNESS.ADAPTIVE_RADIUS }` for rounded corners. A client that doesn't know buttons shows and keeps it as a rectangle with its label. A duplicate or a paste gets a new id and isn't a button: the copy loses the marker and keeps the rest of its `customData`.
+
+```tsx
+convertToExcalidrawElements([
+  {
+    type: "rectangle",
+    x: 100,
+    y: 100,
+    width: 200,
+    height: 80,
+    roundness: { type: ROUNDNESS.ADAPTIVE_RADIUS },
+    customData: { isButton: true },
+    label: { text: "Run" },
+  },
+]);
+```
+
+With this prop set, a press and release with the selection or hand tool, or in view mode, calls it once with the element's id and changes nothing else: the element isn't selected, and the scene and the undo stack stay as they were. It isn't called with other tools or while text is being edited. The topmost element under the pointer takes the press, so a filled shape above a button covers it, and an unfilled one covers it only along its stroke.
+
+Past 10 screen pixels a press is whatever it would have been on a plain rectangle: a move, or a pan with the hand tool or in view mode. A second finger cancels the click and reaches the pinch.
+
+A press with a modifier key or the right button is handled as on a plain rectangle, so shift+click selects a button and box selection includes it. A selected button resizes and deletes like a rectangle, and a plain click on it still calls the prop. A double click is two clicks and opens no editor: to edit the label, select the button and press Enter. Without the prop, a button is drawn with its icon and takes no clicks: a press selects and drags it, and it is hit anywhere inside even when transparent.
+
+### onButtonHighlight
+
+```tsx
+onButtonHighlight?: (
+  highlight: { id: string; pressed: boolean } | null,
+) => void;
+```
+
+Called when the canvas starts or stops showing a button as hovered or pressed: during the pointer event on a press or a hover, and after the update when a change of view or tool ends a hover. A host that draws its own layer over the canvas can use it to get out of the way.
 
 ### onLinkOpen
 

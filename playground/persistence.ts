@@ -11,7 +11,12 @@ import type { AppState, BinaryFiles } from "@excalidraw/excalidraw/types";
 
 type SavedAppState = Pick<
   AppState,
-  "zoom" | "scrollX" | "scrollY" | "theme" | "viewBackgroundColor"
+  | "zoom"
+  | "scrollX"
+  | "scrollY"
+  | "theme"
+  | "viewBackgroundColor"
+  | "viewBackgroundColorPicked"
 >;
 
 const SCENE_KEY = "excalidraw-playground-scene";
@@ -27,7 +32,14 @@ export const loadScene = (storage: Storage): ImportedDataState | null => {
 export const saveScene = (
   storage: Storage,
   elements: readonly ExcalidrawElement[],
-  { zoom, scrollX, scrollY, theme, viewBackgroundColor }: SavedAppState,
+  {
+    zoom,
+    scrollX,
+    scrollY,
+    theme,
+    viewBackgroundColor,
+    viewBackgroundColorPicked,
+  }: SavedAppState,
   files: BinaryFiles,
 ) => {
   const liveElements = getNonDeletedElements(elements);
@@ -35,7 +47,14 @@ export const saveScene = (
     SCENE_KEY,
     JSON.stringify({
       elements: liveElements,
-      appState: { zoom, scrollX, scrollY, theme, viewBackgroundColor },
+      appState: {
+        zoom,
+        scrollX,
+        scrollY,
+        theme,
+        viewBackgroundColor,
+        viewBackgroundColorPicked,
+      },
       files: Object.fromEntries(
         liveElements
           .filter(isInitializedImageElement)

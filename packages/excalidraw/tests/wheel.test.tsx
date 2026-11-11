@@ -118,12 +118,42 @@ describe("wheel navigation", () => {
     expect(h.state.zoom.value).toBeLessThan(zoomedIn);
   });
 
-  it("redraws crisp 100ms after the last zoom tick, not while ticks keep coming", () => {
+  // the fake clock starts an animation frame every 16ms, and the settle
+  // timeout runs from the first one after the zoomed frame is painted
+  const FRAME_MS = 16;
+
+  it("redraws crisp 100ms after the last zoom tick is shown, not while ticks keep coming", () => {
     vi.useFakeTimers();
     try {
       wheel({ deltaY: -10, ctrlKey: true });
       vi.advanceTimersByTime(99);
       wheel({ deltaY: -10, ctrlKey: true });
+      vi.advanceTimersByTime(100);
+      expect(h.state.shouldCacheIgnoreZoom).toBe(true);
+
+      React.act(() => {
+        vi.advanceTimersByTime(FRAME_MS);
+      });
+      expect(h.state.shouldCacheIgnoreZoom).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("waits for the zoomed frame to be shown before counting down to the crisp redraw", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const frames: FrameRequestCallback[] = [];
+    const requestFrame = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback) => frames.push(callback));
+    try {
+      wheel({ deltaY: -10, ctrlKey: true });
+      // the paint takes a second to reach the screen: no frame starts, and
+      // no tick can arrive
+      vi.advanceTimersByTime(1000);
+      expect(h.state.shouldCacheIgnoreZoom).toBe(true);
+
+      frames.splice(0).forEach((callback) => callback(performance.now()));
       vi.advanceTimersByTime(99);
       expect(h.state.shouldCacheIgnoreZoom).toBe(true);
 
@@ -132,11 +162,12 @@ describe("wheel navigation", () => {
       });
       expect(h.state.shouldCacheIgnoreZoom).toBe(false);
     } finally {
+      requestFrame.mockRestore();
       vi.useRealTimers();
     }
   });
 
-  it("redraws crisp 100ms after a host hands over a stretched camera", () => {
+  it("redraws crisp 100ms after a host's stretched camera is shown", () => {
     vi.useFakeTimers();
     try {
       API.updateScene({
@@ -145,7 +176,7 @@ describe("wheel navigation", () => {
           shouldCacheIgnoreZoom: true,
         },
       });
-      vi.advanceTimersByTime(99);
+      vi.advanceTimersByTime(FRAME_MS + 99);
       expect(h.state.shouldCacheIgnoreZoom).toBe(true);
 
       React.act(() => {
@@ -166,7 +197,7 @@ describe("wheel navigation", () => {
           shouldCacheIgnoreZoom: true,
         },
       });
-      vi.advanceTimersByTime(100);
+      vi.advanceTimersByTime(FRAME_MS + 100);
       expect(h.state.shouldCacheIgnoreZoom).toBe(false);
     } finally {
       vi.useRealTimers();

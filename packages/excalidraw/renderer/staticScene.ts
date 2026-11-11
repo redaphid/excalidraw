@@ -1,6 +1,5 @@
 import {
   applyDarkModeFilter,
-  COLOR_PALETTE,
   COLOR_WHITE,
   FRAME_STYLE,
   THEME,
@@ -43,6 +42,7 @@ import {
   ELEMENT_LINK_IMG,
   getLinkHandleFromCoords,
 } from "../components/hyperlink/helpers";
+import { getThemeCanvasBackground } from "../cssTheme";
 
 import {
   bootstrapCanvas,
@@ -179,7 +179,8 @@ export const frameClip = (
       0,
       frame.width,
       frame.height,
-      FRAME_STYLE.radius / appState.zoom.value,
+      (renderConfig.canvasTheme?.frameRadius ?? FRAME_STYLE.radius) /
+        appState.zoom.value,
     );
   } else {
     context.rect(0, 0, frame.width, frame.height);
@@ -494,6 +495,7 @@ const _renderStaticScene = ({
   scale,
   appState: unsnappedAppState,
   renderConfig,
+  onPainted,
 }: StaticSceneRenderConfig) => {
   if (canvas === null) {
     return;
@@ -518,12 +520,10 @@ const _renderStaticScene = ({
     theme: appState.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
-    // a theme restyles the default canvas only, not a background the user
-    // picked
-    themeBackgroundColor:
-      appState.viewBackgroundColor === COLOR_PALETTE.white
-        ? renderConfig.canvasTheme?.background
-        : undefined,
+    themeBackgroundColor: getThemeCanvasBackground(
+      appState,
+      renderConfig.canvasTheme,
+    ),
   });
 
   // Apply zoom
@@ -579,10 +579,13 @@ const _renderStaticScene = ({
   cacheSettledBitmaps(
     canvas,
     visibleElements,
+    elementsMap,
     allElementsMap,
     renderConfig,
     appState,
   );
+
+  onPainted?.(unsnappedAppState);
 };
 
 /** throttled to animation framerate */

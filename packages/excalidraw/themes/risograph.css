@@ -14,7 +14,9 @@
   --canvas-handle-fill: #f6efe2;
   --canvas-frame-color: #0078bf;
   --canvas-frame-width: 1.5;
+  --canvas-frame-radius: 4;
   --canvas-frame-name-color: #0078bf;
+  --canvas-frame-name-size: 12;
   --color-selection: #ff48b0;
   --element-stroke-color: #1b3a6b;
   --element-background-color: transparent;
@@ -48,6 +50,13 @@
     #f7ddc9 #f9c5a9 #fbab85 #fd8b5a #ff6c2f,
     #eadfe0 #dacadd #c8b2da #b296d6 #9d7ad2,
     #f7e7c5 #f9dc9f #fbd175 #fdc343 #ffb511;
+
+  --sticky-note-background-color: #fffaf2;
+  --sticky-note-stroke-color: #1b3a6b;
+  --color-picks-sticky-note-background: #fffaf2 #ffd6e9 #d3e7f5;
+  --color-picks-sticky-note-stroke: #1b3a6b #0078bf #ff48b0 #00a95c #ff6c2f;
+  --canvas-sticky-note-shadow: 4 4 rgba(255, 72, 176, 0.8);
+  --canvas-sticky-note-edge: 2 #0078bf;
 
   --ui-font: Nunito, "Segoe UI", system-ui, sans-serif;
   --text-primary-color: #1b3a6b;
