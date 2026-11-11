@@ -19,7 +19,7 @@ import { Excalidraw } from "../index";
 import { API } from "./helpers/api";
 import { Keyboard, Pointer, UI } from "./helpers/ui";
 import { getTextEditor } from "./queries/dom";
-import { act, fireEvent, GlobalTestState, render } from "./test-utils";
+import { act, fireEvent, GlobalTestState, render, waitFor } from "./test-utils";
 
 import type { Drawable } from "roughjs/bin/core";
 
@@ -865,5 +865,49 @@ describe("css prop", () => {
     expect(h.state.currentItemRoughness).toBe(2);
     expect(h.app.cssTheme.canvas.gridColor).toBe("#123456");
     expect(h.app.cssTheme.canvas.background).toBeUndefined();
+  });
+});
+
+describe("the grid", () => {
+  const events = () =>
+    (GlobalTestState.canvas.getContext("2d") as any).__getEvents() as {
+      type: string;
+    }[];
+
+  const linesPainted = async () => {
+    (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+    API.setAppState({ scrollX: h.state.scrollX + 7 });
+    await waitFor(() =>
+      expect(events().some(({ type }) => type === "fillRect")).toBe(true),
+    );
+    return events().filter(({ type }) => type === "moveTo").length;
+  };
+
+  it("is painted by a theme that sets a grid color while grid mode is off", async () => {
+    await render(<Excalidraw css={THEME_CSS} />);
+    API.setAppState({ width: 800, height: 600, gridModeEnabled: false });
+
+    expect(await linesPainted()).toBeGreaterThan(0);
+  });
+
+  it("is not painted without a theme grid while grid mode is on", async () => {
+    await render(<Excalidraw />);
+    API.setAppState({ width: 800, height: 600, gridModeEnabled: true });
+
+    expect(await linesPainted()).toBe(0);
+  });
+
+  it("snaps new shapes to the grid in grid mode", async () => {
+    await render(<Excalidraw />);
+    API.setAppState({ gridModeEnabled: true });
+
+    const rectangle = UI.createElement("rectangle", {
+      x: 13,
+      y: 27,
+      width: 51,
+      height: 38,
+    });
+
+    expect([rectangle.x, rectangle.y]).toEqual([20, 20]);
   });
 });
