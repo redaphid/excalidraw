@@ -35,8 +35,6 @@ type Rng = ReturnType<typeof mulberry32>;
 const between = (rng: Rng, min: number, max: number) =>
   min + rng() * (max - min);
 
-/** sizes from a millionth of a unit up to a thousand, half of them clustered
- * around one point the way deep-zoom detail is */
 const randomBoard = (rng: Rng, count: number) => {
   const elements: ExcalidrawElement[] = [];
   const frame = API.createElement({
@@ -143,8 +141,6 @@ const randomView = (
   };
 };
 
-/** the elements every visible-element query must agree with: a scan of the
- * whole map in its order */
 const linearCull = (elementsMap: NonDeletedElementsMap, appState: AppState) =>
   [...elementsMap.values()].filter(
     (element) =>
@@ -195,7 +191,6 @@ describe("the visible elements", () => {
           ];
         const edit = rng();
         if (edit < 0.25) {
-          // moved where the next view may land, without telling the scene
           scene.mutateElement(
             target,
             { x: target.x + between(rng, -1e3, 1e3), y: target.y * 0.5 },
@@ -214,7 +209,6 @@ describe("the visible elements", () => {
         }
       }
     }
-    // the random views must mostly land on something to test the order
     expect(nonEmpty).toBeGreaterThan(200);
   });
 
@@ -235,7 +229,6 @@ describe("the visible elements", () => {
       height: 500,
       offsetLeft: 0,
       offsetTop: 0,
-      // the stroke reaches x = 99, the right edge of the view
       scrollX: 401,
       scrollY: 0,
       selectedElements: [],
@@ -337,7 +330,6 @@ describe("the visible elements", () => {
 describe("the editor's visible elements", () => {
   const { h } = window;
 
-  /** a wait past the index's quiet period and its idle-time rebuild */
   const idle = () =>
     act(() => new Promise((resolve) => setTimeout(resolve, 1200)));
 

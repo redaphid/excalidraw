@@ -3,10 +3,8 @@ const NODE_SIZE = 16;
 /** comparisons and writes between the pauses of a tree build */
 export const PACKED_RTREE_BUILD_CHUNK = 8192;
 
-/** work a tree build has done, for its caller's budget */
 export type PackedRTreeBuildWork = { comparisons: number; writes: number };
 
-/** counts a build's work and says when a chunk of it is done */
 class Chunks {
   private sincePause = 0;
   constructor(readonly work: PackedRTreeBuildWork) {}
@@ -14,7 +12,6 @@ class Chunks {
     this.work.comparisons++;
     this.sincePause++;
   }
-  /** counts a write, and whether the build should pause after it */
   wrote() {
     this.work.writes++;
     if (++this.sincePause < PACKED_RTREE_BUILD_CHUNK) {
@@ -25,19 +22,10 @@ class Chunks {
   }
 }
 
-/**
- * A static R-tree packed bottom-up in the layout of flatbush: leaves in
- * sort-tile-recursive order, then each level of parents, the root last. Each
- * node's box is the union of its children's, so a node that misses the query
- * rect rules out all of its items under the same comparisons the items get.
- */
 export class PackedRTree {
   private constructor(
-    /** minX, minY, maxX, maxY per node */
     private boxes: Float64Array,
-    /** a leaf's item, or a parent's first child node */
     private children: Uint32Array,
-    /** the end of each level's nodes, leaves first */
     private levelEnds: number[],
   ) {}
 
@@ -145,7 +133,6 @@ export class PackedRTree {
   }
 }
 
-/** orders items into vertical slices by x, each slice by y */
 function* sortTileRecursive(
   boxes: Float64Array,
   items: Uint32Array,
@@ -176,10 +163,6 @@ function* sortTileRecursive(
   }
 }
 
-/**
- * A stable bottom-up merge sort of `items[from, to)` by `keys[item]`, pausing
- * when `chunks` says.
- */
 function* mergeSort(
   items: Uint32Array,
   from: number,

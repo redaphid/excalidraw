@@ -66,7 +66,6 @@ export class Renderer {
 
   constructor(
     scene: Scene,
-    /** the window whose idle time the visible-elements index rebuilds in */
     private getOwnerWindow: () => Window = () => window,
   ) {
     this.scene = scene;
@@ -230,10 +229,6 @@ export class Renderer {
     () => this.getOwnerWindow(),
   );
 
-  /**
-   * The elements `isElementInViewport` keeps, in z-order, plus the new
-   * element, which is kept wherever it is.
-   */
   private getVisibleCanvasElements({
     elements,
     elementsMap,
@@ -262,8 +257,6 @@ export class Renderer {
       },
       viewport,
     );
-    // a new element in the map (drawn inside a frame) grows without a new
-    // cull, and the split around it needs its z-order even off screen
     return this.visibleElementsTree.query(
       elements,
       elementsMap,
@@ -286,7 +279,6 @@ export class Renderer {
       newElement: AppState["newElement"];
     }) => {
       const elementsMap = toBrandedType<RenderableElementsMap>(new Map());
-      // the map's values in order, for the cull's positional lookups
       const renderableElements: NonDeletedExcalidrawElement[] = [];
       const newElementCanvasElement = newElement?.frameId ? null : newElement;
 
@@ -308,7 +300,6 @@ export class Renderer {
       }
       return {
         elementsMap,
-        // a repeated id keeps its first position in the map
         renderableElements:
           renderableElements.length === elementsMap.size
             ? renderableElements

@@ -249,7 +249,6 @@ const gesture = (
   };
 };
 
-/** selects a rectangle near the middle of the view and drags it */
 const drag = (scene: SceneName, steps: number): Scenario => {
   let api: ExcalidrawImperativeAPI;
   let target: { id: string; x: number };
@@ -358,8 +357,6 @@ export const SCENARIOS: Scenario[] = [
   { ...pan("big", 240), minStepIntervalMs: 16 },
 ];
 
-/** the cull on a board ten times `big`, and dragging, which the default set
- * has no gesture for; these run only when asked for by id */
 export const LARGE_BOARD_SCENARIOS: Scenario[] = [
   { ...pan("huge", 240), minStepIntervalMs: 16 },
   zoom("huge", 60, 120, 3, (_, canvas) => center(canvas)),

@@ -10,7 +10,6 @@ import { isTextElement } from "../src/typeChecks";
 
 import type { ElementsMap, ExcalidrawElement } from "../src/types";
 
-/** a 100x100 grid of 20x20 rectangles, 50 units apart */
 const grid = () => {
   const elements: ExcalidrawElement[] = [];
   for (let row = 0; row < 100; row++) {
@@ -33,7 +32,6 @@ const grid = () => {
 
 const view: Bounds = [1000, 1000, 1200, 1100];
 
-/** a window whose clock and idle periods move only when the test says */
 const testWindow = () => {
   let now = 0;
   let nextId = 1;
@@ -60,7 +58,6 @@ const testWindow = () => {
       }
     }
   };
-  /** runs the idle callbacks pending now, each with a long idle period */
   const runIdle = () => {
     const pending = [...idle];
     idle.clear();
@@ -84,7 +81,6 @@ const setup = (elements: readonly ExcalidrawElement[]) => {
       isTextElement(element) ? getContainerElement(element, elementsMap) : null,
     () => clock.window,
   );
-  // one map per array, as the scene keeps one
   const maps = new WeakMap<readonly ExcalidrawElement[], ElementsMap>();
   const mapOf = (elements: readonly ExcalidrawElement[]) => {
     let map = maps.get(elements);
@@ -102,7 +98,6 @@ const setup = (elements: readonly ExcalidrawElement[]) => {
     const result = index.query(elements, mapOf(elements), bounds, null);
     return { result, measured };
   };
-  /** measures done outside queries, by rebuilds */
   const rebuildWork = (run: () => void) => {
     measured = 0;
     run();
@@ -113,7 +108,6 @@ const setup = (elements: readonly ExcalidrawElement[]) => {
   return { index, query, clock, rebuildWork };
 };
 
-/** what every query must agree with: each element tested in order */
 const linear = (
   elements: readonly ExcalidrawElement[],
   [minX, minY, maxX, maxY]: Bounds = view,
@@ -242,7 +236,6 @@ describe("ElementsRTree", () => {
     const { query, clock, rebuildWork } = setup(elements);
     const next = moveCopies(elements, elements.length, 5);
 
-    // every element changed: each is measured, as a linear scan would
     expect(query(next).measured).toBe(next.length);
     expect(rebuildWork(() => clock.advance(999))).toBe(0);
     expect(query(next).measured).toBe(next.length);
@@ -277,7 +270,6 @@ describe("ElementsRTree", () => {
       expect(between.result).toEqual(linear(next));
       measuredBetween = between.measured;
       if (measuredBetween) {
-        // the old tree answers until the new one replaces it
         expect(measuredBetween).toBe(next.length);
       }
       expect(perTask.length).toBeLessThan(1000);
@@ -326,11 +318,8 @@ describe("ElementsRTree", () => {
     }
     expect(rebuilt).toBe(0);
 
-    // a second after the drag the tree is rebuilt in idle time
     clock.advance(1000);
-    while (clock.runIdle()) {
-      // next task
-    }
+    while (clock.runIdle()) {}
     const { result, measured } = query(elements);
     expect(measured).toBe(0);
     expect(result).toEqual(linear(elements));
@@ -347,20 +336,14 @@ describe("ElementsRTree", () => {
 
     expect(edit().measured).toBe(40);
     clock.advance(900);
-    while (clock.runIdle()) {
-      // next task
-    }
+    while (clock.runIdle()) {}
     expect(edit().measured).toBe(40);
     clock.advance(900);
-    while (clock.runIdle()) {
-      // next task
-    }
+    while (clock.runIdle()) {}
     expect(query(next).measured).toBe(40);
 
     clock.advance(100);
-    while (clock.runIdle()) {
-      // next task
-    }
+    while (clock.runIdle()) {}
     const { result, measured } = query(next);
     expect(measured).toBe(0);
     expect(result).toEqual(linear(next));

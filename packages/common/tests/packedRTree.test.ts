@@ -44,7 +44,6 @@ describe("PackedRTree.build", () => {
       Uint32Array.from({ length: count }, (_, i) => i),
     );
 
-    // the write that ends a chunk may come with its comparison
     expect(Math.max(...perStep)).toBeLessThanOrEqual(
       PACKED_RTREE_BUILD_CHUNK + 1,
     );

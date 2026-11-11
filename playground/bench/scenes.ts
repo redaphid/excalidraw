@@ -395,8 +395,6 @@ const scattered = (
 
 const big = () => scattered("b", 5000, 14000, 9200);
 
-/** ten times `big` at the same density, so a view paints as much and only
- * the work that grows with the board differs */
 const huge = () => scattered("h", 50000, 44272, 29093);
 
 export const DEEP_CENTER = { x: 500, y: 500 };

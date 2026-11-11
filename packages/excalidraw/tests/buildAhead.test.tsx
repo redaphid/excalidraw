@@ -32,9 +32,7 @@ const MS_PER_BITMAP = 3;
 const ZOOM_SETTLE_AND_BUILD_MS = 400;
 
 let lastCanvas: HTMLCanvasElement | null = null;
-/** destroyed after each test, so an index rebuild a renderer scheduled
- * doesn't land in a later test's idle queue */
-const renderers: Renderer[] = [];
+const renderersToDestroy: Renderer[] = [];
 
 beforeEach(() => {
   vi.stubGlobal("requestIdleCallback", (callback: IdleRequestCallback) =>
@@ -47,7 +45,7 @@ afterEach(() => {
   if (lastCanvas) {
     cancelSettledBitmaps(lastCanvas);
   }
-  renderers.splice(0).forEach((renderer) => renderer.destroy());
+  renderersToDestroy.splice(0).forEach((renderer) => renderer.destroy());
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -55,7 +53,7 @@ afterEach(() => {
 const board = (elements: NonDeletedExcalidrawElement[]) => {
   const scene = new Scene(elements, { skipValidation: true });
   const renderer = new Renderer(scene);
-  renderers.push(renderer);
+  renderersToDestroy.push(renderer);
   return { scene, renderer };
 };
 

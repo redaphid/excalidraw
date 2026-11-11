@@ -60,7 +60,6 @@ export type BenchReport = {
   viewport: { width: number; height: number };
   mountMs: Partial<Record<SceneName, number>>;
   heapMB?: number;
-  /** how long each idle task of the visible-elements index rebuild took */
   rebuildIdleTaskMs: number[];
   results: ScenarioResult[];
 };
@@ -232,7 +231,6 @@ if (typeof window.requestIdleCallback === "function") {
         inIdleCallback = false;
         const ms = performance.now() - start;
         longestIdleCallbackMs = Math.max(longestIdleCallbackMs, ms);
-        // property names survive minification, so this also works in builds
         if (callback.toString().includes("runRebuildTask")) {
           rebuildIdleTaskMs.push(round(ms));
         }
