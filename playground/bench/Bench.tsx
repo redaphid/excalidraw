@@ -5,7 +5,11 @@ import { Excalidraw } from "@excalidraw/excalidraw";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import { PARITY_SCENARIOS, SCENARIOS } from "./scenarios";
+import {
+  LARGE_BOARD_SCENARIOS,
+  PARITY_SCENARIOS,
+  SCENARIOS,
+} from "./scenarios";
 import { SCENES } from "./scenes";
 
 import type { Scenario } from "./scenarios";
@@ -56,6 +60,8 @@ export type BenchReport = {
   viewport: { width: number; height: number };
   mountMs: Partial<Record<SceneName, number>>;
   heapMB?: number;
+  /** how long each idle task of the visible-elements index rebuild took */
+  rebuildIdleTaskMs: number[];
   results: ScenarioResult[];
 };
 
@@ -212,6 +218,7 @@ const installCounters = () => {
 let inIdleCallback = false;
 /** the longest idle callback since the last `takeLongestIdleCallback` */
 let longestIdleCallbackMs = 0;
+const rebuildIdleTaskMs: number[] = [];
 
 if (typeof window.requestIdleCallback === "function") {
   const requestIdle = window.requestIdleCallback.bind(window);
@@ -223,10 +230,12 @@ if (typeof window.requestIdleCallback === "function") {
         callback(deadline);
       } finally {
         inIdleCallback = false;
-        longestIdleCallbackMs = Math.max(
-          longestIdleCallbackMs,
-          performance.now() - start,
-        );
+        const ms = performance.now() - start;
+        longestIdleCallbackMs = Math.max(longestIdleCallbackMs, ms);
+        // property names survive minification, so this also works in builds
+        if (callback.toString().includes("runRebuildTask")) {
+          rebuildIdleTaskMs.push(round(ms));
+        }
       }
     }, options);
 }
@@ -440,7 +449,9 @@ const runScenario = async (
 };
 
 const selected = only
-  ? [...SCENARIOS, ...PARITY_SCENARIOS].filter((s) => only.includes(s.id))
+  ? [...SCENARIOS, ...LARGE_BOARD_SCENARIOS, ...PARITY_SCENARIOS].filter((s) =>
+      only.includes(s.id),
+    )
   : SCENARIOS;
 const sceneOrder = [...new Set(selected.map((s) => s.scene))];
 
@@ -474,6 +485,7 @@ const runBench = async (ui: BenchUi): Promise<BenchReport> => {
     viewport: { width: window.innerWidth, height: window.innerHeight },
     mountMs,
     heapMB: memory ? Math.round(memory.usedJSHeapSize / 1e5) / 10 : undefined,
+    rebuildIdleTaskMs,
     results,
   };
 };

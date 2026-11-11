@@ -1,4 +1,11 @@
-import { isElementInViewport, Scene } from "@excalidraw/element";
+import React from "react";
+
+import { KEYS } from "@excalidraw/common";
+import {
+  CaptureUpdateAction,
+  isElementInViewport,
+  Scene,
+} from "@excalidraw/element";
 import { pointFrom, type LocalPoint } from "@excalidraw/math";
 
 import type {
@@ -7,9 +14,12 @@ import type {
 } from "@excalidraw/element/types";
 
 import { getDefaultAppState } from "../appState";
+import { Excalidraw } from "../index";
 import { Renderer } from "../scene/Renderer";
 
 import { API } from "./helpers/api";
+import { Keyboard, UI } from "./helpers/ui";
+import { act, render } from "./test-utils";
 
 import type { AppState } from "../types";
 
@@ -233,6 +243,50 @@ describe("the visible elements", () => {
     expect(visibleElements).toEqual([edge]);
   });
 
+  it("include an element appended through the scene's append path, before and after the rebuild", () => {
+    vi.useFakeTimers();
+    const rng = mulberry32(13);
+    const scene = new Scene(randomBoard(rng, 100), { skipValidation: true });
+    const renderer = new Renderer(scene);
+    const appState = {
+      ...getDefaultAppState(),
+      width: 1000,
+      height: 800,
+      offsetLeft: 0,
+      offsetTop: 0,
+      scrollX: 500,
+      scrollY: 500,
+    };
+    const cull = () =>
+      renderer.getRenderableElements({ ...appState, selectedElements: [] });
+    cull();
+    vi.runAllTimers();
+
+    const replaceAllElements = vi.spyOn(scene, "replaceAllElements");
+    const appended = API.createElement({
+      type: "rectangle",
+      x: -100,
+      y: -100,
+      width: 50,
+      height: 50,
+    });
+    scene.insertElementsAtIndex([appended], null);
+    expect(replaceAllElements).not.toHaveBeenCalled();
+
+    const { elementsMap, visibleElements } = cull();
+    expect(ids(visibleElements)).toContain(appended.id);
+    expect(ids(visibleElements)).toEqual(
+      ids(linearCull(elementsMap, appState)),
+    );
+
+    vi.runAllTimers();
+    vi.useRealTimers();
+    const rebuilt = cull();
+    expect(ids(rebuilt.visibleElements)).toEqual(
+      ids(linearCull(rebuilt.elementsMap, appState)),
+    );
+  });
+
   it("are found without touching elements far from a deep-zoomed view, once indexed in idle time", () => {
     vi.useFakeTimers();
     const rng = mulberry32(11);
@@ -278,4 +332,113 @@ describe("the visible elements", () => {
     expect(visibleElements.length).toBeGreaterThan(0);
     expect(touched.size).toBeLessThan(elements.length / 10);
   });
+});
+
+describe("the editor's visible elements", () => {
+  const { h } = window;
+
+  /** a wait past the index's quiet period and its idle-time rebuild */
+  const idle = () =>
+    act(() => new Promise((resolve) => setTimeout(resolve, 1200)));
+
+  const pan = (dx: number) =>
+    act(() => h.setState({ scrollX: h.state.scrollX + dx }));
+
+  const scanOfScene = () => {
+    const elementsMap = h.app.scene.getNonDeletedElementsMap();
+    return ids(
+      h.app.scene
+        .getNonDeletedElements()
+        .filter((element) =>
+          isElementInViewport(
+            element,
+            h.state.width,
+            h.state.height,
+            h.state,
+            elementsMap,
+          ),
+        ),
+    );
+  };
+
+  const expectCullMatchesScan = () => {
+    const expected = scanOfScene();
+    expect(ids(h.app.visibleElements)).toEqual(expected);
+    return expected;
+  };
+
+  it("match a scan of the scene after deleting labelled shapes, undo, and adding, with the index rebuilt between", async () => {
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    const rng = mulberry32(17);
+    const elements: ExcalidrawElement[] = [];
+    for (let i = 0; i < 300; i++) {
+      const container = API.createElement({
+        type: i % 3 ? "rectangle" : "ellipse",
+        x: between(rng, -500, 1500),
+        y: between(rng, -500, 1300),
+        width: 80,
+        height: 60,
+      });
+      const label = API.createElement({
+        type: "text",
+        text: `label ${i}`,
+        x: container.x + 10,
+        y: container.y + 20,
+        containerId: container.id,
+      });
+      elements.push(
+        { ...container, boundElements: [{ id: label.id, type: "text" }] },
+        label,
+      );
+    }
+    API.updateScene({
+      elements,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+    act(() => h.setState({ width: 1440, height: 900 }));
+    await idle();
+    pan(-10);
+    const visibleAtStart = expectCullMatchesScan();
+
+    const deleted = h.app.scene
+      .getNonDeletedElements()
+      .filter(
+        (element) =>
+          element.type !== "text" && visibleAtStart.includes(element.id),
+      )
+      .slice(0, 40);
+    const labels = deleted.map((container) => container.boundElements![0].id);
+    expect(deleted.length).toBeGreaterThanOrEqual(20);
+    API.setSelectedElements(deleted);
+    Keyboard.keyDown(KEYS.DELETE);
+
+    const gone = new Set([...ids(deleted), ...labels]);
+    expect(
+      h.elements
+        .filter((element) => gone.has(element.id))
+        .every((element) => element.isDeleted),
+    ).toBe(true);
+    expect(ids(h.app.visibleElements).filter((id) => gone.has(id))).toEqual([]);
+    expectCullMatchesScan();
+    pan(-10);
+    expectCullMatchesScan();
+    await idle();
+    pan(10);
+    expectCullMatchesScan();
+
+    Keyboard.undo();
+    const restored = expectCullMatchesScan();
+    expect(restored.filter((id) => gone.has(id))).toEqual(
+      visibleAtStart.filter((id) => gone.has(id)),
+    );
+    await idle();
+    pan(10);
+    expectCullMatchesScan();
+    pan(-10);
+    expect(expectCullMatchesScan()).toEqual(visibleAtStart);
+
+    const added = UI.createElement("rectangle", { x: 30, y: 30, size: 40 });
+    expect(ids(h.app.visibleElements)).toContain(added.id);
+    expectCullMatchesScan();
+  }, 20_000);
 });

@@ -18,12 +18,13 @@ const { values: opts } = parseArgs({
     only: { type: "string" },
     counters: { type: "boolean", default: false },
     label: { type: "string", default: "run" },
+    wait: { type: "string" },
   },
 });
 
 if (!opts.builds) {
   console.error(
-    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--channel chromium|chrome|msedge] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name]",
+    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--channel chromium|chrome|msedge] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name] [--wait ms-before-each-gesture]",
   );
   process.exit(2);
 }
@@ -93,6 +94,7 @@ const runOnce = async (browser, port, build) => {
   const query = new URLSearchParams({ bench: "auto" });
   if (opts.only) query.set("only", opts.only);
   if (opts.counters) query.set("counters", "1");
+  if (opts.wait) query.set("wait", opts.wait);
   await page.goto(`http://127.0.0.1:${port}/${build}/index.html?${query}`);
   await page.waitForFunction(() => window.benchReport || window.benchError, null, {
     timeout: 15 * 60_000,
@@ -210,6 +212,15 @@ const main = async () => {
       if (b.maxCounters) {
         console.log(`  counters max/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].maxCounters)} bitmapBuildingFrames ${byBuild[x].bitmapBuildingFrames}`).join(" | ")}`);
       }
+    }
+  }
+  for (const build of builds) {
+    const perRun = reports[build].map((r) => r.rebuildIdleTaskMs ?? []);
+    const tasks = perRun.flat().sort((a, b) => a - b);
+    if (tasks.length) {
+      console.log(
+        `rebuild idle tasks ${build}: ${perRun.map((t) => t.length).join("/")} per run, median ${median(tasks)}ms p95 ${tasks[Math.floor(tasks.length * 0.95)]}ms max ${tasks[tasks.length - 1]}ms, over 16ms ${tasks.filter((ms) => ms > 16).length}, over 50ms ${tasks.filter((ms) => ms > 50).length}`,
+      );
     }
   }
   console.log(`saved ${file}`);
