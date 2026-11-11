@@ -1,10 +1,13 @@
 import { MIME_TYPES } from "@excalidraw/common";
+import { newElement, newFrameElement } from "@excalidraw/element";
 import * as clipboardModule from "@excalidraw/excalidraw/clipboard";
 import * as imageModule from "@excalidraw/excalidraw/data/image";
 import * as jsonModule from "@excalidraw/excalidraw/data/json";
 import * as mockedSceneExportUtils from "@excalidraw/excalidraw/scene/export";
 import { diagramFactory } from "@excalidraw/excalidraw/tests/fixtures/diagramFixture";
 import { vi } from "vitest";
+
+import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
 import * as utils from "../src";
 
@@ -60,6 +63,24 @@ describe("exportToCanvas", async () => {
       expect(appState.viewBackgroundColor).toBe("#123456");
       expect(appState.exportBackground).toBe(true);
       expect(appState.zoom.value).toBe(1);
+    });
+
+    it("leaves the caller's elements as they were when false and out of index order", async () => {
+      const box = { x: 0, y: 0, width: 100, height: 100 };
+      const frame = { ...newFrameElement(box), index: "a0" };
+      const child = {
+        ...newElement({ type: "rectangle", ...box, frameId: frame.id }),
+        index: "a1",
+      } as NonDeletedExcalidrawElement;
+      const stamps = () =>
+        [child, frame].map(({ index, version }) => ({ index, version }));
+      const before = stamps();
+      await utils.exportToCanvas({
+        elements: [child, frame as NonDeletedExcalidrawElement],
+        files: null,
+        restoreElements: false,
+      });
+      expect(stamps()).toEqual(before);
     });
   });
 });

@@ -101,10 +101,17 @@ export type StaticSceneRenderConfig = {
   scale: number;
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
+  /** called once the scene has been painted, with the state it shows */
+  onPainted?: (appState: StaticCanvasAppState) => void;
 };
 
 export type InteractiveSceneRenderAnimationState = {
   bindingHighlight: { runtime: number } | undefined;
+};
+
+export type ButtonHighlight = {
+  id: ExcalidrawElement["id"];
+  pressed: boolean;
 };
 
 export type InteractiveSceneRenderConfig = {
@@ -116,6 +123,7 @@ export type InteractiveSceneRenderConfig = {
   allElementsMap: NonDeletedSceneElementsMap;
   scale: number;
   appState: InteractiveCanvasAppState;
+  buttonHighlight: ButtonHighlight | null;
   renderConfig: InteractiveCanvasRenderConfig;
   editorInterface: EditorInterface;
   callback: (data: RenderInteractiveSceneCallback) => void;

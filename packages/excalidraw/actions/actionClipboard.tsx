@@ -149,6 +149,7 @@ export const actionCopyAsSvg = register({
           ...appState,
           exportingFrame,
           name: app.getName(),
+          canvasTheme: app.cssTheme.canvas,
         },
       );
 
@@ -216,6 +217,7 @@ export const actionCopyAsPng = register({
         ...appState,
         exportingFrame,
         name: app.getName(),
+        canvasTheme: app.cssTheme.canvas,
       });
       return {
         appState: {

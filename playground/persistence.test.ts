@@ -42,7 +42,11 @@ describe("playground persistence", () => {
       saveScene(
         localStorage,
         [thunderwrench, rustyConquistador],
-        { ...getDefaultAppState(), zoom: { value: getNormalizedZoom(100) } },
+        {
+          ...getDefaultAppState(),
+          zoom: { value: getNormalizedZoom(100) },
+          viewBackgroundColorPicked: true,
+        },
         {},
       );
       scene = loadScene(localStorage);
@@ -54,6 +58,10 @@ describe("playground persistence", () => {
 
     it("keeps the zoom", () => {
       expect(scene?.appState?.zoom).toEqual({ value: 100 });
+    });
+
+    it("keeps that the user picked the canvas background", () => {
+      expect(scene?.appState?.viewBackgroundColorPicked).toBe(true);
     });
   });
 

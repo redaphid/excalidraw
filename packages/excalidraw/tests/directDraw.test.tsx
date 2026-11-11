@@ -1,6 +1,7 @@
 import rough from "roughjs/bin/rough";
 
 import {
+  cancelSettledBitmaps,
   elementWithCanvasCache,
   mutateElement,
   Scene,
@@ -18,8 +19,13 @@ import { API } from "./helpers/api";
 
 import type { AppState } from "../types";
 
+let lastCanvas: HTMLCanvasElement | null = null;
+
 afterEach(() => {
   vi.restoreAllMocks();
+  if (lastCanvas) {
+    cancelSettledBitmaps(lastCanvas);
+  }
 });
 
 const drawScene = (
@@ -43,6 +49,7 @@ const drawScene = (
     selectedElements: [],
   });
   const canvas = document.createElement("canvas");
+  lastCanvas = canvas;
   canvas.width = canvas.height = 500;
   const context = canvas.getContext("2d")!;
   const drawImage = vi.spyOn(context, "drawImage");

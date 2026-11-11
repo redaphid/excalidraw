@@ -7,6 +7,7 @@ import {
 } from "@excalidraw/common";
 
 import type {
+  ButtonHighlight,
   InteractiveCanvasRenderConfig,
   InteractiveSceneRenderAnimationState,
   InteractiveSceneRenderConfig,
@@ -81,6 +82,11 @@ type InteractiveCanvasProps = {
     DOMAttributes<HTMLCanvasElement>["onDoubleClick"],
     undefined
   >;
+  onPointerLeave: Exclude<
+    DOMAttributes<HTMLCanvasElement>["onPointerLeave"],
+    undefined
+  >;
+  buttonHighlight: ButtonHighlight | null;
 };
 
 export const INTERACTIVE_SCENE_ANIMATION_KEY = "animateInteractiveScene";
@@ -148,6 +154,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       allElementsMap: props.allElementsMap,
       scale: window.devicePixelRatio,
       appState: { ...props.appState, theme: props.app.getCanvasMode() },
+      buttonHighlight: props.buttonHighlight,
       renderConfig: {
         remotePointerViewportCoords,
         remotePointerButton,
@@ -220,6 +227,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       onPointerCancel={props.onPointerCancel}
       onTouchMove={props.onTouchMove}
       onPointerDown={props.onPointerDown}
+      onPointerLeave={props.onPointerLeave}
       onDoubleClick={
         props.appState.viewModeEnabled ? undefined : props.onDoubleClick
       }
@@ -292,6 +300,7 @@ const areEqual = (
     prevProps.elementsMap !== nextProps.elementsMap ||
     prevProps.visibleElements !== nextProps.visibleElements ||
     prevProps.selectedElements !== nextProps.selectedElements ||
+    prevProps.buttonHighlight !== nextProps.buttonHighlight ||
     prevProps.renderScrollbars !== nextProps.renderScrollbars ||
     prevProps.interactionEnabled !== nextProps.interactionEnabled ||
     prevProps.navigationEnabled !== nextProps.navigationEnabled

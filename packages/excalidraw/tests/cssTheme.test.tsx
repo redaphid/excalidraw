@@ -11,17 +11,39 @@ import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 import type { LocalPoint } from "@excalidraw/math";
 
 import { readCssTheme } from "../cssTheme";
+import { serializeAsJSON } from "../data/json";
 import { restoreElements } from "../data/restore";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
-import { Pointer, UI } from "./helpers/ui";
+import { Keyboard, Pointer, UI } from "./helpers/ui";
 import { getTextEditor } from "./queries/dom";
-import { act, render } from "./test-utils";
+import { act, fireEvent, GlobalTestState, render } from "./test-utils";
 
 import type { Drawable } from "roughjs/bin/core";
 
 const { h } = window;
+
+/** the color the static canvas last painted its background with */
+const paintedBackground = () => {
+  const events: { type: string; props: { value?: string } }[] = (
+    GlobalTestState.canvas.getContext("2d") as any
+  ).__getEvents();
+  const fill = events.map(({ type }) => type).lastIndexOf("fillRect");
+  return events
+    .slice(0, fill)
+    .filter(({ type }) => type === "fillStyle")
+    .at(-1)?.props.value;
+};
+
+const pickCanvasBackground = async (color: string) => {
+  API.setAppState({ openMenu: "canvas" });
+  await act(async () => {});
+  fireEvent.click(
+    document.querySelector(`[data-testid="color-top-pick-${color}"]`)!,
+  );
+  await act(async () => {});
+};
 
 const styleOf = (properties: Record<string, string>) => ({
   getPropertyValue: (name: string) => properties[name] ?? "",
@@ -126,6 +148,46 @@ describe("readCssTheme", () => {
     expect(theme.canvas.frameWidth).toBe(1);
   });
 
+  describe("when the theme styles frames", () => {
+    let canvas: ReturnType<typeof readCssTheme>["canvas"];
+
+    beforeEach(() => {
+      canvas = readCssTheme(
+        styleOf({
+          "--canvas-frame-radius": "0",
+          "--canvas-frame-name-color": "#5a5f66",
+          "--canvas-frame-name-size": "11",
+          "--ui-font": "Inter, sans-serif",
+        }),
+      ).canvas;
+    });
+
+    it("keeps a square radius", () => {
+      expect(canvas.frameRadius).toBe(0);
+    });
+
+    it("reads the name's color, size and font", () => {
+      expect(canvas).toEqual(
+        expect.objectContaining({
+          frameNameColor: "#5a5f66",
+          frameNameSize: 11,
+          frameNameFontFamily: "Inter, sans-serif",
+        }),
+      );
+    });
+  });
+
+  it("ignores a negative frame radius and a zero name size", () => {
+    expect(
+      readCssTheme(
+        styleOf({
+          "--canvas-frame-radius": "-2",
+          "--canvas-frame-name-size": "0",
+        }),
+      ).canvas,
+    ).toEqual({});
+  });
+
   it("parses the pen, ignoring thinning outside -1..1", () => {
     expect(
       readCssTheme(
@@ -158,6 +220,103 @@ describe("readCssTheme", () => {
     expect(readCssTheme(styleOf({ "--canvas-mode": "dim" })).canvas).toEqual(
       {},
     );
+  });
+
+  it("parses sticky note defaults, picks, shadow and edge", () => {
+    const theme = readCssTheme(
+      styleOf({
+        "--sticky-note-background-color": "#f2e6c4",
+        "--sticky-note-stroke-color": "#14181f",
+        "--color-picks-sticky-note-background":
+          "#f2e6c4 #dfe8d6 #d8e1ea #efd9cf #e9e2f0 #ffffff",
+        "--color-picks-sticky-note-stroke": "#14181f #9e3833",
+        "--canvas-sticky-note-shadow": "5 -2.5 rgba(20, 24, 31, 0.3)",
+        "--canvas-sticky-note-edge": "1.5 #14181f",
+      }),
+    );
+
+    expect(theme.appState).toEqual({
+      currentItemStickynoteBackgroundColor: "#f2e6c4",
+      currentItemStickynoteStrokeColor: "#14181f",
+      colorTopPicks: {
+        stickyNoteBackground: [
+          "#f2e6c4",
+          "#dfe8d6",
+          "#d8e1ea",
+          "#efd9cf",
+          "#e9e2f0",
+        ],
+        stickyNoteStroke: ["#14181f", "#9e3833"],
+      },
+    });
+    expect(theme.canvas).toEqual({
+      stickyNoteShadowX: 5,
+      stickyNoteShadowY: -2.5,
+      stickyNoteShadowBlur: 0,
+      stickyNoteShadowColor: "rgba(20, 24, 31, 0.3)",
+      stickyNoteEdgeWidth: 1.5,
+      stickyNoteEdgeColor: "#14181f",
+    });
+  });
+
+  it("reads a sticky note shadow and edge of none as transparent", () => {
+    expect(
+      readCssTheme(
+        styleOf({
+          "--canvas-sticky-note-shadow": "none",
+          "--canvas-sticky-note-edge": "none",
+        }),
+      ).canvas,
+    ).toEqual({
+      stickyNoteShadowX: 0,
+      stickyNoteShadowY: 0,
+      stickyNoteShadowBlur: 0,
+      stickyNoteShadowColor: "transparent",
+      stickyNoteEdgeWidth: 0,
+      stickyNoteEdgeColor: "transparent",
+    });
+  });
+
+  it.each([
+    ["6 8 10 rgba(0, 0, 0, 0.2)", 6, 8, 10],
+    ["-4 2 0.5 #000", -4, 2, 0.5],
+    // the bitmap is padded 20 units: offset plus blur stays inside
+    ["12 14 12 rgba(80, 58, 28, 0.2)", 12, 14, 6],
+    ["16 0 40 #000", 16, 0, 4],
+  ])("reads a sticky note shadow of %s with its blur", (value, x, y, blur) => {
+    expect(
+      readCssTheme(styleOf({ "--canvas-sticky-note-shadow": value })).canvas,
+    ).toEqual({
+      stickyNoteShadowX: x,
+      stickyNoteShadowY: y,
+      stickyNoteShadowBlur: blur,
+      stickyNoteShadowColor: value.split(" ").slice(3).join(" "),
+    });
+  });
+
+  it.each([
+    ["--sticky-note-background-color", "transparent"],
+    ["--sticky-note-background-color", "rgb(1, 2, 3)"],
+    ["--sticky-note-stroke-color", "ink"],
+    ["--color-picks-sticky-note-background", "#ffdf6b transparent"],
+    ["--color-picks-sticky-note-stroke", "#111 not-a-color"],
+    ["--canvas-sticky-note-shadow", "3 rgba(0, 0, 0, 0.16)"],
+    ["--canvas-sticky-note-shadow", "3 3"],
+    ["--canvas-sticky-note-shadow", "40 3 #000"],
+    ["--canvas-sticky-note-shadow", "soft"],
+    ["--canvas-sticky-note-shadow", "3 3 -2 #000"],
+    ["--canvas-sticky-note-shadow", "3 3 4"],
+    ["--canvas-sticky-note-edge", "0 #000"],
+    ["--canvas-sticky-note-edge", "-1 #000"],
+    ["--canvas-sticky-note-edge", "hairline"],
+    ["--canvas-sticky-note-edge", "1"],
+  ])("leaves out a malformed %s of %s", (name, value) => {
+    expect(readCssTheme(styleOf({ [name]: value }))).toEqual({
+      canvas: {},
+      appState: {},
+      pen: {},
+      palettes: {},
+    });
   });
 
   it("is empty when no property is set", () => {
@@ -216,6 +375,36 @@ describe("css prop", () => {
 
     const arrow = UI.createElement("arrow", { width: 80, height: 0 });
     expect(arrow.endArrowhead).toBe("triangle");
+  });
+
+  it("gives new sticky notes the theme's paper, ink and chrome", async () => {
+    await render(
+      <Excalidraw
+        css={`
+          :scope {
+            --sticky-note-background-color: #f2e6c4;
+            --sticky-note-stroke-color: #14181f;
+            --color-picks-sticky-note-background: #f2e6c4 #dfe8d6;
+            --canvas-sticky-note-shadow: none;
+          }
+        `}
+      />,
+    );
+
+    expect(h.app.cssTheme.canvas).toMatchObject({
+      stickyNoteShadowColor: "transparent",
+    });
+    expect(h.state.colorTopPicks.stickyNoteBackground).toEqual([
+      "#f2e6c4",
+      "#dfe8d6",
+    ]);
+    UI.clickTool("stickynote");
+    const mouse = new Pointer("mouse");
+    mouse.downAt(300, 300);
+    mouse.up();
+    const note = h.elements.find((element) => element.type === "stickynote")!;
+    expect(note.backgroundColor).toBe("#f2e6c4");
+    expect(note.strokeColor).toBe("#14181f");
   });
 
   it("gives new freedraw strokes the theme's pen", async () => {
@@ -311,6 +500,59 @@ describe("css prop", () => {
     expect(h.state.currentItemRoughness).toBe(2);
   });
 
+  it("keeps the picks a loaded scene saved, and themes the rest", async () => {
+    await render(
+      <Excalidraw
+        css={THEME_CSS}
+        initialData={{
+          appState: {
+            currentItemRoughness: 2,
+            colorTopPicks: {
+              elementStroke: ["#0000ff"],
+              elementBackground: null,
+              bucketFill: null,
+              stickyNoteStroke: null,
+              stickyNoteBackground: null,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(h.state.currentItemRoughness).toBe(2);
+    expect(h.state.colorTopPicks.elementStroke).toEqual(["#0000ff"]);
+    expect(h.state.currentItemStrokeColor).toBe("#14181f");
+    expect(h.state.currentItemEndArrowhead).toBe("triangle");
+  });
+
+  it("themes the swatches a loaded scene left uncustomized", async () => {
+    await render(
+      <Excalidraw
+        css={THEME_CSS}
+        initialData={{
+          appState: {
+            colorTopPicks: {
+              elementStroke: null,
+              elementBackground: ["#00ff00"],
+              bucketFill: null,
+              stickyNoteStroke: null,
+              stickyNoteBackground: null,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(h.state.colorTopPicks.elementStroke).toEqual([
+      "#14181f",
+      "#9e3833",
+      "#c79e52",
+      "#5b7a8f",
+      "#8c4d80",
+    ]);
+    expect(h.state.colorTopPicks.elementBackground).toEqual(["#00ff00"]);
+  });
+
   it("shows the theme's palette in the color picker", async () => {
     // radix popovers measure themselves
     vi.stubGlobal(
@@ -352,6 +594,54 @@ describe("css prop", () => {
     ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
     expect(swatches).toContain("#ebe4d6");
     expect(swatches).not.toContain("#ffffff");
+  });
+
+  it("paints a canvas the user set to white in white", async () => {
+    await render(<Excalidraw css=":scope { --canvas-background: #ebe4d6; }" />);
+    expect(paintedBackground()).toBe("#ebe4d6");
+
+    await pickCanvasBackground("#ffffff");
+
+    expect(paintedBackground()).toBe("#ffffff");
+    const swatches = [
+      ...document.querySelectorAll<HTMLElement>(".active-color"),
+    ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
+    expect(swatches).toContain("#ffffff");
+    expect(swatches).not.toContain("#ebe4d6");
+  });
+
+  it("shows the theme's canvas again when the white pick is undone", async () => {
+    await render(
+      <Excalidraw
+        handleKeyboardGlobally
+        css=":scope { --canvas-background: #ebe4d6; }"
+      />,
+    );
+    await pickCanvasBackground("#ffffff");
+    expect(paintedBackground()).toBe("#ffffff");
+
+    Keyboard.undo();
+    await act(async () => {});
+
+    expect(paintedBackground()).toBe("#ebe4d6");
+  });
+
+  it("keeps a white pick in a saved file, and themes a file without one", async () => {
+    const css = ":scope { --canvas-background: #ebe4d6; }";
+    await render(<Excalidraw css={css} />);
+    await pickCanvasBackground("#ffffff");
+    const picked = JSON.parse(serializeAsJSON([], h.state, {}, "local"));
+
+    await render(<Excalidraw css={css} initialData={picked} />);
+    expect(paintedBackground()).toBe("#ffffff");
+
+    await render(
+      <Excalidraw
+        css={css}
+        initialData={{ appState: { viewBackgroundColor: "#ffffff" } }}
+      />,
+    );
+    expect(paintedBackground()).toBe("#ebe4d6");
   });
 
   it("reads the dark mode values of an editor that starts dark", async () => {

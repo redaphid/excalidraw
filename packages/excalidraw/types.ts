@@ -62,6 +62,7 @@ import type { ContextMenuItems } from "./components/ContextMenu";
 import type { SnapLine } from "./snapping";
 import type { ImportedDataState } from "./data/types";
 import type { SetViewportOptions } from "./viewport";
+import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
 
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
@@ -206,6 +207,7 @@ export type StaticCanvasAppState = Readonly<
     shouldCacheIgnoreZoom: AppState["shouldCacheIgnoreZoom"];
     /** null indicates transparent bg */
     viewBackgroundColor: AppState["viewBackgroundColor"] | null;
+    viewBackgroundColorPicked: AppState["viewBackgroundColorPicked"];
     exportScale: AppState["exportScale"];
     selectedElementsAreBeingDragged: AppState["selectedElementsAreBeingDragged"];
     gridSize: AppState["gridSize"];
@@ -213,7 +215,6 @@ export type StaticCanvasAppState = Readonly<
     frameRendering: AppState["frameRendering"];
     currentHoveredFontFamily: AppState["currentHoveredFontFamily"];
     hoveredElementIds: AppState["hoveredElementIds"];
-    suggestedBinding: AppState["suggestedBinding"];
     // Cropping
     croppingElementId: AppState["croppingElementId"];
     newElement?: AppState["newElement"];
@@ -267,6 +268,7 @@ export type ObservedAppState = ObservedStandaloneAppState &
 export type ObservedStandaloneAppState = {
   name: AppState["name"];
   viewBackgroundColor: AppState["viewBackgroundColor"];
+  viewBackgroundColorPicked: AppState["viewBackgroundColorPicked"];
 };
 
 export type ObservedElementsAppState = {
@@ -471,6 +473,9 @@ export interface AppState {
   currentItemRoundness: StrokeRoundness;
   currentItemArrowType: "sharp" | "round" | "elbow";
   viewBackgroundColor: string;
+  /** the user chose `viewBackgroundColor`, so a theme's canvas color does not
+   * replace it, even when it is the default white */
+  viewBackgroundColorPicked: boolean;
   scrollX: number;
   scrollY: number;
   scrollConstraints: ScrollConstraints | null;
@@ -641,7 +646,7 @@ export type PointerCoords = Readonly<{
 export type Gesture = {
   pointers: Map<number, PointerCoords>;
   lastCenter: { x: number; y: number } | null;
-  initialDistance: number | null;
+  lastDistance: number | null;
   initialScale: number | null;
 };
 
@@ -1050,6 +1055,21 @@ export interface ExcalidrawProps {
   autoFocus?: boolean;
   generateIdForFile?: (file: File) => string | Promise<string>;
   generateLinkForSelection?: (id: string, type: "element" | "group") => string;
+  /**
+   * A press and release without movement on a rectangle with
+   * `customData: { isButton: true }`. Without this prop such an element is
+   * drawn as a button and takes no clicks: a press selects and drags it.
+   */
+  onButtonClick?: (elementId: ExcalidrawElement["id"]) => void;
+  /**
+   * The hover or pressed state the canvas now shows on a button, for a host
+   * with a layer of its own over the canvas. Called when it changes, during the
+   * pointer event on a press or a hover, and after the update when a change of
+   * view or tool ends a hover.
+   */
+  onButtonHighlight?: (
+    highlight: { id: ExcalidrawElement["id"]; pressed: boolean } | null,
+  ) => void;
   onLinkOpen?: (
     element: NonDeletedExcalidrawElement,
     event: CustomEvent<{
@@ -1094,6 +1114,19 @@ export interface ExcalidrawProps {
    * `handleKeyboardGlobally` is set.
    */
   frameNavigation?: FrameNavigation;
+  /**
+   * Turns on MIDI knobs: a controller's knobs turn the selection's stroke
+   * width, opacity, sloppiness, font size, position, size, scale, angle and
+   * hues, the next shape's style with nothing selected, and the view's zoom
+   * and pan. Laid out for a Midi Fighter Twister's first bank by default;
+   * any knob can be rebound with `excalidrawAPI.midi.learn(target)`.
+   *
+   * The editor connects on mount only when the browser already allows MIDI;
+   * otherwise call `excalidrawAPI.midi.connect()` from a user gesture.
+   * Compared by `bindings` and `onBindingsChange` identity, so it may be
+   * inlined.
+   */
+  midi?: boolean | MidiOptions;
   /**
    * Rendered inside the UserList "who's here" dropdown (desktop) and inline
    * in the mobile menu's collaborators section, below a divider. Accepts a
@@ -1203,11 +1236,44 @@ export type UIOptions = Partial<{
   welcomeScreen?: boolean;
 }>;
 
+export type Slide = { frameId: string; included: boolean };
+
+export type MidiOptions = {
+  /** which knob turns what; the Twister layout (`TWISTER_LAYOUT`) when left
+   * out. Give it with `onBindingsChange` to keep learned knobs. */
+  bindings?: readonly MidiBinding[];
+  /** a knob learned or the layout reset: the whole new set */
+  onBindingsChange?: (bindings: MidiBinding[]) => void;
+  /** how knob values are read (default `"auto"`) */
+  encoding?: MidiEncoding;
+  /** channels between a knob and its push switch: a press resets the knob's
+   * target (default 1, the Twister's; `null` turns presses off) */
+  switchChannelOffset?: number | null;
+  /** how far one detent moves a target, overriding `MIDI_TARGETS[id].step`
+   * (its units are the target's: px, degrees, percent, a ratio, or detents
+   * per choice) */
+  steps?: Partial<Record<MidiTargetId, number>>;
+  /** quick turns count for more (default true) */
+  acceleration?: boolean;
+  /** LED ring updates to the controller (default true) */
+  feedback?: boolean;
+  /** a toast naming the value as a knob turns (default true) */
+  toasts?: boolean;
+};
+
 export type FrameNavigation = {
   /** bookmarked frame ids, in order; the host keeps them */
   bookmarks?: readonly string[];
   /** a star or unstar in the drawer; without it the drawer shows no stars */
   onBookmarkChange?: (frameId: string, bookmarked: boolean) => void;
+  /** The host's talk. With it the drawer opens on a Slides view: the frames
+   * in this order, reorderable by pen, touch or mouse. */
+  slides?: {
+    order: readonly Slide[];
+    /** the whole talk after a move or a skip, one entry per frame */
+    onChange: (order: Slide[]) => void;
+    onPresent: () => void;
+  };
 };
 
 export type AppProps = Merge<
@@ -1273,6 +1339,7 @@ export type AppClassProperties = {
   dismissLinearEditor: App["dismissLinearEditor"];
   flowchart: App["flowchart"];
   frameNavigation: App["frameNavigation"];
+  midi: App["midi"];
   toggleSidebar: App["toggleSidebar"];
   drawShape: App["drawShape"];
   arrowText: App["arrowText"];
@@ -1320,9 +1387,15 @@ export type PointerDownState = Readonly<{
   scrollbars: ReturnType<typeof isOverScrollBars>;
   // The previous pointer position
   lastCoords: { x: number; y: number };
-  // original element frozen snapshots so we can access the original
-  // element attribute values at time of pointerdown
+  // copies of the elements the gesture drags, resizes, rotates, crops or
+  // duplicates (the selection, children of selected frames, their bound text
+  // and the image being cropped), taken when the gesture first transforms
+  // them, before it changes them. Empty until then, so always empty in
+  // `onPointerDown`, and empty in `onPointerUp` after a plain click.
   originalElements: Map<string, NonDeleted<ExcalidrawElement>>;
+  // what the selected frames carry besides their own children, each mapped to
+  // the frame it belongs to, read with `originalElements`
+  frameContents: Map<string, string>;
   resize: {
     // Handle when resizing, might change during the pointer interaction
     handleType: MaybeTransformHandleType;
@@ -1420,6 +1493,20 @@ export interface ExcalidrawImperativeAPI {
   >["getSceneElementsMapIncludingDeleted"];
   history: {
     clear: InstanceType<typeof App>["resetHistory"];
+  };
+  /** MIDI knobs, with `props.midi` set: `connect()` from a user gesture asks
+   * for access, `learn(target)` binds the next knob turned */
+  midi: Pick<
+    InstanceType<typeof App>["midi"],
+    | "connect"
+    | "disconnect"
+    | "learn"
+    | "cancelLearn"
+    | "setBindings"
+    | "resetBindings"
+  > & {
+    readonly connected: boolean;
+    readonly bindings: readonly MidiBinding[];
   };
   getSceneElements: InstanceType<typeof App>["getSceneElements"];
   getAppState: () => InstanceType<typeof App>["state"];

@@ -27,6 +27,7 @@ import { useCopyStatus } from "../hooks/useCopiedIndicator";
 import { t } from "../i18n";
 import { isSomeElementSelected } from "../scene";
 
+import { useApp } from "./App";
 import { copyIcon, downloadIcon, helpIcon } from "./icons";
 import { Dialog } from "./Dialog";
 import { RadioGroup } from "./RadioGroup";
@@ -71,6 +72,7 @@ const ImageExportModal = ({
   name,
   exportWithDarkMode,
 }: ImageExportModalProps) => {
+  const canvasTheme = useApp().cssTheme.canvas;
   const hasSelection = isSomeElementSelected(
     elementsSnapshot,
     appStateSnapshot,
@@ -141,6 +143,7 @@ const ImageExportModal = ({
       exportPadding: DEFAULT_EXPORT_PADDING,
       maxWidthOrHeight: Math.max(maxWidth, maxHeight),
       exportingFrame,
+      canvasTheme,
     })
       .then(async (canvas) => {
         if (isStaleRequest()) {
@@ -179,6 +182,7 @@ const ImageExportModal = ({
     };
   }, [
     appStateSnapshot,
+    canvasTheme,
     files,
     exportedElements,
     exportingFrame,
