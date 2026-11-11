@@ -278,7 +278,6 @@ const renderLinkIcon = (
   }
 };
 
-/** the app state the static scene paints from */
 export const getStaticSceneAppState = (
   appState: AppState,
 ): StaticCanvasAppState => {
@@ -522,14 +521,9 @@ export const renderSceneElements = ({
   });
 };
 
-/**
- * What a static canvas last painted while a new element was being drawn, so
- * that committing the element can paint over it instead of repainting all.
- */
 type PaintedUnderNewElement = {
   config: StaticSceneRenderConfig;
   newElementId: string;
-  /** every scene element's id and version, in scene order */
   sceneIds: string[];
   sceneVersions: number[];
   settledBitmapCount: number;
@@ -575,20 +569,12 @@ const recordPaintUnderNewElement = (config: StaticSceneRenderConfig) => {
   });
 };
 
-/**
- * The elements to paint over the canvas so it shows what a full repaint of
- * `next` would, or null when it must be repainted in full.
- *
- * Elements paint one after another, each on its own, so painting a list's
- * tail over a canvas holding its head equals painting the list. That holds
- * when the new element just committed is the only thing in the scene that
- * changed since the canvas was painted, nothing else about the view
- * changed, and what the canvas holds is the head of what `next` paints.
- */
 const elementsToPaintOver = (
   painted: PaintedUnderNewElement | undefined,
   next: StaticSceneRenderConfig,
 ): NonDeletedExcalidrawElement[] | null => {
+  const frameHighlightClipsPaint =
+    next.appState.selectedElementsAreBeingDragged;
   if (
     !painted ||
     next.appState.newElement ||
@@ -602,14 +588,10 @@ const elementsToPaintOver = (
       getStaticSceneAppState(painted.config.appState as AppState),
       getStaticSceneAppState(next.appState as AppState),
       {
-        // a new element drawn inside a frame highlights it until released;
-        // the static scene clips by it only for elements being dragged
-        frameToHighlight: (a, b) =>
-          a === b || !next.appState.selectedElementsAreBeingDragged,
+        frameToHighlight: (a, b) => a === b || !frameHighlightClipsPaint,
       },
     ) ||
     !isShallowEqual(painted.config.renderConfig, next.renderConfig, {
-      // compared above as the bitmaps themselves
       settledBitmapCount: () => true,
     })
   ) {
@@ -631,8 +613,6 @@ const elementsToPaintOver = (
     index++;
   }
 
-  // iframe-like elements paint after all others, so the canvas' elements
-  // must be the head of the others, and include none of them
   const paintedElements = painted.config.visibleElements;
   const over: NonDeletedExcalidrawElement[] = [];
   let matched = 0;

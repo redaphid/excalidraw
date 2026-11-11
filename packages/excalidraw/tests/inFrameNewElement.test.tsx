@@ -100,7 +100,6 @@ describe("a new element drawn inside a frame", () => {
     }
 
     mouse.upAt(260, 120);
-    // the static canvas still holds what lies below the stroke
     expect(takePainted()).toEqual({
       static: [stroke.id, frame.id, above.id, embeddable.id],
       newElement: [],
