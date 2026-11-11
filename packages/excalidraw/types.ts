@@ -223,7 +223,6 @@ export type StaticCanvasAppState = Readonly<
 
 export type InteractiveCanvasAppState = Readonly<
   _CommonCanvasAppState & {
-    /** the mode the canvas paints in (see App.getCanvasMode) */
     theme: AppState["theme"];
     activeTool: AppState["activeTool"];
     // renderInteractiveScene

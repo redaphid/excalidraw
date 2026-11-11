@@ -638,8 +638,6 @@ class App extends React.Component<AppProps, AppState> {
    * the theme changes; renderers read it instead of the DOM */
   public cssTheme: CssTheme = EMPTY_CSS_THEME;
 
-  /** the mode the canvas paints element colors in: the theme's declared
-   * mode, else the editor's light/dark setting */
   public getCanvasMode = (): AppState["theme"] =>
     this.cssTheme.canvas.mode ?? this.state.theme;
 
@@ -2860,6 +2858,7 @@ class App extends React.Component<AppProps, AppState> {
                             allElementsMap={allElementsMap}
                             selectedElements={selectedElements}
                             canvasNonce={canvasNonce}
+                            canvasMode={this.getCanvasMode()}
                             selectionNonce={
                               this.state.selectionElement?.versionNonce
                             }
