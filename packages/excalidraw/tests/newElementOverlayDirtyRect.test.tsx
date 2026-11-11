@@ -96,17 +96,77 @@ describe("the canvas over a new element drawn inside a frame", () => {
     mouse.upAt(300, 100);
   });
 
-  it("clears in full when the view moves mid-stroke", async () => {
-    const { mouse, overlay, clearRect } = await drawInFrame();
-    clearRect.mockClear();
-
-    API.setAppState({ scrollX: 5 });
+  const clearsInFull = (
+    clearRect: ReturnType<typeof vi.spyOn>,
+    overlay: HTMLCanvasElement,
+  ) =>
     expect(clearRect).toHaveBeenCalledWith(
       0,
       0,
       overlay.width / window.devicePixelRatio,
       overlay.height / window.devicePixelRatio,
     );
+
+  it("clears in full while a rough rectangle is drawn inside the frame", async () => {
+    await render(<Excalidraw />);
+    const frame = API.createElement({
+      type: "frame",
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 400,
+    });
+    API.setElements([frame]);
+    API.setAppState({
+      width: 1000,
+      height: 800,
+      currentItemRoughness: 2,
+      currentItemFillStyle: "hachure",
+      currentItemBackgroundColor: "#ffc9c9",
+    });
+    UI.clickTool("rectangle");
+    const mouse = new Pointer("mouse");
+    mouse.downAt(100, 100);
+    mouse.moveTo(200, 200);
+    expect(h.state.newElement!.frameId).toBe(frame.id);
+    const overlay = overlayCanvas();
+    const clearRect = vi.spyOn(overlay.getContext("2d")!, "clearRect");
+
+    for (const [x, y] of [
+      [220, 230],
+      [180, 170],
+    ]) {
+      clearRect.mockClear();
+      mouse.moveTo(x, y);
+      clearsInFull(clearRect, overlay);
+    }
+    mouse.upAt(180, 170);
+  });
+
+  it("clears in full when the stroke reaches the frame's outline", async () => {
+    const { mouse, overlay, clearRect } = await drawInFrame();
+    clearRect.mockClear();
+
+    mouse.moveTo(398, 80);
+    clearsInFull(clearRect, overlay);
+    mouse.upAt(398, 80);
+  });
+
+  it("clears in full when the stroke passes under an element above it", async () => {
+    const { mouse, overlay, clearRect } = await drawInFrame();
+    clearRect.mockClear();
+
+    mouse.moveTo(200, 160);
+    clearsInFull(clearRect, overlay);
+    mouse.upAt(200, 160);
+  });
+
+  it("clears in full when the view moves mid-stroke", async () => {
+    const { mouse, overlay, clearRect } = await drawInFrame();
+    clearRect.mockClear();
+
+    API.setAppState({ scrollX: 5 });
+    clearsInFull(clearRect, overlay);
     mouse.upAt(240, 90);
   });
 });
