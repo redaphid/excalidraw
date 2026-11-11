@@ -995,7 +995,7 @@ export class IncrementalStroke {
       strokePoints[strokePoints.length - 1].runningLength,
     );
 
-    const settled = this.settleOutline(strokePoints, s);
+    const settled = this.settleOutline(state.strokePoints, strokePoints, s);
 
     const tail: OutlineState = {
       ...(this.outline ?? startOutline(strokePoints, s)),
@@ -1013,8 +1013,11 @@ export class IncrementalStroke {
     return closeOutline(tail, strokePoints, s);
   }
 
-  private settleOutline(strokePoints: StrokePoint[], s: OutlineSettings) {
-    const kept = this.strokePoints!.strokePoints;
+  private settleOutline(
+    kept: StrokePoint[],
+    strokePoints: StrokePoint[],
+    s: OutlineSettings,
+  ) {
     if (kept.length < PRESSURE_SEED_POINTS) {
       return this.outlined;
     }
