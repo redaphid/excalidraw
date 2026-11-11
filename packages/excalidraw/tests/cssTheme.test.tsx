@@ -831,20 +831,26 @@ describe("css prop", () => {
       expect(h.state.exportWithDarkMode).toBe(false);
     });
 
-    it("exports in the mode the user picked over the theme's", async () => {
-      await renderInk({ css: DARK_CANVAS, theme: THEME.LIGHT });
+    it.each([
+      ["off for a dark theme", DARK_CANVAS, THEME.LIGHT, false],
+      ["on for a light theme", LIGHT_CANVAS, THEME.DARK, true],
+    ] as const)(
+      "exports in the mode the user picked, switched %s",
+      async (_, css, host, picked) => {
+        await renderInk({ css, theme: host });
 
-      act(() => {
-        h.app.actionManager.executeAction(
-          actionExportWithDarkMode,
-          "ui",
-          false,
-        );
-      });
-      await act(async () => {});
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionExportWithDarkMode,
+            "ui",
+            picked,
+          );
+        });
+        await act(async () => {});
 
-      expect(h.state.exportWithDarkMode).toBe(false);
-    });
+        expect(h.state.exportWithDarkMode).toBe(picked);
+      },
+    );
   });
 
   it("applies a changed css prop", async () => {
