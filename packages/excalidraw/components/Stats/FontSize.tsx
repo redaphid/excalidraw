@@ -31,7 +31,7 @@ interface FontSizeProps {
 const MIN_FONT_SIZE = 4;
 const STEP_SIZE = 4;
 
-const handleFontSizeChange: DragInputCallbackType<
+export const handleFontSizeChange: DragInputCallbackType<
   FontSizeProps["property"],
   ExcalidrawTextElement
 > = ({

@@ -773,3 +773,122 @@ describe("exporting a region", () => {
     ]);
   });
 });
+
+describe("exporting a frame letterboxed into a box", () => {
+  // A 100x100 frame drawn into a 400x200 box: it fits at 2x, and the region
+  // widens to the box's aspect, centred on the frame, so it sits 50 scene
+  // units (100 box pixels) in from the left.
+  const frame = API.createElement({
+    type: "frame",
+    id: "portal-target",
+    x: 500,
+    y: 500,
+    width: 100,
+    height: 100,
+  });
+  const child = API.createElement({
+    type: "rectangle",
+    x: 550,
+    y: 525,
+    width: 100,
+    height: 50,
+    frameId: frame.id,
+  });
+  const box = { width: 400, height: 200 };
+  const scale = Math.min(box.width / frame.width, box.height / frame.height);
+  const region = {
+    x: frame.x - (box.width / scale - frame.width) / 2,
+    y: frame.y - (box.height / scale - frame.height) / 2,
+    width: box.width / scale,
+    height: box.height / scale,
+  };
+
+  const exportIntoBox = () =>
+    exportToCanvas({
+      elements: [child, frame],
+      files: null,
+      appState: {
+        exportBackground: false,
+        frameRendering: {
+          enabled: true,
+          clip: true,
+          outline: false,
+          name: false,
+        },
+      },
+      region,
+      getDimensions: () => ({ ...box, scale }),
+    });
+
+  it("sizes the canvas to the box", async () => {
+    const canvas = await exportIntoBox();
+    expect([canvas.width, canvas.height]).toEqual([box.width, box.height]);
+  });
+
+  it("draws at the fit scale", async () => {
+    const canvas = await exportIntoBox();
+    const events = (canvas.getContext("2d") as any).__getEvents();
+    const scales = events
+      .filter((e: any) => e.type === "scale")
+      .map((e: any) => [e.props.x, e.props.y]);
+    expect(scales[0]).toEqual([2, 2]);
+  });
+
+  it("clips the frame's children at the frame, centred in the box", async () => {
+    const canvas = await exportIntoBox();
+    const events = (canvas.getContext("2d") as any).__getEvents();
+    const clippedAt = events.flatMap((event: any, i: number) =>
+      event.type === "clip"
+        ? events
+            .slice(0, i)
+            .filter((e: any) => e.type === "translate")
+            .slice(-1)
+            .map((e: any) => [e.props.x * scale, e.props.y * scale])
+        : [],
+    );
+    // in box pixels: 100px of letterbox on each side, none above or below
+    expect(clippedAt).toEqual([[100, 0]]);
+  });
+});
+
+describe("exporting a frame's outline to SVG", () => {
+  describe.each([
+    ["light", "#1e1e1e", "0.2"],
+    ["dark", "#d3d3d3", "0.35"],
+  ] as const)("on a %s canvas", (theme, ink, opacity) => {
+    let outline: Element | null;
+
+    beforeEach(async () => {
+      const frame = API.createElement({
+        type: "frame",
+        id: "frame-id-rusty-conquistador",
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+      });
+      const svg = await exportUtils.exportToSvg(
+        [frame],
+        {
+          exportBackground: false,
+          viewBackgroundColor: "#ffffff",
+          exportWithDarkMode: theme === "dark",
+        },
+        null,
+      );
+      outline = svg.querySelector("rect[stroke]");
+    });
+
+    it("strokes a one pixel hairline", () => {
+      expect(outline?.getAttribute("stroke-width")).toBe("1");
+    });
+
+    it("strokes it in the default ink", () => {
+      expect(outline?.getAttribute("stroke")).toBe(ink);
+    });
+
+    it("sets the ink's alpha as stroke-opacity, which SVG 1.1 reads", () => {
+      expect(outline?.getAttribute("stroke-opacity")).toBe(opacity);
+    });
+  });
+});

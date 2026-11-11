@@ -35,7 +35,7 @@ interface MultiFontSizeProps {
 const MIN_FONT_SIZE = 4;
 const STEP_SIZE = 4;
 
-const getApplicableTextElements = (
+export const getApplicableTextElements = (
   elements: readonly (ExcalidrawElement | undefined)[],
   elementsMap: NonDeletedSceneElementsMap,
 ) =>
@@ -62,7 +62,7 @@ const getApplicableTextElements = (
     [],
   );
 
-const handleFontSizeChange: DragInputCallbackType<
+export const handleFontSizeChange: DragInputCallbackType<
   MultiFontSizeProps["property"],
   ExcalidrawTextElement
 > = ({

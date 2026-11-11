@@ -122,7 +122,7 @@ const moveGroupTo = (
   }
 };
 
-const handlePositionChange: DragInputCallbackType<
+export const handlePositionChange: DragInputCallbackType<
   MultiPositionProps["property"]
 > = ({
   accumulatedChange,

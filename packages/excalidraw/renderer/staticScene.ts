@@ -1,6 +1,5 @@
 import {
   applyDarkModeFilter,
-  COLOR_PALETTE,
   COLOR_WHITE,
   FRAME_STYLE,
   isShallowEqual,
@@ -45,6 +44,7 @@ import {
   ELEMENT_LINK_IMG,
   getLinkHandleFromCoords,
 } from "../components/hyperlink/helpers";
+import { getThemeCanvasBackground } from "../cssTheme";
 
 import {
   bootstrapCanvas,
@@ -181,7 +181,8 @@ export const frameClip = (
       0,
       frame.width,
       frame.height,
-      FRAME_STYLE.radius / appState.zoom.value,
+      (renderConfig.canvasTheme?.frameRadius ?? FRAME_STYLE.radius) /
+        appState.zoom.value,
     );
   } else {
     context.rect(0, 0, frame.width, frame.height);
@@ -505,6 +506,7 @@ export const getStaticSceneAppState = (
     theme: appState.theme,
     shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
     viewBackgroundColor: appState.viewBackgroundColor,
+    viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
     exportScale: appState.exportScale,
     selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
     gridSize: appState.gridSize,
@@ -660,6 +662,7 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
     scale,
     appState: unsnappedAppState,
     renderConfig,
+    onPainted,
   } = config;
   if (canvas === null) {
     return;
@@ -694,10 +697,12 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
     cacheSettledBitmaps(
       canvas,
       visibleElements,
+      elementsMap,
       allElementsMap,
       renderConfig,
       appState,
     );
+    onPainted?.(unsnappedAppState);
     return;
   }
 
@@ -714,12 +719,10 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
     theme: appState.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
-    // a theme restyles the default canvas only, not a background the user
-    // picked
-    themeBackgroundColor:
-      appState.viewBackgroundColor === COLOR_PALETTE.white
-        ? renderConfig.canvasTheme?.background
-        : undefined,
+    themeBackgroundColor: getThemeCanvasBackground(
+      appState,
+      renderConfig.canvasTheme,
+    ),
   });
 
   // Apply zoom
@@ -775,10 +778,13 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
   cacheSettledBitmaps(
     canvas,
     visibleElements,
+    elementsMap,
     allElementsMap,
     renderConfig,
     appState,
   );
+
+  onPainted?.(unsnappedAppState);
 };
 
 /** throttled to animation framerate */

@@ -2,10 +2,11 @@ import { arrayToMap } from "@excalidraw/common";
 import {
   isPointWithinBounds,
   pointFrom,
+  pointRotateRads,
   segmentsIntersectAt,
 } from "@excalidraw/math";
 
-import type { GlobalPoint, LineSegment } from "@excalidraw/math";
+import type { GlobalPoint, LineSegment, Radians } from "@excalidraw/math";
 
 import type {
   AppClassProperties,
@@ -169,11 +170,47 @@ const elementCrossesFrame = (
       ]),
   );
 
-  return nearFrameLineSegments.some((frameLineSegment) =>
-    elementLineSegments.some((elementLineSegment) =>
-      segmentsIntersectAt(frameLineSegment, elementLineSegment),
-    ),
+  if (nearFrameLineSegments.length === 0) {
+    return false;
+  }
+  if (
+    nearFrameLineSegments.some((frameLineSegment) =>
+      elementLineSegments.some((elementLineSegment) =>
+        segmentsIntersectAt(frameLineSegment, elementLineSegment),
+      ),
+    )
+  ) {
+    return true;
+  }
+
+  // segmentsIntersectAt ignores contact at the element's own vertices, so a
+  // path through a vertex on the edge crosses only if it has vertices
+  // strictly on both sides; touching the edge from one side is not crossing
+  const [fx1, fy1, fx2, fy2, fcx, fcy] = getElementAbsoluteCoords(
+    frame,
+    elementsMap,
   );
+  const frameCenter = pointFrom<GlobalPoint>(fcx, fcy);
+  let hasVertexInside = false;
+  let hasVertexOutside = false;
+  for (const segment of elementLineSegments) {
+    for (const vertex of segment) {
+      const [x, y] = pointRotateRads(
+        vertex,
+        frameCenter,
+        -frame.angle as Radians,
+      );
+      if (fx1 < x && x < fx2 && fy1 < y && y < fy2) {
+        hasVertexInside = true;
+      } else if (x < fx1 || x > fx2 || y < fy1 || y > fy2) {
+        hasVertexOutside = true;
+      }
+      if (hasVertexInside && hasVertexOutside) {
+        return true;
+      }
+    }
+  }
+  return false;
 };
 
 export const getElementsCompletelyInFrame = (
@@ -336,6 +373,156 @@ export const getFrameChildren = (
     }
   }
   return frameChildren;
+};
+
+const frameArea = (frame: ExcalidrawFrameLikeElement) =>
+  frame.width * frame.height;
+
+/**
+ * What moves with the given frames besides themselves, each mapped to the
+ * frame it belongs to.
+ *
+ * A frame cannot hold a frame, so a frame drawn wholly inside a larger one
+ * counts as nested in it, and moves with it, along with everything that
+ * belongs to it. An element belongs to the smallest frame that wholly holds
+ * it, chosen among its own frame and the frames nested in that one (among all
+ * frames, for an element in none), or else to its own frame; of two frames the
+ * same size, the one on top wins. So an element its outer frame claims still
+ * moves with the nested frame drawn around it, a loose element moves with the
+ * frame it sits in, and another frame's element drawn on top stays put.
+ *
+ * A group moves whole or not at all: it is carried only when every member is.
+ * A group with a member that wholly holds an element's frame, such as the
+ * card a page was fitted into, is that frame's surroundings, so it holds
+ * nothing of that frame's back.
+ * A locked element is carried only by its own frame. Labels are left to their
+ * containers.
+ */
+export const getFrameContents = (
+  elements: ElementsMapOrArray,
+  frameIds: readonly ExcalidrawFrameLikeElement["id"][],
+): Map<ExcalidrawElement["id"], ExcalidrawFrameLikeElement["id"]> => {
+  const live = getNonDeletedElements(Array.from(elements.values()));
+  const elementsMap = arrayToMap(live);
+  const frames = live.filter(isFrameLikeElement);
+  const layer = new Map(frames.map((frame, at) => [frame.id, at]));
+  const boundsOf = new Map(
+    frames.map((frame) => [frame.id, getElementBounds(frame, elementsMap)]),
+  );
+  const holds = (frame: ExcalidrawFrameLikeElement, bounds: Bounds) =>
+    boundsContainBounds(boundsOf.get(frame.id)!, bounds);
+  const nestedIn = new Map(
+    frames.map((outer) => [
+      outer.id,
+      frames.filter(
+        (frame) =>
+          frameArea(frame) < frameArea(outer) &&
+          holds(outer, boundsOf.get(frame.id)!),
+      ),
+    ]),
+  );
+  const moving = new Set(
+    frameIds.flatMap((id) => [
+      id,
+      ...(nestedIn.get(id) ?? []).map((frame) => frame.id),
+    ]),
+  );
+  const smallestFirst = (
+    a: ExcalidrawFrameLikeElement,
+    b: ExcalidrawFrameLikeElement,
+  ) => frameArea(a) - frameArea(b) || layer.get(b.id)! - layer.get(a.id)!;
+  const owner = (element: NonDeletedExcalidrawElement) => {
+    const own = frames.find((frame) => frame.id === element.frameId);
+    const bounds = getElementBounds(element, elementsMap);
+    const [smallest] = (own ? [own, ...nestedIn.get(own.id)!] : frames)
+      .filter((frame) => holds(frame, bounds))
+      .sort(smallestFirst);
+    return smallest ?? own;
+  };
+  const carried = new Map<
+    ExcalidrawElement["id"],
+    ExcalidrawFrameLikeElement["id"]
+  >();
+  for (const element of live) {
+    if (frameIds.includes(element.id) || isBoundToContainer(element)) {
+      continue;
+    }
+    if (isFrameLikeElement(element)) {
+      if (moving.has(element.id)) {
+        carried.set(element.id, element.id);
+      }
+      continue;
+    }
+    const frame = owner(element);
+    if (
+      frame &&
+      moving.has(frame.id) &&
+      (!element.locked || (element.frameId && moving.has(element.frameId)))
+    ) {
+      carried.set(element.id, frame.id);
+    }
+  }
+  const surrounds = (group: string, frameId: string) =>
+    getElementsInGroup(live, group).some(
+      (member) =>
+        !isFrameLikeElement(member) &&
+        boundsContainBounds(
+          getElementBounds(member, elementsMap),
+          boundsOf.get(frameId)!,
+        ),
+    );
+  const incomplete = new Set(
+    live.flatMap((element) =>
+      isFrameLikeElement(element) ||
+      isBoundToContainer(element) ||
+      carried.has(element.id)
+        ? []
+        : element.groupIds,
+    ),
+  );
+  for (const [id, frameId] of carried) {
+    const group = elementsMap
+      .get(id)!
+      .groupIds.findLast((each) => !surrounds(each, frameId));
+    if (group && incomplete.has(group)) {
+      carried.delete(id);
+    }
+  }
+  return carried;
+};
+
+/**
+ * The elements a frame move carried whose own frame stayed put, each with the
+ * frame it should join, labels included: a page moved out of its outer frame
+ * takes along what the outer frame claimed, and the outer frame's clip would
+ * otherwise hide it. Membership in a frame that moved too is left alone.
+ */
+export const getFrameJoins = (
+  elementsMap: ElementsMap,
+  contents: ReadonlyMap<
+    ExcalidrawElement["id"],
+    ExcalidrawFrameLikeElement["id"]
+  >,
+  frameIds: readonly ExcalidrawFrameLikeElement["id"][],
+) => {
+  const moving = new Set([...frameIds, ...contents.values()]);
+  const joins: [ExcalidrawElement, ExcalidrawFrameLikeElement["id"]][] = [];
+  contents.forEach((frameId, id) => {
+    const element = elementsMap.get(id);
+    if (
+      !element ||
+      isFrameLikeElement(element) ||
+      (element.frameId && moving.has(element.frameId))
+    ) {
+      return;
+    }
+    for (const each of [element, getBoundTextElement(element, elementsMap)]) {
+      if (each && each.frameId !== frameId) {
+        joins.push([each, frameId]);
+      }
+    }
+  });
+  return joins;
 };
 
 export const getFrameLikeElements = (

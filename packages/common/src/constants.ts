@@ -8,7 +8,7 @@ import type {
   NormalizedZoomValue,
 } from "@excalidraw/excalidraw/types";
 
-import { COLOR_PALETTE } from "./colors";
+import { COLOR_PALETTE, setColorAlpha } from "./colors";
 
 export { DEFAULT_STICKY_NOTE_BG } from "./colors";
 
@@ -208,6 +208,22 @@ export const DARK_THEME_FILTER = "invert(93%) hue-rotate(180deg)";
 
 export const FRAME_STYLE = {
   strokeColor: "#bbb" as ExcalidrawElement["strokeColor"],
+  // #bbb through the dark filter is #4c4c4c, 2.2:1 on the dark canvas; this
+  // is about 3:1, still well behind the ink
+  strokeColorDarkTheme: "#5e5e5e",
+  // wireframe-to-code frames; the dark one is #1d8264 through the dark filter
+  magicStrokeColor: "#7affd7",
+  magicStrokeColorDarkTheme: "#4fa68c",
+  // a board without a theme strokes frames as a hairline of the default ink
+  // (#1e1e1e, #d3d3d3 through the dark filter) at the alphas a theme's frame
+  // tokens default to, so they sit behind the ink rather than as grey bars
+  outlineInk: "#1e1e1e",
+  outlineInkDarkTheme: "#d3d3d3",
+  outlineAlpha: 0.2,
+  outlineAlphaDarkTheme: 0.35,
+  outlineColor: setColorAlpha("#1e1e1e", 0.2),
+  outlineColorDarkTheme: setColorAlpha("#d3d3d3", 0.35),
+  outlineWidth: 1,
   strokeWidth: 2 as ExcalidrawElement["strokeWidth"],
   strokeStyle: "solid" as ExcalidrawElement["strokeStyle"],
   fillStyle: "solid" as ExcalidrawElement["fillStyle"],
@@ -268,6 +284,9 @@ export const STICKY_NOTE_SHADOW_OFFSET = 3;
 export const STICKY_NOTE_SHADOW_OPACITY = 0.16;
 export const STICKY_NOTE_EDGE_SHADOW_WIDTH = 0.5;
 export const STICKY_NOTE_EDGE_SHADOW_OPACITY = 0.08;
+/** how far a sticky note's shadow (offset plus blur) may reach past the note,
+ * in scene units at detail scale 1; its cached bitmap is padded this much */
+export const STICKY_NOTE_SHADOW_REACH = 20;
 export const DEFAULT_FONT_FAMILY: FontFamilyValues = FONT_FAMILY.Excalifont;
 /** number of slots in the font-picker top-picks strip — pick customization
  * (replace / reorder) preserves it. Must equal `DEFAULT_FONTS.length` in

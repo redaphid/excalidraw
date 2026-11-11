@@ -1,10 +1,17 @@
 import React from "react";
 import { vi } from "vitest";
 
-import { DEFAULT_SIDEBAR, FRAMES_SIDEBAR_TAB, KEYS } from "@excalidraw/common";
+import {
+  DEFAULT_SIDEBAR,
+  FRAMES_SIDEBAR_TAB,
+  KEYS,
+  LIBRARY_SIDEBAR_TAB,
+  POINTER_BUTTON,
+} from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
+import { frameModel, slideOrder } from "../frameNavigation";
 import { Excalidraw } from "../index";
 import { API } from "../tests/helpers/api";
 import {
@@ -18,13 +25,21 @@ import {
   showView,
 } from "../tests/helpers/frames";
 import { Keyboard, Pointer, UI } from "../tests/helpers/ui";
-import { act, fireEvent, render } from "../tests/test-utils";
+import {
+  act,
+  fireEvent,
+  GlobalTestState,
+  render,
+  screen,
+  waitFor,
+} from "../tests/test-utils";
 
 import App from "./App";
+import { CommandPalette } from "./CommandPalette/CommandPalette";
 
 import type { MockInstance } from "vitest";
 
-import type { FrameNavigation } from "../types";
+import type { FrameNavigation, Slide } from "../types";
 
 const { h } = window;
 const mouse = new Pointer("mouse");
@@ -514,6 +529,57 @@ describe("bookmark keys", () => {
   });
 });
 
+describe("slideOrder", () => {
+  const model = frameModel([
+    frame("frame-valley-of-the-sun", 0, 0),
+    frame("frame-the-lair", 600, 0),
+    frame("frame-thunderwrench", 0, 600),
+  ]);
+  const cases: [string, Slide[], Slide[]][] = [
+    [
+      "keep the host's order and what it skips",
+      [
+        { frameId: "frame-thunderwrench", included: true },
+        { frameId: "frame-valley-of-the-sun", included: false },
+        { frameId: "frame-the-lair", included: true },
+      ],
+      [
+        { frameId: "frame-thunderwrench", included: true },
+        { frameId: "frame-valley-of-the-sun", included: false },
+        { frameId: "frame-the-lair", included: true },
+      ],
+    ],
+    [
+      "drop a frame no longer on the board and a repeat",
+      [
+        { frameId: "frame-the-lair", included: false },
+        { frameId: "frame-ghost-town", included: true },
+        { frameId: "frame-the-lair", included: true },
+        { frameId: "frame-valley-of-the-sun", included: true },
+        { frameId: "frame-thunderwrench", included: true },
+      ],
+      [
+        { frameId: "frame-the-lair", included: false },
+        { frameId: "frame-valley-of-the-sun", included: true },
+        { frameId: "frame-thunderwrench", included: true },
+      ],
+    ],
+    [
+      "append the frames it lacks in scene order, included",
+      [{ frameId: "frame-thunderwrench", included: false }],
+      [
+        { frameId: "frame-thunderwrench", included: false },
+        { frameId: "frame-valley-of-the-sun", included: true },
+        { frameId: "frame-the-lair", included: true },
+      ],
+    ],
+  ];
+
+  it.each(cases)("should %s", (_, order, expected) => {
+    expect(slideOrder(model, order)).toEqual(expected);
+  });
+});
+
 describe("the drawer key", () => {
   const board = [
     frame("frame-valley-of-the-sun", 0, 0),
@@ -564,13 +630,10 @@ describe("the drawer key", () => {
     });
   });
 
-  describe.each([
-    ["M with cmd held", { key: "m", metaKey: true }],
-    ["the frame tool key", { key: "f" }],
-  ])("when %s is pressed", (_, init) => {
+  describe("when M is pressed with cmd held", () => {
     beforeEach(async () => {
       await mount(board);
-      fireEvent.keyDown(document, init);
+      fireEvent.keyDown(document, { key: "m", metaKey: true });
     });
 
     it("should leave the sidebar closed", () => {
@@ -602,6 +665,297 @@ describe("the drawer key", () => {
       expect(document.querySelector(".HelpDialog")?.textContent).toContain(
         "FramesM",
       );
+    });
+  });
+});
+
+describe("the frame tool", () => {
+  const board = [
+    frame("frame-valley-of-the-sun", 0, 0),
+    frame("frame-the-lair", 600, 0),
+  ];
+  const drawer = { name: DEFAULT_SIDEBAR.name, tab: FRAMES_SIDEBAR_TAB };
+
+  const mountOnPhone = async () => {
+    await render(
+      <Excalidraw
+        handleKeyboardGlobally
+        frameNavigation={{}}
+        UIOptions={{ getFormFactor: () => "phone" }}
+      />,
+    );
+    fireEvent.resize(window);
+    await waitFor(() => expect(h.app.editorInterface.formFactor).toBe("phone"));
+    fakeClock();
+    API.setElements(board);
+  };
+
+  const closeDrawer = () =>
+    act(() => {
+      h.app.toggleSidebar({ name: null });
+    });
+
+  /** the pen turned over, its eraser end pressed to the canvas and lifted */
+  const eraserEnd = () => {
+    const pen = {
+      button: POINTER_BUTTON.ERASER,
+      pointerType: "pen",
+      clientX: 100,
+      clientY: 400,
+    };
+    fireEvent.pointerDown(GlobalTestState.interactiveCanvas, pen);
+    fireEvent.pointerUp(GlobalTestState.interactiveCanvas, pen);
+  };
+
+  describe.each([
+    ["from the toolbar", () => UI.clickExtraTool("frame")],
+    ["with F", () => Keyboard.keyPress("f")],
+  ])("when it is picked %s", (_, pick) => {
+    let focused: Element | null;
+
+    beforeEach(async () => {
+      await mount(board);
+      focused = document.activeElement;
+      pick();
+    });
+
+    it("should open the Frames drawer", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+
+    it("should keep the frame tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should leave focus where it was", () => {
+      expect(document.activeElement).toBe(focused);
+    });
+  });
+
+  describe("when it is picked from the command palette", () => {
+    beforeEach(async () => {
+      await render(
+        <Excalidraw handleKeyboardGlobally frameNavigation={{}}>
+          <CommandPalette />
+        </Excalidraw>,
+      );
+      fakeClock();
+      API.setElements(board);
+      fireEvent.keyDown(document, { key: KEYS.SLASH, ctrlKey: true });
+      fireEvent.click(screen.getByText("Frame tool"));
+    });
+
+    it("should pick the tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should open the Frames drawer", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+  });
+
+  describe("when it is picked with the library open", () => {
+    beforeEach(async () => {
+      await mount(board);
+      act(() => {
+        h.app.toggleSidebar({
+          name: DEFAULT_SIDEBAR.name,
+          tab: LIBRARY_SIDEBAR_TAB,
+        });
+      });
+      Keyboard.keyPress("f");
+    });
+
+    it("should switch the sidebar to the Frames drawer", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+  });
+
+  describe("when a frame is drawn on the canvas with the drawer it opened", () => {
+    beforeEach(async () => {
+      await mount(board);
+      Keyboard.keyPress("f");
+      mouse.reset();
+      mouse.downAt(100, 400);
+      mouse.moveTo(300, 550);
+      mouse.up();
+    });
+
+    it("should keep the drawer open", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+
+    it("should list the new frame", () => {
+      const drawn = h.elements.find(
+        (element) =>
+          element.type === "frame" &&
+          !board.some((listed) => listed.id === element.id),
+      )!;
+      expect(
+        document.querySelector(`.frames-menu [data-frame="${drawn.id}"]`),
+      ).not.toBeNull();
+    });
+  });
+
+  describe("when another tool is picked after it", () => {
+    beforeEach(async () => {
+      await mount(board);
+      Keyboard.keyPress("f");
+      Keyboard.keyPress("r");
+    });
+
+    it("should leave the drawer open", () => {
+      expect(h.state.openSidebar).toEqual(drawer);
+    });
+  });
+
+  /** keys pressed one after another */
+  const keys =
+    (...pressed: string[]) =>
+    () =>
+      pressed.forEach((key) => Keyboard.keyPress(key));
+
+  // a pick opens the drawer; a return to the frame tool from the eraser or
+  // the hand does not, so a drawer closed meanwhile stays closed
+  describe.each([
+    ["E then F", keys("e", "f"), drawer],
+    ["H then F", keys("h", "f"), drawer],
+    [
+      "H then the toolbar's frame tool",
+      () => {
+        Keyboard.keyPress("h");
+        UI.clickExtraTool("frame");
+      },
+      drawer,
+    ],
+    ["F again", keys("f"), drawer],
+    ["E, V then F", keys("e", "v", "f"), drawer],
+    ["the pen's eraser end, pressed and lifted", eraserEnd, null],
+    ["E twice", keys("e", "e"), null],
+    ["H twice", keys("h", "h"), null],
+    ["E then Escape", keys("e", KEYS.ESCAPE), null],
+  ])(
+    "when the drawer is closed with the frame tool in hand, then %s",
+    (_, then, expected) => {
+      beforeEach(async () => {
+        await mount(board);
+        Keyboard.keyPress("f");
+        closeDrawer();
+        then();
+      });
+
+      it("should be on the frame tool", () => {
+        expect(h.state.activeTool.type).toBe("frame");
+      });
+
+      it(
+        expected ? "should open the drawer" : "should leave the drawer closed",
+        () => {
+          expect(h.state.openSidebar).toEqual(expected);
+        },
+      );
+    },
+  );
+
+  describe("when two frames are drawn with the tool locked and the drawer closed", () => {
+    beforeEach(async () => {
+      await mount(board);
+      Keyboard.keyPress("f");
+      Keyboard.keyPress("q");
+      closeDrawer();
+      mouse.reset();
+      mouse.downAt(100, 400);
+      mouse.moveTo(300, 550);
+      mouse.up();
+      mouse.downAt(400, 400);
+      mouse.moveTo(600, 550);
+      mouse.up();
+    });
+
+    it("should draw both with the frame tool still in hand", () => {
+      expect(
+        h.elements.filter((element) => element.type === "frame"),
+      ).toHaveLength(board.length + 2);
+      expect(h.state.activeTool).toMatchObject({ type: "frame", locked: true });
+    });
+
+    it("should leave the drawer closed", () => {
+      expect(h.state.openSidebar).toBeNull();
+    });
+  });
+
+  describe("when F is pressed while the host holds another tool", () => {
+    beforeEach(async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      await render(
+        <Excalidraw
+          handleKeyboardGlobally
+          frameNavigation={{}}
+          activeTool={{ type: "rectangle" }}
+        />,
+      );
+      fakeClock();
+      API.setElements(board);
+      Keyboard.keyPress("f");
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("should keep the host's tool", () => {
+      expect(h.state.activeTool.type).toBe("rectangle");
+    });
+
+    it("should leave the sidebar closed", () => {
+      expect(h.state.openSidebar).toBeNull();
+    });
+  });
+
+  describe("when it is picked with frameNavigation off", () => {
+    beforeEach(async () => {
+      await mount(board, null);
+      Keyboard.keyPress("f");
+    });
+
+    it("should pick the tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should leave the sidebar closed", () => {
+      expect(h.state.openSidebar).toBeNull();
+    });
+  });
+
+  describe("when it is picked on a phone", () => {
+    beforeEach(async () => {
+      await mountOnPhone();
+      Keyboard.keyPress("f");
+    });
+
+    it("should pick the tool", () => {
+      expect(h.state.activeTool.type).toBe("frame");
+    });
+
+    it("should leave the sidebar closed, off the canvas", () => {
+      expect(h.state.openSidebar).toBeNull();
+    });
+  });
+
+  describe("when a frame is started on a phone with the drawer opened by hand", () => {
+    beforeEach(async () => {
+      await mountOnPhone();
+      act(() => {
+        h.app.toggleSidebar(drawer);
+      });
+      Keyboard.keyPress("f");
+      mouse.reset();
+      mouse.downAt(100, 400);
+      mouse.up();
+    });
+
+    it("should close the drawer, as any press outside it does", () => {
+      expect(h.state.openSidebar).toBeNull();
     });
   });
 });
@@ -746,9 +1100,19 @@ describe("cost", () => {
 
     beforeEach(async () => {
       const onBookmarkChange = () => {};
+      const onChange = () => {};
+      const onPresent = () => {};
       const Host = () => (
         <Excalidraw
-          frameNavigation={{ bookmarks: ["frame-the-lair"], onBookmarkChange }}
+          frameNavigation={{
+            bookmarks: ["frame-the-lair"],
+            onBookmarkChange,
+            slides: {
+              order: [{ frameId: "frame-the-lair", included: true }],
+              onChange,
+              onPresent,
+            },
+          }}
         />
       );
       const { rerender } = await render(<Host />);
