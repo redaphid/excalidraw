@@ -344,7 +344,7 @@ import {
 import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
-import { EMPTY_CSS_THEME, readCssTheme } from "../cssTheme";
+import { EMPTY_CSS_THEME, readCssTheme, themeDrawsGrid } from "../cssTheme";
 import { getFrameStyle } from "../frameStyle";
 import { getCenter, getDistance } from "../gesture";
 import {
@@ -2788,11 +2788,7 @@ class App extends React.Component<AppProps, AppState> {
                             renderConfig={{
                               imageCache: this.imageCache,
                               isExporting: false,
-                              // the theme alone paints the grid; grid mode only snaps
-                              renderGrid:
-                                this.cssTheme.canvas.gridColor !== undefined ||
-                                this.cssTheme.canvas.gridBoldColor !==
-                                  undefined,
+                              renderGrid: themeDrawsGrid(this.cssTheme.canvas),
                               gridSize: this.getGridSizeAtZoom(),
                               renderLinks: this.isLinksEnabled(),
                               canvasBackgroundColor:

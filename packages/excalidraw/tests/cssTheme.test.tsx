@@ -665,7 +665,6 @@ describe("the grid", () => {
       type: string;
     }[];
 
-  /** repaints the static canvas and returns how many lines it drew */
   const linesPainted = async () => {
     (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
     API.setAppState({ scrollX: h.state.scrollX + 7 });
