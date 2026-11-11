@@ -13,6 +13,10 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### The theme paints the grid, grid mode only snaps (2026-11-11)
+
+- The grid is painted whenever the `css` theme sets `--canvas-grid-color` or `--canvas-grid-bold-color`, whether grid mode is on or off, and never without one. Grid mode (`appState.gridModeEnabled`, Ctrl+', the `gridModeEnabled` prop) now only snaps, and its toggle reads "Snap to grid". Saved scenes with grid mode on keep snapping. A host without a `css` theme paints no grid.
+
 ### MIDI knobs (2026-11-10)
 
 - New `midi` prop: a MIDI controller's knobs turn the selection's stroke width, opacity, sloppiness, font size, position, size, scale, angle, stroke hue and background hue, the next shape's style with nothing selected, and the view's zoom and pan; one knob steps the selection through the scene. Laid out for a Midi Fighter Twister's first bank by default (`TWISTER_LAYOUT`); pressing a knob resets its target. Each turn lands as one undo step.

@@ -2788,7 +2788,11 @@ class App extends React.Component<AppProps, AppState> {
                             renderConfig={{
                               imageCache: this.imageCache,
                               isExporting: false,
-                              renderGrid: isGridModeEnabled(this),
+                              // the theme alone paints the grid; grid mode only snaps
+                              renderGrid:
+                                this.cssTheme.canvas.gridColor !== undefined ||
+                                this.cssTheme.canvas.gridBoldColor !==
+                                  undefined,
                               gridSize: this.getGridSizeAtZoom(),
                               renderLinks: this.isLinksEnabled(),
                               canvasBackgroundColor:
