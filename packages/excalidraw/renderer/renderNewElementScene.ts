@@ -10,15 +10,17 @@ import {
 
 import type { Bounds } from "@excalidraw/common";
 
-import { getRelevantAppStateProps } from "../components/canvases/StaticCanvas";
-
 import {
   bootstrapCanvas,
   getNormalizedCanvasDimensions,
   snapScrollToDevicePixels,
 } from "./helpers";
 
-import { frameClip, renderSceneElements } from "./staticScene";
+import {
+  frameClip,
+  getStaticSceneAppState,
+  renderSceneElements,
+} from "./staticScene";
 
 import type { NewElementSceneRenderConfig } from "../scene/types";
 
@@ -64,8 +66,8 @@ const getDirtyRect = (
     painted.config.allElementsMap !== next.allElementsMap ||
     !isShallowEqual(painted.config.renderConfig, next.renderConfig) ||
     !isShallowEqual(
-      getRelevantAppStateProps(painted.config.appState),
-      getRelevantAppStateProps(next.appState),
+      getStaticSceneAppState(painted.config.appState),
+      getStaticSceneAppState(next.appState),
     )
   ) {
     return null;

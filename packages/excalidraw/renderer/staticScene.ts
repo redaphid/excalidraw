@@ -54,7 +54,7 @@ import type {
   StaticCanvasRenderConfig,
   StaticSceneRenderConfig,
 } from "../scene/types";
-import type { StaticCanvasAppState, Zoom } from "../types";
+import type { AppState, StaticCanvasAppState, Zoom } from "../types";
 
 const GridLineColor = {
   [THEME.LIGHT]: {
@@ -484,6 +484,40 @@ export const renderSceneElements = ({
       console.error(error);
     }
   });
+};
+
+/** the app state the static scene paints from */
+export const getStaticSceneAppState = (
+  appState: AppState,
+): StaticCanvasAppState => {
+  const relevantAppStateProps = {
+    zoom: appState.zoom,
+    scrollX: appState.scrollX,
+    scrollY: appState.scrollY,
+    width: appState.width,
+    height: appState.height,
+    viewModeEnabled: appState.viewModeEnabled,
+    openDialog: appState.openDialog,
+    hoveredElementIds: appState.hoveredElementIds,
+    offsetLeft: appState.offsetLeft,
+    offsetTop: appState.offsetTop,
+    theme: appState.theme,
+    shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
+    viewBackgroundColor: appState.viewBackgroundColor,
+    viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
+    exportScale: appState.exportScale,
+    selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
+    gridSize: appState.gridSize,
+    gridStep: appState.gridStep,
+    frameRendering: appState.frameRendering,
+    selectedElementIds: appState.selectedElementIds,
+    frameToHighlight: appState.frameToHighlight,
+    editingGroupId: appState.editingGroupId,
+    currentHoveredFontFamily: appState.currentHoveredFontFamily,
+    croppingElementId: appState.croppingElementId,
+  };
+
+  return relevantAppStateProps;
 };
 
 const _renderStaticScene = ({
