@@ -306,6 +306,10 @@ const definedEntries = <T extends Record<string, unknown>>(record: T) =>
  * style. Unset or malformed values are left out, so the editor keeps its
  * built-in behavior for them.
  */
+/** The theme alone draws the grid: grid mode only snaps. */
+export const themeDrawsGrid = (canvas: CanvasTheme) =>
+  canvas.gridColor !== undefined || canvas.gridBoldColor !== undefined;
+
 export const readCssTheme = (style: {
   getPropertyValue: ReadProperty;
 }): CssTheme => {
