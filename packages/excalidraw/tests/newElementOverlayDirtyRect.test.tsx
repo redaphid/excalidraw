@@ -29,8 +29,7 @@ const strokeBounds = () =>
     h.app.scene.getNonDeletedElementsMap(),
   );
 
-/** the device-pixel rect holding both bounds, at the current view */
-const toDeviceRect = (a: Bounds, b: Bounds) => {
+const deviceRectSpanning = (a: Bounds, b: Bounds) => {
   const { scrollX, scrollY, zoom } = h.state;
   const toDevice = window.devicePixelRatio * zoom.value;
   return {
@@ -84,7 +83,7 @@ describe("the canvas over a new element drawn inside a frame", () => {
       const before = strokeBounds();
       clearRect.mockClear();
       mouse.moveTo(x, y);
-      const rect = toDeviceRect(before, strokeBounds());
+      const rect = deviceRectSpanning(before, strokeBounds());
 
       expect(clearRect).toHaveBeenCalledTimes(1);
       const [cx, cy, cw, ch] = clearRect.mock.calls[0];

@@ -276,7 +276,6 @@ const renderLinkIcon = (
   }
 };
 
-/** the app state the static scene paints from */
 export const getStaticSceneAppState = (
   appState: AppState,
 ): StaticCanvasAppState => {

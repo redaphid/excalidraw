@@ -24,28 +24,18 @@ import {
 
 import type { NewElementSceneRenderConfig } from "../scene/types";
 
-/**
- * What a new-element canvas last painted of a new element drawn inside a
- * frame, so the next move repaints only where the new element was or is.
- */
 type PaintedLayer = {
   config: NewElementSceneRenderConfig;
   newElementId: string;
   canvasWidth: number;
   canvasHeight: number;
-  /** the new element's paint bounds, in scene coordinates */
-  bounds: Bounds;
+  sceneBounds: Bounds;
 };
+
+const ANTI_ALIAS_MARGIN_DEVICE_PX = 1;
 
 const paintedLayers = new WeakMap<HTMLCanvasElement, PaintedLayer>();
 
-/**
- * The device-pixel rect to repaint, or null to repaint the whole canvas.
- *
- * Between two paints of the same layer where only the new element changed,
- * a pixel outside its old and new paint bounds is painted the same both
- * times, so it can keep what the canvas holds.
- */
 const getDirtyRect = (
   canvas: HTMLCanvasElement,
   painted: PaintedLayer | undefined,
@@ -73,30 +63,33 @@ const getDirtyRect = (
     return null;
   }
   const toDevice = next.scale * appState.zoom.value;
-  // a pixel of margin for anti-aliasing past the paint bounds
   const x1 = Math.max(
     0,
     Math.floor(
-      (Math.min(painted.bounds[0], bounds[0]) + appState.scrollX) * toDevice,
-    ) - 1,
+      (Math.min(painted.sceneBounds[0], bounds[0]) + appState.scrollX) *
+        toDevice,
+    ) - ANTI_ALIAS_MARGIN_DEVICE_PX,
   );
   const y1 = Math.max(
     0,
     Math.floor(
-      (Math.min(painted.bounds[1], bounds[1]) + appState.scrollY) * toDevice,
-    ) - 1,
+      (Math.min(painted.sceneBounds[1], bounds[1]) + appState.scrollY) *
+        toDevice,
+    ) - ANTI_ALIAS_MARGIN_DEVICE_PX,
   );
   const x2 = Math.min(
     canvas.width,
     Math.ceil(
-      (Math.max(painted.bounds[2], bounds[2]) + appState.scrollX) * toDevice,
-    ) + 1,
+      (Math.max(painted.sceneBounds[2], bounds[2]) + appState.scrollX) *
+        toDevice,
+    ) + ANTI_ALIAS_MARGIN_DEVICE_PX,
   );
   const y2 = Math.min(
     canvas.height,
     Math.ceil(
-      (Math.max(painted.bounds[3], bounds[3]) + appState.scrollY) * toDevice,
-    ) + 1,
+      (Math.max(painted.sceneBounds[3], bounds[3]) + appState.scrollY) *
+        toDevice,
+    ) + ANTI_ALIAS_MARGIN_DEVICE_PX,
   );
   return {
     x: x1,
@@ -139,7 +132,7 @@ const _renderNewElementScene = (config: NewElementSceneRenderConfig) => {
         newElementId: newElement.id,
         canvasWidth: canvas.width,
         canvasHeight: canvas.height,
-        bounds,
+        sceneBounds: bounds,
       });
     } else {
       paintedLayers.delete(canvas);
