@@ -4523,7 +4523,7 @@ class App extends React.Component<AppProps, AppState> {
     const elementsMap = this.scene.getElementsMapIncludingDeleted();
 
     const shouldExportWithDarkMode =
-      (this.sessionExportThemeOverride ?? this.state.theme) === THEME.DARK;
+      (this.sessionExportThemeOverride ?? this.getCanvasMode()) === THEME.DARK;
 
     if (this.state.exportWithDarkMode !== shouldExportWithDarkMode) {
       this.setState({ exportWithDarkMode: shouldExportWithDarkMode });
@@ -5348,6 +5348,7 @@ ${css}
       }));
     }
     if (canvasChanged) {
+      this.cursor.applyForTool();
       this.triggerRender(true);
     }
   }

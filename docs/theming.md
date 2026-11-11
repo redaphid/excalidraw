@@ -339,7 +339,7 @@ A theme declares the mode its canvas paints in. Set `--canvas-mode` on both sele
 }
 ```
 
-The canvas then paints in that mode whatever the `theme` prop says, so a light theme under a dark host keeps black ink black on its paper. The text editor, the color swatches and the eye dropper follow the canvas mode too. Exports still follow the user's export dark-mode choice. Without `--canvas-mode`, the canvas follows the `theme` prop, as it does with no `css`. `generateThemeCss` writes the line, and every sample theme declares it.
+The canvas then paints in that mode whatever the `theme` prop says, so a light theme under a dark host keeps black ink black on its paper. The text editor, the color swatches, the eye dropper and the tool cursors follow the canvas mode too. Exports start in the canvas mode: the export dialog's dark mode switch is on for a dark theme and off for a light one. When the user flips that switch, their choice holds for the rest of the session. Without `--canvas-mode`, the canvas follows the `theme` prop, as it does with no `css`. `generateThemeCss` writes the line, and every sample theme declares it.
 
 In dark mode the editor displays element colors through a filter: it inverts lightness and keeps hue. So a scene looks right in both modes, and a theme's element colors follow the same rule:
 

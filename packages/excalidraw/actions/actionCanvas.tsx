@@ -95,6 +95,7 @@ export const actionChangeViewBackgroundColor = register<Partial<AppState>>({
         data-testid="canvas-background-picker"
         elements={elements}
         appState={appState}
+        canvasMode={app.getCanvasMode()}
         updateData={updateData}
       />
     );
