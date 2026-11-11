@@ -1,6 +1,3 @@
-// Test-only: the variable-width freedraw outline and its SVG path as
-// shape.ts built them before the stroke was outlined incrementally
-// (5780bd68), kept verbatim as the oracle for the incremental ones.
 import { DEFAULT_STROKE_STREAMLINE } from "@excalidraw/common";
 
 import { getStroke } from "./perfectFreehandReference";

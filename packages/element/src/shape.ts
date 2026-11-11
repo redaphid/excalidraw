@@ -1311,11 +1311,20 @@ const CONSTANT_WIDTH_FREEDRAW = {
 const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
   element.strokeOptions?.streamline ?? DEFAULT_STROKE_STREAMLINE;
 
-// https://easings.net/#easeOutSine
 const easeOutSine = (t: number) => Math.sin((t * Math.PI) / 2);
 
-let lastStroke: { options: StrokeOptions; stroke: IncrementalStroke } | null =
-  null;
+let strokeBeingDrawn: {
+  options: StrokeOptions;
+  stroke: IncrementalStroke;
+} | null = null;
+
+const isSameStrokeOptions = (a: StrokeOptions, b: StrokeOptions) =>
+  a.simulatePressure === b.simulatePressure &&
+  a.size === b.size &&
+  a.thinning === b.thinning &&
+  a.streamline === b.streamline &&
+  a.start?.taper === b.start?.taper &&
+  a.end?.taper === b.end?.taper;
 
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
@@ -1341,27 +1350,18 @@ const getVariableWidthFreedrawOutline = (
     last: true,
   };
 
-  // If input points are empty (should they ever be?) return a dot
   if (!element.points.length) {
     return getStroke([[0, 0, 0.5]], options) as [number, number][];
   }
 
-  // The stroke being drawn is outlined on every pointer move, one point
-  // longer each time, so keep its outline to resume.
-  const last = lastStroke?.options;
   if (
-    !lastStroke ||
-    last?.simulatePressure !== options.simulatePressure ||
-    last?.size !== options.size ||
-    last?.thinning !== options.thinning ||
-    last?.streamline !== options.streamline ||
-    last?.start?.taper !== options.start?.taper ||
-    last?.end?.taper !== options.end?.taper
+    !strokeBeingDrawn ||
+    !isSameStrokeOptions(strokeBeingDrawn.options, options)
   ) {
-    lastStroke = { options, stroke: new IncrementalStroke(options) };
+    strokeBeingDrawn = { options, stroke: new IncrementalStroke(options) };
   }
 
-  return lastStroke.stroke.getOutline(
+  return strokeBeingDrawn.stroke.getOutline(
     element.points,
     element.simulatePressure ? undefined : element.pressures,
   ) as [number, number][];
@@ -1459,21 +1459,10 @@ const isSamePoint = (A: number[], B: number[]) =>
 
 const joinSegments = (a: string, b: string) => (a && b ? `${a} ${b}` : a || b);
 
-/**
- * The SVG path of a freedraw outline: a quadratic curve through the
- * midpoints of its points. Formatting the numbers is most of its cost, and a
- * stroke being drawn changes only its outline's end cap and the points
- * around it between two moves, so the path's segments are kept by point and
- * reused where the outline's points are unchanged. The unchanged runs at
- * either end are kept joined too, as joining all segments again costs most
- * of what formatting them did.
- */
 export class IncrementalSvgPath {
   private outline: number[][] = [];
   private segments: string[] = [];
-  /** the first `count` segments, joined */
   private front = { count: 0, text: "" };
-  /** the `count` segments before the last one, joined */
   private back = { count: 0, text: "" };
   private path = "";
 
@@ -1503,8 +1492,6 @@ export class IncrementalSvgPath {
       tail++;
     }
 
-    // segment i runs from point i to the midpoint with the next, which for
-    // the last point is the first
     const segments = new Array<string>(count);
     const shift = previous.length - count;
     for (let i = 0; i < count - 1; i++) {
@@ -1543,9 +1530,6 @@ export class IncrementalSvgPath {
 
     const middle = segments.slice(frontCount, count - 1 - backCount).join(" ");
 
-    // Full precision: cut to two decimals, a stroke drawn deep in a zoom
-    // turns into a staircase or collapses to a dot, and the cut costs more
-    // than the text it trims.
     this.outline = points;
     this.segments = segments;
     this.front = { count: frontCount, text: front };

@@ -15,7 +15,6 @@ import { getStroke } from "./fixtures/perfectFreehandReference";
 import type { StrokeOptions } from "../src/perfectFreehand";
 import type { ExcalidrawFreeDrawElement } from "../src/types";
 
-// mulberry32: the same strokes every run.
 const seeded = (seed: number) => () => {
   seed = (seed + 0x6d2b79f5) | 0;
   let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -23,7 +22,6 @@ const seeded = (seed: number) => () => {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 };
 
-/** a pen wandering with pauses (repeated points) and sharp turns */
 const randomStroke = (random: () => number, length: number, scale: number) => {
   let x = random() * 100 * scale;
   let y = random() * 100 * scale;
@@ -46,7 +44,6 @@ const randomStroke = (random: () => number, length: number, scale: number) => {
   return { points, pressures };
 };
 
-// Excalidraw's options for a pressure-sensitive stroke.
 const excalidrawOptions = (
   size: number,
   simulatePressure: boolean,
@@ -72,7 +69,6 @@ describe("IncrementalStroke", () => {
     length: [40, 150, 400][i % 3],
     simulatePressure: i % 2 === 0,
     streamline: [0.5, 0.25, 0.7][i % 3],
-    // a 1x pen, a thick one, and pens drawn deep in a zoom
     size: [4.25, 17, 4.25e-3, 4.25e-6][i % 4],
     thinning: [0.6, 0, 0.3][(i >> 2) % 3],
   }));
@@ -196,21 +192,17 @@ describe("a freedraw element drawn point by point", () => {
             .slice(0, n)
             .map(([x, y]) => pointFrom<LocalPoint>(x, y)),
         }) as ExcalidrawFreeDrawElement),
-        // a pen's pressure, which createElement does not take
         simulatePressure,
         pressures: stroke.pressures.slice(0, n),
       });
 
       for (let n = 1; n <= points.length; n++) {
-        // another stroke outlined between two moves, as an export or a hit
-        // test would
         if (n % 50 === 0) {
           const between = element(other.points.length, 1, other);
           expect(pathOf(between)).toBe(
             getSvgPathFromStroke(getVariableWidthFreedrawOutline(between)),
           );
         }
-        // the pen width changes half way through
         const drawn = element(n, n < 150 ? 1 : 2);
         const outline = getVariableWidthFreedrawOutline(drawn);
         expect(getFreedrawOutlinePoints(drawn)).toEqual(outline);

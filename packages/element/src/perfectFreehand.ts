@@ -263,12 +263,6 @@ function getStrokeRadius(
   return size * easing(0.5 - thinning * (0.5 - pressure));
 }
 
-/**
- * The state of `getStrokePoints` after reading some inputs, none of them the
- * last: streamline only ever looks back, so these stroke points stay put as
- * the stroke grows.
- * @internal
- */
 type StrokePointsState = {
   strokePoints: StrokePoint[];
   prev: StrokePoint;
@@ -292,10 +286,6 @@ function startStrokePoints(first: number[]): StrokePointsState {
   };
 }
 
-/**
- * Read an input point that is not the last one.
- * @internal
- */
 function addStrokePoint(
   state: StrokePointsState,
   input: number[],
@@ -304,8 +294,6 @@ function addStrokePoint(
 ) {
   const { prev } = state;
 
-  // Using the t calculated from the streamline option, interpolate a new
-  // point between the previous point the current point.
   const point = lrp(prev.point, input, t);
 
   // If the new point is the same as the previous point, skip ahead.
@@ -347,11 +335,6 @@ function addStrokePoint(
   state.strokePoints.push(state.prev);
 }
 
-/**
- * The stroke point of the last input, which never waits for the minimum
- * length, and is the input itself for a completed stroke.
- * @internal
- */
 function getLastStrokePoint(
   state: StrokePointsState,
   input: number[],
@@ -463,13 +446,13 @@ const { min, PI } = Math;
 // This is the rate of change for simulated pressure. It could be an option.
 const RATE_OF_PRESSURE_CHANGE = 0.275;
 
+const PRESSURE_SEED_POINTS = 10;
+
+const getEndNoiseCut = (size: number) => Math.min(3, (size / 4.25) * 3);
+
 // Browser strokes seem to be off if PI is regular, a tiny offset seems to fix it
 const FIXED_PI = PI + 0.0001;
 
-/**
- * The options of `getStrokeOutlinePoints` resolved for one stroke.
- * @internal
- */
 type OutlineSettings = {
   size: number;
   thinning: number;
@@ -539,10 +522,6 @@ function getOutlineSettings(
   };
 }
 
-/**
- * The state of `getStrokeOutlinePoints` between two stroke points.
- * @internal
- */
 type OutlineState = {
   // Our collected left and right points
   leftPts: number[][];
@@ -571,20 +550,22 @@ function startOutline(points: StrokePoint[], s: OutlineSettings): OutlineState {
   // Previous pressure (start with average of first five pressures,
   // in order to prevent fat starts for every line. Drawn lines
   // almost always start slow!
-  const prevPressure = points.slice(0, 10).reduce((acc, curr) => {
-    let pressure = curr.pressure;
+  const prevPressure = points
+    .slice(0, PRESSURE_SEED_POINTS)
+    .reduce((acc, curr) => {
+      let pressure = curr.pressure;
 
-    if (simulatePressure) {
-      // Speed of change - how fast should the the pressure changing?
-      const sp = min(1, curr.distance / size);
-      // Rate of change - how much of a change is there?
-      const rp = min(1, 1 - sp);
-      // Accelerate the pressure
-      pressure = min(1, acc + (rp - acc) * (sp * RATE_OF_PRESSURE_CHANGE));
-    }
+      if (simulatePressure) {
+        // Speed of change - how fast should the the pressure changing?
+        const sp = min(1, curr.distance / size);
+        // Rate of change - how much of a change is there?
+        const rp = min(1, 1 - sp);
+        // Accelerate the pressure
+        pressure = min(1, acc + (rp - acc) * (sp * RATE_OF_PRESSURE_CHANGE));
+      }
 
-    return (acc + pressure) / 2;
-  }, points[0].pressure);
+      return (acc + pressure) / 2;
+    }, points[0].pressure);
 
   const pl = points[0].point;
 
@@ -608,11 +589,6 @@ function startOutline(points: StrokePoint[], s: OutlineSettings): OutlineState {
   };
 }
 
-/**
- * Find the outline's left and right points for `points[i]`. The first and
- * last points get caps later on.
- * @internal
- */
 function addOutlinePoint(
   state: OutlineState,
   points: StrokePoint[],
@@ -626,7 +602,7 @@ function addOutlinePoint(
   // Removes noise from the end of the line
   if (
     i < points.length - 1 &&
-    totalLength - runningLength < Math.min(3, (size / 4.25) * 3)
+    totalLength - runningLength < getEndNoiseCut(size)
   ) {
     return;
   }
@@ -765,10 +741,6 @@ function addOutlinePoint(
   state.prevVector = vector;
 }
 
-/**
- * Draw the caps and join the sides into the outline.
- * @internal
- */
 function closeOutline(
   state: OutlineState,
   points: StrokePoint[],
@@ -920,7 +892,6 @@ export function getStrokeOutlinePoints(
     points[points.length - 1].runningLength,
   );
 
-  // We can't do anything with a stroke with negative size.
   if (s.size <= 0) {
     return [];
   }
@@ -956,8 +927,6 @@ export function getStroke(
   return getStrokeOutlinePoints(getStrokePoints(points, options), options);
 }
 
-// Reading past the end of a point without pressure is a slow lookup. A
-// negative pressure reads as none, like a missing one does.
 const pressureOf = (
   points: readonly (readonly number[])[],
   pressures: readonly number[] | undefined,
@@ -965,21 +934,6 @@ const pressureOf = (
 ): number =>
   pressures ? pressures[i] : points[i].length > 2 ? points[i][2] : -1;
 
-/**
- * `getStroke` for a stroke that grows one point at a time, as it does while
- * it is drawn. It keeps the work for the part of the stroke that later
- * points can no longer change, and redoes only the rest:
- * - stroke points from every input but the last, as streamline only looks
- *   back;
- * - the outline of a stroke point once its successor is one of those, the
- *   first ten (which seed the pressure) are, and it is farther from the end
- *   than the end noise cut and the end taper, which a longer stroke only
- *   moves away from it.
- *
- * The outline is the one `getStroke` returns for the same points and
- * options. Inputs are compared with the ones read before, so any change
- * other than appending starts over.
- */
 export class IncrementalStroke {
   private readonly options: StrokeOptions;
   private readonly t: number;
@@ -987,10 +941,8 @@ export class IncrementalStroke {
   private readonly isComplete: boolean;
   private readonly growable: boolean;
 
-  /** inputs read as not the last, as `[x, y, pressure]` */
   private inputs: number[][] = [];
   private strokePoints: StrokePointsState | null = null;
-  /** the outline after the stroke points before `outlined` */
   private outline: OutlineState | null = null;
   private outlined = 0;
 
@@ -1000,14 +952,9 @@ export class IncrementalStroke {
     this.t = 0.15 + (1 - streamline) * 0.85;
     this.size = size;
     this.isComplete = last;
-    // tapers of `true` follow the stroke's whole length
     this.growable = start?.taper !== true && end?.taper !== true && size > 0;
   }
 
-  /**
-   * @param points `[x, y]` or `[x, y, pressure]` inputs
-   * @param pressures the inputs' pressures, if not in `points`
-   */
   getOutline(
     points: readonly (readonly number[])[],
     pressures?: readonly number[],
@@ -1018,7 +965,6 @@ export class IncrementalStroke {
       pressureOf(points, pressures, i),
     ];
 
-    // `getStrokePoints` pads strokes of one or two points
     if (points.length < 3 || !this.growable) {
       this.reset();
       return getStroke(
@@ -1067,19 +1013,14 @@ export class IncrementalStroke {
     return closeOutline(tail, strokePoints, s);
   }
 
-  /**
-   * Extend the kept outline over the stroke points later points cannot
-   * change, and return how many stroke points it covers.
-   */
   private settleOutline(strokePoints: StrokePoint[], s: OutlineSettings) {
     const kept = this.strokePoints!.strokePoints;
-    if (kept.length < 10) {
+    if (kept.length < PRESSURE_SEED_POINTS) {
       return this.outlined;
     }
 
-    // Every later stroke is at least this long
     const minLength = kept[kept.length - 1].runningLength;
-    const endCut = Math.min(3, (this.size / 4.25) * 3);
+    const endCut = getEndNoiseCut(this.size);
 
     let last = kept.length - 2;
     while (
