@@ -53,7 +53,7 @@ Choices that are this editor's own live in `$extensions["com.hypnodroid.draw"]`.
 | `note.shadow` | `none`, `soft` (the built-in 3,3 at 16% black), `lifted` (6,8 blurred 10, at 20% black), `hard` (5,5 solid note ink) | follows `surface.shadow`: `long` gives `lifted` |
 | `note.edge` | `none`, `hairline` (1 at 14% note ink, the panel ring's weight), `ink` (2, the note ink), `accent` (1 at 90% accent, a lit edge) | follows `surface.border`: `bold` gives `ink` |
 | `washes` | four `color.palette` token names for the background swatches | the first four |
-| `backdrop` | a CSS background; paints the canvas transparent and puts this behind it | none |
+| `backdrop` | a string is a CSS background: the canvas turns transparent and the background sits behind it, fixed to the screen. An object `{ image, size?, export? }` is an SVG tile (markup or a `data:` URL) the canvas repeats in scene coordinates, nesting with the grid at every zoom; `size` is one tile in scene units at zoom 1 (default one bold grid cell, 100), `export` says whether PNG and SVG exports draw it (default false) | none |
 | `extra` | CSS appended verbatim; prefix each selector with `:scope ` | none |
 
 ## A designer's export

@@ -94,10 +94,21 @@ export type ThemeSpec = {
     shadow: typeof NOTE_SHADOWS[number];
     edge: typeof NOTE_EDGES[number];
   };
-  /** paints the canvas transparent and puts this CSS background behind it */
-  backdrop?: string;
+  /** a string paints the canvas transparent and puts that CSS background
+   * behind it; a tile is drawn on the canvas, anchored to the scene */
+  backdrop?: string | ThemeBackdropTile;
   /** CSS appended verbatim; prefix each selector with `:scope ` */
   extra?: string;
+};
+
+/** an SVG tile repeated under the grid, in world coordinates */
+export type ThemeBackdropTile = {
+  /** a `data:` URL */
+  image: string;
+  /** one tile in scene units at zoom 1; absent: one bold grid cell */
+  size?: number;
+  /** whether PNG and SVG exports draw it */
+  export: boolean;
 };
 
 const MODES = ["light", "dark"] as const;
@@ -232,6 +243,34 @@ const inRange =
 
 const text: Parse<string> = (value) =>
   typeof value === "string" ? value : undefined;
+
+/** SVG markup becomes a percent-encoded `data:` URL, which fits in a quoted
+ * CSS `url()` and holds no raw `<` for a stylesheet sanitizer to refuse */
+export const svgDataUrl = (image: string) =>
+  image.startsWith("data:")
+    ? image
+    : `data:image/svg+xml,${encodeURIComponent(image.trim())}`;
+
+const backdropTile: Parse<string | ThemeBackdropTile> = (value) => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (!isRecord(value) || typeof value.image !== "string") {
+    return undefined;
+  }
+  const size =
+    value.size === undefined
+      ? undefined
+      : inRange(0, Infinity, { aboveMin: true })(value.size);
+  if (value.size !== undefined && size === undefined) {
+    return undefined;
+  }
+  return {
+    image: svgDataUrl(value.image),
+    ...(size === undefined ? {} : { size }),
+    export: value.export === true,
+  };
+};
 
 /** `#rgb`, `#rrggbb`, or the drafts' `#rrggbbaa` without its alpha */
 const toHex: Parse<string> = (value) => {
@@ -994,7 +1033,12 @@ export const readThemeTokens = (
       ),
     },
     ...definedEntries({
-      backdrop: field(["backdrop"], text, undefined, "a CSS background"),
+      backdrop: field(
+        ["backdrop"],
+        backdropTile,
+        undefined,
+        "a CSS background, or { image, size?, export? } with SVG markup or a data: URL and a size above 0",
+      ),
       extra: field(["extra"], text, undefined, "a CSS string"),
     }),
   };
@@ -1257,9 +1301,32 @@ export const THEME_TOKENS_SCHEMA = {
               maxItems: 4,
             },
             backdrop: {
-              type: "string",
               description:
-                "a CSS background behind a transparent canvas, such as a gradient",
+                "a CSS background behind a transparent canvas, such as a gradient; or an SVG tile drawn on the canvas, repeating in scene units",
+              oneOf: [
+                { type: "string" },
+                {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["image"],
+                  properties: {
+                    image: {
+                      type: "string",
+                      description: "SVG markup, or a data: URL",
+                    },
+                    size: {
+                      type: "number",
+                      exclusiveMinimum: 0,
+                      description:
+                        "one tile in scene units at zoom 1; default: one bold grid cell",
+                    },
+                    export: {
+                      type: "boolean",
+                      description: "whether PNG and SVG exports draw it",
+                    },
+                  },
+                },
+              ],
             },
             extra: {
               type: "string",

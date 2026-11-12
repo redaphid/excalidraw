@@ -35,6 +35,14 @@ export type CanvasTheme = Readonly<{
   gridBoldColor?: string;
   /** `dashed` (the default) or `solid` minor grid lines */
   gridStyle?: "dashed" | "solid";
+  /** a `data:` image repeated under the grid, anchored to world coordinates
+   * (see `renderer/backdrop.ts`) */
+  backdropImage?: string;
+  /** one backdrop tile's size in scene units at zoom 1; absent: one bold
+   * grid cell, `gridSize × gridStep` */
+  backdropSize?: number;
+  /** whether PNG and SVG exports draw the backdrop (default: no) */
+  backdropExport?: boolean;
   selectionColor?: string;
   /** fill of the resize and rotation handles */
   handleFill?: string;
@@ -301,10 +309,39 @@ const palette = (value: string): ColorPaletteCustom | undefined => {
     : undefined;
 };
 
+/** `url("data:…") [<size>]`: a quoted `data:` URL, so a theme can never
+ * taint the canvas with a cross-origin image, and an optional tile size */
+const backdrop = (
+  value: string,
+): Pick<CanvasTheme, "backdropImage" | "backdropSize"> => {
+  const match = value.match(
+    /^url\(\s*(["'])(data:[^"']*)\1\s*\)(?:\s+(\d*\.?\d+))?$/,
+  );
+  if (!match) {
+    return {};
+  }
+  const size = match[3] === undefined ? undefined : Number(match[3]);
+  return size !== undefined && !(size > 0)
+    ? {}
+    : { backdropImage: match[2], backdropSize: size };
+};
+
 const definedEntries = <T extends Record<string, unknown>>(record: T) =>
   Object.fromEntries(
     Object.entries(record).filter(([, value]) => value !== undefined),
   ) as { [K in keyof T]?: Exclude<T[K], undefined> };
+
+/** The part of the theme exports paint: the backdrop, when the theme says
+ * exports draw it. Everything else in an export is the scene's own. */
+export const exportedCanvasTheme = (
+  canvasTheme: CanvasTheme | undefined,
+): CanvasTheme | undefined =>
+  canvasTheme?.backdropExport && canvasTheme.backdropImage
+    ? definedEntries({
+        backdropImage: canvasTheme.backdropImage,
+        backdropSize: canvasTheme.backdropSize,
+      })
+    : undefined;
 
 /** The theme alone draws the grid: grid mode only snaps. */
 export const themeDrawsGrid = (canvas: CanvasTheme) =>
@@ -333,6 +370,8 @@ export const readCssTheme = (style: {
     gridColor: color("--canvas-grid-color"),
     gridBoldColor: color("--canvas-grid-bold-color"),
     gridStyle: oneOf(["dashed", "solid"] as const)(read("--canvas-grid-style")),
+    ...backdrop(read("--canvas-backdrop")),
+    backdropExport: { on: true, off: false }[read("--canvas-backdrop-export")],
     selectionColor: color("--color-selection"),
     handleFill: color("--canvas-handle-fill"),
     frameColor: color("--canvas-frame-color"),

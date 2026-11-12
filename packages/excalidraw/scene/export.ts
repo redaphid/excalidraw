@@ -55,6 +55,12 @@ import { serializeAsJSON } from "../data/json";
 
 import { Fonts } from "../fonts";
 
+import { exportedCanvasTheme } from "../cssTheme";
+import {
+  appendSvgBackdrop,
+  getBackdrop,
+  loadBackdrop,
+} from "../renderer/backdrop";
 import { renderStaticScene } from "../renderer/staticScene";
 import { renderSceneToSvg } from "../renderer/staticSvgScene";
 
@@ -270,6 +276,11 @@ export const exportToCanvas = async (
     files,
   });
 
+  const exportedTheme = exportedCanvasTheme(canvasTheme);
+  if (exportedTheme?.backdropImage) {
+    await loadBackdrop(exportedTheme.backdropImage);
+  }
+
   renderStaticScene({
     canvas,
     rc: rough.canvas(canvas),
@@ -300,6 +311,7 @@ export const exportToCanvas = async (
       elementsPendingErasure: new Set(),
       pendingFlowchartNodes: null,
       theme: appState.exportWithDarkMode ? THEME.DARK : THEME.LIGHT,
+      canvasTheme: exportedTheme,
     },
   });
 
@@ -492,6 +504,19 @@ export const exportToSvg = async (
       applyDarkModeFilter(viewBackgroundColor, exportWithDarkMode),
     );
     svgRoot.appendChild(rect);
+
+    const backdrop = getBackdrop(
+      exportedCanvasTheme(opts?.canvasTheme),
+      getDefaultAppState(),
+    );
+    if (backdrop) {
+      appendSvgBackdrop(svgRoot, defsElement, backdrop, {
+        offsetX,
+        offsetY,
+        width,
+        height,
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------

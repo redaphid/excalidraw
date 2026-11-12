@@ -13,6 +13,10 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Theme backdrops drawn on the canvas (2026-11-11)
+
+- New `--canvas-backdrop: url("data:…") [<size>]`: a `css` theme repeats an SVG tile under the grid, anchored to scene coordinates. The tile nests with the grid step the way the grid does, so it stays between `size` and `size × gridStep` screen pixels from 1x to 1,000,000x, and it is rasterized once per on-screen size, so its lines stay one device pixel wide. `--canvas-backdrop-export: on` draws it in PNG and SVG exports too (off by default, as exports never use theme colors). The token generator's `backdrop` extension takes `{ image, size?, export? }` beside its CSS-background string form. `strokeBackdrop`, `getBackdrop`, `backdropPeriod` and `loadBackdrop` are exported for a host that paints its own tiles. Sketchbook, Blueprint and Brutalist ship with one.
+
 ### The theme paints the grid, grid mode only snaps (2026-11-11)
 
 - The grid is painted whenever the `css` theme sets `--canvas-grid-color` or `--canvas-grid-bold-color`, whether grid mode is on or off, and never without one. Grid mode (`appState.gridModeEnabled`, Ctrl+', the `gridModeEnabled` prop) now only snaps, and its toggle reads "Snap to grid". Saved scenes with grid mode on keep snapping. A host without a `css` theme paints no grid.
