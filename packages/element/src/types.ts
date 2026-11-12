@@ -98,6 +98,15 @@ export type ExcalidrawRectangleElement = _ExcalidrawElementBase & {
   type: "rectangle";
 };
 
+/**
+ * A rectangle that the editor draws and handles as a button. Being a rectangle
+ * underneath, a client that doesn't know buttons shows and keeps it as a box
+ * with its label.
+ */
+export type ExcalidrawButtonElement = ExcalidrawRectangleElement & {
+  customData: { isButton: true };
+};
+
 export type ExcalidrawStickyNoteElement = _ExcalidrawElementBase &
   Readonly<{
     type: "stickynote";
@@ -429,6 +438,12 @@ export type StrokeVariability = "variable" | "constant";
 export type StrokeOptions = Readonly<{
   variability: StrokeVariability;
   streamline: number;
+  /** how much pressure narrows a variable stroke, -1 to 1 (perfect-freehand
+   * `thinning`). Absent: 0.6 */
+  thinning?: number;
+  /** how far each end of a variable stroke tapers, in stroke widths.
+   * Absent: no taper */
+  taper?: number;
 }>;
 
 export type ExcalidrawFreeDrawElement = _ExcalidrawElementBase &

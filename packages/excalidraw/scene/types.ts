@@ -19,6 +19,7 @@ import type {
   SocketId,
   PendingExcalidrawElements,
 } from "../types";
+import type { CanvasTheme } from "../cssTheme";
 import type { RoughCanvas } from "roughjs/bin/canvas";
 import type { Drawable } from "roughjs/bin/core";
 
@@ -45,6 +46,8 @@ export type StaticCanvasRenderConfig = {
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
   elementRenderOverrides?: ElementRenderOverrides;
+  /** editor chrome colors from the `css` prop; absent when exporting */
+  canvasTheme?: CanvasTheme;
   /** while the static canvas holds still under a new element, repaints it
    * once settled bitmaps land, as the per-move repaint otherwise would */
   settledBitmapCount?: number;
@@ -78,6 +81,7 @@ export type InteractiveCanvasRenderConfig = {
   remotePointerUsernames: Map<SocketId, string>;
   remotePointerButton: Map<SocketId, string | undefined>;
   selectionColor: string;
+  canvasTheme: CanvasTheme;
   lastViewportPosition: { x: number; y: number };
   // extra options passed to the renderer
   // ---------------------------------------------------------------------------
@@ -97,10 +101,17 @@ export type StaticSceneRenderConfig = {
   scale: number;
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
+  /** called once the scene has been painted, with the state it shows */
+  onPainted?: (appState: StaticCanvasAppState) => void;
 };
 
 export type InteractiveSceneRenderAnimationState = {
   bindingHighlight: { runtime: number } | undefined;
+};
+
+export type ButtonHighlight = {
+  id: ExcalidrawElement["id"];
+  pressed: boolean;
 };
 
 export type InteractiveSceneRenderConfig = {
@@ -112,6 +123,7 @@ export type InteractiveSceneRenderConfig = {
   allElementsMap: NonDeletedSceneElementsMap;
   scale: number;
   appState: InteractiveCanvasAppState;
+  buttonHighlight: ButtonHighlight | null;
   renderConfig: InteractiveCanvasRenderConfig;
   editorInterface: EditorInterface;
   callback: (data: RenderInteractiveSceneCallback) => void;

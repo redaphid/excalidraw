@@ -386,6 +386,58 @@ export const colorToHex = (color: string): string | null => {
   return rgbToHex(r, g, b, a);
 };
 
+/**
+ * @returns the color turned `degrees` around the hue wheel, keeping its
+ *  saturation, lightness and alpha; the input unchanged when it isn't a valid
+ *  color or carries no hue to turn (transparent, or a gray)
+ */
+export const spinColorHue = (color: string, degrees: number): string => {
+  const tc = tinycolor(color);
+  if (!tc.isValid() || tc.getAlpha() === 0 || tc.toHsl().s === 0) {
+    return color;
+  }
+  const { r, g, b, a } = tc.spin(degrees).toRgb();
+  return rgbToHex(r, g, b, a);
+};
+
+/**
+ * A color's saturation and lightness, 0–100, or null for a color that isn't
+ * valid or can't be seen (transparent)
+ */
+export const getColorSaturationLightness = (
+  color: string,
+): { saturation: number; lightness: number } | null => {
+  const tc = tinycolor(color);
+  if (!tc.isValid() || tc.getAlpha() === 0) {
+    return null;
+  }
+  const { s, l } = tc.toHsl();
+  return { saturation: s * 100, lightness: l * 100 };
+};
+
+/**
+ * @returns the color with its saturation or lightness (0–100) set, keeping
+ *  its hue and alpha; the input unchanged when it isn't a valid color or is
+ *  transparent
+ */
+export const setColorSaturationLightness = (
+  color: string,
+  next: { saturation?: number; lightness?: number },
+): string => {
+  const tc = tinycolor(color);
+  if (!tc.isValid() || tc.getAlpha() === 0) {
+    return color;
+  }
+  const hsl = tc.toHsl();
+  const { r, g, b, a } = tinycolor({
+    h: hsl.h,
+    s: clamp(next.saturation ?? hsl.s * 100, 0, 100) / 100,
+    l: clamp(next.lightness ?? hsl.l * 100, 0, 100) / 100,
+    a: hsl.a,
+  }).toRgb();
+  return rgbToHex(r, g, b, a);
+};
+
 export const isTransparent = (color: string) => {
   return tinycolor(color).getAlpha() === 0;
 };

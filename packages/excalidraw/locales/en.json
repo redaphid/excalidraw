@@ -114,7 +114,8 @@
     "ungroup": "Ungroup selection",
     "collaborators": "Collaborators",
     "you": "You",
-    "toggleGrid": "Toggle grid",
+    "toggleGrid": "Snap to grid",
+    "showFrames": "Show frames",
     "addToLibrary": "Add to library",
     "removeFromLibrary": "Remove from library",
     "libraryLoadingMessage": "Loading library…",
@@ -229,7 +230,14 @@
     "breadcrumb": "Current frame",
     "hint": "↵ into · Esc out · {{bookmarks}} bookmarks · M close",
     "stepHelp": "Step between frames",
-    "bookmarkHelp": "Fly to a bookmarked frame"
+    "bookmarkHelp": "Fly to a bookmarked frame",
+    "slides": "Slides",
+    "present": "Present",
+    "moveSlide": "Move {{name}}",
+    "skipSlide": "Skip {{name}}",
+    "includeSlide": "Include {{name}}",
+    "noSlides": "Draw a frame (F) to make your first slide.",
+    "slidesHint": "Drag ⋮⋮ to reorder · tap the eye to skip"
   },
   "search": {
     "title": "Find on canvas",

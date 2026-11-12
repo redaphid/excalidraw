@@ -25,10 +25,8 @@ import {
   invariant,
   applyDarkModeFilter,
   isSafari,
-  STICKY_NOTE_EDGE_SHADOW_OPACITY,
-  STICKY_NOTE_EDGE_SHADOW_WIDTH,
   STICKY_NOTE_FOOTER,
-  STICKY_NOTE_SHADOW_OPACITY,
+  STICKY_NOTE_SHADOW_REACH,
   DEFAULT_ZOOM,
 } from "@excalidraw/common";
 
@@ -47,6 +45,7 @@ import type {
 } from "@excalidraw/excalidraw/scene/types";
 
 import { getElementAbsoluteCoords, getElementBounds } from "./bounds";
+import { getButtonIcon } from "./button";
 import { getUncroppedImageElement } from "./cropElement";
 import { getElementDetailScale } from "./authoring";
 import { LinearElementEditor } from "./linearElementEditor";
@@ -69,18 +68,24 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  isButtonElement,
+  isStickyNoteElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
+import { isElementInViewport } from "./sizeHelpers";
 
 import { ShapeCache } from "./shape";
 import {
   getStickyNoteFooter,
+  getStickyNoteChrome,
   getStickyNotePathCommands,
+  type StickyNoteChrome,
   type StickyNotePathCommand,
 } from "./stickyNote";
 
 import type {
+  ExcalidrawButtonElement,
   ExcalidrawElement,
   ExcalidrawTextElement,
   NonDeleted,
@@ -90,6 +95,7 @@ import type {
   ExcalidrawTextElementWithContainer,
   NonDeletedSceneElementsMap,
   ElementsMap,
+  Theme,
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
@@ -100,6 +106,10 @@ const isPendingImageElement = (
 ) =>
   isInitializedImageElement(element) &&
   !renderConfig.imageCache.has(element.fileId);
+
+/** Half a stroke paints outside the element's bounds, in device pixels. */
+const strokeReach = (element: ExcalidrawElement) =>
+  (element.strokeWidth * window.devicePixelRatio) / 2;
 
 /**
  * Room around an element's cache bitmap for paint past its bounds. The fixed
@@ -112,13 +122,26 @@ const getCanvasPadding = (element: ExcalidrawElement) => {
       return element.strokeWidth * 12;
     case "text":
       return element.fontSize / 2;
+    case "stickynote":
+      // in device pixels, unlike the theme's scene-unit shadow. A blur of
+      // radius b is a gaussian of sigma b/2: the extra half reach holds its
+      // tail to 3 sigma, where it is invisible
+      return (
+        STICKY_NOTE_SHADOW_REACH *
+        1.5 *
+        window.devicePixelRatio *
+        getElementDetailScale(element)
+      );
+    case "image":
+      return 20 * getElementDetailScale(element);
     case "arrow":
-      if (element.endArrowhead || element.endArrowhead) {
-        return 40 * getElementDetailScale(element);
-      }
-      return 20 * getElementDetailScale(element);
+      return (
+        (element.startArrowhead || element.endArrowhead ? 40 : 20) *
+          getElementDetailScale(element) +
+        strokeReach(element)
+      );
     default:
-      return 20 * getElementDetailScale(element);
+      return 20 * getElementDetailScale(element) + strokeReach(element);
   }
 };
 
@@ -218,6 +241,8 @@ export interface ExcalidrawElementWithCanvas {
   canvasOffsetY: number;
   imageCrop: ExcalidrawImageElement["crop"] | null;
   containingFrameOpacity: number;
+  /** the theme a sticky note's shadow and edge were drawn with */
+  canvasTheme: StaticCanvasRenderConfig["canvasTheme"];
 }
 
 const cappedElementCanvasSize = (
@@ -333,7 +358,7 @@ const generateElementCanvas = (
   return {
     element,
     canvas,
-    theme: appState.theme,
+    theme: renderConfig.theme,
     scale,
     zoomValue: zoom.value,
     canvasOffsetX,
@@ -341,6 +366,7 @@ const generateElementCanvas = (
     containingFrameOpacity:
       getContainingFrame(element, elementsMap)?.opacity || 100,
     imageCrop: isImageElement(element) ? element.crop : null,
+    canvasTheme: renderConfig.canvasTheme,
   };
 };
 
@@ -420,16 +446,62 @@ const fillStickyNoteShape = (
   context.fill();
 };
 
+/**
+ * A canvas blurs only shadows, so a blurred shadow is cast by a copy of its
+ * shape drawn left of everything visible, offset back by the same distance.
+ * Shadow offsets and blur are in device pixels, untouched by the transform.
+ */
+const fillStickyNoteShadow = (
+  context: CanvasRenderingContext2D,
+  commands: StickyNotePathCommand[],
+  shadow: NonNullable<StickyNoteChrome["shadow"]>,
+  scale: number,
+) => {
+  context.fillStyle = shadow.color;
+  if (!shadow.blur) {
+    fillStickyNoteShape(context, commands);
+    return;
+  }
+  const transform = context.getTransform();
+  const right = Math.max(
+    ...commands.flatMap((command) =>
+      (command.type === "quadratic"
+        ? [command.control, command.point]
+        : [command.point]
+      ).map(({ x, y }) => transform.a * x + transform.c * y + transform.e),
+    ),
+  );
+  const shift = Math.max(0, right) + 1;
+  context.save();
+  context.setTransform(
+    transform.a,
+    transform.b,
+    transform.c,
+    transform.d,
+    transform.e - shift,
+    transform.f,
+  );
+  context.shadowColor = shadow.color;
+  context.shadowBlur =
+    shadow.blur * scale * Math.hypot(transform.a, transform.b);
+  context.shadowOffsetX = shift;
+  context.shadowOffsetY = 0;
+  context.fillStyle = "#000000";
+  fillStickyNoteShape(context, commands);
+  context.restore();
+};
+
 const strokeStickyNoteEdge = (
   context: CanvasRenderingContext2D,
   commands: StickyNotePathCommand[],
+  edge: NonNullable<StickyNoteChrome["edge"]>,
   scale: number,
 ) => {
   context.save();
   drawStickyNotePath(context, commands);
   context.clip();
-  context.lineWidth = STICKY_NOTE_EDGE_SHADOW_WIDTH * 2 * scale;
-  context.strokeStyle = `rgba(0, 0, 0, ${STICKY_NOTE_EDGE_SHADOW_OPACITY})`;
+  context.lineWidth = edge.width * 2 * scale;
+  context.strokeStyle = edge.color;
   drawStickyNotePath(context, commands);
   context.stroke();
   context.restore();
@@ -456,6 +528,27 @@ const getFreeDrawPath2D = (
   return path2D;
 };
 
+const drawButtonIcon = (
+  button: NonDeleted<ExcalidrawButtonElement>,
+  context: CanvasRenderingContext2D,
+  renderConfig: StaticCanvasRenderConfig,
+) => {
+  const { corners, cornerWidth } = getButtonIcon(button);
+  context.save();
+  context.fillStyle = context.strokeStyle = applyDarkModeFilter(
+    button.strokeColor,
+    renderConfig.theme === THEME.DARK,
+  );
+  context.lineJoin = "round";
+  context.lineWidth = cornerWidth;
+  context.beginPath();
+  corners.forEach(([x, y]) => context.lineTo(x, y));
+  context.closePath();
+  context.fill();
+  context.stroke();
+  context.restore();
+};
+
 const drawElementOnCanvas = (
   element: NonDeletedExcalidrawElement,
   rc: RoughCanvas,
@@ -466,11 +559,16 @@ const drawElementOnCanvas = (
     case "stickynote": {
       context.save();
       try {
-        context.fillStyle = `rgba(0, 0, 0, ${STICKY_NOTE_SHADOW_OPACITY})`;
-        fillStickyNoteShape(
-          context,
-          getStickyNotePathCommands(element, { shadow: true }),
-        );
+        // canvas chrome, like the frame outline: not dark-mode filtered
+        const { shadow, edge } = getStickyNoteChrome(renderConfig.canvasTheme);
+        if (shadow) {
+          fillStickyNoteShadow(
+            context,
+            getStickyNotePathCommands(element, { shadow }),
+            shadow,
+            getElementDetailScale(element),
+          );
+        }
 
         const commands = getStickyNotePathCommands(element);
         context.fillStyle = applyDarkModeFilter(
@@ -478,7 +576,14 @@ const drawElementOnCanvas = (
           renderConfig.theme === THEME.DARK,
         );
         fillStickyNoteShape(context, commands);
-        strokeStickyNoteEdge(context, commands, getElementDetailScale(element));
+        if (edge) {
+          strokeStickyNoteEdge(
+            context,
+            commands,
+            edge,
+            getElementDetailScale(element),
+          );
+        }
 
         // the label is absolute, so this cached canvas only goes stale at a
         // year boundary — and is regenerated on the next zoom, theme or
@@ -514,6 +619,9 @@ const drawElementOnCanvas = (
       context.lineCap = "round";
 
       rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      if (isButtonElement(element)) {
+        drawButtonIcon(element, context, renderConfig);
+      }
       break;
     }
     case "arrow":
@@ -782,9 +890,11 @@ const generateElementWithCanvas = (
   if (
     !prevElementWithCanvas ||
     shouldRegenerateBecauseZoom ||
-    prevElementWithCanvas.theme !== appState.theme ||
+    prevElementWithCanvas.theme !== renderConfig.theme ||
     prevElementWithCanvas.imageCrop !== imageCrop ||
-    prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity
+    prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity ||
+    (isStickyNoteElement(element) &&
+      prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme)
   ) {
     const elementWithCanvas = generateElementCanvas(
       element,
@@ -1164,12 +1274,13 @@ const settledElementCanvas = (
   element: NonDeletedExcalidrawElement,
   elementsMap: NonDeletedSceneElementsMap,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
+  theme: Theme,
 ) => {
   const cached = elementWithCanvasCache.get(element);
   return cached &&
     cached.zoomValue === appState.zoom.value &&
     cached.scale === appState.zoom.value &&
-    cached.theme === appState.theme &&
+    cached.theme === theme &&
     cached.containingFrameOpacity ===
       (getContainingFrame(element, elementsMap)?.opacity || 100)
     ? cached
@@ -1178,18 +1289,33 @@ const settledElementCanvas = (
 
 /** How long the zoom holds still before direct-drawn elements get bitmaps. */
 const ZOOM_SETTLE_MS = 150;
-/** Where idle callbacks are missing, the time one slice spends building. */
+/**
+ * The most time one slice spends starting builds. Input that arrives during
+ * a slice waits for it, so this stays well short of a long task even where
+ * the browser offers a whole 50 ms idle period.
+ */
 const SETTLED_BUILD_SLICE_MS = 8;
+/** How far past each edge of the view, as a fraction of the view, elements
+ * get their bitmaps ahead of a pan. */
+const BUILD_AHEAD_VIEW_FRACTION = 0.5;
 
 let zoomHeld = { zoom: NaN, since: 0 };
 let settledBuild: {
+  canvas: HTMLCanvasElement;
   elements: readonly NonDeletedExcalidrawElement[];
   next: number;
   elementsMap: NonDeletedSceneElementsMap;
   renderConfig: StaticCanvasRenderConfig;
   appState: StaticCanvasAppState;
+  /** the scan for elements near the view, which a re-armed build carries on
+   * while the elements it scans are the same */
+  ahead: {
+    candidates: RenderableElementsMap;
+    cursor: IterableIterator<NonDeletedExcalidrawElement>;
+    unchecked: number;
+  };
 } | null = null;
-let settledBuildScheduled = false;
+let cancelScheduledBuild: (() => void) | null = null;
 let settledBitmapCount = 0;
 
 /** How many settled bitmaps have been built, for a canvas that holds still
@@ -1198,23 +1324,41 @@ export const getSettledBitmapCount = () => settledBitmapCount;
 
 const scheduleSettledBuild = (delay: number) => {
   if (delay > 0) {
-    setTimeout(() => scheduleSettledBuild(0), delay);
+    const timer = setTimeout(() => scheduleSettledBuild(0), delay);
+    cancelScheduledBuild = () => clearTimeout(timer);
   } else if (typeof requestIdleCallback === "function") {
-    requestIdleCallback((deadline) =>
-      buildSettledBitmaps(() => deadline.timeRemaining() > 1),
-    );
-  } else {
-    setTimeout(() => {
+    const idle = requestIdleCallback((deadline) => {
       const until = performance.now() + SETTLED_BUILD_SLICE_MS;
-      buildSettledBitmaps(() => performance.now() < until);
+      runSettledBuild(
+        () => deadline.timeRemaining() > 1 && performance.now() < until,
+      );
     });
+    cancelScheduledBuild = () => cancelIdleCallback(idle);
+  } else {
+    const timer = setTimeout(() => {
+      const until = performance.now() + SETTLED_BUILD_SLICE_MS;
+      runSettledBuild(() => performance.now() < until);
+    });
+    cancelScheduledBuild = () => clearTimeout(timer);
+  }
+};
+
+const runSettledBuild = (hasTime: () => boolean) => {
+  try {
+    buildSettledBitmaps(hasTime);
+  } catch (error) {
+    // browsers refuse canvases past their memory cap, and the build throws;
+    // the next frame starts another
+    settledBuild = null;
+    cancelScheduledBuild = null;
+    console.error(error);
   }
 };
 
 const buildSettledBitmaps = (hasTime: () => boolean) => {
   const build = settledBuild;
   if (!build) {
-    settledBuildScheduled = false;
+    cancelScheduledBuild = null;
     return;
   }
   const wait = zoomHeld.since + ZOOM_SETTLE_MS - performance.now();
@@ -1222,17 +1366,19 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     scheduleSettledBuild(wait);
     return;
   }
-  const { elements, elementsMap, renderConfig, appState } = build;
+  const { elements, elementsMap, renderConfig, appState, ahead } = build;
   const screenArea =
     appState.width * appState.height * window.devicePixelRatio ** 2;
-  while (build.next < elements.length && hasTime()) {
-    const element = elements[build.next++];
+  /** builds what a frame drawing the element at this zoom would, and says
+   * whether that was a new bitmap */
+  const buildForView = (element: NonDeletedExcalidrawElement) => {
     if (
       element.id === appState.newElement?.id ||
-      !shouldDrawDirectly(element, elementsMap, appState) ||
-      settledElementCanvas(element, elementsMap, appState)
+      element.type === "selection" ||
+      isFrameLikeElement(element) ||
+      settledElementCanvas(element, elementsMap, appState, renderConfig.theme)
     ) {
-      continue;
+      return false;
     }
     const { width, height, scale } = cappedElementCanvasSize(
       element,
@@ -1242,15 +1388,81 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
     // a bitmap larger than the screen costs more memory than it saves time
     if (scale === appState.zoom.value && width * height <= screenArea) {
       generateElementWithCanvas(element, elementsMap, renderConfig, appState);
+      return true;
+    }
+    ShapeCache.generateElementShape(element, renderConfig);
+    return false;
+  };
+
+  while (build.next < elements.length && hasTime()) {
+    const element = elements[build.next++];
+    if (
+      shouldDrawDirectly(element, elementsMap, appState) &&
+      buildForView(element)
+    ) {
       settledBitmapCount++;
     }
   }
-  if (build.next < elements.length) {
+
+  // Where idle callbacks are missing, the slices are not idle time, so only
+  // the view's own elements get built.
+  const buildsAhead = typeof requestIdleCallback === "function";
+  const margin = {
+    x: appState.width * BUILD_AHEAD_VIEW_FRACTION,
+    y: appState.height * BUILD_AHEAD_VIEW_FRACTION,
+  };
+  const nearView = {
+    zoom: appState.zoom,
+    offsetLeft: appState.offsetLeft,
+    offsetTop: appState.offsetTop,
+    scrollX: appState.scrollX + margin.x / appState.zoom.value,
+    scrollY: appState.scrollY + margin.y / appState.zoom.value,
+  };
+  while (
+    buildsAhead &&
+    build.next >= elements.length &&
+    ahead.unchecked > 0 &&
+    hasTime()
+  ) {
+    const scanned = ahead.cursor.next();
+    if (scanned.done) {
+      ahead.cursor = ahead.candidates.values();
+      continue;
+    }
+    ahead.unchecked--;
+    if (
+      isElementInViewport(
+        scanned.value,
+        appState.width + 2 * margin.x,
+        appState.height + 2 * margin.y,
+        nearView,
+        elementsMap,
+      )
+    ) {
+      buildForView(scanned.value);
+    }
+  }
+
+  if (build.next < elements.length || (buildsAhead && ahead.unchecked > 0)) {
     scheduleSettledBuild(0);
   } else {
     settledBuild = null;
-    settledBuildScheduled = false;
+    cancelScheduledBuild = null;
   }
+};
+
+/**
+ * Drops the pending build if this canvas scheduled it, so nothing runs once
+ * its editor unmounts. The build is shared by every editor on the page and
+ * holds only the canvas that rendered last, so another editor's build stays.
+ */
+export const cancelSettledBitmaps = (canvas: HTMLCanvasElement) => {
+  if (settledBuild?.canvas !== canvas) {
+    return;
+  }
+  settledBuild = null;
+  cancelScheduledBuild?.();
+  cancelScheduledBuild = null;
 };
 
 /**
@@ -1258,10 +1470,15 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
  * has settled (no zoom gesture or animation running) and held still for
  * {@link ZOOM_SETTLE_MS}, the last frame's visible ones get bitmaps at that
  * zoom in idle time, and later frames at that zoom (pans) draw them from
- * those. Call once per static frame.
+ * those. Then, where the browser has idle callbacks, the elements of
+ * `candidates` within {@link BUILD_AHEAD_VIEW_FRACTION} of the view get what
+ * a frame would build when they enter it. Each frame replaces the build, so
+ * it always works from the latest view. Call once per static frame.
  */
 export const cacheSettledBitmaps = (
+  canvas: HTMLCanvasElement,
   elements: readonly NonDeletedExcalidrawElement[],
+  candidates: RenderableElementsMap,
   elementsMap: NonDeletedSceneElementsMap,
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState,
@@ -1274,9 +1491,23 @@ export const cacheSettledBitmaps = (
   if (zoomHeld.zoom !== appState.zoom.value) {
     zoomHeld = { zoom: appState.zoom.value, since: performance.now() };
   }
-  settledBuild = { elements, next: 0, elementsMap, renderConfig, appState };
-  if (!settledBuildScheduled) {
-    settledBuildScheduled = true;
+  settledBuild = {
+    canvas,
+    elements,
+    next: 0,
+    elementsMap,
+    renderConfig,
+    appState,
+    ahead: {
+      candidates,
+      cursor:
+        settledBuild?.ahead.candidates === candidates
+          ? settledBuild.ahead.cursor
+          : candidates.values(),
+      unchecked: candidates.size,
+    },
+  };
+  if (!cancelScheduledBuild) {
     scheduleSettledBuild(ZOOM_SETTLE_MS);
   }
 };
@@ -1304,7 +1535,12 @@ export const renderElement = (
   const drawsDirectly =
     renderConfig.isExporting ||
     (shouldDrawDirectly(element, allElementsMap, appState) &&
-      !settledElementCanvas(element, allElementsMap, appState));
+      !settledElementCanvas(
+        element,
+        allElementsMap,
+        appState,
+        renderConfig.theme,
+      ));
 
   context.save();
   context.globalAlpha =
@@ -1358,28 +1594,33 @@ const drawElement = (
           );
           context.fillStyle = "rgba(0, 0, 200, 0.04)";
 
-          context.lineWidth = FRAME_STYLE.strokeWidth / appState.zoom.value;
-          context.strokeStyle = applyDarkModeFilter(
-            FRAME_STYLE.strokeColor,
-            appState.theme === THEME.DARK,
-          );
+          context.lineWidth =
+            (renderConfig.canvasTheme?.frameWidth ?? FRAME_STYLE.outlineWidth) /
+            appState.zoom.value;
+          context.strokeStyle =
+            renderConfig.canvasTheme?.frameColor ??
+            (renderConfig.theme === THEME.DARK
+              ? FRAME_STYLE.outlineColorDarkTheme
+              : FRAME_STYLE.outlineColor);
 
           // TODO change later to only affect AI frames
           if (isMagicFrameElement(element)) {
             context.strokeStyle =
-              appState.theme === THEME.LIGHT
-                ? "#7affd7"
-                : applyDarkModeFilter("#1d8264");
+              renderConfig.theme === THEME.LIGHT
+                ? FRAME_STYLE.magicStrokeColor
+                : FRAME_STYLE.magicStrokeColorDarkTheme;
           }
 
-          if (FRAME_STYLE.radius && context.roundRect) {
+          const radius =
+            renderConfig.canvasTheme?.frameRadius ?? FRAME_STYLE.radius;
+          if (radius && context.roundRect) {
             context.beginPath();
             context.roundRect(
               0,
               0,
               element.width,
               element.height,
-              FRAME_STYLE.radius / appState.zoom.value,
+              radius / appState.zoom.value,
             );
             context.stroke();
             context.closePath();

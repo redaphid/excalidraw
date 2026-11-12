@@ -1,4 +1,4 @@
-import { COLOR_WHITE } from "@excalidraw/common";
+import { COLOR_WHITE, THEME, applyDarkModeFilter } from "@excalidraw/common";
 
 import { bootstrapCanvas } from "./helpers";
 
@@ -86,5 +86,42 @@ describe("bootstrapCanvas background painting", () => {
     const { clearRect, fillRect } = run(undefined);
     expect(clearRect).toHaveBeenCalledTimes(1);
     expect(fillRect).not.toHaveBeenCalled();
+  });
+});
+
+describe("bootstrapCanvas theme background", () => {
+  it("paints the theme color as given, without the dark mode filter", () => {
+    const { canvas, context } = setup();
+    const fills: string[] = [];
+    vi.spyOn(context, "fillRect").mockImplementation(() => {
+      fills.push(String(context.fillStyle));
+    });
+    bootstrapCanvas({
+      canvas,
+      scale: 1,
+      normalizedWidth: 200,
+      normalizedHeight: 100,
+      theme: THEME.DARK,
+      viewBackgroundColor: "#ffffff",
+      themeBackgroundColor: "#0b3d91",
+    });
+    expect(fills).toEqual(["#0b3d91"]);
+  });
+
+  it("filters the scene background in dark mode without a theme color", () => {
+    const { canvas, context } = setup();
+    const fills: string[] = [];
+    vi.spyOn(context, "fillRect").mockImplementation(() => {
+      fills.push(String(context.fillStyle));
+    });
+    bootstrapCanvas({
+      canvas,
+      scale: 1,
+      normalizedWidth: 200,
+      normalizedHeight: 100,
+      theme: THEME.DARK,
+      viewBackgroundColor: "#ffffff",
+    });
+    expect(fills).toEqual([applyDarkModeFilter("#ffffff", true)]);
   });
 });

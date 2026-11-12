@@ -58,6 +58,7 @@ interface ColorPickerProps {
   label: string;
   elements: readonly ExcalidrawElement[];
   appState: UIAppState;
+  canvasMode: Theme;
   palette?: ColorPaletteCustom | null;
   topPicks?: ColorTuple;
   updateData: (formData?: any) => void;
@@ -79,6 +80,7 @@ const ColorPickerPopupContent = ({
   updateData,
   getOpenPopup,
   appState,
+  canvasMode,
   excludedColors,
   onResetTopPicks,
 }: Pick<
@@ -91,6 +93,7 @@ const ColorPickerPopupContent = ({
   | "palette"
   | "updateData"
   | "appState"
+  | "canvasMode"
   | "excludedColors"
 > & {
   getOpenPopup: () => AppState["openPopup"];
@@ -199,7 +202,7 @@ const ColorPickerPopupContent = ({
           excludedColors={excludedColors}
           onResetTopPicks={onResetTopPicks}
           color={color}
-          theme={appState.theme}
+          theme={canvasMode}
           onChange={(changedColor) => {
             // Save caret position before color change if editing text
             const savedSelection = appState.editingTextElement
@@ -357,9 +360,16 @@ const ColorPickerComponent = ({
   topPicks,
   updateData,
   appState,
+  canvasMode,
   excludedColors,
   customizableTopPicks,
 }: ColorPickerProps) => {
+  const app = useApp();
+  // a theme's palette replaces the default one for element colors
+  const themePalette =
+    palette && (type === "elementStroke" || type === "elementBackground")
+      ? app.cssTheme.palettes[type]
+      : undefined;
   const openRef = useRef(appState.openPopup);
   useEffect(() => {
     openRef.current = appState.openPopup;
@@ -425,7 +435,7 @@ const ColorPickerComponent = ({
       >
         {!isCompactMode && (
           <TopPicks
-            theme={appState.theme}
+            theme={canvasMode}
             activeColor={color}
             onChange={(pickedColor) => {
               onChange(pickedColor);
@@ -461,7 +471,7 @@ const ColorPickerComponent = ({
             color={color}
             label={label}
             type={type}
-            theme={appState.theme}
+            theme={canvasMode}
             mode={type === "elementStroke" ? "stroke" : "background"}
             editingTextElement={!!appState.editingTextElement}
             onToggle={() => {
@@ -485,11 +495,12 @@ const ColorPickerComponent = ({
               onChange={onChange}
               label={label}
               elements={elements}
-              palette={palette}
+              palette={themePalette ?? palette}
               excludedColors={excludedColors}
               updateData={updateData}
               getOpenPopup={() => openRef.current}
               appState={appState}
+              canvasMode={canvasMode}
               onResetTopPicks={
                 customTopPicks?.length ? resetTopPicks : undefined
               }
@@ -537,7 +548,7 @@ const areColorPickerPropsEqual = (
     prev.topPicks === next.topPicks &&
     prev.excludedColors === next.excludedColors &&
     prev.customizableTopPicks === next.customizableTopPicks &&
-    prev.appState.theme === next.appState.theme &&
+    prev.canvasMode === next.canvasMode &&
     prev.appState.colorTopPicks === next.appState.colorTopPicks &&
     // the trigger tweaks its click behavior while a text element is edited
     !!prev.appState.editingTextElement === !!next.appState.editingTextElement

@@ -12,17 +12,19 @@ const { values: opts } = parseArgs({
     builds: { type: "string" },
     runs: { type: "string", default: "5" },
     engine: { type: "string", default: "chromium" },
+    channel: { type: "string", default: "chromium" },
     throttle: { type: "string", default: "4" },
     device: { type: "string", default: "laptop" },
     only: { type: "string" },
     counters: { type: "boolean", default: false },
     label: { type: "string", default: "run" },
+    wait: { type: "string" },
   },
 });
 
 if (!opts.builds) {
   console.error(
-    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name]",
+    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--channel chromium|chrome|msedge] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name] [--wait ms-before-each-gesture]",
   );
   process.exit(2);
 }
@@ -68,8 +70,11 @@ const serve = () =>
 
 const launch = () => {
   if (opts.engine === "chromium") {
+    // Any channel but Playwright's own Chromium runs headed: an installed
+    // browser on the machine's GPU, the way the editor is used.
     return chromium.launch({
-      channel: "chromium",
+      channel: opts.channel,
+      headless: opts.channel === "chromium",
       args: ["--disable-gpu-vsync", "--disable-frame-rate-limit"],
     });
   }
@@ -89,6 +94,7 @@ const runOnce = async (browser, port, build) => {
   const query = new URLSearchParams({ bench: "auto" });
   if (opts.only) query.set("only", opts.only);
   if (opts.counters) query.set("counters", "1");
+  if (opts.wait) query.set("wait", opts.wait);
   await page.goto(`http://127.0.0.1:${port}/${build}/index.html?${query}`);
   await page.waitForFunction(() => window.benchReport || window.benchError, null, {
     timeout: 15 * 60_000,
@@ -115,6 +121,11 @@ const METRICS = [
   ["frameMean", (r) => r.frameMs.mean],
   ["releaseMs", (r) => r.releaseMs],
   ["settleMax", (r) => r.settleMaxFrameMs],
+  ["frameMax", (r) => r.frameMaxMs ?? NaN],
+  ["gestureLongTasks", (r) => r.gestureLongTasks?.count ?? NaN],
+  ["gestureLongTaskMs", (r) => r.gestureLongTasks?.totalMs ?? NaN],
+  ["preGestureIdleMax", (r) => r.preGestureIdleCallbackMaxMs ?? NaN],
+  ["gestureIdleMax", (r) => r.gestureIdleCallbackMaxMs ?? NaN],
 ];
 
 const main = async () => {
@@ -130,6 +141,12 @@ const main = async () => {
       console.error(`run ${run + 1}/${runs} ${build} ${((Date.now() - started) / 1000).toFixed(0)}s`);
     }
   }
+  // Read after the runs: it says software until the GPU process is up.
+  const gpuCompositing =
+    opts.engine === "chromium"
+      ? (await (await browser.newBrowserCDPSession()).send("SystemInfo.getInfo")).gpu
+          .featureStatus.gpu_compositing
+      : "n/a";
   await browser.close();
   server.close();
 
@@ -146,6 +163,10 @@ const main = async () => {
       summary[id][build].meanSpread = spread(rows.map((r) => r.frameMs.mean));
       if (rows[0].countersPerFrame) summary[id][build].counters = rows[0].countersPerFrame;
       if (rows[0].countersAtRelease) summary[id][build].endCounters = rows[0].countersAtRelease;
+      if (rows[0].countersMaxFrame) {
+        summary[id][build].maxCounters = rows[0].countersMaxFrame;
+        summary[id][build].bitmapBuildingFrames = rows[0].bitmapBuildingFrames;
+      }
     }
   }
   const mount = Object.fromEntries(
@@ -163,29 +184,43 @@ const main = async () => {
   const file = path.join(out, `${stamp}-${opts.label}.json`);
   writeFileSync(
     file,
-    JSON.stringify({ opts, userAgent: first.userAgent, summary, mount, reports }, null, 1),
+    JSON.stringify({ opts, userAgent: first.userAgent, gpuCompositing, summary, mount, reports }, null, 1),
   );
 
   const [base, ...others] = builds;
   const pct = (a, b) => `${(((b - a) / a) * 100).toFixed(1)}%`;
-  console.log(`${opts.engine} ${opts.device} throttle ${throttle}x, ${runs} runs, ${first.userAgent}`);
+  console.log(
+    `${opts.engine} ${opts.channel} ${opts.device} throttle ${throttle}x, ${runs} runs, gpu compositing ${gpuCompositing}, ${first.userAgent}`,
+  );
   console.log(`mount ms: ${JSON.stringify(mount)}`);
   for (const [id, byBuild] of Object.entries(summary)) {
     const b = byBuild[base];
     const line = [
       id.padEnd(16),
-      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)}`,
+      `${base} frame p50 ${b.frameP50.toFixed(2)} (±${(b.p50Spread * 50).toFixed(1)}%) mean ${b.frameMean.toFixed(2)} (±${(b.meanSpread * 50).toFixed(1)}%) p95 ${b.frameP95.toFixed(1)} release ${b.releaseMs.toFixed(1)} settle ${b.settleMax.toFixed(1)} max ${b.frameMax.toFixed(1)} gesture long ${b.gestureLongTasks}/${b.gestureLongTaskMs}ms longest idle callback ${b.preGestureIdleMax}ms before, ${b.gestureIdleMax}ms during`,
     ];
     for (const other of others) {
       const c = byBuild[other];
       line.push(
-        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)})`,
+        `| ${other} frame p50 ${c.frameP50.toFixed(2)} (${pct(b.frameP50, c.frameP50)}) mean ${c.frameMean.toFixed(2)} (${pct(b.frameMean, c.frameMean)}) p95 ${c.frameP95.toFixed(1)} (${pct(b.frameP95, c.frameP95)}) release ${c.releaseMs.toFixed(1)} (${pct(b.releaseMs, c.releaseMs)}) settle ${c.settleMax.toFixed(1)} (${pct(b.settleMax, c.settleMax)}) max ${c.frameMax.toFixed(1)} (${pct(b.frameMax, c.frameMax)}) gesture long ${c.gestureLongTasks}/${c.gestureLongTaskMs}ms longest idle callback ${c.preGestureIdleMax}ms before, ${c.gestureIdleMax}ms during`,
       );
     }
     console.log(line.join(" "));
     if (b.counters) {
       console.log(`  counters/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].counters)}`).join(" | ")}`);
       console.log(`  counters/release ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].endCounters)}`).join(" | ")}`);
+      if (b.maxCounters) {
+        console.log(`  counters max/frame ${builds.map((x) => `${x} ${JSON.stringify(byBuild[x].maxCounters)} bitmapBuildingFrames ${byBuild[x].bitmapBuildingFrames}`).join(" | ")}`);
+      }
+    }
+  }
+  for (const build of builds) {
+    const perRun = reports[build].map((r) => r.rebuildIdleTaskMs ?? []);
+    const tasks = perRun.flat().sort((a, b) => a - b);
+    if (tasks.length) {
+      console.log(
+        `rebuild idle tasks ${build}: ${perRun.map((t) => t.length).join("/")} per run, median ${median(tasks)}ms p95 ${tasks[Math.floor(tasks.length * 0.95)]}ms max ${tasks[tasks.length - 1]}ms, over 16ms ${tasks.filter((ms) => ms > 16).length}, over 50ms ${tasks.filter((ms) => ms > 50).length}`,
+      );
     }
   }
   console.log(`saved ${file}`);

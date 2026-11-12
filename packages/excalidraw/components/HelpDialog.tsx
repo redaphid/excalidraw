@@ -307,6 +307,10 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
               label={t("labels.viewMode")}
               shortcuts={[getShortcutKey("Alt+R")]}
             />
+            <Shortcut
+              label={t("labels.showFrames")}
+              shortcuts={[getShortcutKey("Shift+Alt+F")]}
+            />
             {actionManager.isActionEnabled(actionToggleTheme) && (
               <Shortcut
                 label={t("labels.toggleTheme")}

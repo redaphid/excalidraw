@@ -7,6 +7,7 @@ import {
 } from "@excalidraw/common";
 
 import type {
+  ButtonHighlight,
   InteractiveCanvasRenderConfig,
   InteractiveSceneRenderAnimationState,
   InteractiveSceneRenderConfig,
@@ -17,10 +18,11 @@ import type {
 import type {
   NonDeletedExcalidrawElement,
   NonDeletedSceneElementsMap,
+  Theme,
 } from "@excalidraw/element/types";
 
 import { t } from "../../i18n";
-import { getSelectionColor } from "../../renderer/helpers";
+import { DEFAULT_SELECTION_COLOR } from "../../renderer/helpers";
 import { renderInteractiveScene } from "../../renderer/interactiveScene";
 
 import { AnimationController } from "../../renderer/animation";
@@ -40,6 +42,7 @@ type InteractiveCanvasProps = {
   selectedElements: readonly NonDeletedExcalidrawElement[];
   allElementsMap: NonDeletedSceneElementsMap;
   canvasNonce: string;
+  canvasMode: Theme;
   selectionNonce: number | undefined;
   scale: number;
   appState: InteractiveCanvasAppState;
@@ -81,6 +84,11 @@ type InteractiveCanvasProps = {
     DOMAttributes<HTMLCanvasElement>["onDoubleClick"],
     undefined
   >;
+  onPointerLeave: Exclude<
+    DOMAttributes<HTMLCanvasElement>["onPointerLeave"],
+    undefined
+  >;
+  buttonHighlight: ButtonHighlight | null;
 };
 
 export const INTERACTIVE_SCENE_ANIMATION_KEY = "animateInteractiveScene";
@@ -137,7 +145,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       remotePointerButton.set(socketId, user.button);
     });
 
-    const selectionColor = getSelectionColor(props.containerRef?.current);
+    const canvasTheme = props.app.cssTheme.canvas;
 
     rendererParams.current = {
       app: props.app,
@@ -147,14 +155,16 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       selectedElements: props.selectedElements,
       allElementsMap: props.allElementsMap,
       scale: window.devicePixelRatio,
-      appState: props.appState,
+      appState: { ...props.appState, theme: props.canvasMode },
+      buttonHighlight: props.buttonHighlight,
       renderConfig: {
         remotePointerViewportCoords,
         remotePointerButton,
         remoteSelectedElementIds,
         remotePointerUsernames,
         remotePointerUserStates,
-        selectionColor,
+        selectionColor: canvasTheme.selectionColor ?? DEFAULT_SELECTION_COLOR,
+        canvasTheme,
         renderScrollbars: props.renderScrollbars,
         // NOTE not memoized on so we don't rerender on cursor move
         lastViewportPosition: props.app.viewport.lastPosition,
@@ -219,6 +229,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       onPointerCancel={props.onPointerCancel}
       onTouchMove={props.onTouchMove}
       onPointerDown={props.onPointerDown}
+      onPointerLeave={props.onPointerLeave}
       onDoubleClick={
         props.appState.viewModeEnabled ? undefined : props.onDoubleClick
       }
@@ -282,6 +293,7 @@ const areEqual = (
   if (
     prevProps.selectionNonce !== nextProps.selectionNonce ||
     prevProps.canvasNonce !== nextProps.canvasNonce ||
+    prevProps.canvasMode !== nextProps.canvasMode ||
     prevProps.scale !== nextProps.scale ||
     // we need to memoize on elementsMap because they may have renewed
     // even if canvasNonce didn't change (e.g. we filter elements out based
@@ -289,6 +301,7 @@ const areEqual = (
     prevProps.elementsMap !== nextProps.elementsMap ||
     prevProps.visibleElements !== nextProps.visibleElements ||
     prevProps.selectedElements !== nextProps.selectedElements ||
+    prevProps.buttonHighlight !== nextProps.buttonHighlight ||
     prevProps.renderScrollbars !== nextProps.renderScrollbars ||
     prevProps.interactionEnabled !== nextProps.interactionEnabled ||
     prevProps.navigationEnabled !== nextProps.navigationEnabled

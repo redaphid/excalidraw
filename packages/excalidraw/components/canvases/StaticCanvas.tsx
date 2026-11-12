@@ -8,7 +8,10 @@ import type {
 } from "@excalidraw/element/types";
 
 import { isRenderThrottlingEnabled } from "../../reactUtils";
-import { renderStaticScene } from "../../renderer/staticScene";
+import {
+  getStaticSceneAppState,
+  renderStaticScene,
+} from "../../renderer/staticScene";
 
 import type {
   RenderableElementsMap,
@@ -28,6 +31,7 @@ type StaticCanvasProps = {
   scale: number;
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
+  onPainted?: (appState: StaticCanvasAppState) => void;
 };
 
 const StaticCanvas = (props: StaticCanvasProps) => {
@@ -66,43 +70,13 @@ const StaticCanvas = (props: StaticCanvasProps) => {
         visibleElements: props.visibleElements,
         appState: props.appState,
         renderConfig: props.renderConfig,
+        onPainted: props.onPainted,
       },
       isRenderThrottlingEnabled(),
     );
   });
 
   return <div className="excalidraw__canvas-wrapper" ref={wrapperRef} />;
-};
-
-const getRelevantAppStateProps = (appState: AppState): StaticCanvasAppState => {
-  const relevantAppStateProps = {
-    zoom: appState.zoom,
-    scrollX: appState.scrollX,
-    scrollY: appState.scrollY,
-    width: appState.width,
-    height: appState.height,
-    viewModeEnabled: appState.viewModeEnabled,
-    openDialog: appState.openDialog,
-    hoveredElementIds: appState.hoveredElementIds,
-    offsetLeft: appState.offsetLeft,
-    offsetTop: appState.offsetTop,
-    theme: appState.theme,
-    shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
-    viewBackgroundColor: appState.viewBackgroundColor,
-    exportScale: appState.exportScale,
-    selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
-    gridSize: appState.gridSize,
-    gridStep: appState.gridStep,
-    frameRendering: appState.frameRendering,
-    selectedElementIds: appState.selectedElementIds,
-    frameToHighlight: appState.frameToHighlight,
-    editingGroupId: appState.editingGroupId,
-    currentHoveredFontFamily: appState.currentHoveredFontFamily,
-    croppingElementId: appState.croppingElementId,
-    suggestedBinding: appState.suggestedBinding,
-  };
-
-  return relevantAppStateProps;
 };
 
 const areEqual = (
@@ -125,8 +99,8 @@ const areEqual = (
     isShallowEqual(
       // asserting AppState because we're being passed the whole AppState
       // but resolve to only the StaticCanvas-relevant props
-      getRelevantAppStateProps(prevProps.appState as AppState),
-      getRelevantAppStateProps(nextProps.appState as AppState),
+      getStaticSceneAppState(prevProps.appState as AppState),
+      getStaticSceneAppState(nextProps.appState as AppState),
     ) && isShallowEqual(prevProps.renderConfig, nextProps.renderConfig)
   );
 };

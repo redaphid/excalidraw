@@ -104,7 +104,7 @@ export class AppCursor {
       activeTool.type === "eraser" ||
       activeTool.type === "laser" ||
       activeTool.type === "bucketfill"
-        ? this.app.state.theme
+        ? this.app.getCanvasMode()
         : undefined;
 
     const bucketFillColor =
@@ -139,7 +139,7 @@ export class AppCursor {
       );
     } else if (activeTool.type === "laser") {
       const url =
-        this.app.state.theme === THEME.LIGHT
+        this.app.getCanvasMode() === THEME.LIGHT
           ? laserPointerCursorDataURL_lightMode
           : laserPointerCursorDataURL_darkMode;
       this.set(`url(${url}), auto`);
@@ -202,7 +202,7 @@ export class AppCursor {
 
   private applyEraser = () => {
     const cursorImageSizePx = 20;
-    const theme = this.app.state.theme;
+    const theme = this.app.getCanvasMode();
 
     if (!this.eraserCanvasCache || this.eraserCanvasCache.theme !== theme) {
       const isDarkTheme = theme === THEME.DARK;

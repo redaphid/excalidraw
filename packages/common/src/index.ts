@@ -1,10 +1,15 @@
 export * from "./binary-heap";
 export * from "./bounds";
 export * from "./colors";
+export * from "./themeTokens";
+export { mergeThemeTokens } from "./mergeThemeTokens";
+export { THEME_TOKENS_SCHEMA, THEME_TOKENS_VENDOR } from "./designTokens";
+export type { ThemeTokens, ThemeWarning } from "./designTokens";
 export * from "./constants";
 export * from "./font-metadata";
 export * from "./queue";
 export * from "./keys";
+export * from "./packedRTree";
 export * from "./points";
 export * from "./promise-pool";
 export * from "./random";

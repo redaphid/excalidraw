@@ -5,8 +5,6 @@
 
 import {
   arrayToMap,
-  MAX_ZOOM,
-  MIN_ZOOM,
   viewportCoordsToSceneCoords,
   ZOOM_STEP,
 } from "@excalidraw/common";
@@ -147,6 +145,14 @@ const constrainScrollAxis = (
   return clamp(scroll, min - overscroll, max + overscroll);
 };
 
+const constrainZoom = (
+  zoom: number,
+  scrollConstraints: AppState["scrollConstraints"],
+): NormalizedZoomValue =>
+  getNormalizedZoom(
+    scrollConstraints?.lockZoom ? Math.max(zoom, scrollConstraints.zoom) : zoom,
+  );
+
 /**
  * Clamps a proposed scroll/zoom against the active lock (`scrollConstraints`).
  * Returns the input scroll/zoom unchanged when there is no lock.
@@ -166,12 +172,7 @@ export const constrainScrollState = (
     return { scrollX: state.scrollX, scrollY: state.scrollY, zoom: state.zoom };
   }
 
-  const minZoom = scrollConstraints.lockZoom
-    ? scrollConstraints.zoom
-    : MIN_ZOOM;
-  const zoomValue = getNormalizedZoom(
-    clamp(state.zoom.value, minZoom, MAX_ZOOM),
-  );
+  const zoomValue = constrainZoom(state.zoom.value, scrollConstraints);
 
   if (!scrollConstraints.lockScroll) {
     return {
@@ -256,7 +257,13 @@ export const getViewportForZoomWithScrollConstraints = (
 
   const zoomedViewport = constrainScrollState({
     ...state,
-    ...getViewportForZoom(opts, state),
+    ...getViewportForZoom(
+      {
+        ...opts,
+        nextZoom: constrainZoom(opts.nextZoom, state.scrollConstraints),
+      },
+      state,
+    ),
   });
 
   if (!state.scrollConstraints?.lockScroll || (!overscrollX && !overscrollY)) {

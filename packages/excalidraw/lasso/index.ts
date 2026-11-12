@@ -25,7 +25,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { AnimatedTrail } from "../animatedTrail";
-import { getSelectionColor } from "../renderer/helpers";
+import { DEFAULT_SELECTION_COLOR } from "../renderer/helpers";
 
 import { getLassoSelectedElementIds } from "./utils";
 
@@ -64,8 +64,13 @@ export class LassoTrail extends AnimatedTrail {
         return Math.min(easeOut(l), easeOut(t));
       },
       // same color as the marquee selection (theme-aware, host-overridable)
-      fill: () => setColorAlpha(getSelectionColor(app.interactiveCanvas), 0.05),
-      stroke: () => getSelectionColor(app.interactiveCanvas),
+      fill: () =>
+        setColorAlpha(
+          app.cssTheme.canvas.selectionColor ?? DEFAULT_SELECTION_COLOR,
+          0.05,
+        ),
+      stroke: () =>
+        app.cssTheme.canvas.selectionColor ?? DEFAULT_SELECTION_COLOR,
     });
   }
 

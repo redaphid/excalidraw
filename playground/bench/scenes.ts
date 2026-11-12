@@ -21,7 +21,13 @@ import type {
   DataURL,
 } from "@excalidraw/excalidraw/types";
 
-export type SceneName = "mixed" | "freedraw" | "deep";
+export type SceneName =
+  | "mixed"
+  | "freedraw"
+  | "deep"
+  | "labels"
+  | "big"
+  | "huge";
 
 export type BenchScene = {
   elements: ExcalidrawElement[];
@@ -355,6 +361,42 @@ const freedraw = (): BenchScene => {
   };
 };
 
+const scattered = (
+  prefix: string,
+  count: number,
+  width: number,
+  height: number,
+): BenchScene => {
+  const rng = mulberry32(3);
+  const next = deterministicIds(prefix);
+  const files = makeImages(4);
+  const fileIds = Object.keys(files) as FileId[];
+  const elements: ExcalidrawElement[] = [];
+  for (let i = 0; i < count; i++) {
+    elements.push(
+      shapeAt(
+        rng,
+        next,
+        pick(rng, MIXED_KINDS),
+        between(rng, 0, width),
+        between(rng, 0, height),
+        1,
+        fileIds,
+        null,
+      ),
+    );
+  }
+  return {
+    elements,
+    files,
+    view: { scrollX: -2000, scrollY: -2000, zoom: { value: 0.5 as never } },
+  };
+};
+
+const big = () => scattered("b", 5000, 14000, 9200);
+
+const huge = () => scattered("h", 50000, 44272, 29093);
+
 export const DEEP_CENTER = { x: 500, y: 500 };
 const DEEP_LEVELS = 7;
 
@@ -418,8 +460,62 @@ const deep = (): BenchScene => {
   };
 };
 
+const LABEL_COLUMNS = 50;
+const LABEL_ROWS = 40;
+
+/** a grid of shapes that each carry a text label, all on screen at the
+ * starting zoom */
+const labels = (): BenchScene => {
+  const rng = mulberry32(4);
+  const next = deterministicIds("l");
+  const elements: ExcalidrawElement[] = [];
+  for (let i = 0; i < LABEL_COLUMNS * LABEL_ROWS; i++) {
+    const x = (i % LABEL_COLUMNS) * 180;
+    const y = Math.floor(i / LABEL_COLUMNS) * 120;
+    const shape = next();
+    const label = next();
+    elements.push(
+      {
+        ...newElement({
+          type: pick(rng, ["rectangle", "ellipse", "diamond"] as const),
+          x,
+          y,
+          width: 160,
+          height: 100,
+          ...style(rng, 1),
+          roundness: rng() < 0.5 ? { type: 3 } : null,
+          boundElements: [{ type: "text", id: label.id }],
+        }),
+        ...shape,
+      },
+      {
+        ...newTextElement({
+          x: x + 80,
+          y: y + 50,
+          text: `${pick(rng, WORDS)} ${pick(rng, WORDS)}
+${i}`,
+          fontSize: 20,
+          textAlign: "center",
+          verticalAlign: "middle",
+          containerId: shape.id,
+          strokeColor: pick(rng, STROKES),
+        }),
+        ...label,
+      },
+    );
+  }
+  return {
+    elements,
+    files: {},
+    view: { scrollX: 40, scrollY: 40, zoom: { value: 0.16 as never } },
+  };
+};
+
 export const SCENES: Record<SceneName, () => BenchScene> = {
   mixed,
   freedraw,
   deep,
+  labels,
+  big,
+  huge,
 };

@@ -49,6 +49,7 @@ export type ShortcutName =
       | "toggleShortcuts"
       | "wrapSelectionInFrame"
       | "arrangeElements"
+      | "updateFrameRendering"
     >
   | "saveScene"
   | "imageExport"
@@ -116,6 +117,7 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   framesMenu: [getShortcutKey("M")],
   wrapSelectionInFrame: [],
   arrangeElements: [getShortcutKey("Shift+Alt+A")],
+  updateFrameRendering: [getShortcutKey("Shift+Alt+F")],
   toolLock: [getShortcutKey("Q")],
 };
 

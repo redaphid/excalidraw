@@ -14,8 +14,11 @@ import { getCommonBounds } from "@excalidraw/element";
 
 import { CaptureUpdateAction } from "@excalidraw/element";
 
+import { CODES, KEYS } from "@excalidraw/common";
+
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
+import { frameToolIcon } from "../components/icons";
 import { getSelectedElements } from "../scene";
 
 import { register } from "./register";
@@ -103,7 +106,9 @@ export const actionRemoveAllElementsFromFrame = register({
 
 export const actionupdateFrameRendering = register({
   name: "updateFrameRendering",
-  label: "labels.updateFrameRendering",
+  label: "labels.showFrames",
+  icon: frameToolIcon,
+  keywords: ["frames", "outline", "hide"],
   viewMode: true,
   trackEvent: { category: "canvas" },
   perform: (elements, appState) => {
@@ -120,6 +125,11 @@ export const actionupdateFrameRendering = register({
     };
   },
   checked: (appState) => appState.frameRendering.enabled,
+  keyTest: (event) =>
+    !event[KEYS.CTRL_OR_CMD] &&
+    event.altKey &&
+    event.shiftKey &&
+    event.code === CODES.F,
 });
 
 export const actionWrapSelectionInFrame = register({

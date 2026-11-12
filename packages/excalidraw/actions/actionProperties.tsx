@@ -442,6 +442,7 @@ export const actionChangeStrokeColor = register<
           onChange={(color) => updateData({ color })}
           elements={elements}
           appState={appState}
+          canvasMode={app.getCanvasMode()}
           updateData={updateData}
         />
       </>
@@ -558,6 +559,7 @@ export const actionChangeBackgroundColor = register<
           onChange={(color) => updateData({ color })}
           elements={elements}
           appState={appState}
+          canvasMode={app.getCanvasMode()}
           updateData={updateData}
         />
       </>
@@ -611,6 +613,7 @@ export const actionChangeBucketFillBackgroundColor = register<
           }
           elements={elements}
           appState={appState}
+          canvasMode={app.getCanvasMode()}
           updateData={updateData}
         />
       </>

@@ -11,6 +11,8 @@ export type Scenario = {
   scene: SceneName;
   steps: number;
   tool: "hand" | "selection" | "freedraw" | "rectangle" | "arrow";
+  /** the pen's stroke variability, constant (the editor default) unless set */
+  variability?: "constant" | "variable";
   begin: (api: ExcalidrawImperativeAPI, canvas: HTMLCanvasElement) => void;
   midway?: (
     api: ExcalidrawImperativeAPI,
@@ -20,6 +22,7 @@ export type Scenario = {
   midwayStep?: number;
   step: (canvas: HTMLCanvasElement, i: number) => void;
   end: (canvas: HTMLCanvasElement) => void;
+  minStepIntervalMs?: number;
 };
 
 type PointerInit = {
@@ -156,6 +159,46 @@ const pinch = (scene: SceneName, steps: number): Scenario => {
   };
 };
 
+/** zoom in, let go, and start panning a little after the zoom settles: the
+ * pan's first frames land while the crisp redraw at the new zoom runs */
+const settlePan = (
+  scene: SceneName,
+  zoomSteps: number,
+  panSteps: number,
+  pauseMs: number,
+): Scenario => {
+  let origin = { x: 0, y: 0 };
+  return {
+    id: `${scene}/settle-pan`,
+    scene,
+    steps: zoomSteps + panSteps,
+    tool: "hand",
+    begin: (_, canvas) => {
+      origin = center(canvas);
+      pointer(canvas, "pointermove", origin.x, origin.y, { buttons: 0 });
+    },
+    midway: () => new Promise((resolve) => setTimeout(resolve, pauseMs)),
+    midwayStep: zoomSteps + 1,
+    step: (canvas, i) => {
+      if (i <= zoomSteps) {
+        wheel(canvas, origin.x, origin.y, -10);
+      } else if (i === zoomSteps + 1) {
+        pointer(canvas, "pointerdown", origin.x, origin.y);
+      } else {
+        const t = i - zoomSteps - 1;
+        pointer(canvas, "pointermove", origin.x - 9 * t, origin.y - 4 * t);
+      }
+    },
+    end: (canvas) =>
+      pointer(
+        canvas,
+        "pointerup",
+        origin.x - 9 * (panSteps - 1),
+        origin.y - 4 * (panSteps - 1),
+      ),
+  };
+};
+
 type Path = (
   i: number,
   steps: number,
@@ -206,6 +249,67 @@ const gesture = (
   };
 };
 
+const drag = (scene: SceneName, steps: number): Scenario => {
+  let api: ExcalidrawImperativeAPI;
+  let target: { id: string; x: number };
+  let origin = { x: 0, y: 0 };
+  return {
+    id: `${scene}/drag`,
+    scene,
+    steps,
+    tool: "selection",
+    begin: (imperativeApi, canvas) => {
+      api = imperativeApi;
+      const { scrollX, scrollY, zoom, offsetLeft, offsetTop } =
+        api.getAppState();
+      const rect = canvas.getBoundingClientRect();
+      const toClient = (x: number, y: number) => ({
+        x: (x + scrollX) * zoom.value + offsetLeft,
+        y: (y + scrollY) * zoom.value + offsetTop,
+      });
+      const element = api.getSceneElements().find((candidate) => {
+        const middle = toClient(
+          candidate.x + candidate.width / 2,
+          candidate.y + candidate.height / 2,
+        );
+        return (
+          candidate.type === "rectangle" &&
+          Math.abs(middle.x - (rect.left + rect.width / 2)) < rect.width / 4 &&
+          Math.abs(middle.y - (rect.top + rect.height / 2)) < rect.height / 4
+        );
+      });
+      if (!element) {
+        throw new Error(`${scene}/drag found no rectangle to drag`);
+      }
+      target = { id: element.id, x: element.x };
+      origin = toClient(
+        element.x + element.width / 2,
+        element.y + element.height / 2,
+      );
+      api.updateScene({
+        appState: { selectedElementIds: { [element.id]: true } },
+      });
+    },
+    step: (canvas, i) => {
+      if (i === 1) {
+        pointer(canvas, "pointermove", origin.x, origin.y, { buttons: 0 });
+        pointer(canvas, "pointerdown", origin.x, origin.y);
+      } else {
+        pointer(canvas, "pointermove", origin.x + 3 * i, origin.y + 2 * i);
+      }
+    },
+    end: (canvas) => {
+      pointer(canvas, "pointerup", origin.x + 3 * steps, origin.y + 2 * steps);
+      const moved = api
+        .getSceneElements()
+        .find((element) => element.id === target.id);
+      if (moved?.x === target.x) {
+        throw new Error(`${scene}/drag did not move ${target.id}`);
+      }
+    },
+  };
+};
+
 const freedraw = (scene: SceneName, steps: number) =>
   gesture(`${scene}/freedraw`, scene, "freedraw", steps, loops);
 
@@ -235,9 +339,31 @@ export const SCENARIOS: Scenario[] = [
   zoom("freedraw", 40, 100, 3, (_, canvas) => center(canvas)),
   pinch("freedraw", 160),
   freedraw("freedraw", 240),
+  gesture("freedraw/freedraw-long", "freedraw", "freedraw", 1000, loops),
+  {
+    ...gesture(
+      "freedraw/freedraw-long-variable",
+      "freedraw",
+      "freedraw",
+      1000,
+      loops,
+    ),
+    variability: "variable",
+  },
   zoom("deep", 0, 130, 10, deepAnchor),
   pinch("deep", 120),
   pan("deep", 120),
+  settlePan("labels", 6, 60, 300),
+  { ...pan("big", 240), minStepIntervalMs: 16 },
+];
+
+export const LARGE_BOARD_SCENARIOS: Scenario[] = [
+  { ...pan("huge", 240), minStepIntervalMs: 16 },
+  zoom("huge", 60, 120, 3, (_, canvas) => center(canvas)),
+  freedraw("huge", 240),
+  drag("huge", 120),
+  drag("big", 120),
+  drag("mixed", 120),
 ];
 
 /** gestures for checking that a change paints what master paints: shapes

@@ -5,7 +5,11 @@ import { Excalidraw } from "@excalidraw/excalidraw";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import { PARITY_SCENARIOS, SCENARIOS } from "./scenarios";
+import {
+  LARGE_BOARD_SCENARIOS,
+  PARITY_SCENARIOS,
+  SCENARIOS,
+} from "./scenarios";
 import { SCENES } from "./scenes";
 
 import type { Scenario } from "./scenarios";
@@ -20,6 +24,9 @@ type Counters = {
   stroke: number;
   fillText: number;
   canvasesCreated: number;
+  idleCanvasesCreated: number;
+  /** megapixels of canvas allocated, counted as a canvas's height is set */
+  canvasMpx: number;
   arrayElementsWalked: number;
   mapSets: number;
   mapGets: number;
@@ -34,7 +41,17 @@ type ScenarioResult = {
   settleMaxFrameMs: number;
   countersPerFrame?: Counters;
   countersAtRelease?: Counters;
+  /** the longest frame from the gesture's start to the end of its settle
+   * window, and the most of each counter spent in any one of those frames */
+  frameMaxMs: number;
+  countersMaxFrame?: Counters;
+  bitmapBuildingFrames?: number;
+  preGestureIdleCallbackMaxMs: number;
+  gestureIdleCallbackMaxMs: number;
+  gestureLongTasks?: LongTasks;
 };
+
+type LongTasks = { count: number; totalMs: number; maxMs: number };
 
 export type BenchReport = {
   version: 1;
@@ -43,6 +60,7 @@ export type BenchReport = {
   viewport: { width: number; height: number };
   mountMs: Partial<Record<SceneName, number>>;
   heapMB?: number;
+  rebuildIdleTaskMs: number[];
   results: ScenarioResult[];
 };
 
@@ -116,6 +134,8 @@ const counters: Counters = {
   stroke: 0,
   fillText: 0,
   canvasesCreated: 0,
+  idleCanvasesCreated: 0,
+  canvasMpx: 0,
   arrayElementsWalked: 0,
   mapSets: 0,
   mapGets: 0,
@@ -173,20 +193,169 @@ const installCounters = () => {
     "getBoundingClientRect",
     () => counters.boundingRectReads++,
   );
+  const height = Object.getOwnPropertyDescriptor(
+    HTMLCanvasElement.prototype,
+    "height",
+  )!;
+  Object.defineProperty(HTMLCanvasElement.prototype, "height", {
+    ...height,
+    set(this: HTMLCanvasElement, value: number) {
+      counters.canvasMpx += (this.width * value) / 1e6;
+      height.set!.call(this, value);
+    },
+  });
   wrap(document, "createElement", (_, [tag]) => {
     if (String(tag).toLowerCase() === "canvas") {
       counters.canvasesCreated++;
+      if (inIdleCallback) {
+        counters.idleCanvasesCreated++;
+      }
     }
   });
 };
+
+let inIdleCallback = false;
+/** the longest idle callback since the last `takeLongestIdleCallback` */
+let longestIdleCallbackMs = 0;
+const rebuildIdleTaskMs: number[] = [];
+
+if (typeof window.requestIdleCallback === "function") {
+  const requestIdle = window.requestIdleCallback.bind(window);
+  window.requestIdleCallback = (callback, options) =>
+    requestIdle((deadline) => {
+      inIdleCallback = true;
+      const start = performance.now();
+      try {
+        callback(deadline);
+      } finally {
+        inIdleCallback = false;
+        const ms = performance.now() - start;
+        longestIdleCallbackMs = Math.max(longestIdleCallbackMs, ms);
+        if (callback.toString().includes("runRebuildTask")) {
+          rebuildIdleTaskMs.push(round(ms));
+        }
+      }
+    }, options);
+}
+
+const takeLongestIdleCallback = () => {
+  const longest = round(longestIdleCallbackMs);
+  longestIdleCallbackMs = 0;
+  return longest;
+};
+
+/** what `takeCounters` has reset so far, for the frame sampler's totals */
+const banked = { ...counters };
 
 const takeCounters = (steps: number): Counters => {
   const taken = { ...counters };
   for (const key of Object.keys(counters) as (keyof Counters)[]) {
     taken[key] = round(counters[key] / steps);
+    banked[key] += counters[key];
     counters[key] = 0;
   }
   return taken;
+};
+
+const totals = (): Counters => {
+  const sum = { ...counters };
+  for (const key of Object.keys(sum) as (keyof Counters)[]) {
+    sum[key] += banked[key];
+  }
+  return sum;
+};
+
+/** samples every animation frame until stopped: how long it took and what
+ * the counters did in it, wherever the work ran (input, timers, rAF) */
+const sampleFrames = () => {
+  const frames: { ms: number; counters: Counters }[] = [];
+  let running = true;
+  let lastAt = performance.now();
+  let lastTotals = totals();
+  // the time is read here rather than taken from the frame's timestamp, so
+  // a sample's time and counters cover the same work
+  const tick = () => {
+    if (!running) {
+      return;
+    }
+    const at = performance.now();
+    const now = totals();
+    const delta = { ...now };
+    for (const key of Object.keys(delta) as (keyof Counters)[]) {
+      delta[key] = round(now[key] - lastTotals[key]);
+    }
+    frames.push({ ms: at - lastAt, counters: delta });
+    lastAt = at;
+    lastTotals = now;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+  return () => {
+    running = false;
+    const max = { ...counters };
+    for (const key of Object.keys(max) as (keyof Counters)[]) {
+      max[key] = Math.max(0, ...frames.map((frame) => frame.counters[key]));
+    }
+    return {
+      frameMaxMs: round(Math.max(0, ...frames.map((frame) => frame.ms))),
+      countersMaxFrame: max,
+      bitmapBuildingFrames: frames.filter(
+        (frame) =>
+          frame.counters.canvasesCreated > frame.counters.idleCanvasesCreated,
+      ).length,
+    };
+  };
+};
+
+/** canvases created so far, counted whether or not `counters` is set */
+let canvasesMade = 0;
+const createElement = document.createElement;
+document.createElement = function (
+  this: Document,
+  ...args: Parameters<Document["createElement"]>
+) {
+  if (String(args[0]).toLowerCase() === "canvas") {
+    canvasesMade++;
+  }
+  return createElement.apply(this, args);
+} as Document["createElement"];
+
+const observeLongTasks = (): (() => LongTasks | undefined) => {
+  if (!PerformanceObserver.supportedEntryTypes?.includes("longtask")) {
+    return () => undefined;
+  }
+  const durations: number[] = [];
+  const collect = (entries: PerformanceEntryList) =>
+    entries.forEach((entry) => durations.push(entry.duration));
+  const observer = new PerformanceObserver((list) =>
+    collect(list.getEntries()),
+  );
+  observer.observe({ type: "longtask" });
+  return () => {
+    collect(observer.takeRecords());
+    observer.disconnect();
+    return {
+      count: durations.length,
+      totalMs: round(durations.reduce((sum, ms) => sum + ms, 0)),
+      maxMs: round(Math.max(0, ...durations)),
+    };
+  };
+};
+
+const QUIET_FRAMES = 10;
+const QUIET_TIMEOUT_MS = 30_000;
+
+/** waits until the editor stops building bitmaps, so a build that builds
+ * them a few per frame starts the gesture from the same state as one that
+ * builds them all at once */
+const canvasesQuiet = async () => {
+  const until = performance.now() + QUIET_TIMEOUT_MS;
+  let quiet = 0;
+  while (quiet < QUIET_FRAMES && performance.now() < until) {
+    const before = canvasesMade;
+    await nextFrame();
+    quiet = canvasesMade === before ? quiet + 1 : 0;
+  }
 };
 
 const runScenario = async (
@@ -200,23 +369,34 @@ const runScenario = async (
       selectedElementIds: {},
       theme: "light",
       viewBackgroundColor: "#fff",
+      currentItemStrokeVariability: scenario.variability ?? "constant",
     },
   });
+  takeLongestIdleCallback();
   await wait(VIEW_RESET_MS);
+  await canvasesQuiet();
+  const preGestureIdleCallbackMaxMs = takeLongestIdleCallback();
   const canvas = document.querySelector<HTMLCanvasElement>(
     "canvas.excalidraw__canvas.interactive",
   )!;
   api.setActiveTool({ type: scenario.tool });
   await flushTasks();
   reseed(1);
+  const stopGestureLongTasks = observeLongTasks();
   scenario.begin(api, canvas);
   await flushTasks();
   takeCounters(1);
+  const stopSampling = sampleFrames();
 
   await window.profilerHook?.(scenario.id, "start");
   const frames: number[] = [];
   let frameStart = await nextFrame();
   for (let i = 1; i <= scenario.steps; i++) {
+    let stepStart = frameStart;
+    if (scenario.minStepIntervalMs) {
+      stepStart = frameStart + scenario.minStepIntervalMs;
+      await wait(stepStart - performance.now());
+    }
     window.stepHook?.(scenario.id, i);
     if (i === (scenario.midwayStep ?? Math.floor(scenario.steps / 2))) {
       await scenario.midway?.(api, canvas);
@@ -224,7 +404,7 @@ const runScenario = async (
     scenario.step(canvas, i);
     await flushTasks();
     const next = await nextFrame();
-    frames.push(next - frameStart);
+    frames.push(next - stepStart);
     frameStart = next;
   }
   await window.profilerHook?.(scenario.id, "stop");
@@ -244,8 +424,13 @@ const runScenario = async (
     settleMaxFrameMs = Math.max(settleMaxFrameMs, next - last);
     last = next;
   }
+  const sampled = stopSampling();
+  const gestureLongTasks = stopGestureLongTasks();
 
   return {
+    preGestureIdleCallbackMaxMs,
+    gestureIdleCallbackMaxMs: takeLongestIdleCallback(),
+    gestureLongTasks,
     id: scenario.id,
     steps: scenario.steps,
     frameMs: stats(frames),
@@ -253,11 +438,18 @@ const runScenario = async (
     settleMaxFrameMs: round(settleMaxFrameMs),
     countersPerFrame,
     countersAtRelease,
+    frameMaxMs: sampled.frameMaxMs,
+    ...(counting && {
+      countersMaxFrame: sampled.countersMaxFrame,
+      bitmapBuildingFrames: sampled.bitmapBuildingFrames,
+    }),
   };
 };
 
 const selected = only
-  ? [...SCENARIOS, ...PARITY_SCENARIOS].filter((s) => only.includes(s.id))
+  ? [...SCENARIOS, ...LARGE_BOARD_SCENARIOS, ...PARITY_SCENARIOS].filter((s) =>
+      only.includes(s.id),
+    )
   : SCENARIOS;
 const sceneOrder = [...new Set(selected.map((s) => s.scene))];
 
@@ -291,6 +483,7 @@ const runBench = async (ui: BenchUi): Promise<BenchReport> => {
     viewport: { width: window.innerWidth, height: window.innerHeight },
     mountMs,
     heapMB: memory ? Math.round(memory.usedJSHeapSize / 1e5) / 10 : undefined,
+    rebuildIdleTaskMs,
     results,
   };
 };

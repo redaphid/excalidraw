@@ -45,6 +45,7 @@ import {
   isBoundToContainer,
   isFrameLikeElement,
   isFreeDrawElement,
+  isButtonElement,
   isIframeLikeElement,
   isImageElement,
   isLinearElement,
@@ -95,7 +96,8 @@ export const shouldTestInside = (element: ExcalidrawElement) => {
     (hasBackground(element.type) && !isTransparent(element.backgroundColor)) ||
     hasBoundTextElement(element) ||
     isIframeLikeElement(element) ||
-    isTextElement(element);
+    isTextElement(element) ||
+    isButtonElement(element);
 
   if (element.type === "line") {
     return isDraggableFromInside && isPathALoop(element.points);
@@ -153,7 +155,8 @@ export const hitElementItself = ({
   if (
     !isBoundToContainer(element) &&
     cachedPoint &&
-    pointsEqual(point, cachedPoint) &&
+    point[0] === cachedPoint[0] &&
+    point[1] === cachedPoint[1] &&
     (cachedHit ? cachedThreshold <= threshold : cachedThreshold >= threshold) &&
     overrideShouldTestInside === cachedOverrideShouldTestInside &&
     frameNameBoundsEqual(frameNameBound, cachedFrameNameBound)

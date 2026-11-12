@@ -96,6 +96,7 @@ import type {
   ExcalidrawBindableElement,
   ExcalidrawElbowArrowElement,
   ExcalidrawElement,
+  ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
   ExcalidrawSelectionElement,
   ExcalidrawTextElement,
@@ -275,10 +276,15 @@ const getStrokeWidthKey = (strokeWidth: unknown): StrokeWidthKey | null => {
 
 const restoreFreedrawStrokeOptions = (
   strokeOptions: unknown,
-): { variability: StrokeVariability; streamline: number } => {
+): ExcalidrawFreeDrawElement["strokeOptions"] => {
   const options =
     strokeOptions && typeof strokeOptions === "object"
-      ? (strokeOptions as { variability?: unknown; streamline?: unknown })
+      ? (strokeOptions as {
+          variability?: unknown;
+          streamline?: unknown;
+          thinning?: unknown;
+          taper?: unknown;
+        })
       : null;
 
   return {
@@ -286,6 +292,12 @@ const restoreFreedrawStrokeOptions = (
     streamline: isFiniteNumber(options?.streamline)
       ? options?.streamline
       : DEFAULT_STROKE_STREAMLINE,
+    // optional, so scenes without them keep their exact shape
+    ...(isFiniteNumber(options?.thinning) && {
+      thinning: clamp(options.thinning, -1, 1),
+    }),
+    ...(isFiniteNumber(options?.taper) &&
+      options.taper > 0 && { taper: options.taper }),
   };
 };
 

@@ -5,16 +5,6 @@ import type { AppState, StaticCanvasAppState } from "../types";
 
 export const DEFAULT_SELECTION_COLOR = "#6965db";
 
-/**
- * Returns the theme's selection color (`--color-selection`), read from the
- * computed style of any element inside the editor container so that host
- * overrides are respected. Falls back to the default when unavailable.
- */
-export const getSelectionColor = (element: Element | null | undefined) =>
-  (element &&
-    getComputedStyle(element).getPropertyValue("--color-selection").trim()) ||
-  DEFAULT_SELECTION_COLOR;
-
 export const fillCircle = (
   context: CanvasRenderingContext2D,
   cx: number,
@@ -78,6 +68,7 @@ export const bootstrapCanvas = ({
   theme,
   isExporting,
   viewBackgroundColor,
+  themeBackgroundColor,
 }: {
   canvas: HTMLCanvasElement;
   scale: number;
@@ -86,6 +77,8 @@ export const bootstrapCanvas = ({
   theme?: AppState["theme"];
   isExporting?: StaticCanvasRenderConfig["isExporting"];
   viewBackgroundColor?: StaticCanvasAppState["viewBackgroundColor"];
+  /** painted as given (never dark-filtered) in place of viewBackgroundColor */
+  themeBackgroundColor?: string;
 }): CanvasRenderingContext2D => {
   const context = canvas.getContext("2d")!;
 
@@ -100,22 +93,23 @@ export const bootstrapCanvas = ({
     // previous frame can't bleed through.
     //
     // We skip opaque #RRGGBB and #RGB hex colors as a quick optimization.
-    const isOpaque = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(viewBackgroundColor);
+    const isOpaque = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(
+      themeBackgroundColor ?? viewBackgroundColor,
+    );
 
     if (!isOpaque) {
       context.clearRect(0, 0, normalizedWidth, normalizedHeight);
     }
 
-    if (viewBackgroundColor !== "transparent") {
+    if ((themeBackgroundColor ?? viewBackgroundColor) !== "transparent") {
       context.save();
       // The canvas silently ignores an invalid fillStyle, which would leave a
       // stale color from a previous draw. Seed a sane default so corrupted
       // values fall back to white instead of painting garbage.
       context.fillStyle = COLOR_WHITE;
-      context.fillStyle = applyDarkModeFilter(
-        viewBackgroundColor,
-        theme === THEME.DARK,
-      );
+      context.fillStyle =
+        themeBackgroundColor ??
+        applyDarkModeFilter(viewBackgroundColor, theme === THEME.DARK);
       context.fillRect(0, 0, normalizedWidth, normalizedHeight);
       context.restore();
     }
