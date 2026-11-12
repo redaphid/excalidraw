@@ -571,7 +571,7 @@ const arrangeBy: Record<
     if (ids) {
       select(ids);
     } else {
-      API.setSelectedElements(h.app.scene.getNonDeletedElements());
+      API.setSelectedElements([...h.app.scene.getNonDeletedElements()]);
     }
     const perform = watchArrange();
     await act(async () => {

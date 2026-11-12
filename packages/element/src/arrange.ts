@@ -21,6 +21,7 @@ import type { Scene } from "./Scene";
 import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
+  NonDeleted,
   NonDeletedExcalidrawElement,
   NonDeletedSceneElementsMap,
 } from "./types";
@@ -205,8 +206,8 @@ const follows = (element: ExcalidrawElement) =>
  * A frame cannot hold a frame, so a smaller frame drawn wholly inside a larger
  * one is nested in it, the rule `getFrameContents` moves frames by.
  */
-const nestedFrames = (
-  frames: readonly ExcalidrawFrameLikeElement[],
+const nestedFrames = <Frame extends ExcalidrawFrameLikeElement>(
+  frames: readonly Frame[],
   elementsMap: NonDeletedSceneElementsMap,
 ) => {
   const bounds = new Map(
@@ -253,7 +254,10 @@ const resolveTargets = (
   elementsMap: NonDeletedSceneElementsMap,
   elementIds: readonly string[] | undefined,
 ): Targets => {
-  const frames = elements.filter(isFrameLikeElement);
+  const frames = elements.filter(
+    (element): element is NonDeleted<ExcalidrawFrameLikeElement> =>
+      isFrameLikeElement(element),
+  );
   const nesting = nestedFrames(frames, elementsMap);
   const named = elementIds?.length
     ? elementIds.flatMap((id) => elementsMap.get(id) ?? [])
