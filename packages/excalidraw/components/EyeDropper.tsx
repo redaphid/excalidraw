@@ -48,14 +48,16 @@ export type EyeDropperProperties = {
   colorPickerType: ColorPickerType;
 };
 
-/** an unpremultiplied RGBA pixel drawn over an opaque one, as the screen shows it */
+/** an unpremultiplied RGBA pixel drawn over another, as one canvas would hold them */
 export const compositeOver = (
   top: Uint8ClampedArray,
   under: Uint8ClampedArray,
 ): [number, number, number] => {
-  const alpha = top[3] / 255;
+  const topAlpha = top[3] / 255;
+  const underAlpha = (under[3] / 255) * (1 - topAlpha);
+  const alpha = topAlpha + underAlpha;
   const channel = (i: number) =>
-    Math.round(top[i] * alpha + under[i] * (1 - alpha));
+    alpha ? Math.round((top[i] * topAlpha + under[i] * underAlpha) / alpha) : 0;
   return [channel(0), channel(1), channel(2)];
 };
 
