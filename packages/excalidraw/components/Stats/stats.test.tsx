@@ -925,3 +925,38 @@ describe("frame resizing behavior", () => {
     );
   });
 });
+
+describe("the canvas grid step", () => {
+  const gridStepShown = () =>
+    UI.queryStats()?.querySelector('[data-testid="Grid step"]') != null;
+
+  const openStats = async (props: {
+    css?: string;
+    gridModeEnabled?: boolean;
+  }) => {
+    await render(<Excalidraw handleKeyboardGlobally={true} css={props.css} />);
+    API.setAppState({
+      gridModeEnabled: props.gridModeEnabled ?? false,
+      stats: { open: true, panels: h.state.stats.panels },
+    });
+    await act(async () => {});
+  };
+
+  it("shows while a theme draws the grid and snapping is off", async () => {
+    await openStats({ css: ":scope { --canvas-grid-color: #ccc; }" });
+
+    expect(gridStepShown()).toBe(true);
+  });
+
+  it("shows while snapping without a theme grid", async () => {
+    await openStats({ gridModeEnabled: true });
+
+    expect(gridStepShown()).toBe(true);
+  });
+
+  it("hides with no theme grid and snapping off", async () => {
+    await openStats({});
+
+    expect(gridStepShown()).toBe(false);
+  });
+});
