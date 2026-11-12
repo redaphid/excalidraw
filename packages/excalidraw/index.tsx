@@ -579,7 +579,10 @@ export {
   convertToExcalidrawElements,
 } from "@excalidraw/element";
 
-export { elementsOverlappingBBox } from "@excalidraw/element";
+export {
+  elementsOverlappingBBox,
+  elementsTouchingBBox,
+} from "@excalidraw/element";
 
 export { DiagramToCodePlugin } from "./components/DiagramToCodePlugin/DiagramToCodePlugin";
 export { getDataURL } from "./data/blob";
