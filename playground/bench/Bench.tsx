@@ -472,8 +472,15 @@ const runBench = async (ui: BenchUi): Promise<BenchReport> => {
         : SCENES[name]();
     const start = performance.now();
     const api = await ui.mount({ name, scene });
-    while (api.getSceneElements().length < scene.elements.length) {
+    // restore can drop elements of a saved board, so wait for the count to
+    // settle rather than to reach the file's
+    let count = 0;
+    let settled = 0;
+    while (settled < QUIET_FRAMES) {
       await nextFrame();
+      const next = api.getSceneElements().length;
+      settled = next > 0 && next === count ? settled + 1 : 0;
+      count = next;
     }
     await nextFrame();
     await flushTasks();
