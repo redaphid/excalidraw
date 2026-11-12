@@ -364,6 +364,9 @@ export const LARGE_BOARD_SCENARIOS: Scenario[] = [
   drag("huge", 120),
   drag("big", 120),
   drag("mixed", 120),
+  { ...pan("file", 240), minStepIntervalMs: 16 },
+  zoom("file", 60, 120, 3, (_, canvas) => center(canvas)),
+  drag("file", 120),
 ];
 
 /** gestures for checking that a change paints what master paints: shapes

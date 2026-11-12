@@ -48,6 +48,26 @@ export type ElementsRTreeRebuildWork = {
   writes: number;
 };
 
+/** one idle task of an index rebuild: how long it ran and what it did */
+export type ElementsRTreeRebuildTask = ElementsRTreeRebuildWork & {
+  ms: number;
+  /** whether this task finished the rebuild */
+  done: boolean;
+};
+
+let rebuildTaskObserver: ((task: ElementsRTreeRebuildTask) => void) | null =
+  null;
+
+/**
+ * Reports every idle task of every index rebuild to `observer`, for
+ * benchmarks; `null` stops the reports.
+ */
+export const observeElementsRTreeRebuildTasks = (
+  observer: ((task: ElementsRTreeRebuildTask) => void) | null,
+) => {
+  rebuildTaskObserver = observer;
+};
+
 type RebuildJob<T> = {
   elements: readonly T[];
   elementsMap: ElementsMap;
@@ -278,20 +298,34 @@ export class ElementsRTree<T extends ExcalidrawElement> {
   private requestIdleTask() {
     const ownerWindow = this.getOwnerWindow();
     if (typeof ownerWindow.requestIdleCallback === "function") {
-      const handle = ownerWindow.requestIdleCallback((deadline) => {
-        const until = performance.now() + REBUILD_SLICE_MS;
-        this.runRebuildTask(
-          () => deadline.timeRemaining() > 1 && performance.now() < until,
-          CHUNKS_PER_TASK,
-        );
-      });
+      const handle = ownerWindow.requestIdleCallback((deadline) =>
+        this.runIdleTask(() => deadline.timeRemaining() > 1),
+      );
       this.cancelIdleTask = () => ownerWindow.cancelIdleCallback(handle);
     } else {
-      const timer = ownerWindow.setTimeout(() => {
-        const until = performance.now() + REBUILD_SLICE_MS;
-        this.runRebuildTask(() => performance.now() < until, CHUNKS_PER_TASK);
-      });
+      const timer = ownerWindow.setTimeout(() => this.runIdleTask(() => true));
       this.cancelIdleTask = () => ownerWindow.clearTimeout(timer);
+    }
+  }
+
+  private runIdleTask(idle: () => boolean) {
+    const start = performance.now();
+    const until = start + REBUILD_SLICE_MS;
+    const before = this.rebuildJob
+      ? { ...this.rebuildJob.work }
+      : { measured: 0, comparisons: 0, writes: 0 };
+    const job = this.runRebuildTask(
+      () => idle() && performance.now() < until,
+      CHUNKS_PER_TASK,
+    );
+    if (rebuildTaskObserver && job) {
+      rebuildTaskObserver({
+        ms: performance.now() - start,
+        measured: job.work.measured - before.measured,
+        comparisons: job.work.comparisons - before.comparisons,
+        writes: job.work.writes - before.writes,
+        done: this.rebuildJob === null,
+      });
     }
   }
 
@@ -304,12 +338,13 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     this.runRebuildTask(() => true, Infinity);
   }
 
+  /** runs the rebuild for one task and returns its job, if there was one */
   private runRebuildTask(hasTime: () => boolean, chunks: number) {
     this.cancelIdleTask?.();
     this.cancelIdleTask = null;
     if (!this.rebuildJob) {
       if (!this.elements || !this.elementsMap) {
-        return;
+        return null;
       }
       this.rebuildJob = this.startRebuild(this.elements, this.elementsMap);
     }
@@ -319,13 +354,14 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       if (step.done) {
         this.rebuildJob = null;
         this.install(job, step.value);
-        return;
+        return job;
       }
       if (!hasTime()) {
         break;
       }
     }
     this.requestIdleTask();
+    return job;
   }
 
   private startRebuild(

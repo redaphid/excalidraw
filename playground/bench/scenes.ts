@@ -27,7 +27,8 @@ export type SceneName =
   | "deep"
   | "labels"
   | "big"
-  | "huge";
+  | "huge"
+  | "file";
 
 export type BenchScene = {
   elements: ExcalidrawElement[];
@@ -511,11 +512,67 @@ ${i}`,
   };
 };
 
-export const SCENES: Record<SceneName, () => BenchScene> = {
+export const SCENES: Record<Exclude<SceneName, "file">, () => BenchScene> = {
   mixed,
   freedraw,
   deep,
   labels,
   big,
   huge,
+};
+
+/**
+ * Loads a saved .excalidraw file as a scene, viewed at half zoom around the
+ * rectangle nearest the board's centre so a drag has something to move.
+ */
+export const fileScene = async (url: string): Promise<BenchScene> => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`fetching ${url}: ${response.status}`);
+  }
+  const saved: {
+    elements: ExcalidrawElement[];
+    files?: BinaryFiles;
+  } = await response.json();
+  const elements = saved.elements.filter((element) => !element.isDeleted);
+  if (!elements.length) {
+    throw new Error(`${url} holds no elements`);
+  }
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const element of elements) {
+    minX = Math.min(minX, element.x);
+    minY = Math.min(minY, element.y);
+    maxX = Math.max(maxX, element.x + element.width);
+    maxY = Math.max(maxY, element.y + element.height);
+  }
+  const boardCenter = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+  const distance = (element: ExcalidrawElement) =>
+    Math.hypot(
+      element.x + element.width / 2 - boardCenter.x,
+      element.y + element.height / 2 - boardCenter.y,
+    );
+  const anchor = elements
+    .filter((element) => element.type === "rectangle")
+    .reduce(
+      (nearest, element) =>
+        distance(element) < distance(nearest) ? element : nearest,
+      elements[0],
+    );
+  const zoom = 0.5;
+  const center = {
+    x: anchor.x + anchor.width / 2,
+    y: anchor.y + anchor.height / 2,
+  };
+  return {
+    elements,
+    files: saved.files ?? {},
+    view: {
+      scrollX: window.innerWidth / 2 / zoom - center.x,
+      scrollY: window.innerHeight / 2 / zoom - center.y,
+      zoom: { value: zoom as never },
+    },
+  };
 };

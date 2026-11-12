@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import { reseed } from "@excalidraw/common";
+import { observeElementsRTreeRebuildTasks } from "@excalidraw/element";
 import { Excalidraw } from "@excalidraw/excalidraw";
 
+import type { ElementsRTreeRebuildTask } from "@excalidraw/element";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import {
@@ -10,7 +12,7 @@ import {
   PARITY_SCENARIOS,
   SCENARIOS,
 } from "./scenarios";
-import { SCENES } from "./scenes";
+import { SCENES, fileScene } from "./scenes";
 
 import type { Scenario } from "./scenarios";
 import type { BenchScene, SceneName } from "./scenes";
@@ -60,7 +62,8 @@ export type BenchReport = {
   viewport: { width: number; height: number };
   mountMs: Partial<Record<SceneName, number>>;
   heapMB?: number;
-  rebuildIdleTaskMs: number[];
+  /** every idle task of the index rebuilds, in order */
+  rebuildTasks: ElementsRTreeRebuildTask[];
   results: ScenarioResult[];
 };
 
@@ -84,6 +87,8 @@ const params = new URLSearchParams(window.location.search);
 const only = params.get("only")?.split(",");
 const auto = params.get("bench") === "auto";
 const counting = params.has("counters");
+/** a .excalidraw file to bench as the `file` scene */
+const sceneUrl = params.get("sceneUrl");
 
 const TASK_HOPS = 3;
 const SETTLE_WINDOW_MS = 400;
@@ -217,7 +222,10 @@ const installCounters = () => {
 let inIdleCallback = false;
 /** the longest idle callback since the last `takeLongestIdleCallback` */
 let longestIdleCallbackMs = 0;
-const rebuildIdleTaskMs: number[] = [];
+const rebuildTasks: ElementsRTreeRebuildTask[] = [];
+observeElementsRTreeRebuildTasks((task) =>
+  rebuildTasks.push({ ...task, ms: round(task.ms) }),
+);
 
 if (typeof window.requestIdleCallback === "function") {
   const requestIdle = window.requestIdleCallback.bind(window);
@@ -231,9 +239,6 @@ if (typeof window.requestIdleCallback === "function") {
         inIdleCallback = false;
         const ms = performance.now() - start;
         longestIdleCallbackMs = Math.max(longestIdleCallbackMs, ms);
-        if (callback.toString().includes("runRebuildTask")) {
-          rebuildIdleTaskMs.push(round(ms));
-        }
       }
     }, options);
 }
@@ -461,7 +466,10 @@ const runBench = async (ui: BenchUi): Promise<BenchReport> => {
   const mountMs: BenchReport["mountMs"] = {};
   for (const name of sceneOrder) {
     ui.status(`mounting ${name}`);
-    const scene = SCENES[name]();
+    const scene =
+      name === "file"
+        ? await fileScene(sceneUrl ?? "scene.json")
+        : SCENES[name]();
     const start = performance.now();
     const api = await ui.mount({ name, scene });
     while (api.getSceneElements().length < scene.elements.length) {
@@ -483,7 +491,7 @@ const runBench = async (ui: BenchUi): Promise<BenchReport> => {
     viewport: { width: window.innerWidth, height: window.innerHeight },
     mountMs,
     heapMB: memory ? Math.round(memory.usedJSHeapSize / 1e5) / 10 : undefined,
-    rebuildIdleTaskMs,
+    rebuildTasks,
     results,
   };
 };
