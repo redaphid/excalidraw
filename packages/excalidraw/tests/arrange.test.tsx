@@ -23,10 +23,11 @@ import type {
   FixedPointBinding,
 } from "@excalidraw/element/types";
 
+import { elkLayout } from "../arrange/elkLayout";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
-import { frame } from "./helpers/frames";
+import { arrowBetween, frame } from "./helpers/frames";
 import { Keyboard, Pointer, UI } from "./helpers/ui";
 import { getTextEditor } from "./queries/dom";
 import { act, fireEvent, queryByTestId, render } from "./test-utils";
@@ -1719,5 +1720,141 @@ describe("the Auto-arrange button in the styles panel", () => {
     select(["frame-id-workshop"]);
     expect(button()).not.toBeNull();
     expect(legend()).toBe("Arrange");
+  });
+});
+
+const rectangle = (
+  id: string,
+  [x, y]: [number, number],
+  [width, height]: [number, number],
+  frameId: string | null,
+  groupIds: string[] = [],
+) =>
+  API.createElement({
+    type: "rectangle",
+    id,
+    x,
+    y,
+    width,
+    height,
+    frameId,
+    groupIds,
+  });
+
+/** every element that moved or changed size between two snapshots */
+const changed = (before: Scene, after: Scene) =>
+  [...after.values()]
+    .filter((now) => {
+      const was = before.get(now.id);
+      return (
+        !was ||
+        was.x !== now.x ||
+        was.y !== now.y ||
+        was.width !== now.width ||
+        was.height !== now.height
+      );
+    })
+    .map(({ id }) => id);
+
+// the frame grows down into the smaller frame below it and its nested frame
+// lands there, so the next arrange finds the innermost frame held by the
+// frame below instead
+describe("arranging the whole scene where a frame grows into a smaller frame below it", () => {
+  let after: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load();
+    API.updateScene({
+      elements: [
+        frame("frame-id-grows", 0, 0, 600, 420),
+        rectangle("shape-id-a", [40, 40], [100, 300], "frame-id-grows"),
+        rectangle("shape-id-b", [200, 40], [100, 300], "frame-id-grows"),
+        frame("frame-id-nested", 320, 40, 240, 200),
+        frame("frame-id-innermost", 340, 160, 100, 60),
+        rectangle("shape-id-c", [350, 170], [40, 40], "frame-id-innermost"),
+        frame("frame-id-below", 180, 500, 200, 200),
+        rectangle("shape-id-d", [320, 640], [40, 40], "frame-id-below"),
+        arrowBetween("arrow-id-a-c", "shape-id-a", "shape-id-c"),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await arrangeBy.api(undefined);
+    after = snapshot();
+    await arrangeBy.api(undefined);
+    again = snapshot();
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(changed(after, again)).toEqual([]);
+  });
+});
+
+// the box names no frame and lies on the free canvas, while the title in the
+// nested frame is carried with it because the box's group surrounds the frame
+describe("arranging the whole scene where a grouped box is drawn around a nested frame", () => {
+  let after: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load();
+    API.updateScene({
+      elements: [
+        frame("frame-id-page", 0, 0, 600, 400),
+        frame("frame-id-card", 40, 40, 300, 100),
+        rectangle("shape-id-around", [20, 20], [340, 140], null, [
+          "group-id-card",
+        ]),
+        API.createElement({
+          type: "text",
+          id: "text-id-title",
+          x: 60,
+          y: 60,
+          width: 100,
+          height: 25,
+          text: "title",
+          groupIds: ["group-id-card"],
+        }),
+        rectangle("shape-id-in-page", [400, 240], [100, 60], "frame-id-page"),
+        rectangle("shape-id-free-a", [800, 0], [100, 60], null),
+        rectangle("shape-id-free-b", [1000, 300], [100, 60], null),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await arrangeBy.api(undefined);
+    after = snapshot();
+    await arrangeBy.api(undefined);
+    again = snapshot();
+  });
+
+  it("should keep the box around the frame and the title on it", () => {
+    const card = extentOf(after.get("frame-id-card")!);
+    expect(inside(card, extentOf(after.get("shape-id-around")!))).toBe(true);
+    expect(inside(extentOf(after.get("text-id-title")!), card)).toBe(true);
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(changed(after, again)).toEqual([]);
+  });
+});
+
+describe("planning an arrange, which it tries out on a copy of the scene", () => {
+  const scenario = scenarioNamed("a chain of four, scattered");
+
+  beforeEach(async () => {
+    await load(scenario);
+  });
+
+  it("should leave the scene as it was until the plan is applied", async () => {
+    const before = snapshot();
+    const plan = await planArrange(
+      h.app.scene,
+      h.state,
+      { elementIds: shapesOf(scenario) },
+      elkLayout,
+    );
+
+    expect(plan).not.toBeNull();
+    expect(snapshot()).toEqual(before);
   });
 });

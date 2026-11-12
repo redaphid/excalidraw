@@ -17,7 +17,8 @@ import {
   isFrameLikeElement,
 } from "./typeChecks";
 
-import type { Scene } from "./Scene";
+import { Scene } from "./Scene";
+
 import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
@@ -263,6 +264,7 @@ type Targets = {
     {
       readonly holderId: string;
       readonly members: readonly NonDeletedExcalidrawElement[];
+      readonly box: Box;
     }
   >;
 };
@@ -289,21 +291,72 @@ const resolveTargets = (
   const laidOutFrames = elementIds?.length
     ? named.filter(isFrameLikeElement)
     : frames.filter((frame) => !nesting.holderOf(frame));
+  const nestedUnits = laidOutFrames.flatMap((outer) =>
+    nesting.nestedIn(outer).map((nested) => {
+      const contents = getFrameContents(elements, [nested.id]);
+      return {
+        holderId: outer.id,
+        nested,
+        carried: elements.filter((element) => contents.has(element.id)),
+      };
+    }),
+  );
+  // a group drawn around a nested frame, a box with the frame on it, is
+  // carried only in part: what lies in the frame is and the box is not.
+  // Laying the two out apart would pull the group off the frame and change
+  // what the next arrange finds, so the frame takes the whole group along,
+  // or none of it when the group lies around more than one frame
+  const groupOf = (groupId: string) =>
+    elements.filter(
+      (element) =>
+        element.groupIds.includes(groupId) &&
+        !isBoundToContainer(element) &&
+        !isFrameLikeElement(element),
+    );
+  const around = new Map<string, Set<string>>();
+  for (const { nested, carried } of nestedUnits) {
+    const ids = new Set(carried.map((element) => element.id));
+    for (const groupId of new Set(carried.flatMap((each) => each.groupIds))) {
+      if (groupOf(groupId).some((member) => !ids.has(member.id))) {
+        around.set(groupId, (around.get(groupId) ?? new Set()).add(nested.id));
+      }
+    }
+  }
+  const takesWhole = (groupId: string) =>
+    around.get(groupId)!.size === 1 &&
+    groupOf(groupId).every((member) => !member.locked);
   const frameUnits = new Map<
     string,
-    { holderId: string; members: NonDeletedExcalidrawElement[] }
+    { holderId: string; members: NonDeletedExcalidrawElement[]; box: Box }
   >();
-  for (const outer of laidOutFrames) {
-    for (const nested of nesting.nestedIn(outer)) {
-      const carried = getFrameContents(elements, [nested.id]);
-      frameUnits.set(nested.id, {
-        holderId: outer.id,
-        members: [
+  for (const { holderId, nested, carried } of nestedUnits) {
+    const kept = carried.filter((element) =>
+      element.groupIds.every(
+        (groupId) => !around.has(groupId) || takesWhole(groupId),
+      ),
+    );
+    const taken = [
+      ...new Set(
+        [...around.keys()]
+          .filter((groupId) => around.get(groupId)!.has(nested.id))
+          .filter(takesWhole)
+          .flatMap(groupOf),
+      ),
+    ].filter((element) => !kept.includes(element));
+    frameUnits.set(nested.id, {
+      holderId,
+      members: [nested, ...kept, ...taken],
+      box: boxOf(
+        [
           nested,
-          ...elements.filter((element) => carried.has(element.id)),
+          ...taken.flatMap((element) => {
+            const label = getBoundTextElement(element, elementsMap);
+            return label ? [element, label] : [element];
+          }),
         ],
-      });
-    }
+        elementsMap,
+      ),
+    });
   }
   const carriedIds = new Set(
     [...frameUnits.values()].flatMap(({ members }) =>
@@ -358,13 +411,8 @@ const groupUnits = (
   };
   // a frame's own frameId is always null, so the nested frame is laid out
   // in the frame it was found nested in
-  for (const [id, { holderId, members }] of targets.frameUnits) {
-    add({
-      id,
-      members: [...members],
-      frameId: holderId,
-      box: boxOf([elementsMap.get(id)!], elementsMap),
-    });
+  for (const [id, { holderId, members, box }] of targets.frameUnits) {
+    add({ id, members: [...members], frameId: holderId, box });
   }
   for (const id of targets.shapes) {
     const element = elementsMap.get(id);
@@ -531,17 +579,97 @@ const sameNesting = (scene: Scene, a: FrameSizes, b: FrameSizes) => {
   return frames.every((frame) => was.holderOf(frame) === now.holderOf(frame));
 };
 
+/** how often a plan is made again on the board it leaves, at most */
+const MAX_SETTLES = 4;
+
+/** a copy of the scene to try plans on */
+const copyOf = (scene: Scene) =>
+  new Scene(
+    scene.getElementsIncludingDeleted().map((element) => ({ ...element })),
+    { skipValidation: true },
+  );
+
+const movesAnything = (plan: ArrangePlan) =>
+  plan.frames.size > 0 ||
+  [...plan.translations.values()].some(({ dx, dy }) => dx || dy);
+
+/** one plan that does what `plans` do one after the other */
+const composed = (
+  plans: readonly ArrangePlan[],
+  versions: ReadonlyMap<string, number>,
+): ArrangePlan => {
+  const translations = new Map<string, { dx: number; dy: number }>();
+  for (const plan of plans) {
+    for (const [id, { dx, dy }] of plan.translations) {
+      const was = translations.get(id) ?? { dx: 0, dy: 0 };
+      translations.set(id, { dx: was.dx + dx, dy: was.dy + dy });
+    }
+  }
+  const read = new Set(plans.flatMap((plan) => [...plan.versions.keys()]));
+  return {
+    versions: new Map(
+      [...read].flatMap((id) => {
+        const version = versions.get(id);
+        return version === undefined ? [] : [[id, version] as const];
+      }),
+    ),
+    translations,
+    arrows: [...new Set(plans.flatMap((plan) => plan.arrows))],
+    frames: new Map(plans.flatMap((plan) => [...plan.frames])),
+    overlappedFrameIds: [
+      ...new Set(plans.flatMap((plan) => plan.overlappedFrameIds)),
+    ],
+  };
+};
+
 /**
  * Lays the requested elements out with `engine`, one layout per frame (and one
  * for the free canvas), without touching the scene. Reads the scene before its
  * first await, so a change made while the engine runs makes the plan stale.
  *
- * A frame that grows around another frame nests it, which changes what the
- * next arrange lays out. So the plan is made again with the frames at the
- * sizes it grows them to, until they nest as the plan assumed, and
- * arranging the result again moves nothing.
+ * A plan reads which frame holds what from where things lie, and its moves
+ * can change that: a frame grown into the frame below it holds what landed
+ * there. So the plan is tried on a copy of the scene and made again on the
+ * board it leaves, until that board arranges to itself, and arranging the
+ * result again moves nothing.
  */
 export const planArrange = async (
+  scene: Scene,
+  appState: Readonly<Pick<AppState, "gridSize">>,
+  request: ArrangeRequest,
+  engine: LayoutEngine,
+): Promise<ArrangePlan | null> => {
+  const versions = new Map(
+    scene
+      .getNonDeletedElements()
+      .map((element) => [element.id, element.version]),
+  );
+  const board = copyOf(scene);
+  const first = await planGrown(scene, appState, request, engine);
+  if (!first) {
+    return null;
+  }
+  const plans = [first];
+  for (let settles = 0; settles < MAX_SETTLES; settles++) {
+    const last = plans.at(-1)!;
+    if (!movesAnything(last) || applyArrangePlan(board, last) === "stale") {
+      break;
+    }
+    const next = await planGrown(board, appState, request, engine);
+    if (!next || !movesAnything(next)) {
+      break;
+    }
+    plans.push(next);
+  }
+  return composed(plans, versions);
+};
+
+/**
+ * A frame that grows around another frame nests it, which changes what the
+ * next arrange lays out. So the plan is made again with the frames at the
+ * sizes it grows them to, until they nest as the plan assumed.
+ */
+const planGrown = async (
   scene: Scene,
   appState: Readonly<Pick<AppState, "gridSize">>,
   request: ArrangeRequest,
