@@ -49,7 +49,7 @@ export type EyeDropperProperties = {
 };
 
 /** an unpremultiplied RGBA pixel drawn over an opaque one, as the screen shows it */
-const compositeOver = (
+export const compositeOver = (
   top: Uint8ClampedArray,
   under: Uint8ClampedArray,
 ): [number, number, number] => {
