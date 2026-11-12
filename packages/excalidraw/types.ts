@@ -200,7 +200,6 @@ type _CommonCanvasAppState = {
   frameToHighlight: AppState["frameToHighlight"]; // TODO: move to interactive canvas if possible
   offsetLeft: AppState["offsetLeft"];
   offsetTop: AppState["offsetTop"];
-  theme: AppState["theme"];
 };
 
 export type StaticCanvasAppState = Readonly<
@@ -224,6 +223,7 @@ export type StaticCanvasAppState = Readonly<
 
 export type InteractiveCanvasAppState = Readonly<
   _CommonCanvasAppState & {
+    theme: AppState["theme"];
     activeTool: AppState["activeTool"];
     // renderInteractiveScene
     activeEmbeddable: AppState["activeEmbeddable"];
@@ -1306,6 +1306,7 @@ export type AppClassProperties = {
   /** static canvas */
   canvas: HTMLCanvasElement;
   cssTheme: App["cssTheme"];
+  getCanvasMode: App["getCanvasMode"];
   focusContainer(): void;
   library: Library;
   imageCache: Map<

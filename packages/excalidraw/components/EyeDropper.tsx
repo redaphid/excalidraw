@@ -69,6 +69,7 @@ export const EyeDropper: React.FC<{
   const appState = useUIAppState();
   const elements = useExcalidrawElements();
   const app = useApp();
+  const canvasMode = app.getCanvasMode();
   const ownerWindow = app.ownerWindow;
 
   const selectedElements = getSelectedElements(elements, appState);
@@ -122,7 +123,7 @@ export const EyeDropper: React.FC<{
     };
 
     const getColorToApply = (color: string) =>
-      appState.theme === THEME.DARK ? removeDarkModeFilter(color) : color;
+      canvasMode === THEME.DARK ? removeDarkModeFilter(color) : color;
 
     const mouseMoveListener = ({
       clientX,
@@ -249,7 +250,7 @@ export const EyeDropper: React.FC<{
     excalidrawContainer,
     appState.offsetLeft,
     appState.offsetTop,
-    appState.theme,
+    canvasMode,
     ownerWindow,
   ]);
 
