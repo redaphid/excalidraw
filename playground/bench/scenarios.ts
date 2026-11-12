@@ -249,6 +249,67 @@ const gesture = (
   };
 };
 
+const drag = (scene: SceneName, steps: number): Scenario => {
+  let api: ExcalidrawImperativeAPI;
+  let target: { id: string; x: number };
+  let origin = { x: 0, y: 0 };
+  return {
+    id: `${scene}/drag`,
+    scene,
+    steps,
+    tool: "selection",
+    begin: (imperativeApi, canvas) => {
+      api = imperativeApi;
+      const { scrollX, scrollY, zoom, offsetLeft, offsetTop } =
+        api.getAppState();
+      const rect = canvas.getBoundingClientRect();
+      const toClient = (x: number, y: number) => ({
+        x: (x + scrollX) * zoom.value + offsetLeft,
+        y: (y + scrollY) * zoom.value + offsetTop,
+      });
+      const element = api.getSceneElements().find((candidate) => {
+        const middle = toClient(
+          candidate.x + candidate.width / 2,
+          candidate.y + candidate.height / 2,
+        );
+        return (
+          candidate.type === "rectangle" &&
+          Math.abs(middle.x - (rect.left + rect.width / 2)) < rect.width / 4 &&
+          Math.abs(middle.y - (rect.top + rect.height / 2)) < rect.height / 4
+        );
+      });
+      if (!element) {
+        throw new Error(`${scene}/drag found no rectangle to drag`);
+      }
+      target = { id: element.id, x: element.x };
+      origin = toClient(
+        element.x + element.width / 2,
+        element.y + element.height / 2,
+      );
+      api.updateScene({
+        appState: { selectedElementIds: { [element.id]: true } },
+      });
+    },
+    step: (canvas, i) => {
+      if (i === 1) {
+        pointer(canvas, "pointermove", origin.x, origin.y, { buttons: 0 });
+        pointer(canvas, "pointerdown", origin.x, origin.y);
+      } else {
+        pointer(canvas, "pointermove", origin.x + 3 * i, origin.y + 2 * i);
+      }
+    },
+    end: (canvas) => {
+      pointer(canvas, "pointerup", origin.x + 3 * steps, origin.y + 2 * steps);
+      const moved = api
+        .getSceneElements()
+        .find((element) => element.id === target.id);
+      if (moved?.x === target.x) {
+        throw new Error(`${scene}/drag did not move ${target.id}`);
+      }
+    },
+  };
+};
+
 const freedraw = (scene: SceneName, steps: number) =>
   gesture(`${scene}/freedraw`, scene, "freedraw", steps, loops);
 
@@ -294,6 +355,15 @@ export const SCENARIOS: Scenario[] = [
   pan("deep", 120),
   settlePan("labels", 6, 60, 300),
   { ...pan("big", 240), minStepIntervalMs: 16 },
+];
+
+export const LARGE_BOARD_SCENARIOS: Scenario[] = [
+  { ...pan("huge", 240), minStepIntervalMs: 16 },
+  zoom("huge", 60, 120, 3, (_, canvas) => center(canvas)),
+  freedraw("huge", 240),
+  drag("huge", 120),
+  drag("big", 120),
+  drag("mixed", 120),
 ];
 
 /** gestures for checking that a change paints what master paints: shapes
