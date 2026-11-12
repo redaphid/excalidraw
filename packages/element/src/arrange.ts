@@ -150,6 +150,8 @@ type Partition = {
   readonly arrows: { arrow: ExcalidrawElement; edge: LayoutEdge }[];
   /** what stays put in the same frame; the layout keeps off it */
   readonly obstacles: Box[];
+  /** on the free canvas, the frames, which the layout keeps off at the size this plan grows them to */
+  readonly frames: ExcalidrawFrameLikeElement[];
 };
 
 /** how often one partition's layout is pushed off an obstacle at most */
@@ -202,19 +204,33 @@ const isBoundArrow = (element: ExcalidrawElement) =>
 const follows = (element: ExcalidrawElement) =>
   isBoundToContainer(element) || isBoundArrow(element);
 
+/** frame id -> the size a plan grows the frame to; frames grow in place */
+type FrameSizes = ReadonlyMap<
+  string,
+  { readonly width: number; readonly height: number }
+>;
+
 /**
  * A frame cannot hold a frame, so a smaller frame drawn wholly inside a larger
- * one is nested in it, the rule `getFrameContents` moves frames by.
+ * one is nested in it, the rule `getFrameContents` moves frames by. `sizes`
+ * reads the frames as a plan would leave them.
  */
 const nestedFrames = <Frame extends ExcalidrawFrameLikeElement>(
   frames: readonly Frame[],
   elementsMap: NonDeletedSceneElementsMap,
+  sizes: FrameSizes,
 ) => {
+  const sizeOf = (frame: ExcalidrawFrameLikeElement) =>
+    sizes.get(frame.id) ?? frame;
   const bounds = new Map(
-    frames.map((frame) => [frame.id, getElementBounds(frame, elementsMap)]),
+    frames.map((frame) => {
+      const [left, top] = getElementBounds(frame, elementsMap);
+      const { width, height } = sizeOf(frame);
+      return [frame.id, [left, top, left + width, top + height] as const];
+    }),
   );
   const frameArea = (frame: ExcalidrawFrameLikeElement) =>
-    frame.width * frame.height;
+    sizeOf(frame).width * sizeOf(frame).height;
   /** frame id -> the frames it is nested in, the innermost first */
   const holders = new Map(
     frames.map((inner) => [
@@ -241,10 +257,13 @@ const nestedFrames = <Frame extends ExcalidrawFrameLikeElement>(
 type Targets = {
   /** the shapes to lay out */
   readonly shapes: ReadonlySet<string>;
-  /** nested frame id -> the frame and what it carries, laid out as one fixed-size unit */
+  /** nested frame id -> the frame it is laid out in, and the nested frame with what it carries, laid out as one fixed-size unit */
   readonly frameUnits: ReadonlyMap<
     string,
-    readonly NonDeletedExcalidrawElement[]
+    {
+      readonly holderId: string;
+      readonly members: readonly NonDeletedExcalidrawElement[];
+    }
   >;
 };
 
@@ -253,12 +272,13 @@ const resolveTargets = (
   elements: readonly NonDeletedExcalidrawElement[],
   elementsMap: NonDeletedSceneElementsMap,
   elementIds: readonly string[] | undefined,
+  sizes: FrameSizes,
 ): Targets => {
   const frames = elements.filter(
     (element): element is NonDeleted<ExcalidrawFrameLikeElement> =>
       isFrameLikeElement(element),
   );
-  const nesting = nestedFrames(frames, elementsMap);
+  const nesting = nestedFrames(frames, elementsMap, sizes);
   const named = elementIds?.length
     ? elementIds.flatMap((id) => elementsMap.get(id) ?? [])
     : elements;
@@ -269,18 +289,24 @@ const resolveTargets = (
   const laidOutFrames = elementIds?.length
     ? named.filter(isFrameLikeElement)
     : frames.filter((frame) => !nesting.holderOf(frame));
-  const frameUnits = new Map<string, readonly NonDeletedExcalidrawElement[]>();
+  const frameUnits = new Map<
+    string,
+    { holderId: string; members: NonDeletedExcalidrawElement[] }
+  >();
   for (const outer of laidOutFrames) {
     for (const nested of nesting.nestedIn(outer)) {
       const carried = getFrameContents(elements, [nested.id]);
-      frameUnits.set(nested.id, [
-        nested,
-        ...elements.filter((element) => carried.has(element.id)),
-      ]);
+      frameUnits.set(nested.id, {
+        holderId: outer.id,
+        members: [
+          nested,
+          ...elements.filter((element) => carried.has(element.id)),
+        ],
+      });
     }
   }
   const carriedIds = new Set(
-    [...frameUnits.values()].flatMap((members) =>
+    [...frameUnits.values()].flatMap(({ members }) =>
       members.map((member) => member.id),
     ),
   );
@@ -330,13 +356,14 @@ const groupUnits = (
       unitOf.set(member.id, unit);
     }
   };
-  for (const [id, members] of targets.frameUnits) {
-    const frame = elementsMap.get(id)!;
+  // a frame's own frameId is always null, so the nested frame is laid out
+  // in the frame it was found nested in
+  for (const [id, { holderId, members }] of targets.frameUnits) {
     add({
       id,
       members: [...members],
-      frameId: frame.frameId,
-      box: boxOf([frame], elementsMap),
+      frameId: holderId,
+      box: boxOf([elementsMap.get(id)!], elementsMap),
     });
   }
   for (const id of targets.shapes) {
@@ -367,11 +394,15 @@ const groupUnits = (
 };
 
 /** the units a request arranges, and the types of what it names but leaves out */
-const unitsOf = (scene: Scene, elementIds: readonly string[] | undefined) => {
+const unitsOf = (
+  scene: Scene,
+  elementIds: readonly string[] | undefined,
+  sizes: FrameSizes = new Map(),
+) => {
   const elements = scene.getNonDeletedElements();
   const elementsMap = scene.getNonDeletedElementsMap();
   const unitOf = groupUnits(
-    resolveTargets(elements, elementsMap, elementIds),
+    resolveTargets(elements, elementsMap, elementIds, sizes),
     elements,
     elementsMap,
   );
@@ -428,13 +459,16 @@ const placeLoose = (
     if (!belongs || unitOf.has(element.id) || follows(element)) {
       continue;
     }
+    if (isFrameLikeElement(element)) {
+      partition.frames.push(element);
+      continue;
+    }
     const box = boxOf([element], elementsMap);
-    const holder =
-      element.locked || isFrameLikeElement(element)
-        ? undefined
-        : partition.units
-            .filter((unit) => contains(unit.box, box))
-            .sort((a, b) => area(a.box) - area(b.box))[0];
+    const holder = element.locked
+      ? undefined
+      : partition.units
+          .filter((unit) => contains(unit.box, box))
+          .sort((a, b) => area(a.box) - area(b.box))[0];
     if (holder) {
       holder.members.push(element);
     } else {
@@ -485,16 +519,54 @@ const pushOffObstacles = (
   }
 };
 
+/** how often a plan is made again because the frames it grows nest differently */
+const MAX_REPLANS = 4;
+
+/** whether the frames nest the same at two sets of sizes */
+const sameNesting = (scene: Scene, a: FrameSizes, b: FrameSizes) => {
+  const frames = scene.getNonDeletedElements().filter(isFrameLikeElement);
+  const elementsMap = scene.getNonDeletedElementsMap();
+  const was = nestedFrames(frames, elementsMap, a);
+  const now = nestedFrames(frames, elementsMap, b);
+  return frames.every((frame) => was.holderOf(frame) === now.holderOf(frame));
+};
+
 /**
  * Lays the requested elements out with `engine`, one layout per frame (and one
  * for the free canvas), without touching the scene. Reads the scene before its
  * first await, so a change made while the engine runs makes the plan stale.
+ *
+ * A frame that grows around another frame nests it, which changes what the
+ * next arrange lays out. So the plan is made again with the frames at the
+ * sizes it grows them to, until they nest as the plan assumed, and
+ * arranging the result again moves nothing.
  */
 export const planArrange = async (
   scene: Scene,
   appState: Readonly<Pick<AppState, "gridSize">>,
   request: ArrangeRequest,
   engine: LayoutEngine,
+): Promise<ArrangePlan | null> => {
+  let sizes: FrameSizes = new Map();
+  for (let replans = 0; ; replans++) {
+    const plan = await planWith(scene, appState, request, engine, sizes);
+    if (
+      !plan ||
+      replans === MAX_REPLANS ||
+      sameNesting(scene, sizes, plan.frames)
+    ) {
+      return plan;
+    }
+    sizes = plan.frames;
+  }
+};
+
+const planWith = async (
+  scene: Scene,
+  appState: Readonly<Pick<AppState, "gridSize">>,
+  request: ArrangeRequest,
+  engine: LayoutEngine,
+  sizes: FrameSizes,
 ): Promise<ArrangePlan | null> => {
   const elements = scene.getNonDeletedElements();
   const elementsMap = scene.getNonDeletedElementsMap();
@@ -511,7 +583,7 @@ export const planArrange = async (
     elkOptions: request.elkOptions,
   };
 
-  const { unitOf } = unitsOf(scene, request.elementIds);
+  const { unitOf } = unitsOf(scene, request.elementIds, sizes);
 
   /** frame id (null: the free canvas) -> its units and the arrows joining two of them */
   const partitions = new Map<string | null, Partition>();
@@ -520,6 +592,7 @@ export const planArrange = async (
       units: [],
       arrows: [],
       obstacles: [],
+      frames: [],
     };
     partitions.set(frameId, partition);
     return partition;
@@ -558,96 +631,134 @@ export const planArrange = async (
   const read = (element: ExcalidrawElement) =>
     versions.set(element.id, element.version);
 
-  const jobs = laidOut.map(([frameId, { units, arrows, obstacles }]) => {
-    for (const unit of units) {
-      for (const member of unit.members) {
-        read(member);
-        const label = getBoundTextElement(member, elementsMap);
-        if (label) {
-          read(label);
+  const jobs = laidOut.map(
+    ([frameId, { units, arrows, obstacles, frames }]) => {
+      for (const unit of units) {
+        for (const member of unit.members) {
+          read(member);
+          const label = getBoundTextElement(member, elementsMap);
+          if (label) {
+            read(label);
+          }
         }
       }
-    }
-    arrows.forEach(({ arrow }) => read(arrow));
-    const holder = frameId ? elementsMap.get(frameId) : undefined;
-    const frame = holder && isFrameLikeElement(holder) ? holder : undefined;
-    if (frame) {
-      read(frame);
-    }
-    return {
-      units,
-      obstacles,
-      frame,
-      positions: engine(
-        {
-          nodes: units.map(({ id, box }) => ({
-            id,
-            width: box.width,
-            height: box.height,
-          })),
-          edges: arrows.map(({ edge }) => edge),
-        },
-        options,
-      ),
-    };
-  });
+      arrows.forEach(({ arrow }) => read(arrow));
+      const holder = frameId ? elementsMap.get(frameId) : undefined;
+      const frame = holder && isFrameLikeElement(holder) ? holder : undefined;
+      if (frame) {
+        read(frame);
+      }
+      return {
+        units,
+        obstacles,
+        frames,
+        frame,
+        positions: engine(
+          {
+            nodes: units.map(({ id, box }) => ({
+              id,
+              width: box.width,
+              height: box.height,
+            })),
+            edges: arrows.map(({ edge }) => edge),
+          },
+          options,
+        ),
+      };
+    },
+  );
   const placements = await Promise.all(jobs.map(({ positions }) => positions));
 
   const translations = new Map<string, { dx: number; dy: number }>();
   const frames = new Map<string, { width: number; height: number }>();
+  /** a frame as an obstacle, at the size this plan grows it to */
+  const frameBox = (frame: ExcalidrawFrameLikeElement): Box => {
+    const box = boxOf([frame], elementsMap);
+    const grown = frames.get(frame.id);
+    return grown
+      ? {
+          ...box,
+          width: Math.round(grown.width),
+          height: Math.round(grown.height),
+        }
+      : box;
+  };
 
-  jobs.forEach(({ units, obstacles, frame }, i) => {
-    const positions = placements[i];
-    const at = (unit: Unit) => {
-      const position = positions.get(unit.id);
-      if (!position) {
-        throw new Error(`The layout engine placed no position for ${unit.id}`);
-      }
-      return position;
-    };
-    // a frame's layout starts at its margin and the free canvas's where it
-    // was; neither depends on where the layout ends, so a second layout
-    // lands on the same pixels
-    const origin = frame
-      ? { x: frame.x + spacing.frameMargin, y: frame.y + spacing.frameMargin }
-      : {
-          x: Math.min(...units.map((unit) => unit.box.x)),
-          y: Math.min(...units.map((unit) => unit.box.y)),
-        };
-    const placed: Placed[] = units.map((unit) => ({
-      unit,
-      x: Math.round(origin.x + at(unit).x),
-      y: Math.round(origin.y + at(unit).y),
-    }));
-    pushOffObstacles(placed, obstacles, options.direction, spacing.node);
-    for (const { unit, x, y } of placed) {
-      const dx = x - unit.box.x;
-      const dy = y - unit.box.y;
-      unit.members.forEach((member) => translations.set(member.id, { dx, dy }));
-    }
-    if (frame) {
-      const right = Math.max(
-        ...placed.map(({ unit, x }) => x + unit.box.width),
-      );
-      const bottom = Math.max(
-        ...placed.map(({ unit, y }) => y + unit.box.height),
-      );
-      const grown = {
-        width: Math.max(frame.width, right + spacing.frameMargin - frame.x),
-        height: Math.max(frame.height, bottom + spacing.frameMargin - frame.y),
+  // frames first, so the free canvas keeps off them at their grown size
+  const inOrder = jobs
+    .map((job, i) => ({ ...job, positions: placements[i] }))
+    .sort((a, b) => Number(!a.frame) - Number(!b.frame));
+  inOrder.forEach(
+    ({ units, obstacles, frames: framesAround, frame, positions }) => {
+      const at = (unit: Unit) => {
+        const position = positions.get(unit.id);
+        if (!position) {
+          throw new Error(
+            `The layout engine placed no position for ${unit.id}`,
+          );
+        }
+        return position;
       };
-      if (grown.width !== frame.width || grown.height !== frame.height) {
-        frames.set(frame.id, grown);
+      // a frame's layout starts at its margin and the free canvas's where it
+      // was; neither depends on where the layout ends, so a second layout
+      // lands on the same pixels
+      const origin = frame
+        ? { x: frame.x + spacing.frameMargin, y: frame.y + spacing.frameMargin }
+        : {
+            x: Math.min(...units.map((unit) => unit.box.x)),
+            y: Math.min(...units.map((unit) => unit.box.y)),
+          };
+      const placed: Placed[] = units.map((unit) => ({
+        unit,
+        x: Math.round(origin.x + at(unit).x),
+        y: Math.round(origin.y + at(unit).y),
+      }));
+      pushOffObstacles(
+        placed,
+        [...obstacles, ...framesAround.map(frameBox)],
+        options.direction,
+        spacing.node,
+      );
+      for (const { unit, x, y } of placed) {
+        const dx = x - unit.box.x;
+        const dy = y - unit.box.y;
+        unit.members.forEach((member) =>
+          translations.set(member.id, { dx, dy }),
+        );
       }
-    }
-  });
+      if (frame) {
+        const right = Math.max(
+          ...placed.map(({ unit, x }) => x + unit.box.width),
+        );
+        const bottom = Math.max(
+          ...placed.map(({ unit, y }) => y + unit.box.height),
+        );
+        const grown = {
+          width: Math.max(frame.width, right + spacing.frameMargin - frame.x),
+          height: Math.max(
+            frame.height,
+            bottom + spacing.frameMargin - frame.y,
+          ),
+        };
+        if (grown.width !== frame.width || grown.height !== frame.height) {
+          frames.set(frame.id, grown);
+        }
+      }
+    },
+  );
 
+  const moves = (id: string | undefined) => {
+    const translation = translations.get(id ?? "");
+    return !!translation && !!(translation.dx || translation.dy);
+  };
   const arrows = elements.filter(
     (element) =>
       isArrowElement(element) &&
       !translations.has(element.id) &&
       translations.has(element.startBinding?.elementId ?? "") &&
-      translations.has(element.endBinding?.elementId ?? ""),
+      translations.has(element.endBinding?.elementId ?? "") &&
+      (moves(element.startBinding?.elementId) ||
+        moves(element.endBinding?.elementId)),
   );
   arrows.forEach(read);
 
@@ -696,19 +807,13 @@ export const applyArrangePlan = (
   }
 
   const elementsMap = scene.getNonDeletedElementsMap();
+  // what stays where it is is left alone, arrows bound to it included, so
+  // arranging what is arranged changes nothing
   const arranged = [...plan.translations].flatMap(([id, { dx, dy }]) => {
     const element = elementsMap.get(id);
-    if (!element) {
-      return [];
-    }
-    return [
-      dx || dy
-        ? scene.mutateElement(element, {
-            x: element.x + dx,
-            y: element.y + dy,
-          })
-        : element,
-    ];
+    return element && (dx || dy)
+      ? [scene.mutateElement(element, { x: element.x + dx, y: element.y + dy })]
+      : [];
   });
   const labels = arranged.flatMap((container) => {
     const label = getBoundTextElement(container, elementsMap);

@@ -924,8 +924,40 @@ describe.each([...SCENARIOS, FRACTIONAL])(
     it("should move nothing", () => {
       expect(geometryOf(second)).toEqual(geometryOf(first));
     });
+
+    it("should change no element, arrows and labels included", () => {
+      const versions = (scene: Scene) =>
+        [...scene.values()].map(({ id, version }) => [id, version]);
+      expect(versions(second)).toEqual(versions(first));
+    });
   },
 );
+
+describe("arranging an arranged chain after an arrow's end was nudged", () => {
+  const scenario = scenarioNamed("a chain of four, scattered");
+  let nudged: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load(scenario);
+    await arrangeBy.api(requestOf(scenario));
+    const arrow = h.elements.find(isArrowElement)!;
+    const last = arrow.points.length - 1;
+    API.updateElement(arrow, {
+      points: arrow.points.map((point, i) =>
+        i === last ? pointFrom<LocalPoint>(point[0] + 3, point[1]) : point,
+      ),
+    });
+    nudged = snapshot();
+    await arrangeBy.api(requestOf(scenario));
+    again = snapshot();
+  });
+
+  it("should leave the arrow as it was left, since neither end moved", () => {
+    const arrow = [...nudged.values()].find(isArrowElement)!;
+    expect(again.get(arrow.id)).toEqual(arrow);
+  });
+});
 
 describe("when a target changes while the layout runs", () => {
   const scenario = scenarioNamed("a chain of four, scattered");
@@ -1369,11 +1401,25 @@ describe("arranging two boxes joined by a bent arrow", () => {
   });
 });
 
-describe("arranging a frame that holds a smaller frame", () => {
+describe.each([
+  { what: "the outer frame", request: ["frame-id-outer"] },
+  { what: "the whole scene, with shapes beside the frame", request: undefined },
+])("arranging $what when a frame holds a smaller frame", ({ request }) => {
   const outer = "frame-id-outer";
   const inner = "frame-id-inner";
+  const everything = [
+    "shape-id-a",
+    "shape-id-b",
+    "shape-id-c",
+    "shape-id-d",
+    "shape-id-e",
+    "shape-id-f",
+    outer,
+    inner,
+  ];
   let before: Scene;
   let after: Scene;
+  let again: Scene;
 
   const offsetToInner = (scene: Scene, id: string) => {
     const element = scene.get(id)!;
@@ -1383,7 +1429,7 @@ describe("arranging a frame that holds a smaller frame", () => {
 
   beforeEach(async () => {
     await load();
-    const box = (id: string, x: number, y: number, frameId: string) =>
+    const box = (id: string, x: number, y: number, frameId: string | null) =>
       API.createElement({
         type: "rectangle",
         id,
@@ -1401,12 +1447,20 @@ describe("arranging a frame that holds a smaller frame", () => {
         frame(inner, 300, 300, 300, 200),
         box("shape-id-c", 320, 320, inner),
         box("shape-id-d", 440, 400, inner),
+        box("shape-id-e", 1200, 0, null),
+        box("shape-id-f", 1500, 300, null),
       ],
       captureUpdate: CaptureUpdateAction.NEVER,
     });
     before = snapshot();
-    await arrangeBy.api([outer]);
+    await arrangeBy.api(request);
     after = snapshot();
+    await arrangeBy.api(request);
+    again = snapshot();
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(moved(after, again, everything)).toEqual([]);
   });
 
   it("should move the outer frame's own shapes", () => {
@@ -1427,6 +1481,110 @@ describe("arranging a frame that holds a smaller frame", () => {
 
   it("should lay no shape over the inner frame", () => {
     expect(overlaps(after, ["shape-id-a", "shape-id-b", inner])).toEqual([]);
+  });
+});
+
+describe("arranging the whole scene where a frame grows toward shapes beside it", () => {
+  const shapes = ["shape-id-e", "shape-id-f"];
+  let after: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load();
+    const box = (id: string, x: number, y: number, frameId: string | null) =>
+      API.createElement({
+        type: "rectangle",
+        id,
+        x,
+        y,
+        width: 100,
+        height: 60,
+        frameId,
+      });
+    API.updateScene({
+      elements: [
+        frame("frame-id-grows", 0, 0, 200, 100),
+        box("shape-id-a", 10, 10, "frame-id-grows"),
+        box("shape-id-b", 90, 20, "frame-id-grows"),
+        box("shape-id-c", 50, 30, "frame-id-grows"),
+        box("shape-id-e", 20, 150, null),
+        box("shape-id-f", 400, 400, null),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await arrangeBy.api(undefined);
+    after = snapshot();
+    await arrangeBy.api(undefined);
+    again = snapshot();
+  });
+
+  it("should grow the frame", () => {
+    expect(after.get("frame-id-grows")!.height).toBeGreaterThan(100);
+  });
+
+  it("should lay no shape over the frame as it grew", () => {
+    expect(overlaps(after, [...shapes, "frame-id-grows"])).toEqual([]);
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(moved(after, again, shapes)).toEqual([]);
+  });
+});
+
+describe("arranging the whole scene where a frame grows around another frame", () => {
+  const everything = [
+    "shape-id-a",
+    "shape-id-b",
+    "shape-id-c",
+    "shape-id-g",
+    "frame-id-grows",
+    "frame-id-swallowed",
+  ];
+  let after: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load();
+    const box = (id: string, x: number, y: number, frameId: string) =>
+      API.createElement({
+        type: "rectangle",
+        id,
+        x,
+        y,
+        width: 100,
+        height: 60,
+        frameId,
+      });
+    API.updateScene({
+      elements: [
+        frame("frame-id-grows", 0, 0, 300, 100),
+        box("shape-id-a", 10, 10, "frame-id-grows"),
+        box("shape-id-b", 90, 20, "frame-id-grows"),
+        box("shape-id-c", 150, 30, "frame-id-grows"),
+        frame("frame-id-swallowed", 40, 200, 200, 100),
+        box("shape-id-g", 60, 220, "frame-id-swallowed"),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await arrangeBy.api(undefined);
+    after = snapshot();
+    await arrangeBy.api(undefined);
+    again = snapshot();
+  });
+
+  it("should lay no shape over the frame it grew around", () => {
+    expect(
+      overlaps(after, [
+        "shape-id-a",
+        "shape-id-b",
+        "shape-id-c",
+        "frame-id-swallowed",
+      ]),
+    ).toEqual([]);
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(moved(after, again, everything)).toEqual([]);
   });
 });
 
