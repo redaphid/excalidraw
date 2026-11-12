@@ -50,9 +50,9 @@ type Tiles = {
 /** a raster's longest edge in device pixels; the pattern transform scales a
  * clamped raster up to the tile's on-screen size */
 export const MAX_RASTER_EDGE = 2048;
-/** the backing store all cached rasters may hold together: four rasters at
- * the longest edge */
-export const MAX_RASTER_BYTES = 4 * MAX_RASTER_EDGE * MAX_RASTER_EDGE * 4;
+/** the backing store all cached rasters may hold together: two rasters at
+ * the longest edge, so the current size and the last one always fit */
+export const MAX_RASTER_BYTES = 2 * MAX_RASTER_EDGE * MAX_RASTER_EDGE * 4;
 /** the images kept decoded: the current theme's and a few recent ones, for a
  * host that switches between themes */
 const MAX_TILES = 4;
