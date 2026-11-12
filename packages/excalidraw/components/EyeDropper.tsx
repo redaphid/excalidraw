@@ -48,6 +48,17 @@ export type EyeDropperProperties = {
   colorPickerType: ColorPickerType;
 };
 
+/** an unpremultiplied RGBA pixel drawn over an opaque one, as the screen shows it */
+const compositeOver = (
+  top: Uint8ClampedArray,
+  under: Uint8ClampedArray,
+): [number, number, number] => {
+  const alpha = top[3] / 255;
+  const channel = (i: number) =>
+    Math.round(top[i] * alpha + under[i] * (1 - alpha));
+  return [channel(0), channel(1), channel(2)];
+};
+
 export const activeEyeDropperAtom = atom<null | EyeDropperProperties>(null);
 
 export const EyeDropper: React.FC<{
@@ -124,13 +135,7 @@ export const EyeDropper: React.FC<{
       if (!backgroundCanvas) {
         return rgbToHex(pixel[0], pixel[1], pixel[2]);
       }
-      // the elements over the separate background, as the screen shows them
-      const under = read(backgroundCanvas);
-      const alpha = pixel[3] / 255;
-      const [r, g, b] = [0, 1, 2].map((i) =>
-        Math.round(pixel[i] * alpha + under[i] * (1 - alpha)),
-      );
-      return rgbToHex(r, g, b);
+      return rgbToHex(...compositeOver(pixel, read(backgroundCanvas)));
     };
 
     const getColorToApply = (color: string) =>

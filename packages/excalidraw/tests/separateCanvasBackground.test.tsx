@@ -34,7 +34,6 @@ const count = (canvas: HTMLCanvasElement | null): Painted => {
   };
 };
 
-/** Scrolls a little and waits for the static scene to repaint. */
 const repaint = async () => {
   const canvases = [GlobalTestState.canvas, backgroundCanvas()];
   for (const canvas of canvases) {

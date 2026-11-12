@@ -642,7 +642,6 @@ class App extends React.Component<AppProps, AppState> {
   public getCanvasMode = (): AppState["theme"] =>
     this.cssTheme.canvas.mode ?? this.state.theme;
 
-  /** under the static canvas, holding its background and grid, when `separateCanvasBackground` is set */
   public backgroundCanvas = (): HTMLCanvasElement | null =>
     this.props.separateCanvasBackground ? this.separateBackgroundCanvas : null;
 
