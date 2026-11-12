@@ -280,7 +280,6 @@ describe("contextMenu element", () => {
       "deleteSelectedElements",
       "copyElementLink",
       "ungroup",
-      "arrangeElements",
       "addToLibrary",
       "flipHorizontal",
       "flipVertical",

@@ -359,10 +359,30 @@ const CRAMPED: Scenario = {
 const FRACTIONAL: Scenario = {
   name: "a chain of four at fractional coordinates",
   shapes: [
-    { id: "shape-id-alpha", at: [500.37, 0.61], size: [161.5, 80.25], label: "Alpha" },
-    { id: "shape-id-bravo", at: [0.12, 400.49], size: [159.5, 79.75], label: "Bravo" },
-    { id: "shape-id-charlie", at: [700.9, 300.5], size: [160.5, 80.5], label: "Charlie" },
-    { id: "shape-id-delta", at: [100.25, 50.75], size: [163.5, 81.5], label: "Delta" },
+    {
+      id: "shape-id-alpha",
+      at: [500.37, 0.61],
+      size: [161.5, 80.25],
+      label: "Alpha",
+    },
+    {
+      id: "shape-id-bravo",
+      at: [0.12, 400.49],
+      size: [159.5, 79.75],
+      label: "Bravo",
+    },
+    {
+      id: "shape-id-charlie",
+      at: [700.9, 300.5],
+      size: [160.5, 80.5],
+      label: "Charlie",
+    },
+    {
+      id: "shape-id-delta",
+      at: [100.25, 50.75],
+      size: [163.5, 81.5],
+      label: "Delta",
+    },
   ],
   joins: [
     ["shape-id-alpha", "shape-id-bravo"],
@@ -887,22 +907,25 @@ describe.each(TRIGGERS)("undoing an arrange made by %s", (trigger) => {
   });
 });
 
-describe.each([...SCENARIOS, FRACTIONAL])("arranging $name a second time", (scenario) => {
-  let first: Scene;
-  let second: Scene;
+describe.each([...SCENARIOS, FRACTIONAL])(
+  "arranging $name a second time",
+  (scenario) => {
+    let first: Scene;
+    let second: Scene;
 
-  beforeEach(async () => {
-    await load(scenario);
-    await arrangeBy.api(requestOf(scenario));
-    first = snapshot();
-    await arrangeBy.api(requestOf(scenario));
-    second = snapshot();
-  });
+    beforeEach(async () => {
+      await load(scenario);
+      await arrangeBy.api(requestOf(scenario));
+      first = snapshot();
+      await arrangeBy.api(requestOf(scenario));
+      second = snapshot();
+    });
 
-  it("should move nothing", () => {
-    expect(geometryOf(second)).toEqual(geometryOf(first));
-  });
-});
+    it("should move nothing", () => {
+      expect(geometryOf(second)).toEqual(geometryOf(first));
+    });
+  },
+);
 
 describe("when a target changes while the layout runs", () => {
   const scenario = scenarioNamed("a chain of four, scattered");
@@ -1397,9 +1420,9 @@ describe("arranging a frame that holds a smaller frame", () => {
   });
 
   it("should keep the inner frame inside the outer one", () => {
-    expect(inside(extentOf(after.get(inner)!), extentOf(after.get(outer)!))).toBe(
-      true,
-    );
+    expect(
+      inside(extentOf(after.get(inner)!), extentOf(after.get(outer)!)),
+    ).toBe(true);
   });
 
   it("should lay no shape over the inner frame", () => {
@@ -1455,9 +1478,17 @@ describe("arranging shapes around loose text and a stroke drawn in a box", () =>
   });
 
   it("should carry the stroke with the box it was drawn in", () => {
-    const alpha = { was: before.get("shape-id-alpha")!, now: after.get("shape-id-alpha")! };
-    const tick = { was: before.get("freedraw-id-tick")!, now: after.get("freedraw-id-tick")! };
-    expect(moved(before, after, ["shape-id-alpha"])).toEqual(["shape-id-alpha"]);
+    const alpha = {
+      was: before.get("shape-id-alpha")!,
+      now: after.get("shape-id-alpha")!,
+    };
+    const tick = {
+      was: before.get("freedraw-id-tick")!,
+      now: after.get("freedraw-id-tick")!,
+    };
+    expect(moved(before, after, ["shape-id-alpha"])).toEqual([
+      "shape-id-alpha",
+    ]);
     expect([tick.now.x - tick.was.x, tick.now.y - tick.was.y]).toEqual([
       alpha.now.x - alpha.was.x,
       alpha.now.y - alpha.was.y,
@@ -1489,17 +1520,28 @@ describe("pressing Shift+Alt+A with nothing selected", () => {
 });
 
 describe("the Auto-arrange button in the styles panel", () => {
-  const scenario = scenarioNamed("a chain of three inside a frame that holds them");
+  const scenario = scenarioNamed(
+    "a chain of three inside a frame that holds them",
+  );
   const button = () =>
-    document.querySelector<HTMLButtonElement>('button[aria-label="Auto-arrange"]');
-  const legend = () => button()?.closest("fieldset")?.querySelector("legend")?.textContent;
+    document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Auto-arrange"]',
+    );
+  const legend = () =>
+    button()?.closest("fieldset")?.querySelector("legend")?.textContent;
 
   beforeEach(async () => {
     await load(scenario);
     API.updateScene({
       elements: [
         ...h.elements,
-        API.createElement({ type: "text", id: "text-id-loose", x: 800, y: 0, text: "loose" }),
+        API.createElement({
+          type: "text",
+          id: "text-id-loose",
+          x: 800,
+          y: 0,
+          text: "loose",
+        }),
       ],
       captureUpdate: CaptureUpdateAction.NEVER,
     });
