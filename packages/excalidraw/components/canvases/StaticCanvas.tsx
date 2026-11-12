@@ -88,7 +88,6 @@ const getRelevantAppStateProps = (appState: AppState): StaticCanvasAppState => {
     hoveredElementIds: appState.hoveredElementIds,
     offsetLeft: appState.offsetLeft,
     offsetTop: appState.offsetTop,
-    theme: appState.theme,
     shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
     viewBackgroundColor: appState.viewBackgroundColor,
     viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
