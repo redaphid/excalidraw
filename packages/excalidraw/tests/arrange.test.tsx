@@ -1040,9 +1040,10 @@ describe("arranging with the pointer alone", () => {
     const perform = watchArrange();
     await act(async () => {
       click();
+      // the context menu closes first and runs the action from that state update
+      await vi.waitFor(() => expect(perform).toHaveBeenCalledTimes(1));
       await perform.mock.results[0]?.value;
     });
-    expect(perform).toHaveBeenCalledTimes(1);
     expect(h.state.toast).toBeNull();
   };
 
@@ -1056,6 +1057,8 @@ describe("arranging with the pointer alone", () => {
     const bottom = Math.max(...picked.map((shape) => shape.y + shape.height));
     mouse.reset();
     mouse.downAt(left, top);
+    // the first move opens the selection box; the next one sizes it and selects
+    mouse.moveTo(left + 20, top + 20);
     mouse.moveTo(right + 20, bottom + 20);
     mouse.upAt(right + 20, bottom + 20);
     expect(ids.every((id) => h.state.selectedElementIds[id])).toBe(true);
