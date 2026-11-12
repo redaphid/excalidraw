@@ -621,6 +621,7 @@ const gesture: Gesture = {
 
 class App extends React.Component<AppProps, AppState> {
   canvas: AppClassProperties["canvas"];
+  private separateBackgroundCanvas: HTMLCanvasElement;
   interactiveCanvas: AppClassProperties["interactiveCanvas"] = null;
   public sessionExportThemeOverride: AppState["theme"] | undefined;
   rc: RoughCanvas;
@@ -637,6 +638,13 @@ class App extends React.Component<AppProps, AppState> {
   /** parsed from the container's custom properties when the `css` prop or
    * the theme changes; renderers read it instead of the DOM */
   public cssTheme: CssTheme = EMPTY_CSS_THEME;
+
+  public getCanvasMode = (): AppState["theme"] =>
+    this.cssTheme.canvas.mode ?? this.state.theme;
+
+  public backgroundCanvas = (): HTMLCanvasElement | null =>
+    this.props.separateCanvasBackground ? this.separateBackgroundCanvas : null;
+
   private scopedCss: { css: string; scoped: string } | null = null;
 
   public get ownerDocument(): Document {
@@ -928,8 +936,9 @@ class App extends React.Component<AppProps, AppState> {
     this.scene = new Scene();
 
     this.canvas = this.ownerDocument.createElement("canvas");
+    this.separateBackgroundCanvas = this.ownerDocument.createElement("canvas");
     this.rc = rough.canvas(this.canvas);
-    this.renderer = new Renderer(this.scene);
+    this.renderer = new Renderer(this.scene, () => this.ownerWindow);
     this.visibleElements = [];
 
     this.store = new Store(this);
@@ -2176,7 +2185,7 @@ class App extends React.Component<AppProps, AppState> {
   private getFrameNameWidth = (name: string) => {
     const { nameSize, nameFontFamily } = getFrameStyle(
       this.cssTheme.canvas,
-      this.state.theme,
+      this.getCanvasMode(),
     );
     const font = `${nameSize}px ${nameFontFamily}` as FontString;
     const key = `${font}\n${name}`;
@@ -2238,8 +2247,9 @@ class App extends React.Component<AppProps, AppState> {
       return null;
     }
 
-    const isDarkTheme = this.state.theme === THEME.DARK;
-    const frameStyle = getFrameStyle(this.cssTheme.canvas, this.state.theme);
+    const canvasMode = this.getCanvasMode();
+    const isDarkTheme = canvasMode === THEME.DARK;
+    const frameStyle = getFrameStyle(this.cssTheme.canvas, canvasMode);
     const nonDeletedFramesLikes = this.scene.getNonDeletedFramesLikes();
 
     const focusedSearchMatch =
@@ -2773,6 +2783,7 @@ class App extends React.Component<AppProps, AppState> {
                           )}
                           <StaticCanvas
                             canvas={this.canvas}
+                            backgroundCanvas={this.backgroundCanvas()}
                             rc={this.rc}
                             elementsMap={renderableElementsMap}
                             allElementsMap={allElementsMap}
@@ -2800,7 +2811,7 @@ class App extends React.Component<AppProps, AppState> {
                               pendingFlowchartNodes: newElementSplit
                                 ? null
                                 : this.flowchart.pendingNodes,
-                              theme: this.state.theme,
+                              theme: this.getCanvasMode(),
                               canvasTheme: this.cssTheme.canvas,
                               ...this.getRenderOverrideConfig(),
                               settledBitmapCount: newElementSplit
@@ -2830,7 +2841,7 @@ class App extends React.Component<AppProps, AppState> {
                                 pendingFlowchartNodes: newElementSplit
                                   ? this.flowchart.pendingNodes
                                   : null,
-                                theme: this.state.theme,
+                                theme: this.getCanvasMode(),
                                 canvasTheme: this.cssTheme.canvas,
                                 ...this.getRenderOverrideConfig(),
                               }}
@@ -2853,6 +2864,7 @@ class App extends React.Component<AppProps, AppState> {
                             allElementsMap={allElementsMap}
                             selectedElements={selectedElements}
                             canvasNonce={canvasNonce}
+                            canvasMode={this.getCanvasMode()}
                             selectionNonce={
                               this.state.selectionElement?.versionNonce
                             }
@@ -4111,7 +4123,7 @@ class App extends React.Component<AppProps, AppState> {
     this.scene.destroy();
     this.scene = new Scene();
     this.fonts = new Fonts(this.scene, this.ownerDocument);
-    this.renderer = new Renderer(this.scene);
+    this.renderer = new Renderer(this.scene, () => this.ownerWindow);
     this.files = {};
     this.imageCache.clear();
     this.resizeObserver?.disconnect();
@@ -4517,7 +4529,7 @@ class App extends React.Component<AppProps, AppState> {
     const elementsMap = this.scene.getElementsMapIncludingDeleted();
 
     const shouldExportWithDarkMode =
-      (this.sessionExportThemeOverride ?? this.state.theme) === THEME.DARK;
+      (this.sessionExportThemeOverride ?? this.getCanvasMode()) === THEME.DARK;
 
     if (this.state.exportWithDarkMode !== shouldExportWithDarkMode) {
       this.setState({ exportWithDarkMode: shouldExportWithDarkMode });
@@ -5342,6 +5354,7 @@ ${css}
       }));
     }
     if (canvasChanged) {
+      this.cursor.applyForTool();
       this.triggerRender(true);
     }
   }

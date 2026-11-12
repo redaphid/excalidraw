@@ -200,7 +200,6 @@ type _CommonCanvasAppState = {
   frameToHighlight: AppState["frameToHighlight"]; // TODO: move to interactive canvas if possible
   offsetLeft: AppState["offsetLeft"];
   offsetTop: AppState["offsetTop"];
-  theme: AppState["theme"];
 };
 
 export type StaticCanvasAppState = Readonly<
@@ -224,6 +223,7 @@ export type StaticCanvasAppState = Readonly<
 
 export type InteractiveCanvasAppState = Readonly<
   _CommonCanvasAppState & {
+    theme: AppState["theme"];
     activeTool: AppState["activeTool"];
     // renderInteractiveScene
     activeEmbeddable: AppState["activeEmbeddable"];
@@ -920,6 +920,16 @@ export interface ExcalidrawProps {
    * named widths, which are hidden while the tool is out.
    */
   freedrawStrokeWidth?: number;
+  /**
+   * Paints the canvas background and the grid on a canvas of their own,
+   * `canvas.excalidraw__canvas.background`, under the static canvas and in
+   * the same pass. The static canvas then holds only the elements, over
+   * transparency, for a host that copies it over a background of its own.
+   * The screen looks the same either way. The `canvas` that
+   * `UIOptions.canvasActions.export.renderCustomUI` receives is that static
+   * canvas, so it holds only the elements too.
+   */
+  separateCanvasBackground?: boolean;
   onPointerUpdate?: (payload: {
     pointer: { x: number; y: number; tool: "pointer" | "laser" };
     button: "down" | "up";
@@ -1305,7 +1315,9 @@ export type AppClassProperties = {
   interactiveCanvas: HTMLCanvasElement | null;
   /** static canvas */
   canvas: HTMLCanvasElement;
+  backgroundCanvas: App["backgroundCanvas"];
   cssTheme: App["cssTheme"];
+  getCanvasMode: App["getCanvasMode"];
   focusContainer(): void;
   library: Library;
   imageCache: Map<

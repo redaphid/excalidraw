@@ -105,7 +105,7 @@ export const renderFrameOverlay = (
   if (!frameRendering.enabled) {
     return;
   }
-  const style = getFrameStyle(canvasTheme, appState.theme);
+  const style = getFrameStyle(canvasTheme, canvasTheme?.mode ?? appState.theme);
   const font = `${style.nameSize}px ${style.nameFontFamily}`;
 
   const visible = frames

@@ -15,6 +15,7 @@ import { elementsAreInSameGroup } from "@excalidraw/element";
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
 import { t } from "../../i18n";
+import { themeDrawsGrid } from "../../cssTheme";
 import { isGridModeEnabled } from "../../snapping";
 import { useExcalidrawAppState, useExcalidrawSetAppState } from "../App";
 import { Island } from "../Island";
@@ -55,7 +56,9 @@ export const Stats = (props: StatsProps) => {
     selectedElementIds: appState.selectedElementIds,
     includeBoundTextElement: false,
   });
-  const gridModeEnabled = isGridModeEnabled(props.app);
+  // the step sets the bold lines a theme draws and the step snapping takes
+  const gridStepShown =
+    isGridModeEnabled(props.app) || themeDrawsGrid(props.app.cssTheme.canvas);
 
   return (
     <StatsInner
@@ -63,7 +66,7 @@ export const Stats = (props: StatsProps) => {
       appState={appState}
       sceneNonce={sceneNonce}
       selectedElements={selectedElements}
-      gridModeEnabled={gridModeEnabled}
+      gridStepShown={gridStepShown}
     />
   );
 };
@@ -120,12 +123,12 @@ export const StatsInner = memo(
     selectedElements,
     appState,
     sceneNonce,
-    gridModeEnabled,
+    gridStepShown,
   }: StatsProps & {
     sceneNonce: number;
     selectedElements: readonly NonDeletedExcalidrawElement[];
     appState: AppState;
-    gridModeEnabled: boolean;
+    gridStepShown: boolean;
   }) => {
     const scene = app.scene;
     const elements = scene.getNonDeletedElements();
@@ -224,7 +227,7 @@ export const StatsInner = memo(
                 <div>{t("stats.height")}</div>
                 <div>{sceneDimension.height}</div>
               </StatsRow>
-              {gridModeEnabled && (
+              {gridStepShown && (
                 <>
                   <StatsRow heading>Canvas</StatsRow>
                   <StatsRow>
@@ -439,7 +442,7 @@ export const StatsInner = memo(
       prev.sceneNonce === next.sceneNonce &&
       prev.selectedElements === next.selectedElements &&
       prev.appState.stats.panels === next.appState.stats.panels &&
-      prev.gridModeEnabled === next.gridModeEnabled &&
+      prev.gridStepShown === next.gridStepShown &&
       prev.appState.gridStep === next.appState.gridStep &&
       prev.appState.croppingElementId === next.appState.croppingElementId
     );

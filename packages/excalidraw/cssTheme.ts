@@ -2,6 +2,7 @@ import {
   COLOR_PALETTE,
   FONT_FAMILY,
   STICKY_NOTE_SHADOW_REACH,
+  THEME,
 } from "@excalidraw/common";
 
 import type { ColorPaletteCustom, ColorTuple } from "@excalidraw/common";
@@ -13,6 +14,7 @@ import type {
   StrokeRoundness,
   StrokeStyle,
   StrokeVariability,
+  Theme,
 } from "@excalidraw/element/types";
 import type { StrokeWidthKey } from "@excalidraw/common";
 
@@ -23,6 +25,9 @@ import type { AppState, StaticCanvasAppState } from "./types";
  * field is optional; the renderers fall back to their built-in values.
  */
 export type CanvasTheme = Readonly<{
+  /** the mode the canvas paints element colors in, whatever the editor's
+   * own light/dark setting */
+  mode?: Theme;
   /** painted instead of the default `viewBackgroundColor` (see
    * `getThemeCanvasBackground`); a background the user picked is kept */
   background?: string;
@@ -301,15 +306,15 @@ const definedEntries = <T extends Record<string, unknown>>(record: T) =>
     Object.entries(record).filter(([, value]) => value !== undefined),
   ) as { [K in keyof T]?: Exclude<T[K], undefined> };
 
+/** The theme alone draws the grid: grid mode only snaps. */
+export const themeDrawsGrid = (canvas: CanvasTheme) =>
+  canvas.gridColor !== undefined || canvas.gridBoldColor !== undefined;
+
 /**
  * Parses the theme's custom properties from the editor container's computed
  * style. Unset or malformed values are left out, so the editor keeps its
  * built-in behavior for them.
  */
-/** The theme alone draws the grid: grid mode only snaps. */
-export const themeDrawsGrid = (canvas: CanvasTheme) =>
-  canvas.gridColor !== undefined || canvas.gridBoldColor !== undefined;
-
 export const readCssTheme = (style: {
   getPropertyValue: ReadProperty;
 }): CssTheme => {
@@ -323,6 +328,7 @@ export const readCssTheme = (style: {
   );
 
   const canvas: CanvasTheme = definedEntries({
+    mode: oneOf<Theme>([THEME.LIGHT, THEME.DARK])(read("--canvas-mode")),
     background: color("--canvas-background"),
     gridColor: color("--canvas-grid-color"),
     gridBoldColor: color("--canvas-grid-bold-color"),

@@ -32,6 +32,7 @@ const MS_PER_BITMAP = 3;
 const ZOOM_SETTLE_AND_BUILD_MS = 400;
 
 let lastCanvas: HTMLCanvasElement | null = null;
+const renderersToDestroy: Renderer[] = [];
 
 beforeEach(() => {
   vi.stubGlobal("requestIdleCallback", (callback: IdleRequestCallback) =>
@@ -44,13 +45,16 @@ afterEach(() => {
   if (lastCanvas) {
     cancelSettledBitmaps(lastCanvas);
   }
+  renderersToDestroy.splice(0).forEach((renderer) => renderer.destroy());
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
 const board = (elements: NonDeletedExcalidrawElement[]) => {
   const scene = new Scene(elements, { skipValidation: true });
-  return { scene, renderer: new Renderer(scene) };
+  const renderer = new Renderer(scene);
+  renderersToDestroy.push(renderer);
+  return { scene, renderer };
 };
 
 /** paints a 500x500 view of the board at 1x scrolled to `scrollX`, and

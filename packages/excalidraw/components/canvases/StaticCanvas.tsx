@@ -8,7 +8,10 @@ import type {
 } from "@excalidraw/element/types";
 
 import { isRenderThrottlingEnabled } from "../../reactUtils";
-import { renderStaticScene } from "../../renderer/staticScene";
+import {
+  getStaticSceneAppState,
+  renderStaticScene,
+} from "../../renderer/staticScene";
 
 import type {
   RenderableElementsMap,
@@ -19,6 +22,7 @@ import type { RoughCanvas } from "roughjs/bin/canvas";
 
 type StaticCanvasProps = {
   canvas: HTMLCanvasElement;
+  backgroundCanvas: HTMLCanvasElement | null;
   rc: RoughCanvas;
   elementsMap: RenderableElementsMap;
   allElementsMap: NonDeletedSceneElementsMap;
@@ -36,11 +40,21 @@ const StaticCanvas = (props: StaticCanvasProps) => {
   const isComponentMounted = useRef(false);
 
   useEffect(() => {
-    props.canvas.style.width = `${props.appState.width}px`;
-    props.canvas.style.height = `${props.appState.height}px`;
-    props.canvas.width = props.appState.width * props.scale;
-    props.canvas.height = props.appState.height * props.scale;
-  }, [props.appState.height, props.appState.width, props.canvas, props.scale]);
+    for (const canvas of [props.canvas, props.backgroundCanvas]) {
+      if (canvas) {
+        canvas.style.width = `${props.appState.width}px`;
+        canvas.style.height = `${props.appState.height}px`;
+        canvas.width = props.appState.width * props.scale;
+        canvas.height = props.appState.height * props.scale;
+      }
+    }
+  }, [
+    props.appState.height,
+    props.appState.width,
+    props.canvas,
+    props.backgroundCanvas,
+    props.scale,
+  ]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -48,18 +62,23 @@ const StaticCanvas = (props: StaticCanvasProps) => {
       return;
     }
 
-    const canvas = props.canvas;
+    const { canvas, backgroundCanvas } = props;
 
     if (!isComponentMounted.current) {
       isComponentMounted.current = true;
-
-      wrapper.replaceChildren(canvas);
       canvas.classList.add("excalidraw__canvas", "static");
+    }
+    if (wrapper.firstChild !== (backgroundCanvas ?? canvas)) {
+      backgroundCanvas?.classList.add("excalidraw__canvas", "background");
+      wrapper.replaceChildren(
+        ...(backgroundCanvas ? [backgroundCanvas, canvas] : [canvas]),
+      );
     }
 
     renderStaticScene(
       {
         canvas,
+        backgroundCanvas,
         rc: props.rc,
         scale: props.scale,
         elementsMap: props.elementsMap,
@@ -76,43 +95,13 @@ const StaticCanvas = (props: StaticCanvasProps) => {
   return <div className="excalidraw__canvas-wrapper" ref={wrapperRef} />;
 };
 
-const getRelevantAppStateProps = (appState: AppState): StaticCanvasAppState => {
-  const relevantAppStateProps = {
-    zoom: appState.zoom,
-    scrollX: appState.scrollX,
-    scrollY: appState.scrollY,
-    width: appState.width,
-    height: appState.height,
-    viewModeEnabled: appState.viewModeEnabled,
-    openDialog: appState.openDialog,
-    hoveredElementIds: appState.hoveredElementIds,
-    offsetLeft: appState.offsetLeft,
-    offsetTop: appState.offsetTop,
-    theme: appState.theme,
-    shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
-    viewBackgroundColor: appState.viewBackgroundColor,
-    viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
-    exportScale: appState.exportScale,
-    selectedElementsAreBeingDragged: appState.selectedElementsAreBeingDragged,
-    gridSize: appState.gridSize,
-    gridStep: appState.gridStep,
-    frameRendering: appState.frameRendering,
-    selectedElementIds: appState.selectedElementIds,
-    frameToHighlight: appState.frameToHighlight,
-    editingGroupId: appState.editingGroupId,
-    currentHoveredFontFamily: appState.currentHoveredFontFamily,
-    croppingElementId: appState.croppingElementId,
-  };
-
-  return relevantAppStateProps;
-};
-
 const areEqual = (
   prevProps: StaticCanvasProps,
   nextProps: StaticCanvasProps,
 ) => {
   if (
     prevProps.canvasNonce !== nextProps.canvasNonce ||
+    prevProps.backgroundCanvas !== nextProps.backgroundCanvas ||
     prevProps.scale !== nextProps.scale ||
     // we need to memoize on elementsMap because they may have renewed
     // even if canvasNonce didn't change (e.g. we filter elements out based
@@ -127,8 +116,8 @@ const areEqual = (
     isShallowEqual(
       // asserting AppState because we're being passed the whole AppState
       // but resolve to only the StaticCanvas-relevant props
-      getRelevantAppStateProps(prevProps.appState as AppState),
-      getRelevantAppStateProps(nextProps.appState as AppState),
+      getStaticSceneAppState(prevProps.appState as AppState),
+      getStaticSceneAppState(nextProps.appState as AppState),
     ) && isShallowEqual(prevProps.renderConfig, nextProps.renderConfig)
   );
 };
