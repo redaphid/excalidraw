@@ -46,7 +46,11 @@ import type {
 } from "@excalidraw/excalidraw/scene/types";
 
 import { getElementDetailScale, getNominalSize } from "./authoring";
-import { getStroke, getStrokePoints } from "./perfectFreehand";
+import {
+  getStroke,
+  getStrokePoints,
+  IncrementalStroke,
+} from "./perfectFreehand";
 
 import { elementWithCanvasCache } from "./renderElement";
 
@@ -70,6 +74,8 @@ import {
   getElementAbsoluteCoords,
 } from "./bounds";
 import { shouldTestInside } from "./collision";
+
+import type { StrokeOptions } from "./perfectFreehand";
 
 import type {
   ExcalidrawElement,
@@ -1271,7 +1277,7 @@ const getFreeDrawSvgPath = (element: ExcalidrawFreeDrawElement) => {
   if (cached?.version === element.version) {
     return cached.path;
   }
-  const path = getSvgPathFromStroke(
+  const path = freedrawSvgPath.getPath(
     getFreedrawOutlinePoints(element),
   ) as SVGPathString;
   freedrawSvgPathCache.set(element, { version: element.version, path });
@@ -1305,6 +1311,21 @@ const CONSTANT_WIDTH_FREEDRAW = {
 const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
   element.strokeOptions?.streamline ?? DEFAULT_STROKE_STREAMLINE;
 
+const easeOutSine = (t: number) => Math.sin((t * Math.PI) / 2);
+
+let strokeBeingDrawn: {
+  options: StrokeOptions;
+  stroke: IncrementalStroke;
+} | null = null;
+
+const isSameStrokeOptions = (a: StrokeOptions, b: StrokeOptions) =>
+  a.simulatePressure === b.simulatePressure &&
+  a.size === b.size &&
+  a.thinning === b.thinning &&
+  a.streamline === b.streamline &&
+  a.start?.taper === b.start?.taper &&
+  a.end?.taper === b.end?.taper;
+
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
  * perfect-freehand. This is the original Excalidraw freedraw look.
@@ -1312,31 +1333,38 @@ const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
 const getVariableWidthFreedrawOutline = (
   element: ExcalidrawFreeDrawElement,
 ): [number, number][] => {
-  // If input points are empty (should they ever be?) return a dot
-  const inputPoints = element.simulatePressure
-    ? element.points
-    : element.points.length
-    ? element.points.map(
-        ([x, y], i) => [x, y, element.pressures[i]] as [number, number, number],
-      )
-    : [[0, 0, 0.5]];
-
   const size = element.strokeWidth * VARIABLE_WIDTH_FREEDRAW.SIZE_FACTOR;
   const taper = element.strokeOptions?.taper;
-  return getStroke(inputPoints as number[][], {
+  const options: StrokeOptions = {
     simulatePressure: element.simulatePressure,
     size,
     thinning:
       element.strokeOptions?.thinning ?? VARIABLE_WIDTH_FREEDRAW.THINNING,
     smoothing: VARIABLE_WIDTH_FREEDRAW.SMOOTHING,
     streamline: getFreedrawStreamline(element),
-    easing: (t) => Math.sin((t * Math.PI) / 2), // https://easings.net/#easeOutSine
+    easing: easeOutSine,
     ...(taper && {
       start: { taper: taper * size },
       end: { taper: taper * size },
     }),
     last: true,
-  }) as [number, number][];
+  };
+
+  if (!element.points.length) {
+    return getStroke([[0, 0, 0.5]], options) as [number, number][];
+  }
+
+  if (
+    !strokeBeingDrawn ||
+    !isSameStrokeOptions(strokeBeingDrawn.options, options)
+  ) {
+    strokeBeingDrawn = { options, stroke: new IncrementalStroke(options) };
+  }
+
+  return strokeBeingDrawn.stroke.getOutline(
+    element.points,
+    element.simulatePressure ? undefined : element.pressures,
+  ) as [number, number][];
 };
 
 /**
@@ -1426,29 +1454,94 @@ const med = (A: number[], B: number[]) => {
   return [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
 };
 
-const getSvgPathFromStroke = (points: number[][]): string => {
-  if (!points.length) {
-    return "";
+const isSamePoint = (A: number[], B: number[]) =>
+  A[0] === B[0] && A[1] === B[1];
+
+const joinSegments = (a: string, b: string) => (a && b ? `${a} ${b}` : a || b);
+
+export class IncrementalSvgPath {
+  private outline: number[][] = [];
+  private segments: string[] = [];
+  private front = { count: 0, text: "" };
+  private back = { count: 0, text: "" };
+  private path = "";
+
+  getPath(points: number[][]): string {
+    const count = points.length;
+    if (!count) {
+      return "";
+    }
+
+    const { outline: previous, segments: previousSegments } = this;
+    const reusable = Math.min(count, previous.length);
+    let head = 0;
+    while (head < reusable && isSamePoint(points[head], previous[head])) {
+      head++;
+    }
+    if (head === count && count === previous.length) {
+      return this.path;
+    }
+    let tail = 0;
+    while (
+      tail < reusable - head &&
+      isSamePoint(
+        points[count - 1 - tail],
+        previous[previous.length - 1 - tail],
+      )
+    ) {
+      tail++;
+    }
+
+    const segments = new Array<string>(count);
+    const shift = previous.length - count;
+    for (let i = 0; i < count - 1; i++) {
+      segments[i] =
+        i + 1 < head
+          ? previousSegments[i]
+          : i >= count - tail
+          ? previousSegments[i + shift]
+          : `${points[i]} ${med(points[i], points[i + 1])}`;
+    }
+    const last = points[count - 1];
+    segments[count - 1] =
+      tail && head
+        ? previousSegments[previous.length - 1]
+        : `${last} ${med(last, points[0])}`;
+
+    const frontCount = Math.max(0, head - 1);
+    const front =
+      this.front.count <= frontCount
+        ? joinSegments(
+            this.front.text,
+            segments.slice(this.front.count, frontCount).join(" "),
+          )
+        : segments.slice(0, frontCount).join(" ");
+
+    const backCount = Math.max(0, tail - 1);
+    const back =
+      this.back.count <= backCount
+        ? joinSegments(
+            segments
+              .slice(count - 1 - backCount, count - 1 - this.back.count)
+              .join(" "),
+            this.back.text,
+          )
+        : segments.slice(count - 1 - backCount, count - 1).join(" ");
+
+    const middle = segments.slice(frontCount, count - 1 - backCount).join(" ");
+
+    this.outline = points;
+    this.segments = segments;
+    this.front = { count: frontCount, text: front };
+    this.back = { count: backCount, text: back };
+    this.path = `M ${points[0]} Q ${joinSegments(
+      joinSegments(joinSegments(front, middle), back),
+      segments[count - 1],
+    )} L ${points[0]} Z`;
+    return this.path;
   }
+}
 
-  const max = points.length - 1;
-
-  // Full precision: cut to two decimals, a stroke drawn deep in a zoom turns
-  // into a staircase or collapses to a dot, and the cut costs more than the
-  // text it trims.
-  return points
-    .reduce(
-      (acc, point, i, arr) => {
-        if (i === max) {
-          acc.push(point, med(point, arr[0]), "L", arr[0], "Z");
-        } else {
-          acc.push(point, med(point, arr[i + 1]));
-        }
-        return acc;
-      },
-      ["M", points[0], "Q"],
-    )
-    .join(" ");
-};
+const freedrawSvgPath = new IncrementalSvgPath();
 
 // -----------------------------------------------------------------------------

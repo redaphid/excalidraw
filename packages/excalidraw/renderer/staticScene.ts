@@ -580,6 +580,7 @@ const elementsToPaintOver = (
     next.appState.newElement ||
     next.renderConfig.isExporting ||
     next.scale !== painted.config.scale ||
+    next.backgroundCanvas !== painted.config.backgroundCanvas ||
     painted.settledBitmapCount !== getSettledBitmapCount() ||
     painted.loadedImageCount !==
       countLoadedImages(next.renderConfig.imageCache) ||
@@ -635,6 +636,7 @@ const elementsToPaintOver = (
 const _renderStaticScene = (config: StaticSceneRenderConfig) => {
   const {
     canvas,
+    backgroundCanvas,
     rc,
     elementsMap,
     allElementsMap,
@@ -691,8 +693,8 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
     scale,
   );
 
-  const context = bootstrapCanvas({
-    canvas,
+  const backgroundContext = bootstrapCanvas({
+    canvas: backgroundCanvas ?? canvas,
     scale,
     normalizedWidth,
     normalizedHeight,
@@ -704,6 +706,15 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
       renderConfig.canvasTheme,
     ),
   });
+  const context = backgroundCanvas
+    ? bootstrapCanvas({
+        canvas,
+        scale,
+        normalizedWidth,
+        normalizedHeight,
+        viewBackgroundColor: "transparent",
+      })
+    : backgroundContext;
 
   // the backdrop belongs to the background: an export without one has neither
   const backdrop =
@@ -716,11 +727,14 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
 
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);
+  if (backgroundContext !== context) {
+    backgroundContext.scale(appState.zoom.value, appState.zoom.value);
+  }
 
   // Grid
   if (renderGrid) {
     strokeGrid(
-      context,
+      backgroundContext,
       renderConfig.gridSize ?? appState.gridSize,
       appState.gridStep,
       appState.scrollX,

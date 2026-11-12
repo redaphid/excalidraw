@@ -622,6 +622,7 @@ const gesture: Gesture = {
 
 class App extends React.Component<AppProps, AppState> {
   canvas: AppClassProperties["canvas"];
+  private separateBackgroundCanvas: HTMLCanvasElement;
   interactiveCanvas: AppClassProperties["interactiveCanvas"] = null;
   public sessionExportThemeOverride: AppState["theme"] | undefined;
   rc: RoughCanvas;
@@ -641,6 +642,9 @@ class App extends React.Component<AppProps, AppState> {
 
   public getCanvasMode = (): AppState["theme"] =>
     this.cssTheme.canvas.mode ?? this.state.theme;
+
+  public backgroundCanvas = (): HTMLCanvasElement | null =>
+    this.props.separateCanvasBackground ? this.separateBackgroundCanvas : null;
 
   private scopedCss: { css: string; scoped: string } | null = null;
 
@@ -933,6 +937,7 @@ class App extends React.Component<AppProps, AppState> {
     this.scene = new Scene();
 
     this.canvas = this.ownerDocument.createElement("canvas");
+    this.separateBackgroundCanvas = this.ownerDocument.createElement("canvas");
     this.rc = rough.canvas(this.canvas);
     this.renderer = new Renderer(this.scene, () => this.ownerWindow);
     this.visibleElements = [];
@@ -2779,6 +2784,7 @@ class App extends React.Component<AppProps, AppState> {
                           )}
                           <StaticCanvas
                             canvas={this.canvas}
+                            backgroundCanvas={this.backgroundCanvas()}
                             rc={this.rc}
                             elementsMap={renderableElementsMap}
                             allElementsMap={allElementsMap}
