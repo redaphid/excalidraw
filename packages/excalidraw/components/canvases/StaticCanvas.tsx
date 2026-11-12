@@ -22,6 +22,7 @@ import type { RoughCanvas } from "roughjs/bin/canvas";
 
 type StaticCanvasProps = {
   canvas: HTMLCanvasElement;
+  backgroundCanvas: HTMLCanvasElement | null;
   rc: RoughCanvas;
   elementsMap: RenderableElementsMap;
   allElementsMap: NonDeletedSceneElementsMap;
@@ -39,11 +40,21 @@ const StaticCanvas = (props: StaticCanvasProps) => {
   const isComponentMounted = useRef(false);
 
   useEffect(() => {
-    props.canvas.style.width = `${props.appState.width}px`;
-    props.canvas.style.height = `${props.appState.height}px`;
-    props.canvas.width = props.appState.width * props.scale;
-    props.canvas.height = props.appState.height * props.scale;
-  }, [props.appState.height, props.appState.width, props.canvas, props.scale]);
+    for (const canvas of [props.canvas, props.backgroundCanvas]) {
+      if (canvas) {
+        canvas.style.width = `${props.appState.width}px`;
+        canvas.style.height = `${props.appState.height}px`;
+        canvas.width = props.appState.width * props.scale;
+        canvas.height = props.appState.height * props.scale;
+      }
+    }
+  }, [
+    props.appState.height,
+    props.appState.width,
+    props.canvas,
+    props.backgroundCanvas,
+    props.scale,
+  ]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -51,18 +62,23 @@ const StaticCanvas = (props: StaticCanvasProps) => {
       return;
     }
 
-    const canvas = props.canvas;
+    const { canvas, backgroundCanvas } = props;
 
     if (!isComponentMounted.current) {
       isComponentMounted.current = true;
-
-      wrapper.replaceChildren(canvas);
       canvas.classList.add("excalidraw__canvas", "static");
+    }
+    if (wrapper.firstChild !== (backgroundCanvas ?? canvas)) {
+      backgroundCanvas?.classList.add("excalidraw__canvas", "background");
+      wrapper.replaceChildren(
+        ...(backgroundCanvas ? [backgroundCanvas, canvas] : [canvas]),
+      );
     }
 
     renderStaticScene(
       {
         canvas,
+        backgroundCanvas,
         rc: props.rc,
         scale: props.scale,
         elementsMap: props.elementsMap,
@@ -85,6 +101,7 @@ const areEqual = (
 ) => {
   if (
     prevProps.canvasNonce !== nextProps.canvasNonce ||
+    prevProps.backgroundCanvas !== nextProps.backgroundCanvas ||
     prevProps.scale !== nextProps.scale ||
     // we need to memoize on elementsMap because they may have renewed
     // even if canvasNonce didn't change (e.g. we filter elements out based
