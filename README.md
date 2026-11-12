@@ -24,8 +24,8 @@ For everything else, see [upstream's README](https://github.com/excalidraw/excal
 | ![ctrl+wheel zoom through seven nested boxes, each ten times smaller than the last, from 83% to 100,000,000% and back](docs/media/wheel-dive.gif) | ![a rectangle, an arrow, a pen stroke and a text drawn at 1,000,000x, then zoomed out and back in](docs/media/draw-at-depth.gif) |
 | **`setViewport` flight from 1x to 10,000x** | **Pen-size flyout** |
 | ![an animated setViewport from Frame A at 1x to Frame B, ten thousand times smaller and about 23,000 units away, and back](docs/media/setviewport-flight.gif) | ![picking the pen opens a flyout with a pen-size slider; three strokes at 0.077, 0.56 and 2.6](docs/media/pen-size-flyout.gif) |
-| **Zooming through four nested portals in draw** | |
-| ![wheel zoom through four portals in draw: from the hub into a frame on the same board, across to a second board, into its other frame, across to a third board, then back out to the hub](docs/media/portal-dive.gif) | |
+| **Zooming through four nested portals in draw** |  |
+| ![wheel zoom through four portals in draw: from the hub into a frame on the same board, across to a second board, into its other frame, across to a third board, then back out to the hub](docs/media/portal-dive.gif) |  |
 
 ## Install
 
