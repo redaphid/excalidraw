@@ -51,9 +51,7 @@ export class Fonts {
   /**
    * Characters whose font faces `document.fonts` confirmed loaded, per
    * document and font family. A loaded face stays loaded for the document's
-   * lifetime, so later loads skip `fonts.check` for these characters: on a
-   * board exported tile by tile, the check used to cost more than the text it
-   * guarded.
+   * lifetime, so later loads skip `fonts.check` for these characters.
    */
   private static readonly loadedChars = new WeakMap<
     Document,
