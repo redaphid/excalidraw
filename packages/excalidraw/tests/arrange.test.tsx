@@ -1431,6 +1431,11 @@ describe("arranging shapes around loose text and a stroke drawn in a box", () =>
       y: 20,
       width: 40,
       height: 20,
+      points: [
+        pointFrom<LocalPoint>(0, 10),
+        pointFrom<LocalPoint>(15, 20),
+        pointFrom<LocalPoint>(40, 0),
+      ],
     });
     API.updateScene({
       elements: [...h.elements, note, tick],

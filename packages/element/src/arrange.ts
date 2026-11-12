@@ -717,31 +717,32 @@ export const applyArrangePlan = (
         ]
       : [];
   });
-  const arrows = plan.arrows.flatMap((id) => {
+  const between = plan.arrows.flatMap((id) => {
     const arrow = elementsMap.get(id);
-    if (!arrow || !isArrowElement(arrow)) {
-      return [];
-    }
+    // mutation is in place, so keep the points as they were
+    return arrow && isArrowElement(arrow)
+      ? [{ arrow, pointsWere: arrow.points }]
+      : [];
+  });
+  const arrows = between.map(({ arrow }) => {
     const start = plan.translations.get(arrow.startBinding!.elementId)!;
     const end = plan.translations.get(arrow.endBinding!.elementId)!;
     const last = arrow.points.length - 1;
     // the start's move carries the arrow and each bend adds its share of
-    // the way to the end's move; an elbow arrow is routed again instead
-    const points = arrow.elbowed
-      ? arrow.points
-      : arrow.points.map((point, i) =>
-          pointFrom<LocalPoint>(
-            point[0] + ((end.dx - start.dx) * i) / last,
-            point[1] + ((end.dy - start.dy) * i) / last,
+    // the way to the end's move, so the ends snap back to the outlines from
+    // nearby; an elbow arrow is routed again instead
+    return scene.mutateElement(arrow, {
+      x: arrow.x + start.dx,
+      y: arrow.y + start.dy,
+      points: arrow.elbowed
+        ? arrow.points
+        : arrow.points.map((point, i) =>
+            pointFrom<LocalPoint>(
+              point[0] + ((end.dx - start.dx) * i) / last,
+              point[1] + ((end.dy - start.dy) * i) / last,
+            ),
           ),
-        );
-    return [
-      scene.mutateElement(arrow, {
-        x: arrow.x + start.dx,
-        y: arrow.y + start.dy,
-        points,
-      }),
-    ];
+    });
   });
   const frames = [...plan.frames].flatMap(([id, size]) => {
     const frame = elementsMap.get(id);
@@ -749,6 +750,32 @@ export const applyArrangePlan = (
   });
   for (const element of arranged) {
     updateBoundElements(element, scene, { simultaneouslyUpdated: arranged });
+  }
+  // the ends snapped to the outlines on their own, so each bend keeps its
+  // offset from the line between the ends where they actually landed
+  for (const { arrow, pointsWere: was } of between) {
+    const last = was.length - 1;
+    if (arrow.elbowed || last < 2 || arrow.points.length !== was.length) {
+      continue;
+    }
+    const along = (points: readonly LocalPoint[], t: number) =>
+      pointFrom<LocalPoint>(
+        points[0][0] + (points[last][0] - points[0][0]) * t,
+        points[0][1] + (points[last][1] - points[0][1]) * t,
+      );
+    scene.mutateElement(arrow, {
+      points: arrow.points.map((point, j) => {
+        if (j === 0 || j === last) {
+          return point;
+        }
+        const chordWas = along(was, j / last);
+        const chordNow = along(arrow.points, j / last);
+        return pointFrom<LocalPoint>(
+          chordNow[0] + was[j][0] - chordWas[0],
+          chordNow[1] + was[j][1] - chordWas[1],
+        );
+      }),
+    });
   }
 
   return [...arranged, ...labels, ...arrows, ...frames];
