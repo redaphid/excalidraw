@@ -1,7 +1,15 @@
+import { pointFrom } from "@excalidraw/math";
+
 import type { AppState } from "@excalidraw/excalidraw/types";
+import type { LocalPoint } from "@excalidraw/math";
 
 import { updateBoundElements } from "./binding";
-import { getCommonBounds } from "./bounds";
+import {
+  boundsContainBounds,
+  getCommonBounds,
+  getElementBounds,
+} from "./bounds";
+import { getFrameContents } from "./frame";
 import { computeBoundTextPosition, getBoundTextElement } from "./textElement";
 import {
   isArrowElement,
@@ -87,6 +95,8 @@ export type ArrangePlan = {
     string,
     { readonly dx: number; readonly dy: number }
   >;
+  /** arrows bound at both ends to arranged elements, not arranged themselves; their bends follow their ends */
+  readonly arrows: readonly string[];
   /** frame id -> new size (frames grow only; their x,y stay) */
   readonly frames: ReadonlyMap<
     string,
@@ -116,33 +126,47 @@ export const arrangeSpacing = (gridSize: number) => ({
   frameMargin: 2 * gridSize,
 });
 
-type Box = { x: number; y: number; width: number; height: number };
+/** whole pixels, so a layout of what was already laid out lands on the same pixels */
+type Box = {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+};
 
 type Unit = {
-  /** the outermost group arranged whole, or the element's own id */
+  /** the outermost group arranged whole, the nested frame carried whole, or the element's own id */
   readonly id: string;
-  readonly members: readonly NonDeletedExcalidrawElement[];
+  /** everything that moves with the unit; loose elements drawn inside it join it */
+  readonly members: NonDeletedExcalidrawElement[];
+  /** the partition the unit is laid out in: a frame, or null for the free canvas */
   readonly frameId: string | null;
   readonly box: Box;
 };
 
 type Partition = {
-  units: Set<Unit>;
-  arrows: { arrow: ExcalidrawElement; edge: LayoutEdge }[];
+  readonly units: Unit[];
+  readonly arrows: { arrow: ExcalidrawElement; edge: LayoutEdge }[];
+  /** what stays put in the same frame; the layout keeps off it */
+  readonly obstacles: Box[];
 };
+
+/** how often one partition's layout is pushed off an obstacle at most */
+const MAX_PUSHES = 500;
 
 const boxOf = (
   elements: readonly ExcalidrawElement[],
   elementsMap: NonDeletedSceneElementsMap,
 ): Box => {
   const [minX, minY, maxX, maxY] = getCommonBounds(elements, elementsMap);
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-};
-
-/** how far to move from `from` to `to`, snapped to whole pixels; float noise is no move */
-const shift = (to: number, from: number) => {
-  const delta = Math.round(to) - from;
-  return Math.abs(delta) < 1e-6 ? 0 : delta;
+  const x = Math.round(minX);
+  const y = Math.round(minY);
+  return {
+    x,
+    y,
+    width: Math.max(1, Math.round(maxX) - x),
+    height: Math.max(1, Math.round(maxY) - y),
+  };
 };
 
 const overlap = (a: Box, b: Box) =>
@@ -150,6 +174,14 @@ const overlap = (a: Box, b: Box) =>
   b.x < a.x + a.width &&
   a.y < b.y + b.height &&
   b.y < a.y + a.height;
+
+const contains = (outer: Box, inner: Box) =>
+  inner.x >= outer.x - 1 &&
+  inner.y >= outer.y - 1 &&
+  inner.x + inner.width <= outer.x + outer.width + 1 &&
+  inner.y + inner.height <= outer.y + outer.height + 1;
+
+const area = (box: Box) => box.width * box.height;
 
 /** standalone text, lines, arrows and strokes stay put: arranging moves shapes */
 const ARRANGEABLE_TYPES: ReadonlySet<ExcalidrawElement["type"]> = new Set([
@@ -169,42 +201,112 @@ const isBoundArrow = (element: ExcalidrawElement) =>
 const follows = (element: ExcalidrawElement) =>
   isBoundToContainer(element) || isBoundArrow(element);
 
+/**
+ * A frame cannot hold a frame, so a smaller frame drawn wholly inside a larger
+ * one is nested in it, the rule `getFrameContents` moves frames by.
+ */
+const nestedFrames = (
+  frames: readonly ExcalidrawFrameLikeElement[],
+  elementsMap: NonDeletedSceneElementsMap,
+) => {
+  const bounds = new Map(
+    frames.map((frame) => [frame.id, getElementBounds(frame, elementsMap)]),
+  );
+  const frameArea = (frame: ExcalidrawFrameLikeElement) =>
+    frame.width * frame.height;
+  /** frame id -> the frames it is nested in, the innermost first */
+  const holders = new Map(
+    frames.map((inner) => [
+      inner.id,
+      frames
+        .filter(
+          (outer) =>
+            frameArea(inner) < frameArea(outer) &&
+            boundsContainBounds(bounds.get(outer.id)!, bounds.get(inner.id)!),
+        )
+        .sort((a, b) => frameArea(a) - frameArea(b)),
+    ]),
+  );
+  return {
+    /** the frame a frame is nested directly in, or null */
+    holderOf: (frame: ExcalidrawFrameLikeElement) =>
+      holders.get(frame.id)?.[0] ?? null,
+    /** the frames nested directly in a frame */
+    nestedIn: (outer: ExcalidrawFrameLikeElement) =>
+      frames.filter((frame) => holders.get(frame.id)?.[0] === outer),
+  };
+};
+
+type Targets = {
+  /** the shapes to lay out */
+  readonly shapes: ReadonlySet<string>;
+  /** nested frame id -> the frame and what it carries, laid out as one fixed-size unit */
+  readonly frameUnits: ReadonlyMap<
+    string,
+    readonly NonDeletedExcalidrawElement[]
+  >;
+};
+
 /** the elements a request names, with frames resolved to what they hold and labels to their containers */
 const resolveTargets = (
   elements: readonly NonDeletedExcalidrawElement[],
   elementsMap: NonDeletedSceneElementsMap,
   elementIds: readonly string[] | undefined,
-) => {
+): Targets => {
+  const frames = elements.filter(isFrameLikeElement);
+  const nesting = nestedFrames(frames, elementsMap);
   const named = elementIds?.length
-    ? elementIds.flatMap((id) => {
-        const element = elementsMap.get(id);
-        if (!element) {
-          return [];
-        }
-        return isFrameLikeElement(element)
-          ? elements.filter((child) => child.frameId === element.id)
-          : [element];
-      })
+    ? elementIds.flatMap((id) => elementsMap.get(id) ?? [])
     : elements;
 
-  return new Set(
-    named.flatMap((element) => {
-      const target = isBoundToContainer(element)
-        ? elementsMap.get(element.containerId)
-        : element;
-      return target &&
-        !target.locked &&
-        !isFrameLikeElement(target) &&
-        !isBoundArrow(target)
-        ? [target.id]
-        : [];
-    }),
+  // the frames whose contents are laid out: those named, or, for the whole
+  // scene, every frame not nested in another; a frame nested in one of them
+  // moves whole
+  const laidOutFrames = elementIds?.length
+    ? named.filter(isFrameLikeElement)
+    : frames.filter((frame) => !nesting.holderOf(frame));
+  const frameUnits = new Map<string, readonly NonDeletedExcalidrawElement[]>();
+  for (const outer of laidOutFrames) {
+    for (const nested of nesting.nestedIn(outer)) {
+      const carried = getFrameContents(elements, [nested.id]);
+      frameUnits.set(nested.id, [
+        nested,
+        ...elements.filter((element) => carried.has(element.id)),
+      ]);
+    }
+  }
+  const carriedIds = new Set(
+    [...frameUnits.values()].flatMap((members) =>
+      members.map((member) => member.id),
+    ),
   );
+
+  const shapes = new Set(
+    named
+      .flatMap((element) =>
+        isFrameLikeElement(element)
+          ? elements.filter((child) => child.frameId === element.id)
+          : [element],
+      )
+      .flatMap((element) => {
+        const target = isBoundToContainer(element)
+          ? elementsMap.get(element.containerId)
+          : element;
+        return target &&
+          !target.locked &&
+          !isFrameLikeElement(target) &&
+          !isBoundArrow(target) &&
+          !carriedIds.has(target.id)
+          ? [target.id]
+          : [];
+      }),
+  );
+  return { shapes, frameUnits };
 };
 
 /** each target joins the outermost of its groups whose members are all targets */
 const groupUnits = (
-  targets: ReadonlySet<string>,
+  targets: Targets,
   elements: readonly NonDeletedExcalidrawElement[],
   elementsMap: NonDeletedSceneElementsMap,
 ) => {
@@ -219,7 +321,21 @@ const groupUnits = (
 
   /** element id -> the unit it moves with */
   const unitOf = new Map<string, Unit>();
-  for (const id of targets) {
+  const add = (unit: Unit) => {
+    for (const member of unit.members) {
+      unitOf.set(member.id, unit);
+    }
+  };
+  for (const [id, members] of targets.frameUnits) {
+    const frame = elementsMap.get(id)!;
+    add({
+      id,
+      members: [...members],
+      frameId: frame.frameId,
+      box: boxOf([frame], elementsMap),
+    });
+  }
+  for (const id of targets.shapes) {
     const element = elementsMap.get(id);
     if (!element || unitOf.has(id)) {
       continue;
@@ -227,21 +343,20 @@ const groupUnits = (
     const groupId = [...element.groupIds]
       .reverse()
       .find((groupId) =>
-        (groups.get(groupId) ?? []).every((member) => targets.has(member.id)),
+        (groups.get(groupId) ?? []).every((member) =>
+          targets.shapes.has(member.id),
+        ),
       );
     const members = groupId ? groups.get(groupId) ?? [] : [element];
     const labels = members.flatMap(
       (member) => getBoundTextElement(member, elementsMap) ?? [],
     );
-    const unit: Unit = {
+    add({
       id: groupId ?? element.id,
-      members,
+      members: [...members],
       frameId: element.frameId,
       box: boxOf([...members, ...labels], elementsMap),
-    };
-    for (const member of members) {
-      unitOf.set(member.id, unit);
-    }
+    });
   }
 
   return unitOf;
@@ -258,7 +373,11 @@ const unitsOf = (scene: Scene, elementIds: readonly string[] | undefined) => {
   );
   const skipped = new Set<ExcalidrawElement["type"]>();
   for (const [id, unit] of unitOf) {
-    if (!unit.members.some((member) => ARRANGEABLE_TYPES.has(member.type))) {
+    const arrangeable = unit.members.some(
+      (member) =>
+        ARRANGEABLE_TYPES.has(member.type) || isFrameLikeElement(member),
+    );
+    if (!arrangeable) {
       unitOf.delete(id);
       unit.members.forEach((member) => skipped.add(member.type));
     }
@@ -270,6 +389,97 @@ export const unarrangeableTypes = (
   scene: Scene,
   request: Pick<ArrangeRequest, "elementIds">,
 ) => unitsOf(scene, request.elementIds).skipped;
+
+/** whether a request lays anything out: two or more units in one frame or on the free canvas */
+export const canArrange = (
+  scene: Scene,
+  request: Pick<ArrangeRequest, "elementIds">,
+) => {
+  const perPartition = new Map<string | null, Set<Unit>>();
+  for (const unit of unitsOf(scene, request.elementIds).unitOf.values()) {
+    const units = perPartition.get(unit.frameId) ?? new Set();
+    units.add(unit);
+    perPartition.set(unit.frameId, units);
+  }
+  return [...perPartition.values()].some((units) => units.size > 1);
+};
+
+/**
+ * Sorts a partition's loose elements, whatever stays put in its frame. One
+ * drawn wholly inside a unit was drawn on it and travels with it; the rest
+ * are obstacles the layout keeps off. On the free canvas, frames are
+ * obstacles too.
+ */
+const placeLoose = (
+  partition: Partition,
+  frameId: string | null,
+  elements: readonly NonDeletedExcalidrawElement[],
+  elementsMap: NonDeletedSceneElementsMap,
+  unitOf: ReadonlyMap<string, Unit>,
+) => {
+  for (const element of elements) {
+    const belongs = isFrameLikeElement(element)
+      ? frameId === null
+      : element.frameId === frameId;
+    if (!belongs || unitOf.has(element.id) || follows(element)) {
+      continue;
+    }
+    const box = boxOf([element], elementsMap);
+    const holder =
+      element.locked || isFrameLikeElement(element)
+        ? undefined
+        : partition.units
+            .filter((unit) => contains(unit.box, box))
+            .sort((a, b) => area(a.box) - area(b.box))[0];
+    if (holder) {
+      holder.members.push(element);
+    } else {
+      partition.obstacles.push(box);
+    }
+  }
+};
+
+type Placed = { unit: Unit; x: number; y: number };
+
+/**
+ * Pushes the layout along its direction until no unit sits on an obstacle.
+ * Everything from the hit unit onward moves together, so the layout keeps
+ * its order and only gets longer, and laying it out again changes nothing.
+ */
+const pushOffObstacles = (
+  placed: Placed[],
+  obstacles: readonly Box[],
+  direction: LayoutDirection,
+  gap: number,
+) => {
+  const along = direction === "right" || direction === "left" ? "x" : "y";
+  const boxAt = ({ unit, x, y }: Placed): Box => ({ ...unit.box, x, y });
+  for (let pushes = 0; pushes < MAX_PUSHES; pushes++) {
+    let hit: { placed: Placed; obstacle: Box } | undefined;
+    for (const candidate of placed) {
+      const box = boxAt(candidate);
+      const obstacle = obstacles.find((obstacle) => overlap(box, obstacle));
+      if (obstacle) {
+        hit = { placed: candidate, obstacle };
+        break;
+      }
+    }
+    if (!hit) {
+      return;
+    }
+    const { obstacle } = hit;
+    const from = hit.placed[along];
+    const by =
+      along === "x"
+        ? obstacle.x + obstacle.width - from + gap
+        : obstacle.y + obstacle.height - from + gap;
+    for (const candidate of placed) {
+      if (candidate[along] >= from) {
+        candidate[along] += by;
+      }
+    }
+  }
+};
 
 /**
  * Lays the requested elements out with `engine`, one layout per frame (and one
@@ -303,14 +513,15 @@ export const planArrange = async (
   const partitions = new Map<string | null, Partition>();
   const partitionOf = (frameId: string | null) => {
     const partition = partitions.get(frameId) ?? {
-      units: new Set(),
+      units: [],
       arrows: [],
+      obstacles: [],
     };
     partitions.set(frameId, partition);
     return partition;
   };
-  for (const unit of unitOf.values()) {
-    partitionOf(unit.frameId).units.add(unit);
+  for (const unit of new Set(unitOf.values())) {
+    partitionOf(unit.frameId).units.push(unit);
   }
   for (const arrow of elements) {
     if (!isArrowElement(arrow)) {
@@ -331,18 +542,20 @@ export const planArrange = async (
     }
   }
 
-  const laidOut = [...partitions].filter(([, { units }]) => units.size > 1);
+  const laidOut = [...partitions].filter(([, { units }]) => units.length > 1);
   if (!laidOut.length) {
     return null;
+  }
+  for (const [frameId, partition] of laidOut) {
+    placeLoose(partition, frameId, elements, elementsMap, unitOf);
   }
 
   const versions = new Map<string, number>();
   const read = (element: ExcalidrawElement) =>
     versions.set(element.id, element.version);
 
-  const jobs = laidOut.map(([frameId, { units, arrows }]) => {
-    const nodes = [...units];
-    for (const unit of nodes) {
+  const jobs = laidOut.map(([frameId, { units, arrows, obstacles }]) => {
+    for (const unit of units) {
       for (const member of unit.members) {
         read(member);
         const label = getBoundTextElement(member, elementsMap);
@@ -358,11 +571,12 @@ export const planArrange = async (
       read(frame);
     }
     return {
-      nodes,
+      units,
+      obstacles,
       frame,
       positions: engine(
         {
-          nodes: nodes.map(({ id, box }) => ({
+          nodes: units.map(({ id, box }) => ({
             id,
             width: box.width,
             height: box.height,
@@ -378,42 +592,60 @@ export const planArrange = async (
   const translations = new Map<string, { dx: number; dy: number }>();
   const frames = new Map<string, { width: number; height: number }>();
 
-  jobs.forEach(({ nodes, frame }, i) => {
-    const placed = placements[i];
+  jobs.forEach(({ units, obstacles, frame }, i) => {
+    const positions = placements[i];
     const at = (unit: Unit) => {
-      const position = placed.get(unit.id);
+      const position = positions.get(unit.id);
       if (!position) {
         throw new Error(`The layout engine placed no position for ${unit.id}`);
       }
       return position;
     };
-    const width = Math.max(...nodes.map((unit) => at(unit).x + unit.box.width));
-    const height = Math.max(
-      ...nodes.map((unit) => at(unit).y + unit.box.height),
-    );
-    let origin = {
-      x: Math.min(...nodes.map((unit) => unit.box.x)),
-      y: Math.min(...nodes.map((unit) => unit.box.y)),
-    };
+    // a frame's layout starts at its margin and the free canvas's where it
+    // was; neither depends on where the layout ends, so a second layout
+    // lands on the same pixels
+    const origin = frame
+      ? { x: frame.x + spacing.frameMargin, y: frame.y + spacing.frameMargin }
+      : {
+          x: Math.min(...units.map((unit) => unit.box.x)),
+          y: Math.min(...units.map((unit) => unit.box.y)),
+        };
+    const placed: Placed[] = units.map((unit) => ({
+      unit,
+      x: Math.round(origin.x + at(unit).x),
+      y: Math.round(origin.y + at(unit).y),
+    }));
+    pushOffObstacles(placed, obstacles, options.direction, spacing.node);
+    for (const { unit, x, y } of placed) {
+      const dx = x - unit.box.x;
+      const dy = y - unit.box.y;
+      unit.members.forEach((member) => translations.set(member.id, { dx, dy }));
+    }
     if (frame) {
+      const right = Math.max(
+        ...placed.map(({ unit, x }) => x + unit.box.width),
+      );
+      const bottom = Math.max(
+        ...placed.map(({ unit, y }) => y + unit.box.height),
+      );
       const grown = {
-        width: Math.max(frame.width, width + 2 * spacing.frameMargin),
-        height: Math.max(frame.height, height + 2 * spacing.frameMargin),
+        width: Math.max(frame.width, right + spacing.frameMargin - frame.x),
+        height: Math.max(frame.height, bottom + spacing.frameMargin - frame.y),
       };
       if (grown.width !== frame.width || grown.height !== frame.height) {
         frames.set(frame.id, grown);
       }
-      origin = {
-        x: frame.x + (grown.width - width) / 2,
-        y: frame.y + (grown.height - height) / 2,
-      };
-    }
-    for (const unit of nodes) {
-      const dx = shift(origin.x + at(unit).x, unit.box.x);
-      const dy = shift(origin.y + at(unit).y, unit.box.y);
-      unit.members.forEach((member) => translations.set(member.id, { dx, dy }));
     }
   });
+
+  const arrows = elements.filter(
+    (element) =>
+      isArrowElement(element) &&
+      !translations.has(element.id) &&
+      translations.has(element.startBinding?.elementId ?? "") &&
+      translations.has(element.endBinding?.elementId ?? ""),
+  );
+  arrows.forEach(read);
 
   const allFrames = elements.filter(isFrameLikeElement);
   const grownFrames = allFrames.filter((frame) => frames.has(frame.id));
@@ -432,13 +664,20 @@ export const planArrange = async (
     )
     .map((frame) => frame.id);
 
-  return { versions, translations, frames, overlappedFrameIds };
+  return {
+    versions,
+    translations,
+    arrows: arrows.map((arrow) => arrow.id),
+    frames,
+    overlappedFrameIds,
+  };
 };
 
 /**
- * Moves what the plan arranged, lays each container's label out again, follows
- * with bound arrows and grows frames; or does nothing and returns "stale" when
- * anything the plan read has changed since.
+ * Moves what the plan arranged, lays each container's label out again, carries
+ * the bends of arrows between arranged elements, follows with bound arrows and
+ * grows frames; or does nothing and returns "stale" when anything the plan
+ * read has changed since.
  */
 export const applyArrangePlan = (
   scene: Scene,
@@ -478,6 +717,32 @@ export const applyArrangePlan = (
         ]
       : [];
   });
+  const arrows = plan.arrows.flatMap((id) => {
+    const arrow = elementsMap.get(id);
+    if (!arrow || !isArrowElement(arrow)) {
+      return [];
+    }
+    const start = plan.translations.get(arrow.startBinding!.elementId)!;
+    const end = plan.translations.get(arrow.endBinding!.elementId)!;
+    const last = arrow.points.length - 1;
+    // the start's move carries the arrow and each bend adds its share of
+    // the way to the end's move; an elbow arrow is routed again instead
+    const points = arrow.elbowed
+      ? arrow.points
+      : arrow.points.map((point, i) =>
+          pointFrom<LocalPoint>(
+            point[0] + ((end.dx - start.dx) * i) / last,
+            point[1] + ((end.dy - start.dy) * i) / last,
+          ),
+        );
+    return [
+      scene.mutateElement(arrow, {
+        x: arrow.x + start.dx,
+        y: arrow.y + start.dy,
+        points,
+      }),
+    ];
+  });
   const frames = [...plan.frames].flatMap(([id, size]) => {
     const frame = elementsMap.get(id);
     return frame ? [scene.mutateElement(frame, size)] : [];
@@ -486,5 +751,5 @@ export const applyArrangePlan = (
     updateBoundElements(element, scene, { simultaneouslyUpdated: arranged });
   }
 
-  return [...arranged, ...labels, ...frames];
+  return [...arranged, ...labels, ...arrows, ...frames];
 };

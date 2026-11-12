@@ -98,7 +98,7 @@ const AlignFieldset = ({
 
   return (
     <fieldset>
-      <legend>{t("labels.align")}</legend>
+      <legend>{t(showAlign ? "labels.align" : "labels.arrange")}</legend>
       <div className="buttonList align-buttons">
         {showAlign && (
           <>

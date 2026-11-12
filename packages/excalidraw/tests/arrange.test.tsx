@@ -355,6 +355,28 @@ const CRAMPED: Scenario = {
   arranges: ["frame-id-pantry"],
 };
 
+/** the chain of four at fractional coordinates, with labels half a pixel wide */
+const FRACTIONAL: Scenario = {
+  name: "a chain of four at fractional coordinates",
+  shapes: [
+    { id: "shape-id-alpha", at: [500.37, 0.61], size: [161.5, 80.25], label: "Alpha" },
+    { id: "shape-id-bravo", at: [0.12, 400.49], size: [159.5, 79.75], label: "Bravo" },
+    { id: "shape-id-charlie", at: [700.9, 300.5], size: [160.5, 80.5], label: "Charlie" },
+    { id: "shape-id-delta", at: [100.25, 50.75], size: [163.5, 81.5], label: "Delta" },
+  ],
+  joins: [
+    ["shape-id-alpha", "shape-id-bravo"],
+    ["shape-id-bravo", "shape-id-charlie"],
+    ["shape-id-charlie", "shape-id-delta"],
+  ],
+  arranges: [
+    "shape-id-alpha",
+    "shape-id-bravo",
+    "shape-id-charlie",
+    "shape-id-delta",
+  ],
+};
+
 const scenarioNamed = (name: string) =>
   SCENARIOS.find((scenario) => scenario.name === name)!;
 
@@ -546,7 +568,11 @@ const arrangeBy: Record<
   (ids: readonly string[] | undefined) => Promise<void>
 > = {
   keyboard: async (ids) => {
-    select(ids);
+    if (ids) {
+      select(ids);
+    } else {
+      API.setSelectedElements(h.app.scene.getNonDeletedElements());
+    }
     const perform = watchArrange();
     await act(async () => {
       pressArrange();
@@ -861,7 +887,7 @@ describe.each(TRIGGERS)("undoing an arrange made by %s", (trigger) => {
   });
 });
 
-describe.each(SCENARIOS)("arranging $name a second time", (scenario) => {
+describe.each([...SCENARIOS, FRACTIONAL])("arranging $name a second time", (scenario) => {
   let first: Scene;
   let second: Scene;
 
@@ -1240,5 +1266,253 @@ describe("growing a frame into the frame beside it", () => {
     await arrangeBy.keyboard(requestOf(CRAMPED));
 
     expect(h.state.toast?.message).toMatch(/overlaps frame-id-cellar/);
+  });
+});
+
+describe("arranging two boxes joined by a bent arrow", () => {
+  const ids = ["shape-id-left", "shape-id-right"];
+  let before: Scene;
+  let after: Scene;
+
+  /** the middle point's offset from the midpoint of the chord between the arrow's ends */
+  const bulge = (scene: Scene) => {
+    const arrow = scene.get("arrow-id-bent")!;
+    if (!isArrowElement(arrow)) {
+      throw new Error("arrow-id-bent is not an arrow");
+    }
+    const [start, middle, end] = arrow.points;
+    return {
+      points: arrow.points.length,
+      dx: middle[0] - (start[0] + end[0]) / 2,
+      dy: middle[1] - (start[1] + end[1]) / 2,
+    };
+  };
+
+  beforeEach(async () => {
+    await load();
+    const left = API.createElement({
+      type: "rectangle",
+      id: "shape-id-left",
+      x: 0,
+      y: 0,
+      width: 160,
+      height: 80,
+      boundElements: [{ id: "arrow-id-bent", type: "arrow" }],
+    });
+    const right = API.createElement({
+      type: "rectangle",
+      id: "shape-id-right",
+      x: 900,
+      y: 600,
+      width: 160,
+      height: 80,
+      boundElements: [{ id: "arrow-id-bent", type: "arrow" }],
+    });
+    const bent = API.createElement({
+      type: "arrow",
+      id: "arrow-id-bent",
+      x: 160,
+      y: 40,
+      width: 740,
+      height: 600,
+      points: [
+        pointFrom<LocalPoint>(0, 0),
+        pointFrom<LocalPoint>(370, -120),
+        pointFrom<LocalPoint>(740, 600),
+      ],
+      startBinding: bindingTo("shape-id-left"),
+      endBinding: bindingTo("shape-id-right"),
+      endArrowhead: "arrow",
+    });
+    API.updateScene({
+      elements: [left, right, bent],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    before = snapshot();
+    await arrangeBy.api(ids);
+    after = snapshot();
+  });
+
+  it("should move the boxes", () => {
+    expect(moved(before, after, ids)).not.toEqual([]);
+  });
+
+  it("should carry the bend along with the ends", () => {
+    const was = bulge(before);
+    const now = bulge(after);
+    expect(now.points).toBe(3);
+    expect(Math.abs(now.dx - was.dx)).toBeLessThan(25);
+    expect(Math.abs(now.dy - was.dy)).toBeLessThan(25);
+  });
+});
+
+describe("arranging a frame that holds a smaller frame", () => {
+  const outer = "frame-id-outer";
+  const inner = "frame-id-inner";
+  let before: Scene;
+  let after: Scene;
+
+  const offsetToInner = (scene: Scene, id: string) => {
+    const element = scene.get(id)!;
+    const holder = scene.get(inner)!;
+    return [element.x - holder.x, element.y - holder.y];
+  };
+
+  beforeEach(async () => {
+    await load();
+    const box = (id: string, x: number, y: number, frameId: string) =>
+      API.createElement({
+        type: "rectangle",
+        id,
+        x,
+        y,
+        width: 100,
+        height: 60,
+        frameId,
+      });
+    API.updateScene({
+      elements: [
+        frame(outer, 0, 0, 900, 700),
+        box("shape-id-a", 40, 40, outer),
+        box("shape-id-b", 600, 500, outer),
+        frame(inner, 300, 300, 300, 200),
+        box("shape-id-c", 320, 320, inner),
+        box("shape-id-d", 440, 400, inner),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    before = snapshot();
+    await arrangeBy.api([outer]);
+    after = snapshot();
+  });
+
+  it("should move the outer frame's own shapes", () => {
+    expect(moved(before, after, ["shape-id-a", "shape-id-b"])).not.toEqual([]);
+  });
+
+  it("should move the inner frame as one piece", () => {
+    for (const id of ["shape-id-c", "shape-id-d"]) {
+      expect(offsetToInner(after, id)).toEqual(offsetToInner(before, id));
+    }
+  });
+
+  it("should keep the inner frame inside the outer one", () => {
+    expect(inside(extentOf(after.get(inner)!), extentOf(after.get(outer)!))).toBe(
+      true,
+    );
+  });
+
+  it("should lay no shape over the inner frame", () => {
+    expect(overlaps(after, ["shape-id-a", "shape-id-b", inner])).toEqual([]);
+  });
+});
+
+describe("arranging shapes around loose text and a stroke drawn in a box", () => {
+  const scenario = scenarioNamed("a chain of four, scattered");
+  const ids = shapesOf(scenario);
+  let before: Scene;
+  let after: Scene;
+
+  beforeEach(async () => {
+    await load(scenario);
+    const note = API.createElement({
+      type: "text",
+      id: "text-id-note",
+      x: 0,
+      y: 0,
+      width: 240,
+      height: 25,
+      text: "Keep this note where it is",
+    });
+    const tick = API.createElement({
+      type: "freedraw",
+      id: "freedraw-id-tick",
+      x: 520,
+      y: 20,
+      width: 40,
+      height: 20,
+    });
+    API.updateScene({
+      elements: [...h.elements, note, tick],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    before = snapshot();
+    await arrangeBy.api(ids);
+    after = snapshot();
+  });
+
+  it("should leave the note where it was", () => {
+    expect(moved(before, after, ["text-id-note"])).toEqual([]);
+  });
+
+  it("should lay no shape over the note", () => {
+    expect(overlaps(after, [...ids, "text-id-note"])).toEqual([]);
+  });
+
+  it("should carry the stroke with the box it was drawn in", () => {
+    const alpha = { was: before.get("shape-id-alpha")!, now: after.get("shape-id-alpha")! };
+    const tick = { was: before.get("freedraw-id-tick")!, now: after.get("freedraw-id-tick")! };
+    expect(moved(before, after, ["shape-id-alpha"])).toEqual(["shape-id-alpha"]);
+    expect([tick.now.x - tick.was.x, tick.now.y - tick.was.y]).toEqual([
+      alpha.now.x - alpha.was.x,
+      alpha.now.y - alpha.was.y,
+    ]);
+  });
+});
+
+describe("pressing Shift+Alt+A with nothing selected", () => {
+  const scenario = scenarioNamed("a chain of four, scattered");
+
+  beforeEach(async () => {
+    await load(scenario);
+    API.clearSelection();
+  });
+
+  it("should ask for a selection, move nothing and add no undo step", async () => {
+    const before = snapshot();
+    const undoDepth = API.getUndoStack().length;
+    const perform = watchArrange();
+    await act(async () => {
+      pressArrange();
+      await perform.mock.results[0]?.value;
+    });
+
+    expect(h.state.toast?.message).toMatch(/select shapes to arrange/i);
+    expect(geometryOf(snapshot())).toEqual(geometryOf(before));
+    expect(API.getUndoStack().length).toBe(undoDepth);
+  });
+});
+
+describe("the Auto-arrange button in the styles panel", () => {
+  const scenario = scenarioNamed("a chain of three inside a frame that holds them");
+  const button = () =>
+    document.querySelector<HTMLButtonElement>('button[aria-label="Auto-arrange"]');
+  const legend = () => button()?.closest("fieldset")?.querySelector("legend")?.textContent;
+
+  beforeEach(async () => {
+    await load(scenario);
+    API.updateScene({
+      elements: [
+        ...h.elements,
+        API.createElement({ type: "text", id: "text-id-loose", x: 800, y: 0, text: "loose" }),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+  });
+
+  it("should show for two shapes", () => {
+    select(["shape-id-anvil", "shape-id-bellows"]);
+    expect(button()).not.toBeNull();
+  });
+
+  it("should not show for one shape and a loose text", () => {
+    select(["shape-id-anvil", "text-id-loose"]);
+    expect(button()).toBeNull();
+  });
+
+  it("should show under its own legend for a frame alone", () => {
+    select(["frame-id-workshop"]);
+    expect(button()).not.toBeNull();
+    expect(legend()).toBe("Arrange");
   });
 });

@@ -3,8 +3,8 @@ import { CODES } from "@excalidraw/common";
 import {
   CaptureUpdateAction,
   applyArrangePlan,
+  canArrange,
   getFrameLikeTitle,
-  getSelectedElementsByGroup,
   isFrameLikeElement,
   planArrange,
   unarrangeableTypes,
@@ -53,19 +53,17 @@ export const arrangeScene = async (
   };
 };
 
-/** the styles panel offers it for two or more selected shapes or groups, or a frame */
+/** the styles panel offers it when the selection has two or more shapes or groups to lay out, or a frame holding them */
 export const arrangeActionPredicate = (
   appState: UIAppState,
   app: AppClassProperties,
 ) => {
   const selected = app.scene.getSelectedElements(appState);
   return (
-    selected.some(isFrameLikeElement) ||
-    getSelectedElementsByGroup(
-      selected,
-      app.scene.getNonDeletedElementsMap(),
-      appState,
-    ).length > 1
+    selected.length > 0 &&
+    canArrange(app.scene, {
+      elementIds: selected.map((element) => element.id),
+    })
   );
 };
 
@@ -80,15 +78,19 @@ export const actionArrangeElements = register({
   keywords: ["layout", "tidy", "graph", "flowchart", "elk"],
   icon: ArrangeIcon,
   trackEvent: { category: "element" },
-  predicate: (elements, appState, _, app) =>
+  // with nothing selected the action stays reachable and asks for a
+  // selection; the whole scene is arranged through the API only
+  predicate: (_, appState, __, app) =>
     app.scene.getSelectedElements(appState).length
       ? arrangeActionPredicate(appState, app)
-      : elements.filter((element) => !element.isDeleted).length > 1,
+      : true,
   perform: async (elements, appState, _, app) => {
+    const selected = app.scene.getSelectedElements(appState);
+    if (!selected.length) {
+      return toast(t("toast.selectToArrange"));
+    }
     const outcome = await arrangeScene(app.scene, appState, {
-      elementIds: app.scene
-        .getSelectedElements(appState)
-        .map((element) => element.id),
+      elementIds: selected.map((element) => element.id),
     });
     switch (outcome.status) {
       case "nothing-to-arrange":
