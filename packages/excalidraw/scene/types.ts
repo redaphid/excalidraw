@@ -94,6 +94,8 @@ export type RenderInteractiveSceneCallback = {
 
 export type StaticSceneRenderConfig = {
   canvas: HTMLCanvasElement;
+  /** takes the background and grid, leaving `canvas` clear but for the elements */
+  backgroundCanvas?: HTMLCanvasElement | null;
   rc: RoughCanvas;
   elementsMap: RenderableElementsMap;
   allElementsMap: NonDeletedSceneElementsMap;

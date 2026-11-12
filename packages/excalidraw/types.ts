@@ -920,6 +920,14 @@ export interface ExcalidrawProps {
    * named widths, which are hidden while the tool is out.
    */
   freedrawStrokeWidth?: number;
+  /**
+   * Paints the canvas background and the grid on a canvas of their own,
+   * `canvas.excalidraw__canvas.background`, under the static canvas and in
+   * the same pass. The static canvas then holds only the elements, over
+   * transparency, for a host that copies it over a background of its own.
+   * The screen looks the same either way.
+   */
+  separateCanvasBackground?: boolean;
   onPointerUpdate?: (payload: {
     pointer: { x: number; y: number; tool: "pointer" | "laser" };
     button: "down" | "up";
@@ -1305,6 +1313,7 @@ export type AppClassProperties = {
   interactiveCanvas: HTMLCanvasElement | null;
   /** static canvas */
   canvas: HTMLCanvasElement;
+  backgroundCanvas: App["backgroundCanvas"];
   cssTheme: App["cssTheme"];
   getCanvasMode: App["getCanvasMode"];
   focusContainer(): void;

@@ -82,6 +82,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     authoringUnits,
     css,
     freedrawStrokeWidth,
+    separateCanvasBackground,
     onPointerUpdate,
     renderTopLeftUI,
     renderTopRightUI,
@@ -231,6 +232,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           authoringUnits={authoringUnits}
           css={css}
           freedrawStrokeWidth={freedrawStrokeWidth}
+          separateCanvasBackground={separateCanvasBackground}
           onPointerUpdate={onPointerUpdate}
           renderTopLeftUI={renderTopLeftUI}
           renderTopRightUI={renderTopRightUI}

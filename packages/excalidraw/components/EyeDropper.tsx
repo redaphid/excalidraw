@@ -69,6 +69,7 @@ export const EyeDropper: React.FC<{
   const appState = useUIAppState();
   const elements = useExcalidrawElements();
   const app = useApp();
+  const backgroundCanvas = app.backgroundCanvas();
   const canvasMode = app.getCanvasMode();
   const ownerWindow = app.ownerWindow;
 
@@ -103,8 +104,6 @@ export const EyeDropper: React.FC<{
 
     let isHoldingPointerDown = false;
 
-    const ctx = app.canvas.getContext("2d")!;
-
     const getCurrentColor = ({
       clientX,
       clientY,
@@ -112,14 +111,26 @@ export const EyeDropper: React.FC<{
       clientX: number;
       clientY: number;
     }) => {
-      const pixel = ctx.getImageData(
-        (clientX - appState.offsetLeft) * ownerWindow.devicePixelRatio,
-        (clientY - appState.offsetTop) * ownerWindow.devicePixelRatio,
-        1,
-        1,
-      ).data;
-
-      return rgbToHex(pixel[0], pixel[1], pixel[2]);
+      const read = (canvas: HTMLCanvasElement) =>
+        canvas
+          .getContext("2d")!
+          .getImageData(
+            (clientX - appState.offsetLeft) * ownerWindow.devicePixelRatio,
+            (clientY - appState.offsetTop) * ownerWindow.devicePixelRatio,
+            1,
+            1,
+          ).data;
+      const pixel = read(app.canvas);
+      if (!backgroundCanvas) {
+        return rgbToHex(pixel[0], pixel[1], pixel[2]);
+      }
+      // the elements over the separate background, as the screen shows them
+      const under = read(backgroundCanvas);
+      const alpha = pixel[3] / 255;
+      const [r, g, b] = [0, 1, 2].map((i) =>
+        Math.round(pixel[i] * alpha + under[i] * (1 - alpha)),
+      );
+      return rgbToHex(r, g, b);
     };
 
     const getColorToApply = (color: string) =>
@@ -245,6 +256,7 @@ export const EyeDropper: React.FC<{
   }, [
     stableProps,
     app.canvas,
+    backgroundCanvas,
     eyeDropperContainer,
     colorPickerType,
     excalidrawContainer,
