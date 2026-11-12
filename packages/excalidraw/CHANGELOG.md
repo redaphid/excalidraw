@@ -13,6 +13,14 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Auto-arrange (2026-11-12) [#59](https://github.com/redaphid/excalidraw/pull/59)
+
+- Select two or more shapes or groups, or a frame, and press `Shift+Alt+A` (or pick "Auto-arrange" in the command palette, the context menu or the selection panel) to lay them out as a graph with [ELK](https://eclipse.dev/elk/). Arrows bound at both ends are the edges. The move is one undo step. With nothing selected the shortcut asks for a selection.
+- Only shapes move: rectangles, ellipses, diamonds, sticky notes, images and embeds. Groups move as one, bound labels stay where Excalidraw places them, and arrows between two arranged shapes keep their bends. Standalone text, lines and strokes stay put, and the layout is pushed off them; one drawn wholly inside a shape travels with that shape.
+- A frame's contents are laid out from its top-left margin, a frame nested in it moves whole, and the frame grows to fit, never shrinks. Arranging what was just arranged moves nothing.
+- `excalidrawAPI.arrange(request?)` arranges from a host, the whole scene when `request.elementIds` is omitted. `request` takes `algorithm`, `direction`, `spacing` and raw `elkOptions`; the result says what moved, which frames grew and which frames a grown frame now overlaps, or that the scene changed while the layout ran and nothing moved.
+- ELK (new dependency `elkjs`) loads on the first arrange only, in a module worker spawned from its own chunk's URL, and on the main thread where no worker runs.
+
 ### Theme backdrops drawn on the canvas (2026-11-11)
 
 - New `--canvas-backdrop: url("data:…") [<size>]`: a `css` theme repeats an SVG tile under the grid, anchored to scene coordinates. The tile nests with the grid step the way the grid does, so it stays between `size` and `size × gridStep` screen pixels from 1x to 1,000,000x, and it is rasterized once per on-screen size, so its lines stay one device pixel wide. A raster is at most 2048 device pixels on a side (a larger tile scales it up), and the cached rasters share a 32 MB budget. `--canvas-backdrop-export: on` draws it in PNG and SVG exports too (off by default, as exports never use theme colors). The token generator's `backdrop` extension takes `{ image, size?, export? }` beside its CSS-background string form. `strokeBackdrop`, `getBackdrop`, `backdropPeriod` and `loadBackdrop` are exported for a host that paints its own tiles. Sketchbook, Blueprint and Brutalist ship with one.
