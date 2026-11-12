@@ -1,5 +1,9 @@
-import { MIME_TYPES } from "@excalidraw/common";
-import { newElement, newFrameElement } from "@excalidraw/element";
+import { FONT_FAMILY, MIME_TYPES } from "@excalidraw/common";
+import {
+  newElement,
+  newFrameElement,
+  newTextElement,
+} from "@excalidraw/element";
 import * as clipboardModule from "@excalidraw/excalidraw/clipboard";
 import * as imageModule from "@excalidraw/excalidraw/data/image";
 import * as jsonModule from "@excalidraw/excalidraw/data/json";
@@ -7,9 +11,14 @@ import * as mockedSceneExportUtils from "@excalidraw/excalidraw/scene/export";
 import { diagramFactory } from "@excalidraw/excalidraw/tests/fixtures/diagramFixture";
 import { vi } from "vitest";
 
-import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
+import type {
+  FontFamilyValues,
+  NonDeletedExcalidrawElement,
+} from "@excalidraw/element/types";
 
 import * as utils from "../src";
+
+import type { Mock } from "vitest";
 
 const exportToSvgSpy = vi.spyOn(mockedSceneExportUtils, "exportToSvg");
 
@@ -81,6 +90,80 @@ describe("exportToCanvas", async () => {
         restoreElements: false,
       });
       expect(stamps()).toEqual(before);
+    });
+  });
+
+  describe("fonts", () => {
+    const fonts = document.fonts as unknown as {
+      check: Mock<(font: string, text?: string) => boolean>;
+      load: Mock<(font: string, text?: string) => Promise<FontFace[]>>;
+    };
+    const textElements = (text: string, fontFamily?: FontFamilyValues) => [
+      newTextElement({ text, x: 0, y: 0, fontFamily }),
+    ];
+    const exportText = (elements: readonly NonDeletedExcalidrawElement[]) =>
+      utils.exportToCanvas({ elements, files: null, restoreElements: false });
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    beforeEach(() => {
+      fonts.check.mockClear();
+      fonts.load.mockClear();
+    });
+
+    it("checks a font once across exports of the same elements", async () => {
+      const elements = textElements("αβγ");
+      await exportText(elements);
+      expect(fonts.check).toHaveBeenCalledTimes(1);
+      fonts.check.mockClear();
+      await exportText(elements);
+      expect(fonts.check).not.toHaveBeenCalled();
+    });
+
+    it("checks only characters no earlier export confirmed", async () => {
+      await exportText(textElements("δεζ"));
+      fonts.check.mockClear();
+      await exportText(textElements("δεζηθ"));
+      expect(fonts.check).toHaveBeenCalledTimes(1);
+      expect(fonts.check.mock.calls[0][1]).toBe("ηθ");
+    });
+
+    it("waits for a font that is not loaded yet", async () => {
+      const elements = textElements("ικλ", FONT_FAMILY.Nunito);
+      let loaded!: () => void;
+      fonts.check.mockReturnValueOnce(false);
+      fonts.load.mockReturnValueOnce(
+        new Promise((resolve) => {
+          loaded = () => resolve([]);
+        }),
+      );
+      let exported = false;
+      const exporting = exportText(elements).then(() => {
+        exported = true;
+      });
+      await settle();
+      expect(fonts.load).toHaveBeenCalledTimes(1);
+      expect(exported).toBe(false);
+      loaded();
+      await exporting;
+      expect(exported).toBe(true);
+
+      fonts.check.mockClear();
+      await exportText(elements);
+      expect(fonts.check).not.toHaveBeenCalled();
+    });
+
+    it("checks again after a font failed to load", async () => {
+      const elements = textElements("μνξ");
+      fonts.check.mockReturnValueOnce(false);
+      fonts.load.mockRejectedValueOnce(new Error("offline"));
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => void 0);
+      await exportText(elements);
+      consoleError.mockRestore();
+      fonts.check.mockClear();
+      await exportText(elements);
+      expect(fonts.check).toHaveBeenCalledTimes(1);
     });
   });
 });
