@@ -95,6 +95,7 @@ const Playground = () => {
       onButtonClick={(elementId) => console.info("button clicked", elementId)}
       css={theme?.css}
       theme={theme?.mode}
+      separateCanvasBackground={params.get("separateCanvasBackground") === "1"}
       renderTopRightUI={
         showSwitcher
           ? () => (

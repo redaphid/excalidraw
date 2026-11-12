@@ -722,7 +722,7 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
       ? getBackdrop(renderConfig.canvasTheme, appState)
       : null;
   if (backdrop) {
-    strokeBackdrop(context, backdrop, appState, scale);
+    strokeBackdrop(backgroundContext, backdrop, appState, scale);
   }
 
   // Apply zoom
