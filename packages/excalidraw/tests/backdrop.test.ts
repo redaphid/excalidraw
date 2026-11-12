@@ -57,9 +57,9 @@ describe("the backdrop raster", () => {
     // 3000 scene units at zoom 1 on a 2x display: 6000 device pixels
     strokeBackdrop(context, backdrop, appState(1), 2);
 
-    expect(
-      rasters.map(({ width, height }) => Math.max(width, height)),
-    ).toEqual([MAX_RASTER_EDGE]);
+    expect(rasters.map(({ width, height }) => Math.max(width, height))).toEqual(
+      [MAX_RASTER_EDGE],
+    );
     expect(transforms[0].a * MAX_RASTER_EDGE).toBeCloseTo(6000);
   });
 

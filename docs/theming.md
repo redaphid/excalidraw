@@ -402,7 +402,7 @@ Make the canvas transparent and give the root a background. The browser composit
 
 ### A backdrop that zooms with the board
 
-Paper grain, a dot grid, registration marks: anything that should move with the content and stay sharp at any zoom is a backdrop, an SVG the canvas repeats in scene coordinates under the grid. Write it as a quoted `data:` URL (percent-encode the markup) and, after it, the size of one tile in scene units at zoom 1:
+Paper grain, a dot grid, registration marks: anything that should move with the content and stay sharp at any zoom is a backdrop, an SVG the canvas repeats in scene coordinates under the grid. Write it as a `data:` URL in double or single quotes (percent-encode the markup, at least the quote that wraps the URL) and, after it, the size of one tile in scene units at zoom 1:
 
 ```css
 :scope {
@@ -412,11 +412,11 @@ Paper grain, a dot grid, registration marks: anything that should move with the 
 }
 ```
 
-The tile nests with the grid: its period is the size times whole powers of `gridStep`, chosen so one tile is between `size` and `size × gridStep` screen pixels, and its corners land on grid lines at every level. A size that is a multiple of the grid size (20 by default) keeps dots on grid intersections from 1x to 1,000,000x. The renderer rasterizes the tile once per on-screen size and fills the canvas with it as a pattern, so a pan costs one fill and the lines in the tile stay one device pixel wide; `vector-effect="non-scaling-stroke"` keeps a stroke at its pixel width in every tile size. Only `data:` URLs are read: a remote image would taint the canvas and break the eyedropper and exports. Keep the drawing clear of the tile's edges, or the seam between tiles shows.
+The tile nests with the grid: its period is the size times whole powers of `gridStep`, chosen so one tile is between `size` and `size × gridStep` screen pixels, and its corners land on grid lines at every level. A size that is a multiple of the grid size (20 by default) keeps dots on grid intersections from 1x to 1,000,000x. The renderer rasterizes the tile once per on-screen size and fills the canvas with it as a pattern, so a pan costs one fill and the lines in the tile stay one device pixel wide. A raster is at most 2048 device pixels on a side, and a tile larger on screen is that raster scaled up, so the cached rasters stay within 64 MB at any size; `vector-effect="non-scaling-stroke"` keeps a stroke at its pixel width in every tile size. Only `data:` URLs are read: a remote image would taint the canvas and break the eyedropper and exports. Keep the drawing clear of the tile's edges, or the seam between tiles shows.
 
 Exports leave the backdrop out unless the theme sets `--canvas-backdrop-export: on`; then a PNG draws the same pattern at zoom 1 and an SVG carries it as a `<pattern>`. A theme with a CSS background behind a transparent canvas (the recipe above) keeps that for screen-fixed color such as a gradient, and adds a backdrop for anything that belongs to the board.
 
-The generator writes both from the `backdrop` extension: a string is the CSS background, and `{ "image": "<svg …>…</svg>", "size": 100, "export": true }` is a tile, with the markup encoded for you. Sketchbook (paper fibres), Blueprint (registration crosses) and Brutalist (concrete speckle) ship with one.
+The generator writes both from the `backdrop` extension: a string is the CSS background, and `{ "image": "<svg …>…</svg>", "size": 100, "export": true }` is a tile, with the markup encoded for you, quotes and apostrophes included. Sketchbook (paper fibres), Blueprint (registration crosses) and Brutalist (concrete speckle) ship with one.
 
 ## What a theme can't change
 
