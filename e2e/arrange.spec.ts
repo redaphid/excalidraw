@@ -209,7 +209,7 @@ const pointerDrag = async (page: Page, [start, ...rest]: Point[]) => {
   await page.mouse.up();
 };
 
-test("arranges a scattered chain picked and arranged with the pointer alone, laying it out in a worker", async ({
+test("arranges a scattered chain from the selection's Auto-arrange button, laying it out in a worker", async ({
   page,
 }, testInfo) => {
   const hasTouch = !!testInfo.project.use.hasTouch;
@@ -235,18 +235,17 @@ test("arranges a scattered chain picked and arranged with the pointer alone, lay
   expect(loaded.loaded).toBeGreaterThan(0);
   expect(loaded.carrying).toEqual([]);
 
-  // a closed loop ending at the far corner selects the same shapes whether
-  // the form factor starts on the selection box or the lasso
-  const near = { x: 20, y: 200 };
-  const far = { x: 375, y: 620 };
-  await pointerDrag(page, [
-    near,
-    { x: far.x, y: near.y },
-    far,
-    { x: near.x, y: far.y },
-    near,
-    far,
-  ]);
+  if (hasTouch) {
+    // WebKit drops a mouse drag on a touch device, so the phone and tablet
+    // select from the keyboard; the editor listens on its focused container
+    await page.locator(".excalidraw-container").focus();
+    await page.keyboard.press("Control+a");
+  } else {
+    await pointerDrag(page, [
+      { x: 20, y: 200 },
+      { x: 375, y: 620 },
+    ]);
+  }
 
   const arrange = page.getByRole("button", { name: "Auto-arrange" });
   const actions = page.getByTitle("Actions").first();
