@@ -48,6 +48,19 @@ export type EyeDropperProperties = {
   colorPickerType: ColorPickerType;
 };
 
+/** an unpremultiplied RGBA pixel drawn over another, as one canvas would hold them */
+export const compositeOver = (
+  top: Uint8ClampedArray,
+  under: Uint8ClampedArray,
+): [number, number, number] => {
+  const topAlpha = top[3] / 255;
+  const underAlpha = (under[3] / 255) * (1 - topAlpha);
+  const alpha = topAlpha + underAlpha;
+  const channel = (i: number) =>
+    alpha ? Math.round((top[i] * topAlpha + under[i] * underAlpha) / alpha) : 0;
+  return [channel(0), channel(1), channel(2)];
+};
+
 export const activeEyeDropperAtom = atom<null | EyeDropperProperties>(null);
 
 export const EyeDropper: React.FC<{
@@ -69,6 +82,7 @@ export const EyeDropper: React.FC<{
   const appState = useUIAppState();
   const elements = useExcalidrawElements();
   const app = useApp();
+  const backgroundCanvas = app.backgroundCanvas();
   const canvasMode = app.getCanvasMode();
   const ownerWindow = app.ownerWindow;
 
@@ -103,8 +117,6 @@ export const EyeDropper: React.FC<{
 
     let isHoldingPointerDown = false;
 
-    const ctx = app.canvas.getContext("2d")!;
-
     const getCurrentColor = ({
       clientX,
       clientY,
@@ -112,14 +124,20 @@ export const EyeDropper: React.FC<{
       clientX: number;
       clientY: number;
     }) => {
-      const pixel = ctx.getImageData(
-        (clientX - appState.offsetLeft) * ownerWindow.devicePixelRatio,
-        (clientY - appState.offsetTop) * ownerWindow.devicePixelRatio,
-        1,
-        1,
-      ).data;
-
-      return rgbToHex(pixel[0], pixel[1], pixel[2]);
+      const read = (canvas: HTMLCanvasElement) =>
+        canvas
+          .getContext("2d")!
+          .getImageData(
+            (clientX - appState.offsetLeft) * ownerWindow.devicePixelRatio,
+            (clientY - appState.offsetTop) * ownerWindow.devicePixelRatio,
+            1,
+            1,
+          ).data;
+      const pixel = read(app.canvas);
+      if (!backgroundCanvas) {
+        return rgbToHex(pixel[0], pixel[1], pixel[2]);
+      }
+      return rgbToHex(...compositeOver(pixel, read(backgroundCanvas)));
     };
 
     const getColorToApply = (color: string) =>
@@ -245,6 +263,7 @@ export const EyeDropper: React.FC<{
   }, [
     stableProps,
     app.canvas,
+    backgroundCanvas,
     eyeDropperContainer,
     colorPickerType,
     excalidrawContainer,

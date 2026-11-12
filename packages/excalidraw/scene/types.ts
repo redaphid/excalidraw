@@ -94,6 +94,7 @@ export type RenderInteractiveSceneCallback = {
 
 export type StaticSceneRenderConfig = {
   canvas: HTMLCanvasElement;
+  backgroundCanvas?: HTMLCanvasElement | null;
   rc: RoughCanvas;
   elementsMap: RenderableElementsMap;
   allElementsMap: NonDeletedSceneElementsMap;
