@@ -94,6 +94,83 @@ describe("separateCanvasBackground", () => {
     });
   });
 
+  describe("when set, and the editor is resized", () => {
+    beforeEach(async () => {
+      await render(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
+      API.setAppState({ width: 640, height: 480 });
+    });
+
+    it("sizes the background canvas like the static canvas", () => {
+      const { width, height } = GlobalTestState.canvas;
+      expect([backgroundCanvas()?.width, backgroundCanvas()?.height]).toEqual([
+        width,
+        height,
+      ]);
+    });
+  });
+
+  describe("when set, and the device pixel ratio changes", () => {
+    const pixelRatio = Object.getOwnPropertyDescriptor(
+      window,
+      "devicePixelRatio",
+    )!;
+
+    beforeEach(async () => {
+      await render(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
+      Object.defineProperty(window, "devicePixelRatio", {
+        configurable: true,
+        value: 3,
+      });
+      API.setAppState({ width: 640, height: 480 });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, "devicePixelRatio", pixelRatio);
+    });
+
+    it("gives the background canvas the new device pixels", () => {
+      expect([backgroundCanvas()?.width, backgroundCanvas()?.height]).toEqual([
+        1920, 1440,
+      ]);
+    });
+  });
+
+  describe("when turned off and on again", () => {
+    let off: { shown: Painted; under: Painted; mounted: boolean };
+    let on: { shown: Painted; under: Painted; mounted: boolean };
+
+    beforeEach(async () => {
+      const { rerender } = await render(
+        <Excalidraw separateCanvasBackground css={GRID_THEME} />,
+      );
+      API.setAppState({ width: 800, height: 600 });
+      rerender(<Excalidraw css={GRID_THEME} />);
+      off = { ...(await repaint()), mounted: !!backgroundCanvas() };
+      rerender(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
+      on = { ...(await repaint()), mounted: !!backgroundCanvas() };
+    });
+
+    it("removes the background canvas when off", () => {
+      expect(off.mounted).toBe(false);
+    });
+
+    it("fills the static canvas when off", () => {
+      expect(off.shown.fills).toBeGreaterThan(0);
+    });
+
+    it("mounts the background canvas again when on", () => {
+      expect(on.mounted).toBe(true);
+    });
+
+    it("leaves the static canvas unfilled when on again", () => {
+      expect(on.shown.fills).toBe(0);
+    });
+
+    it("fills the background canvas when on again", () => {
+      expect(on.under.fills).toBeGreaterThan(0);
+    });
+  });
+
   describe("when set, in grid mode", () => {
     it("snaps new shapes to the grid", async () => {
       await render(<Excalidraw separateCanvasBackground css={GRID_THEME} />);

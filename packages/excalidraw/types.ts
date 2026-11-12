@@ -925,7 +925,9 @@ export interface ExcalidrawProps {
    * `canvas.excalidraw__canvas.background`, under the static canvas and in
    * the same pass. The static canvas then holds only the elements, over
    * transparency, for a host that copies it over a background of its own.
-   * The screen looks the same either way.
+   * The screen looks the same either way. The `canvas` that
+   * `UIOptions.canvasActions.export.renderCustomUI` receives is that static
+   * canvas, so it holds only the elements too.
    */
   separateCanvasBackground?: boolean;
   onPointerUpdate?: (payload: {
