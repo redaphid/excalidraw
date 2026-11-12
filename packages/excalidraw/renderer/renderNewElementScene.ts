@@ -143,7 +143,8 @@ const getDirtyRect = (
       intersects(
         toDeviceBounds(
           getElementPaintBounds(element, next.allElementsMap),
-          -ANTI_ALIAS_MARGIN_DEVICE_PX,
+          -ANTI_ALIAS_MARGIN_DEVICE_PX -
+            (isFrameLikeElement(element) ? Math.ceil(frameOutlineInset) : 0),
         ),
         dirty,
       )

@@ -161,6 +161,42 @@ describe("the canvas over a new element drawn inside a frame", () => {
     mouse.upAt(200, 160);
   });
 
+  it("clears in full when the stroke nears a thick outline of a frame above it", async () => {
+    await render(<Excalidraw css=":scope { --canvas-frame-width: 12; }" />);
+    const frame = API.createElement({
+      type: "frame",
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 400,
+    });
+    const frameAbove = API.createElement({
+      type: "frame",
+      x: 250,
+      y: 0,
+      width: 300,
+      height: 400,
+    });
+    API.setElements([frame, frameAbove]);
+    API.setAppState({ width: 1000, height: 800 });
+    UI.clickTool("freedraw");
+    const mouse = new Pointer("mouse");
+    mouse.downAt(150, 60);
+    mouse.moveTo(170, 80);
+    expect(h.state.newElement!.frameId).toBe(frame.id);
+    const overlay = overlayCanvas();
+    const clearRect = vi.spyOn(overlay.getContext("2d")!, "clearRect");
+
+    const elementsMap = h.app.scene.getNonDeletedElementsMap();
+    const abovePaintLeft = getElementPaintBounds(frameAbove, elementsMap)[0];
+    mouse.moveTo(190, 85);
+    clearRect.mockClear();
+    mouse.moveTo(abovePaintLeft - 6, 90);
+    expect(strokeBounds()[2]).toBeLessThan(abovePaintLeft - 1);
+    clearsInFull(clearRect, overlay);
+    mouse.upAt(abovePaintLeft - 6, 90);
+  });
+
   it("clears in full when the view moves mid-stroke", async () => {
     const { mouse, overlay, clearRect } = await drawInFrame();
     clearRect.mockClear();
