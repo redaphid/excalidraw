@@ -2,13 +2,18 @@ import { expect, test } from "@playwright/test";
 
 import type { Locator, Page } from "@playwright/test";
 
+declare global {
+  interface Window {
+    /** the playground exposes its editor API for tests */
+    excalidrawAPI?: { getSceneElements: () => readonly unknown[] };
+  }
+}
+
 const SCENE_KEY = "excalidraw-playground-scene";
 /** only ELK's own code carries this: both its worker build and its main-thread bundle */
 const ELK_MARK = "org.eclipse.elk";
 /** the binding gap the editor leaves between a bound arrow tip and the shape, plus rounding */
 const TIP_SLACK = 8;
-
-type Point = { x: number; y: number };
 
 type Element = {
   id: string;
@@ -200,15 +205,6 @@ const unbound = (scene: SavedScene) =>
 const press = (locator: Locator, hasTouch: boolean) =>
   hasTouch ? locator.tap() : locator.click();
 
-const pointerDrag = async (page: Page, [start, ...rest]: Point[]) => {
-  await page.mouse.move(start.x, start.y);
-  await page.mouse.down();
-  for (const { x, y } of rest) {
-    await page.mouse.move(x, y, { steps: 6 });
-  }
-  await page.mouse.up();
-};
-
 test("arranges a scattered chain from the selection's Auto-arrange button, laying it out in a worker", async ({
   page,
 }, testInfo) => {
@@ -235,17 +231,15 @@ test("arranges a scattered chain from the selection's Auto-arrange button, layin
   expect(loaded.loaded).toBeGreaterThan(0);
   expect(loaded.carrying).toEqual([]);
 
-  if (hasTouch) {
-    // WebKit drops a mouse drag on a touch device, so the phone and tablet
-    // select from the keyboard; the editor listens on its focused container
-    await page.locator(".excalidraw-container").focus();
-    await page.keyboard.press("Control+a");
-  } else {
-    await pointerDrag(page, [
-      { x: 20, y: 200 },
-      { x: 375, y: 620 },
-    ]);
-  }
+  // WebKit drops a pointer drag that starts before the scene is in, so every
+  // form factor waits for it and selects from the keyboard; the editor
+  // listens on its focused container
+  await page.waitForFunction(
+    (count) => window.excalidrawAPI?.getSceneElements().length === count,
+    SCENE.elements.length,
+  );
+  await page.locator(".excalidraw-container").focus();
+  await page.keyboard.press("Control+a");
 
   const arrange = page.getByRole("button", { name: "Auto-arrange" });
   const actions = page.getByTitle("Actions").first();
