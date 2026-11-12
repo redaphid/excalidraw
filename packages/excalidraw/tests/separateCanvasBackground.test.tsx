@@ -51,6 +51,49 @@ const repaint = async () => {
 };
 
 describe("separateCanvasBackground", () => {
+  describe("when set, under a theme with a backdrop", () => {
+    const BACKDROP_THEME = `:scope {
+  --canvas-backdrop: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%2F%3E") 100;
+}`;
+    const patterns = (canvas: HTMLCanvasElement | null) =>
+      canvas
+        ? eventsOf(canvas).filter((e) => e.type === "createPattern").length
+        : 0;
+    let painted: { shown: number; under: number };
+
+    beforeEach(async () => {
+      vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(
+        true,
+      );
+      vi.spyOn(
+        HTMLImageElement.prototype,
+        "naturalWidth",
+        "get",
+      ).mockReturnValue(100);
+      await render(
+        <Excalidraw separateCanvasBackground css={BACKDROP_THEME} />,
+      );
+      API.setAppState({ width: 800, height: 600 });
+      await repaint();
+      painted = {
+        shown: patterns(GlobalTestState.canvas),
+        under: patterns(backgroundCanvas()),
+      };
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("draws the backdrop pattern on the background canvas", () => {
+      expect(painted.under).toBeGreaterThan(0);
+    });
+
+    it("leaves the static canvas without the backdrop", () => {
+      expect(painted.shown).toBe(0);
+    });
+  });
+
   describe("when set, under a theme with a grid", () => {
     let painted: { shown: Painted; under: Painted };
 

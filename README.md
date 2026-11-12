@@ -15,6 +15,8 @@ The fork changes six things:
 - **Frame navigation.** An opt-in frames drawer, breadcrumb, arrow-key stepping between frames and bookmark keys.
 - **Themes.** A `css` prop restyles one editor: its UI, its canvas (background, grid, selection, frames) and the stroke character of new elements, from a stylesheet or from JSON tokens through `generateThemeCss`. See [docs/theming.md](docs/theming.md).
 
+[draw](https://draw.hypnodroid.com) builds portals on this deep zoom. A portal is a shape that shows a frame from the same board or from another board. Zoom into a portal and the camera passes into its frame with no reload, then through any portals inside that frame. Zoom out and it comes back the same way.
+
 For everything else, see [upstream's README](https://github.com/excalidraw/excalidraw/blob/master/README.md) (or [the copy at the fork point](https://github.com/excalidraw/excalidraw/blob/5a406e51875157bece389b9bc92d41ff241d5f3d/README.md)).
 
 | Wheel zoom from 0.83x to 1,000,000x and back | Drawing at 1,000,000x |
@@ -22,6 +24,8 @@ For everything else, see [upstream's README](https://github.com/excalidraw/excal
 | ![ctrl+wheel zoom through seven nested boxes, each ten times smaller than the last, from 83% to 100,000,000% and back](docs/media/wheel-dive.gif) | ![a rectangle, an arrow, a pen stroke and a text drawn at 1,000,000x, then zoomed out and back in](docs/media/draw-at-depth.gif) |
 | **`setViewport` flight from 1x to 10,000x** | **Pen-size flyout** |
 | ![an animated setViewport from Frame A at 1x to Frame B, ten thousand times smaller and about 23,000 units away, and back](docs/media/setviewport-flight.gif) | ![picking the pen opens a flyout with a pen-size slider; three strokes at 0.077, 0.56 and 2.6](docs/media/pen-size-flyout.gif) |
+| **Zooming through four nested portals in draw** |  |
+| ![wheel zoom through four portals in draw: from the hub into a frame on the same board, across to a second board, into its other frame, across to a third board, then back out to the hub](docs/media/portal-dive.gif) |  |
 
 ## Install
 

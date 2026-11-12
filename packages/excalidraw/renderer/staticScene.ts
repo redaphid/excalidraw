@@ -46,6 +46,7 @@ import {
 } from "../components/hyperlink/helpers";
 import { getThemeCanvasBackground } from "../cssTheme";
 
+import { getBackdrop, strokeBackdrop } from "./backdrop";
 import {
   bootstrapCanvas,
   getNormalizedCanvasDimensions,
@@ -714,6 +715,15 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
         viewBackgroundColor: "transparent",
       })
     : backgroundContext;
+
+  // the backdrop belongs to the background: an export without one has neither
+  const backdrop =
+    typeof appState.viewBackgroundColor === "string"
+      ? getBackdrop(renderConfig.canvasTheme, appState)
+      : null;
+  if (backdrop) {
+    strokeBackdrop(backgroundContext, backdrop, appState, scale);
+  }
 
   // Apply zoom
   context.scale(appState.zoom.value, appState.zoom.value);

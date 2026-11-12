@@ -129,6 +129,57 @@ describe("readCssTheme", () => {
     });
   });
 
+  describe("the backdrop", () => {
+    const image =
+      "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%2F%3E";
+
+    it("is a quoted data: URL, a tile size and whether exports draw it", () => {
+      const theme = readCssTheme(
+        styleOf({
+          "--canvas-backdrop": `url("${image}") 40`,
+          "--canvas-backdrop-export": "on",
+        }),
+      );
+
+      expect(theme.canvas).toEqual({
+        backdropImage: image,
+        backdropSize: 40,
+        backdropExport: true,
+      });
+    });
+
+    it("needs only the image", () => {
+      expect(
+        readCssTheme(styleOf({ "--canvas-backdrop": `url('${image}')` }))
+          .canvas,
+      ).toEqual({ backdropImage: image });
+    });
+
+    it.each([
+      [`url("data:image/svg+xml,<svg xmlns='x'/>")`, "<svg xmlns='x'/>"],
+      [`url('data:image/svg+xml,<svg xmlns="x"/>')`, '<svg xmlns="x"/>'],
+    ])("reads %s: the other quote may sit inside", (value, svg) => {
+      expect(
+        readCssTheme(styleOf({ "--canvas-backdrop": value })).canvas,
+      ).toEqual({ backdropImage: `data:image/svg+xml,${svg}` });
+    });
+
+    it.each([
+      'url("https://example.com/paper.svg")',
+      "url(data:image/svg+xml,%3Csvg%2F%3E)",
+      `url("${image}") 0`,
+      `url("${image}") 10 20`,
+      image,
+    ])(
+      "ignores %s: only a quoted data: URL cannot taint the canvas",
+      (value) => {
+        expect(
+          readCssTheme(styleOf({ "--canvas-backdrop": value })).canvas,
+        ).toEqual({});
+      },
+    );
+  });
+
   it("parses palettes of single colors and five-shade entries", () => {
     const theme = readCssTheme(
       styleOf({
@@ -915,5 +966,72 @@ describe("the grid", () => {
     });
 
     expect([rectangle.x, rectangle.y]).toEqual([20, 20]);
+  });
+});
+
+describe("the backdrop", () => {
+  const image =
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%2F%3E";
+  const BACKDROP_CSS = `:scope {
+  --canvas-backdrop: url("${image}") 100;
+  --canvas-grid-color: rgba(0, 0, 0, 0.1);
+}`;
+
+  const events = () =>
+    (GlobalTestState.canvas.getContext("2d") as any).__getEvents() as {
+      type: string;
+      props: Record<string, unknown>;
+    }[];
+
+  const paint = async () => {
+    (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+    API.setAppState({ scrollX: h.state.scrollX + 7 });
+    await waitFor(() =>
+      expect(events().some(({ type }) => type === "fillRect")).toBe(true),
+    );
+    return events().map(({ type }) => type);
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const decoded = () => {
+    vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(
+      true,
+    );
+    vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(
+      100,
+    );
+  };
+
+  it("is painted as a pattern under the grid once its image has decoded", async () => {
+    decoded();
+    await render(<Excalidraw css={BACKDROP_CSS} />);
+    API.setAppState({ width: 800, height: 600 });
+
+    const types = await paint();
+
+    expect(types.indexOf("createPattern")).toBeGreaterThan(
+      types.indexOf("fillRect"),
+    );
+    expect(types.indexOf("createPattern")).toBeLessThan(
+      types.indexOf("moveTo"),
+    );
+  });
+
+  it("waits for the image rather than painting a blank tile", async () => {
+    await render(<Excalidraw css={BACKDROP_CSS} />);
+    API.setAppState({ width: 800, height: 600 });
+
+    expect(await paint()).not.toContain("createPattern");
+  });
+
+  it("is not painted without a theme", async () => {
+    decoded();
+    await render(<Excalidraw css={THEME_CSS} />);
+    API.setAppState({ width: 800, height: 600 });
+
+    expect(await paint()).not.toContain("createPattern");
   });
 });

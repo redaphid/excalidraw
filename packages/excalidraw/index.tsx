@@ -667,6 +667,12 @@ export { _useOnAppStateChange as useOnExcalidrawStateChange };
 export { applyDarkModeFilter, getStrokeWidthByKey };
 
 export { renderFrameOverlay } from "./renderer/frameOverlay";
+export {
+  backdropPeriod,
+  getBackdrop,
+  loadBackdrop,
+  strokeBackdrop,
+} from "./renderer/backdrop";
 export { frameNameOpacities } from "./frameNameVisibility";
 export type { FrameNameLayout } from "./frameNameVisibility";
 export type {
