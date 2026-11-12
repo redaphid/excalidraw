@@ -145,7 +145,7 @@ Values with a plain meaning are standard tokens at known paths. Every token is o
 | `font.ui` | `fontFamily` | the UI font; a list is written as a CSS fallback list | Assistant |
 | `font.canvas` | `fontFamily` | the font new text is drawn in: the first family the editor has | the first editor font in `font.ui`, else Excalifont |
 | `font.size` | `dimension` | the font size of new text | 20px |
-| `grid.minor`, `grid.major` | `number` | grid line opacity, 0 to 1 | 0.06, 0.14 |
+| `grid.minor`, `grid.major` | `number` | grid line opacity, 0 to 1; 0 for both draws no grid | 0.06, 0.14 |
 | `grid.style` | `strokeStyle` | `solid`; any other style draws dashed | dashed |
 | `stroke.roughness` | `number` | 0 architect, 1 artist, 2 cartoonist | 1 |
 | `pen.width`, `pen.thinning`, `pen.taper`, `pen.streamline` | `number` | the freehand pen | the editor's pen |
@@ -240,8 +240,8 @@ A value the editor can't parse is ignored, and the built-in value stays.
 | Property | Value | Default |
 | --- | --- | --- |
 | `--canvas-background` | any CSS color, or `transparent` to show the root's own `background` | the scene's `viewBackgroundColor` |
-| `--canvas-grid-color` | any CSS color | `#e5e5e5` |
-| `--canvas-grid-bold-color` | any CSS color, for every `gridStep`th line | `#dddddd` |
+| `--canvas-grid-color` | any CSS color | no grid, or `#e5e5e5` when only the bold color is set |
+| `--canvas-grid-bold-color` | any CSS color, for every `gridStep`th line | no grid, or `#dddddd` when only the minor color is set |
 | `--canvas-grid-style` | `dashed` or `solid` minor lines | `dashed` |
 | `--color-selection` | any CSS color: selection outlines, handles, lasso | `#6965db` |
 | `--canvas-handle-fill` | any CSS color: inside of the resize handles | `#ffffff` |
@@ -353,7 +353,9 @@ Draw both grid levels solid, with the minor lines faint:
 }
 ```
 
-The bold line falls on every `gridStep`th line (5 by default). The grid shows only while grid mode is on.
+The bold line falls on every `gridStep`th line (5 by default).
+
+The theme alone paints the grid. The editor draws it whenever the theme sets either grid color, with grid mode on or off, and draws none when the theme sets neither. Grid mode (the "Snap to grid" toggle, Ctrl+') only snaps. A theme without a grid leaves both colors unset or makes them transparent.
 
 ### A drafting pen
 
