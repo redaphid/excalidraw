@@ -43,14 +43,38 @@ const mod = (a: number, b: number) => ((a % b) + b) % b;
 type Tiles = {
   image: HTMLImageElement;
   loaded: Promise<void>;
+  /** by edge in device pixels, least recently used first */
   rasters: Map<number, HTMLCanvasElement>;
 };
 
+/** a raster's longest edge in device pixels; the pattern transform scales a
+ * clamped raster up to the tile's on-screen size */
+export const MAX_RASTER_EDGE = 2048;
+/** the backing store all cached rasters may hold together: four rasters at
+ * the longest edge */
+export const MAX_RASTER_BYTES = 4 * MAX_RASTER_EDGE * MAX_RASTER_EDGE * 4;
+/** the images kept decoded: the current theme's and a few recent ones, for a
+ * host that switches between themes */
+const MAX_TILES = 4;
+
+/** by URL, least recently used first */
 const tiles = new Map<string, Tiles>();
+let rasterBytes = 0;
+
+const bytesOf = (raster: HTMLCanvasElement) => raster.width * raster.height * 4;
+
+const dropRaster = (entry: Tiles, edge: number, raster: HTMLCanvasElement) => {
+  entry.rasters.delete(edge);
+  rasterBytes -= bytesOf(raster);
+  // frees the backing store now rather than at garbage collection
+  raster.width = raster.height = 0;
+};
 
 const tilesOf = (url: string) => {
   let entry = tiles.get(url);
-  if (!entry) {
+  if (entry) {
+    tiles.delete(url);
+  } else {
     const image = new Image();
     const loaded = new Promise<void>((resolve) => {
       image.onload = () => resolve();
@@ -58,7 +82,14 @@ const tilesOf = (url: string) => {
     });
     image.src = url;
     entry = { image, loaded, rasters: new Map() };
-    tiles.set(url, entry);
+  }
+  tiles.set(url, entry);
+  for (const [oldUrl, old] of tiles) {
+    if (tiles.size <= MAX_TILES) {
+      break;
+    }
+    old.rasters.forEach((raster, edge) => dropRaster(old, edge, raster));
+    tiles.delete(oldUrl);
   }
   return entry;
 };
@@ -68,19 +99,31 @@ const ready = ({ image }: Tiles) => image.complete && image.naturalWidth > 0;
 /** settles once the image has decoded (or failed); callers repaint then */
 export const loadBackdrop = (url: string) => tilesOf(url).loaded;
 
-const MAX_RASTERS = 48;
-
-const rasterOf = (entry: Tiles, size: number) => {
-  let raster = entry.rasters.get(size);
-  if (!raster) {
-    raster = document.createElement("canvas");
-    raster.width = raster.height = size;
-    raster.getContext("2d")!.drawImage(entry.image, 0, 0, size, size);
-    if (entry.rasters.size >= MAX_RASTERS) {
-      entry.rasters.clear();
+/** drops the least recently used rasters, other images' first, until the
+ * cache fits its budget */
+const evictRasters = () => {
+  for (const entry of tiles.values()) {
+    for (const [edge, raster] of entry.rasters) {
+      if (rasterBytes <= MAX_RASTER_BYTES) {
+        return;
+      }
+      dropRaster(entry, edge, raster);
     }
-    entry.rasters.set(size, raster);
   }
+};
+
+const rasterOf = (entry: Tiles, edge: number) => {
+  let raster = entry.rasters.get(edge);
+  if (raster) {
+    entry.rasters.delete(edge);
+  } else {
+    raster = document.createElement("canvas");
+    raster.width = raster.height = edge;
+    raster.getContext("2d")!.drawImage(entry.image, 0, 0, edge, edge);
+    rasterBytes += bytesOf(raster);
+  }
+  entry.rasters.set(edge, raster);
+  evictRasters();
   return raster;
 };
 
@@ -88,7 +131,8 @@ const rasterOf = (entry: Tiles, size: number) => {
  * Fills the canvas with the backdrop as a repeating pattern anchored to world
  * coordinates: tile corners sit on multiples of the period. The tile is
  * rasterized once per on-screen size in device pixels, so the lines in it
- * stay one device pixel wide at every zoom. Draws nothing until the image
+ * stay one device pixel wide at every zoom, up to `MAX_RASTER_EDGE`; a larger
+ * tile is that raster scaled up. Draws nothing until the image
  * has decoded; see `loadBackdrop`.
  */
 export const strokeBackdrop = (
@@ -105,7 +149,7 @@ export const strokeBackdrop = (
   const period = backdropPeriod(backdrop, appState);
   const devicePixels = appState.zoom.value * scale;
   const spacing = period * devicePixels;
-  const size = Math.max(1, Math.round(spacing));
+  const size = Math.min(MAX_RASTER_EDGE, Math.max(1, Math.round(spacing)));
   const pattern = context.createPattern(rasterOf(entry, size), "repeat");
   if (!pattern) {
     return;

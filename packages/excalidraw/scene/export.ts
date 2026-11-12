@@ -335,6 +335,9 @@ export const exportToSvg = async (
     exportWithDarkMode?: boolean;
     exportEmbedScene?: boolean;
     frameRendering?: AppState["frameRendering"];
+    /** with `gridStep`, the backdrop's tile size when the theme sets none */
+    gridSize?: AppState["gridSize"];
+    gridStep?: AppState["gridStep"];
   },
   files: BinaryFiles | null,
   opts?: {
@@ -505,10 +508,11 @@ export const exportToSvg = async (
     );
     svgRoot.appendChild(rect);
 
-    const backdrop = getBackdrop(
-      exportedCanvasTheme(opts?.canvasTheme),
-      getDefaultAppState(),
-    );
+    const defaults = getDefaultAppState();
+    const backdrop = getBackdrop(exportedCanvasTheme(opts?.canvasTheme), {
+      gridSize: appState.gridSize ?? defaults.gridSize,
+      gridStep: appState.gridStep ?? defaults.gridStep,
+    });
     if (backdrop) {
       appendSvgBackdrop(svgRoot, defsElement, backdrop, {
         offsetX,

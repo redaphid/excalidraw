@@ -266,6 +266,24 @@ describe("export", () => {
       expect(rect.getAttribute("width")).toBe(background.getAttribute("width"));
     });
 
+    it("tiles at the grid's major spacing when the theme sets no size", async () => {
+      const svg = await exportToSvg(
+        [API.createElement({ type: "rectangle", width: 10, height: 10 })],
+        {
+          ...getDefaultAppState(),
+          exportBackground: true,
+          gridSize: 10,
+          gridStep: 3,
+        },
+        {},
+        { canvasTheme: { backdropImage: image, backdropExport: true } },
+      );
+
+      expect(svg.querySelector("pattern#backdrop")?.getAttribute("width")).toBe(
+        "30",
+      );
+    });
+
     it("stays out of a transparent export", async () => {
       expect((await exported(false)).querySelector("pattern")).toBeNull();
     });

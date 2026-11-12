@@ -244,12 +244,18 @@ const inRange =
 const text: Parse<string> = (value) =>
   typeof value === "string" ? value : undefined;
 
-/** SVG markup becomes a percent-encoded `data:` URL, which fits in a quoted
- * CSS `url()` and holds no raw `<` for a stylesheet sanitizer to refuse */
+const percentEncode = (char: string) =>
+  `%${char.charCodeAt(0).toString(16).toUpperCase()}`;
+
+/** SVG markup becomes a percent-encoded `data:` URL, which holds no raw `<`
+ * for a stylesheet sanitizer to refuse. Quotes and parentheses, which
+ * `encodeURIComponent` leaves alone, are encoded as well, also in a `data:`
+ * URL given as is, so the URL fits in a CSS `url()` in either quote style */
 export const svgDataUrl = (image: string) =>
-  image.startsWith("data:")
+  (image.startsWith("data:")
     ? image
-    : `data:image/svg+xml,${encodeURIComponent(image.trim())}`;
+    : `data:image/svg+xml,${encodeURIComponent(image.trim())}`
+  ).replace(/["'()]/g, percentEncode);
 
 const backdropTile: Parse<string | ThemeBackdropTile> = (value) => {
   if (typeof value === "string") {

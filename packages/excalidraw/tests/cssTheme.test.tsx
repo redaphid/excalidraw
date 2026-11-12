@@ -156,6 +156,15 @@ describe("readCssTheme", () => {
     });
 
     it.each([
+      [`url("data:image/svg+xml,<svg xmlns='x'/>")`, "<svg xmlns='x'/>"],
+      [`url('data:image/svg+xml,<svg xmlns="x"/>')`, '<svg xmlns="x"/>'],
+    ])("reads %s: the other quote may sit inside", (value, svg) => {
+      expect(
+        readCssTheme(styleOf({ "--canvas-backdrop": value })).canvas,
+      ).toEqual({ backdropImage: `data:image/svg+xml,${svg}` });
+    });
+
+    it.each([
       'url("https://example.com/paper.svg")',
       "url(data:image/svg+xml,%3Csvg%2F%3E)",
       `url("${image}") 0`,

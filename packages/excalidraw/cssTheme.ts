@@ -309,13 +309,15 @@ const palette = (value: string): ColorPaletteCustom | undefined => {
     : undefined;
 };
 
-/** `url("data:…") [<size>]`: a quoted `data:` URL, so a theme can never
- * taint the canvas with a cross-origin image, and an optional tile size */
+/** `url("data:…") [<size>]`: a `data:` URL in either quote style, so a theme
+ * can never taint the canvas with a cross-origin image, and an optional tile
+ * size. Inside double quotes the URL may hold `'`, and inside single quotes
+ * `"`. */
 const backdrop = (
   value: string,
 ): Pick<CanvasTheme, "backdropImage" | "backdropSize"> => {
   const match = value.match(
-    /^url\(\s*(["'])(data:[^"']*)\1\s*\)(?:\s+(\d*\.?\d+))?$/,
+    /^url\(\s*(?:"(data:[^"]*)"|'(data:[^']*)')\s*\)(?:\s+(\d*\.?\d+))?$/,
   );
   if (!match) {
     return {};
@@ -323,7 +325,7 @@ const backdrop = (
   const size = match[3] === undefined ? undefined : Number(match[3]);
   return size !== undefined && !(size > 0)
     ? {}
-    : { backdropImage: match[2], backdropSize: size };
+    : { backdropImage: match[1] ?? match[2], backdropSize: size };
 };
 
 const definedEntries = <T extends Record<string, unknown>>(record: T) =>
