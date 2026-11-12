@@ -17,7 +17,7 @@ import {
   isFrameLikeElement,
 } from "./typeChecks";
 
-import { Scene } from "./Scene";
+import type { Scene } from "./Scene";
 
 import type {
   ExcalidrawElement,
@@ -232,18 +232,35 @@ const nestedFrames = <Frame extends ExcalidrawFrameLikeElement>(
   );
   const frameArea = (frame: ExcalidrawFrameLikeElement) =>
     sizeOf(frame).width * sizeOf(frame).height;
-  /** frame id -> the frames it is nested in, the innermost first */
+  const holds = (
+    outer: ExcalidrawFrameLikeElement,
+    inner: ExcalidrawFrameLikeElement,
+  ) =>
+    frameArea(inner) < frameArea(outer) &&
+    boundsContainBounds(bounds.get(outer.id)!, bounds.get(inner.id)!);
+  /**
+   * frame id -> the frames it is nested in, the innermost first. Of two that
+   * only overlap, the one nested in more of the others is innermost, not the
+   * smaller: a frame that grows past the other's size then still holds what
+   * it held.
+   */
   const holders = new Map(
-    frames.map((inner) => [
-      inner.id,
-      frames
-        .filter(
-          (outer) =>
-            frameArea(inner) < frameArea(outer) &&
-            boundsContainBounds(bounds.get(outer.id)!, bounds.get(inner.id)!),
-        )
-        .sort((a, b) => frameArea(a) - frameArea(b)),
-    ]),
+    frames.map((inner) => {
+      const around = frames.filter((outer) => holds(outer, inner));
+      const depth = new Map(
+        around.map((frame) => [
+          frame.id,
+          around.filter((outer) => holds(outer, frame)).length,
+        ]),
+      );
+      return [
+        inner.id,
+        around.sort(
+          (a, b) =>
+            depth.get(b.id)! - depth.get(a.id)! || frameArea(a) - frameArea(b),
+        ),
+      ];
+    }),
   );
   return {
     /** the frame a frame is nested directly in, or null */
@@ -252,6 +269,9 @@ const nestedFrames = <Frame extends ExcalidrawFrameLikeElement>(
     /** the frames nested directly in a frame */
     nestedIn: (outer: ExcalidrawFrameLikeElement) =>
       frames.filter((frame) => holders.get(frame.id)?.[0] === outer),
+    /** whether a frame is nested in another, at any depth */
+    isWithin: (frame: ExcalidrawFrameLikeElement, outer: { id: string }) =>
+      !!holders.get(frame.id)?.some((holder) => holder.id === outer.id),
   };
 };
 
@@ -291,16 +311,38 @@ const resolveTargets = (
   const laidOutFrames = elementIds?.length
     ? named.filter(isFrameLikeElement)
     : frames.filter((frame) => !nesting.holderOf(frame));
-  const nestedUnits = laidOutFrames.flatMap((outer) =>
-    nesting.nestedIn(outer).map((nested) => {
-      const contents = getFrameContents(elements, [nested.id]);
-      return {
-        holderId: outer.id,
-        nested,
-        carried: elements.filter((element) => contents.has(element.id)),
-      };
-    }),
+  const nested = laidOutFrames.flatMap((outer) =>
+    nesting.nestedIn(outer).map((frame) => ({ holderId: outer.id, frame })),
   );
+  // one pass over the scene for every nested frame: each element maps to the
+  // frame that carries it, which is the nested frame or a frame inside it
+  const contents = getFrameContents(
+    elements,
+    nested.map(({ frame }) => frame.id),
+  );
+  const asDrawn = sizes.size
+    ? nestedFrames(frames, elementsMap, new Map())
+    : nesting;
+  const nestedUnits = nested.map(({ holderId, frame }) => {
+    const carries = (frameId: string | null | undefined) => {
+      const carrier = frameId ? elementsMap.get(frameId) : undefined;
+      return (
+        !!carrier &&
+        isFrameLikeElement(carrier) &&
+        (carrier === frame || asDrawn.isWithin(carrier, frame))
+      );
+    };
+    return {
+      holderId,
+      nested: frame,
+      carried: elements.filter((element) =>
+        isFrameLikeElement(element)
+          ? element !== frame && asDrawn.isWithin(element, frame)
+          : carries(contents.get(element.id)) &&
+            (!element.locked || carries(element.frameId)),
+      ),
+    };
+  });
   // a group drawn around a nested frame, a box with the frame on it, is
   // carried only in part: what lies in the frame is and the box is not.
   // Laying the two out apart would pull the group off the frame and change
@@ -530,7 +572,9 @@ type Placed = { unit: Unit; x: number; y: number };
 /**
  * Pushes the layout along its direction until no unit sits on an obstacle.
  * Everything from the hit unit onward moves together, so the layout keeps
- * its order and only gets longer, and laying it out again changes nothing.
+ * its order and only gets longer. The nearest hit is pushed first: laying the
+ * result out again starts where its first unit landed, and so makes the same
+ * pushes from there and changes nothing.
  */
 const pushOffObstacles = (
   placed: Placed[],
@@ -543,11 +587,13 @@ const pushOffObstacles = (
   for (let pushes = 0; pushes < MAX_PUSHES; pushes++) {
     let hit: { placed: Placed; obstacle: Box } | undefined;
     for (const candidate of placed) {
+      if (hit && hit.placed[along] <= candidate[along]) {
+        continue;
+      }
       const box = boxAt(candidate);
       const obstacle = obstacles.find((obstacle) => overlap(box, obstacle));
       if (obstacle) {
         hit = { placed: candidate, obstacle };
-        break;
       }
     }
     if (!hit) {
@@ -579,47 +625,159 @@ const sameNesting = (scene: Scene, a: FrameSizes, b: FrameSizes) => {
   return frames.every((frame) => was.holderOf(frame) === now.holderOf(frame));
 };
 
-/** how often a plan is made again on the board it leaves, at most */
-const MAX_SETTLES = 4;
+type FramePush = {
+  readonly frame: ExcalidrawFrameLikeElement;
+  /** where the frame was */
+  readonly was: Box;
+  /** where the plan leaves it */
+  box: Box;
+  /** the frames nested in it, where they were and where its layout lays them */
+  readonly nested: readonly { readonly was: Box; readonly laid: Box }[];
+};
 
-/** a copy of the scene to try plans on */
-const copyOf = (scene: Scene) =>
-  new Scene(
-    scene.getElementsIncludingDeleted().map((element) => ({ ...element })),
-    { skipValidation: true },
+const relation = (a: Box, b: Box) =>
+  !overlap(a, b)
+    ? "apart"
+    : contains(a, b)
+    ? "holds"
+    : contains(b, a)
+    ? "held"
+    : "overlaps";
+
+/** whether `outer` came to overlap or hold a frame nested in `inner` */
+const reaches = (outer: FramePush, inner: FramePush) =>
+  inner.nested.some(({ was, laid }) => {
+    const now = relation(outer.box, {
+      ...laid,
+      x: laid.x + inner.box.x - inner.was.x,
+      y: laid.y + inner.box.y - inner.was.y,
+    });
+    return now !== "apart" && now !== relation(outer.was, was);
+  });
+
+/**
+ * The shortest push, right or down, that takes one of two frames off the
+ * other, when the plan made them, or a frame nested in one and the other,
+ * overlap or nest where they did not. The frame that lay right of or below
+ * the other moves on that way, so frames keep their order. Of two that
+ * overlapped already, the one with the frame the other reached moves, or the
+ * smaller. A locked frame stays.
+ */
+const pushBetween = (a: FramePush, b: FramePush, gap: number) => {
+  const now = relation(a.box, b.box);
+  const changed = now !== "apart" && now !== relation(a.was, b.was);
+  const reached = changed ? null : reaches(a, b) ? b : reaches(b, a) ? a : null;
+  if (!changed && !reached) {
+    return null;
+  }
+  const right = (mover: FramePush, other: FramePush) => ({
+    mover,
+    dx: other.box.x + other.box.width + gap - mover.box.x,
+    dy: 0,
+  });
+  const down = (mover: FramePush, other: FramePush) => ({
+    mover,
+    dx: 0,
+    dy: other.box.y + other.box.height + gap - mover.box.y,
+  });
+  const leftOf = (first: Box, second: Box) => first.x + first.width <= second.x;
+  const above = (first: Box, second: Box) => first.y + first.height <= second.y;
+  const inner = reached ?? (area(a.was) < area(b.was) ? a : b);
+  const outer = inner === a ? b : a;
+  const pushes =
+    reached || overlap(a.was, b.was)
+      ? [right(inner, outer), down(inner, outer)]
+      : [
+          ...(leftOf(a.was, b.was) ? [right(b, a)] : []),
+          ...(leftOf(b.was, a.was) ? [right(a, b)] : []),
+          ...(above(a.was, b.was) ? [down(b, a)] : []),
+          ...(above(b.was, a.was) ? [down(a, b)] : []),
+        ];
+  return (
+    pushes
+      .filter(({ mover }) => !mover.frame.locked)
+      .sort((p, q) => p.dx + p.dy - (q.dx + q.dy))[0] ?? null
   );
+};
 
-const movesAnything = (plan: ArrangePlan) =>
-  plan.frames.size > 0 ||
-  [...plan.translations.values()].some(({ dx, dy }) => dx || dy);
+/**
+ * A frame grows in place, right and down, into whatever frame lies there.
+ * Each frame not nested in another is pushed off the frames that came to
+ * overlap or nest it, taking along all it carries, so every frame holds what
+ * it held and arranging the result again finds the same layout.
+ */
+const keepFramesApart = (
+  allFrames: readonly ExcalidrawFrameLikeElement[],
+  elements: readonly NonDeletedExcalidrawElement[],
+  elementsMap: NonDeletedSceneElementsMap,
+  {
+    frameBox,
+    gap,
+    placedOnFreeCanvas,
+    move,
+  }: {
+    frameBox: (frame: ExcalidrawFrameLikeElement) => Box;
+    gap: number;
+    placedOnFreeCanvas: (id: string) => boolean;
+    move: (element: ExcalidrawElement, dx: number, dy: number) => void;
+  },
+) => {
+  const nesting = nestedFrames(allFrames, elementsMap, new Map());
+  /** the frame not nested in another that a frame is nested in, or itself */
+  const outermost = (frameId: string | undefined): string => {
+    const frame = frameId ? elementsMap.get(frameId) : undefined;
+    const holder =
+      frame && isFrameLikeElement(frame) ? nesting.holderOf(frame) : null;
+    return holder ? outermost(holder.id) : frameId ?? "";
+  };
+  const tops: FramePush[] = allFrames
+    .filter((frame) => !nesting.holderOf(frame))
+    .map((frame) => ({
+      frame,
+      was: boxOf([frame], elementsMap),
+      box: frameBox(frame),
+      nested: allFrames
+        .filter((each) => each !== frame && outermost(each.id) === frame.id)
+        .map((each) => ({
+          was: boxOf([each], elementsMap),
+          laid: frameBox(each),
+        })),
+    }));
+  for (let pushes = 0; pushes < MAX_PUSHES; pushes++) {
+    const push = tops
+      .flatMap((a, i) => tops.slice(i + 1).map((b) => pushBetween(a, b, gap)))
+      .find((each) => each !== null);
+    if (!push) {
+      break;
+    }
+    const { mover, dx, dy } = push;
+    mover.box = { ...mover.box, x: mover.box.x + dx, y: mover.box.y + dy };
+  }
 
-/** one plan that does what `plans` do one after the other */
-const composed = (
-  plans: readonly ArrangePlan[],
-  versions: ReadonlyMap<string, number>,
-): ArrangePlan => {
-  const translations = new Map<string, { dx: number; dy: number }>();
-  for (const plan of plans) {
-    for (const [id, { dx, dy }] of plan.translations) {
-      const was = translations.get(id) ?? { dx: 0, dy: 0 };
-      translations.set(id, { dx: was.dx + dx, dy: was.dy + dy });
+  const offsets = new Map(
+    tops.flatMap(({ frame, was, box }) =>
+      box.x !== was.x || box.y !== was.y
+        ? [[frame.id, { dx: box.x - was.x, dy: box.y - was.y }] as const]
+        : [],
+    ),
+  );
+  if (!offsets.size) {
+    return;
+  }
+  const contents = getFrameContents(elements, [...offsets.keys()]);
+  for (const element of elements) {
+    const offset = offsets.get(
+      outermost(
+        offsets.has(element.id) ? element.id : contents.get(element.id),
+      ),
+    );
+    // an arrow bound at both ends follows them, bends and all
+    const followsBoth =
+      isArrowElement(element) && !!element.startBinding && !!element.endBinding;
+    if (offset && !followsBoth && !placedOnFreeCanvas(element.id)) {
+      move(element, offset.dx, offset.dy);
     }
   }
-  const read = new Set(plans.flatMap((plan) => [...plan.versions.keys()]));
-  return {
-    versions: new Map(
-      [...read].flatMap((id) => {
-        const version = versions.get(id);
-        return version === undefined ? [] : [[id, version] as const];
-      }),
-    ),
-    translations,
-    arrows: [...new Set(plans.flatMap((plan) => plan.arrows))],
-    frames: new Map(plans.flatMap((plan) => [...plan.frames])),
-    overlappedFrameIds: [
-      ...new Set(plans.flatMap((plan) => plan.overlappedFrameIds)),
-    ],
-  };
 };
 
 /**
@@ -627,42 +785,21 @@ const composed = (
  * for the free canvas), without touching the scene. Reads the scene before its
  * first await, so a change made while the engine runs makes the plan stale.
  *
- * A plan reads which frame holds what from where things lie, and its moves
- * can change that: a frame grown into the frame below it holds what landed
- * there. So the plan is tried on a copy of the scene and made again on the
- * board it leaves, until that board arranges to itself, and arranging the
- * result again moves nothing.
+ * A plan reads which frame holds what from where things lie, so arranging the
+ * result again moves nothing only if the plan's moves leave every frame
+ * holding what it held. Arranging the whole scene keeps the frames apart, so
+ * that holds; a selection leaves unselected frames where they are, so a frame
+ * grown around one is planned again with it nested.
  */
 export const planArrange = async (
   scene: Scene,
   appState: Readonly<Pick<AppState, "gridSize">>,
   request: ArrangeRequest,
   engine: LayoutEngine,
-): Promise<ArrangePlan | null> => {
-  const versions = new Map(
-    scene
-      .getNonDeletedElements()
-      .map((element) => [element.id, element.version]),
-  );
-  const board = copyOf(scene);
-  const first = await planGrown(scene, appState, request, engine);
-  if (!first) {
-    return null;
-  }
-  const plans = [first];
-  for (let settles = 0; settles < MAX_SETTLES; settles++) {
-    const last = plans.at(-1)!;
-    if (!movesAnything(last) || applyArrangePlan(board, last) === "stale") {
-      break;
-    }
-    const next = await planGrown(board, appState, request, engine);
-    if (!next || !movesAnything(next)) {
-      break;
-    }
-    plans.push(next);
-  }
-  return composed(plans, versions);
-};
+): Promise<ArrangePlan | null> =>
+  request.elementIds?.length
+    ? planGrown(scene, appState, request, engine)
+    : planWith(scene, appState, request, engine, new Map());
 
 /**
  * A frame that grows around another frame nests it, which changes what the
@@ -799,81 +936,97 @@ const planWith = async (
 
   const translations = new Map<string, { dx: number; dy: number }>();
   const frames = new Map<string, { width: number; height: number }>();
-  /** a frame as an obstacle, at the size this plan grows it to */
+  /** a frame where this plan leaves it, at the size it grows it to */
   const frameBox = (frame: ExcalidrawFrameLikeElement): Box => {
     const box = boxOf([frame], elementsMap);
+    const { dx, dy } = translations.get(frame.id) ?? { dx: 0, dy: 0 };
     const grown = frames.get(frame.id);
-    return grown
-      ? {
-          ...box,
-          width: Math.round(grown.width),
-          height: Math.round(grown.height),
-        }
-      : box;
+    return {
+      x: box.x + dx,
+      y: box.y + dy,
+      width: grown ? Math.round(grown.width) : box.width,
+      height: grown ? Math.round(grown.height) : box.height,
+    };
   };
 
-  // frames first, so the free canvas keeps off them at their grown size
-  const inOrder = jobs
-    .map((job, i) => ({ ...job, positions: placements[i] }))
-    .sort((a, b) => Number(!a.frame) - Number(!b.frame));
-  inOrder.forEach(
-    ({ units, obstacles, frames: framesAround, frame, positions }) => {
-      const at = (unit: Unit) => {
-        const position = positions.get(unit.id);
-        if (!position) {
-          throw new Error(
-            `The layout engine placed no position for ${unit.id}`,
-          );
-        }
-        return position;
-      };
-      // a frame's layout starts at its margin and the free canvas's where it
-      // was; neither depends on where the layout ends, so a second layout
-      // lands on the same pixels
-      const origin = frame
-        ? { x: frame.x + spacing.frameMargin, y: frame.y + spacing.frameMargin }
-        : {
-            x: Math.min(...units.map((unit) => unit.box.x)),
-            y: Math.min(...units.map((unit) => unit.box.y)),
-          };
-      const placed: Placed[] = units.map((unit) => ({
-        unit,
-        x: Math.round(origin.x + at(unit).x),
-        y: Math.round(origin.y + at(unit).y),
-      }));
-      pushOffObstacles(
-        placed,
-        [...obstacles, ...framesAround.map(frameBox)],
-        options.direction,
-        spacing.node,
-      );
-      for (const { unit, x, y } of placed) {
-        const dx = x - unit.box.x;
-        const dy = y - unit.box.y;
-        unit.members.forEach((member) =>
-          translations.set(member.id, { dx, dy }),
-        );
+  const place = ({
+    units,
+    obstacles,
+    frames: framesAround,
+    frame,
+    positions,
+  }: Omit<Partition, "arrows"> & {
+    frame: ExcalidrawFrameLikeElement | undefined;
+    positions: LayoutPositions;
+  }) => {
+    const at = (unit: Unit) => {
+      const position = positions.get(unit.id);
+      if (!position) {
+        throw new Error(`The layout engine placed no position for ${unit.id}`);
       }
-      if (frame) {
-        const right = Math.max(
-          ...placed.map(({ unit, x }) => x + unit.box.width),
-        );
-        const bottom = Math.max(
-          ...placed.map(({ unit, y }) => y + unit.box.height),
-        );
-        const grown = {
-          width: Math.max(frame.width, right + spacing.frameMargin - frame.x),
-          height: Math.max(
-            frame.height,
-            bottom + spacing.frameMargin - frame.y,
-          ),
+      return position;
+    };
+    // a frame's layout starts at its margin and the free canvas's where it
+    // was; neither depends on where the layout ends, so a second layout
+    // lands on the same pixels
+    const origin = frame
+      ? { x: frame.x + spacing.frameMargin, y: frame.y + spacing.frameMargin }
+      : {
+          x: Math.min(...units.map((unit) => unit.box.x)),
+          y: Math.min(...units.map((unit) => unit.box.y)),
         };
-        if (grown.width !== frame.width || grown.height !== frame.height) {
-          frames.set(frame.id, grown);
-        }
+    const placed: Placed[] = units.map((unit) => ({
+      unit,
+      x: Math.round(origin.x + at(unit).x),
+      y: Math.round(origin.y + at(unit).y),
+    }));
+    pushOffObstacles(
+      placed,
+      [...obstacles, ...framesAround.map(frameBox)],
+      options.direction,
+      spacing.node,
+    );
+    for (const { unit, x, y } of placed) {
+      const dx = x - unit.box.x;
+      const dy = y - unit.box.y;
+      unit.members.forEach((member) => translations.set(member.id, { dx, dy }));
+    }
+    if (frame) {
+      const right = Math.max(
+        ...placed.map(({ unit, x }) => x + unit.box.width),
+      );
+      const bottom = Math.max(
+        ...placed.map(({ unit, y }) => y + unit.box.height),
+      );
+      const grown = {
+        width: Math.max(frame.width, right + spacing.frameMargin - frame.x),
+        height: Math.max(frame.height, bottom + spacing.frameMargin - frame.y),
+      };
+      if (grown.width !== frame.width || grown.height !== frame.height) {
+        frames.set(frame.id, grown);
       }
-    },
-  );
+    }
+  };
+
+  const done = jobs.map((job, i) => ({ ...job, positions: placements[i] }));
+  const allFrames = elements.filter(isFrameLikeElement);
+  // frames first, so the free canvas keeps off them where they end up
+  done.filter(({ frame }) => frame).forEach(place);
+  if (!request.elementIds?.length) {
+    const freeCanvas = new Set(partitions.get(null)?.units);
+    keepFramesApart(allFrames, elements, elementsMap, {
+      frameBox,
+      gap: spacing.node,
+      // the free canvas's own layout places what is on it
+      placedOnFreeCanvas: (id) => freeCanvas.has(unitOf.get(id)!),
+      move: (element, dx, dy) => {
+        read(element);
+        const was = translations.get(element.id) ?? { dx: 0, dy: 0 };
+        translations.set(element.id, { dx: was.dx + dx, dy: was.dy + dy });
+      },
+    });
+  }
+  done.filter(({ frame }) => !frame).forEach(place);
 
   const moves = (id: string | undefined) => {
     const translation = translations.get(id ?? "");
@@ -890,19 +1043,17 @@ const planWith = async (
   );
   arrows.forEach(read);
 
-  const allFrames = elements.filter(isFrameLikeElement);
-  const grownFrames = allFrames.filter((frame) => frames.has(frame.id));
-  const boxAfter = (frame: ExcalidrawFrameLikeElement): Box => ({
-    ...frame,
-    ...frames.get(frame.id),
-  });
+  const after = new Map(allFrames.map((frame) => [frame.id, frameBox(frame)]));
+  const changed = allFrames.filter(
+    (frame) => frames.has(frame.id) || translations.has(frame.id),
+  );
   const overlappedFrameIds = allFrames
     .filter((other) =>
-      grownFrames.some(
-        (grown) =>
-          grown !== other &&
-          !overlap(grown, other) &&
-          overlap(boxAfter(grown), boxAfter(other)),
+      changed.some(
+        (frame) =>
+          frame !== other &&
+          !overlap(frame, other) &&
+          overlap(after.get(frame.id)!, after.get(other.id)!),
       ),
     )
     .map((frame) => frame.id);
@@ -988,28 +1139,40 @@ export const applyArrangePlan = (
   for (const element of arranged) {
     updateBoundElements(element, scene, { simultaneouslyUpdated: arranged });
   }
-  // the ends snapped to the outlines on their own, so each bend keeps its
-  // offset from the line between the ends where they actually landed
+  // the ends snapped to the outlines on their own, so the bends follow the
+  // line between where they landed: turned and stretched with it, each bend
+  // keeps its place along that line and its side of it
   for (const { arrow, pointsWere: was } of between) {
     const last = was.length - 1;
     if (arrow.elbowed || last < 2 || arrow.points.length !== was.length) {
       continue;
     }
-    const along = (points: readonly LocalPoint[], t: number) =>
-      pointFrom<LocalPoint>(
-        points[0][0] + (points[last][0] - points[0][0]) * t,
-        points[0][1] + (points[last][1] - points[0][1]) * t,
-      );
+    const [fromX, fromY] = was[0];
+    const lineWas = [was[last][0] - fromX, was[last][1] - fromY];
+    const [startX, startY] = arrow.points[0];
+    const lineNow = [
+      arrow.points[last][0] - startX,
+      arrow.points[last][1] - startY,
+    ];
+    const lengthSquared = lineWas[0] ** 2 + lineWas[1] ** 2;
+    if (!lengthSquared) {
+      continue;
+    }
+    // the turn and stretch that takes the old line onto the new one
+    const cos =
+      (lineWas[0] * lineNow[0] + lineWas[1] * lineNow[1]) / lengthSquared;
+    const sin =
+      (lineWas[0] * lineNow[1] - lineWas[1] * lineNow[0]) / lengthSquared;
     scene.mutateElement(arrow, {
       points: arrow.points.map((point, j) => {
         if (j === 0 || j === last) {
           return point;
         }
-        const chordWas = along(was, j / last);
-        const chordNow = along(arrow.points, j / last);
+        const x = was[j][0] - fromX;
+        const y = was[j][1] - fromY;
         return pointFrom<LocalPoint>(
-          chordNow[0] + was[j][0] - chordWas[0],
-          chordNow[1] + was[j][1] - chordWas[1],
+          startX + x * cos - y * sin,
+          startY + x * sin + y * cos,
         );
       }),
     });

@@ -1,7 +1,7 @@
 import React from "react";
 import { vi } from "vitest";
 
-import { KEYS } from "@excalidraw/common";
+import { KEYS, ROUNDNESS } from "@excalidraw/common";
 import { pointFrom } from "@excalidraw/math";
 import {
   CaptureUpdateAction,
@@ -1325,24 +1325,32 @@ describe("growing a frame into the frame beside it", () => {
   });
 });
 
+/**
+ * Where an arrow's middle point lies against the line between its ends: how
+ * far along it and how far beside it, both as a share of the line's length.
+ */
+const bendOf = (arrow: ExcalidrawElement) => {
+  if (!isArrowElement(arrow)) {
+    throw new Error(`${arrow.id} is not an arrow`);
+  }
+  const [start, middle] = arrow.points;
+  const end = arrow.points[arrow.points.length - 1];
+  const line = [end[0] - start[0], end[1] - start[1]];
+  const bend = [middle[0] - start[0], middle[1] - start[1]];
+  const lengthSquared = line[0] ** 2 + line[1] ** 2;
+  return {
+    points: arrow.points.length,
+    along: (bend[0] * line[0] + bend[1] * line[1]) / lengthSquared,
+    beside: (line[0] * bend[1] - line[1] * bend[0]) / lengthSquared,
+  };
+};
+
 describe("arranging two boxes joined by a bent arrow", () => {
   const ids = ["shape-id-left", "shape-id-right"];
   let before: Scene;
   let after: Scene;
 
-  /** the middle point's offset from the midpoint of the chord between the arrow's ends */
-  const bulge = (scene: Scene) => {
-    const arrow = scene.get("arrow-id-bent")!;
-    if (!isArrowElement(arrow)) {
-      throw new Error("arrow-id-bent is not an arrow");
-    }
-    const [start, middle, end] = arrow.points;
-    return {
-      points: arrow.points.length,
-      dx: middle[0] - (start[0] + end[0]) / 2,
-      dy: middle[1] - (start[1] + end[1]) / 2,
-    };
-  };
+  const bulge = (scene: Scene) => bendOf(scene.get("arrow-id-bent")!);
 
   beforeEach(async () => {
     await load();
@@ -1397,8 +1405,8 @@ describe("arranging two boxes joined by a bent arrow", () => {
     const was = bulge(before);
     const now = bulge(after);
     expect(now.points).toBe(3);
-    expect(Math.abs(now.dx - was.dx)).toBeLessThan(25);
-    expect(Math.abs(now.dy - was.dy)).toBeLessThan(25);
+    expect(now.along).toBeCloseTo(was.along, 3);
+    expect(now.beside).toBeCloseTo(was.beside, 3);
   });
 });
 
@@ -1838,7 +1846,7 @@ describe("arranging the whole scene where a grouped box is drawn around a nested
   });
 });
 
-describe("planning an arrange, which it tries out on a copy of the scene", () => {
+describe("planning an arrange", () => {
   const scenario = scenarioNamed("a chain of four, scattered");
 
   beforeEach(async () => {
@@ -1856,5 +1864,291 @@ describe("planning an arrange, which it tries out on a copy of the scene", () =>
 
     expect(plan).not.toBeNull();
     expect(snapshot()).toEqual(before);
+  });
+});
+
+/** pairs of frames that lay apart before and overlap after */
+const newlyOverlappingFrames = (before: Scene, after: Scene) => {
+  const meet = (a: ExcalidrawElement, b: ExcalidrawElement) =>
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height;
+  const frames = [...after.values()].filter(
+    (element) => element.type === "frame",
+  );
+  return frames.flatMap((a, i) =>
+    frames
+      .slice(i + 1)
+      .filter((b) => !meet(before.get(a.id)!, before.get(b.id)!) && meet(a, b))
+      .map((b) => `${a.id} overlaps ${b.id}`),
+  );
+};
+
+// Each frame F<k> holds a frame N<k> that holds a small frame I<k>, smaller
+// than F<k+1>. Laying F<k> out grows it down into F<k+1>, so I<k> would land
+// in F<k+1> and be laid out there next time, which moves N<k+1> down and
+// grows F<k+1> into F<k+2>, and so on down the chain, one frame per arrange
+const frameChain = (levels: number) => {
+  const height = 1000;
+  const elements: ExcalidrawElement[] = [];
+  let top = 0;
+  let width = 3000;
+  for (let k = 0; k < levels; k++) {
+    const left = k === 0 ? 140 : 0;
+    elements.push(
+      frame(`frame-id-F${k}`, 0, top, width + 80 + left, height + 80),
+      frame(`frame-id-N${k}`, 40 + left, top + 40, width, height),
+      frame(`frame-id-I${k}`, 60 + left, top + height - 30, 100, 60),
+      rectangle(
+        `shape-id-c${k}`,
+        [70 + left, top + height - 20],
+        [40, 40],
+        `frame-id-I${k}`,
+      ),
+      k === 0
+        ? arrowBetween("arrow-id-a", "shape-id-a", "shape-id-c0")
+        : arrowBetween(`arrow-id-${k}`, `shape-id-c${k - 1}`, `shape-id-c${k}`),
+    );
+    if (k === 0) {
+      elements.push(
+        rectangle("shape-id-a", [40, 40], [100, 300], "frame-id-F0"),
+      );
+    }
+    top += k === 0 ? height + 320 : height + 80;
+    width = Math.floor(0.92 * width - 100);
+  }
+  return elements;
+};
+
+describe("arranging the whole scene where seven frames each grow into the next", () => {
+  let before: Scene;
+  let after: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load();
+    API.updateScene({
+      elements: frameChain(7),
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    before = snapshot();
+    await arrangeBy.api(undefined);
+    after = snapshot();
+    await arrangeBy.api(undefined);
+    again = snapshot();
+  });
+
+  it("should grow the first frame", () => {
+    expect(after.get("frame-id-F0")!.height).toBeGreaterThan(
+      before.get("frame-id-F0")!.height,
+    );
+  });
+
+  it("should make no two frames overlap that lay apart", () => {
+    expect(newlyOverlappingFrames(before, after)).toEqual([]);
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(changed(after, again)).toEqual([]);
+  });
+});
+
+// laid out in a column from where the first shape was, the first shape sits
+// on one locked box and the second on another; the second comes first in the
+// request, so it would be pushed before the first pushed it again
+describe("arranging two shapes pushed off locked boxes in the column they make", () => {
+  let after: Scene;
+  let again: Scene;
+  const ids = ["shape-id-second", "shape-id-first"];
+
+  beforeEach(async () => {
+    await load();
+    API.updateScene({
+      elements: [
+        rectangle("shape-id-first", [0, 0], [100, 60], null),
+        rectangle("shape-id-second", [300, 600], [100, 60], null),
+        arrowBetween("arrow-id-joins", "shape-id-first", "shape-id-second"),
+        {
+          ...rectangle("shape-id-locked-a", [-20, 20], [140, 60], null),
+          locked: true,
+        },
+        {
+          ...rectangle("shape-id-locked-b", [-20, 110], [140, 90], null),
+          locked: true,
+        },
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await arrangeBy.api(ids);
+    after = snapshot();
+    await arrangeBy.api(ids);
+    again = snapshot();
+  });
+
+  it("should lay neither shape on a locked box", () => {
+    expect(
+      overlaps(after, [...ids, "shape-id-locked-a", "shape-id-locked-b"]),
+    ).toEqual([]);
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(changed(after, again)).toEqual([]);
+  });
+});
+
+// the bend sat off to the side of a long diagonal; arranging puts the end
+// right under the start, and a bend kept at the same offset would sit behind
+// the start, so the arrow left its box and doubled back through it
+describe("arranging two boxes joined by a curved arrow", () => {
+  let before: Scene;
+  let after: Scene;
+
+  beforeEach(async () => {
+    await load();
+    const box = (id: string, x: number, y: number) =>
+      API.createElement({
+        type: "rectangle",
+        id,
+        x,
+        y,
+        width: 120,
+        height: 60,
+        boundElements: [{ id: "arrow-id-curved", type: "arrow" }],
+      });
+    API.updateScene({
+      elements: [
+        box("shape-id-p1", 100, 100),
+        box("shape-id-p2", 420, 380),
+        API.createElement({
+          type: "arrow",
+          id: "arrow-id-curved",
+          x: 160,
+          y: 130,
+          width: 320,
+          height: 280,
+          roundness: { type: ROUNDNESS.PROPORTIONAL_RADIUS },
+          points: [
+            pointFrom<LocalPoint>(0, 0),
+            pointFrom<LocalPoint>(170, 40),
+            pointFrom<LocalPoint>(320, 280),
+          ],
+          startBinding: bindingTo("shape-id-p1"),
+          endBinding: bindingTo("shape-id-p2"),
+          endArrowhead: "arrow",
+        }),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    before = snapshot();
+    await arrangeBy.api(["shape-id-p1", "shape-id-p2"]);
+    after = snapshot();
+  });
+
+  it("should turn the line between the ends", () => {
+    const angle = (scene: Scene) => {
+      const arrow = scene.get("arrow-id-curved")!;
+      if (!isArrowElement(arrow)) {
+        throw new Error("arrow-id-curved is not an arrow");
+      }
+      const [start] = arrow.points;
+      const end = arrow.points[arrow.points.length - 1];
+      return Math.atan2(end[1] - start[1], end[0] - start[0]);
+    };
+    expect(Math.abs(angle(after) - angle(before))).toBeGreaterThan(0.3);
+  });
+
+  it("should keep the bend between the ends, on the side it was", () => {
+    const was = bendOf(before.get("arrow-id-curved")!);
+    const now = bendOf(after.get("arrow-id-curved")!);
+    expect(now.points).toBe(3);
+    expect(now.along).toBeGreaterThan(0);
+    expect(now.along).toBeLessThan(1);
+    expect(Math.sign(now.beside)).toBe(Math.sign(was.beside));
+  });
+});
+
+// The small frame lies where two frames overlap: in the page, which sits in
+// the sheet, and in the card, which only overlaps the sheet. The card is the
+// smaller of the two until arranging grows it past the page
+describe("arranging the whole scene where a frame lies in two that overlap, and one grows", () => {
+  let after: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load();
+    API.updateScene({
+      elements: [
+        frame("frame-id-sheet", 0, 0, 2000, 2000),
+        frame("frame-id-page", 100, 100, 1100, 1100),
+        rectangle(
+          "shape-id-on-sheet",
+          [1500, 1500],
+          [100, 60],
+          "frame-id-sheet",
+        ),
+        frame("frame-id-card", 900, 900, 1200, 800),
+        frame("frame-id-small", 950, 950, 100, 100),
+        rectangle("shape-id-small", [960, 960], [40, 40], "frame-id-small"),
+        rectangle("shape-id-tall-a", [1200, 950], [100, 400], "frame-id-card"),
+        rectangle("shape-id-tall-b", [1400, 950], [100, 400], "frame-id-card"),
+        arrowBetween("arrow-id-small-a", "shape-id-small", "shape-id-tall-a"),
+        arrowBetween("arrow-id-a-b", "shape-id-tall-a", "shape-id-tall-b"),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    await arrangeBy.api(undefined);
+    after = snapshot();
+    await arrangeBy.api(undefined);
+    again = snapshot();
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(changed(after, again)).toEqual([]);
+  });
+});
+
+// The card already overlaps the sheet; arranging grows it down around the
+// page in the sheet, which would then nest in the card
+describe("arranging the whole scene where a frame grows around a frame in a frame it overlaps", () => {
+  let before: Scene;
+  let after: Scene;
+  let again: Scene;
+
+  beforeEach(async () => {
+    await load();
+    API.updateScene({
+      elements: [
+        frame("frame-id-sheet", 0, 0, 2000, 2000),
+        frame("frame-id-page", 1200, 1200, 300, 300),
+        rectangle("shape-id-on-page", [1250, 1250], [100, 60], "frame-id-page"),
+        frame("frame-id-card", 1100, 1000, 1000, 150),
+        rectangle("shape-id-tall-a", [1140, 1040], [100, 200], "frame-id-card"),
+        rectangle("shape-id-tall-b", [1300, 1040], [100, 200], "frame-id-card"),
+        rectangle("shape-id-tall-c", [1500, 1040], [100, 200], "frame-id-card"),
+        arrowBetween("arrow-id-a-b", "shape-id-tall-a", "shape-id-tall-b"),
+        arrowBetween("arrow-id-b-c", "shape-id-tall-b", "shape-id-tall-c"),
+      ],
+      captureUpdate: CaptureUpdateAction.NEVER,
+    });
+    before = snapshot();
+    await arrangeBy.api(undefined);
+    after = snapshot();
+    await arrangeBy.api(undefined);
+    again = snapshot();
+  });
+
+  it("should leave the page out of the card", () => {
+    expect(
+      inside(
+        extentOf(after.get("frame-id-page")!),
+        extentOf(after.get("frame-id-card")!),
+      ),
+    ).toBe(false);
+    expect(newlyOverlappingFrames(before, after)).toEqual([]);
+  });
+
+  it("should move nothing when arranged again", () => {
+    expect(changed(after, again)).toEqual([]);
   });
 });

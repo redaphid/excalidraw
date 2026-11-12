@@ -6,9 +6,10 @@ import { readFileSync } from "fs";
 
 import React from "react";
 
-import { CaptureUpdateAction } from "@excalidraw/element";
+import { CaptureUpdateAction, isFrameLikeElement } from "@excalidraw/element";
 
 import type { ArrangeOutcome } from "@excalidraw/element";
+import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import { restoreElements } from "../data/restore";
 import { Excalidraw } from "../index";
@@ -20,6 +21,31 @@ const { h } = window;
 
 const BOARD = process.env.ARRANGE_BOARD;
 const PASSES = Number(process.env.ARRANGE_PASSES ?? 3);
+
+/** pairs of frames that overlap without one holding the other */
+const partlyOverlappingFrames = () => {
+  const frames = h.elements.filter(
+    (element) => !element.isDeleted && isFrameLikeElement(element),
+  );
+  const holds = (a: ExcalidrawElement, b: ExcalidrawElement) =>
+    b.x >= a.x &&
+    b.y >= a.y &&
+    b.x + b.width <= a.x + a.width &&
+    b.y + b.height <= a.y + a.height;
+  return frames.flatMap((a, i) =>
+    frames
+      .slice(i + 1)
+      .filter(
+        (b) =>
+          a.x < b.x + b.width &&
+          b.x < a.x + a.width &&
+          a.y < b.y + b.height &&
+          b.y < a.y + a.height &&
+          !holds(a, b) &&
+          !holds(b, a),
+      ),
+  ).length;
+};
 
 const geometry = () =>
   new Map(
@@ -40,6 +66,9 @@ const geometry = () =>
         captureUpdate: CaptureUpdateAction.NEVER,
       });
 
+      console.info(
+        `before: ${partlyOverlappingFrames()} partly overlapping frame pairs`,
+      );
       const moved: number[] = [];
       for (let pass = 1; pass <= PASSES; pass++) {
         const before = geometry();
@@ -59,7 +88,7 @@ const geometry = () =>
             outcome?.status
           }, moved ${movedIds}, changed ${changed}, ${Math.round(
             performance.now() - started,
-          )} ms`,
+          )} ms, ${partlyOverlappingFrames()} partly overlapping frame pairs`,
         );
       }
 
