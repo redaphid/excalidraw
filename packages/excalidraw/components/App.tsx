@@ -345,6 +345,7 @@ import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
 import { EMPTY_CSS_THEME, readCssTheme, themeDrawsGrid } from "../cssTheme";
+import { loadBackdrop } from "../renderer/backdrop";
 import { getFrameStyle } from "../frameStyle";
 import { getCenter, getDistance } from "../gesture";
 import {
@@ -5356,6 +5357,14 @@ ${css}
     if (canvasChanged) {
       this.cursor.applyForTool();
       this.triggerRender(true);
+      const { backdropImage } = next.canvas;
+      if (backdropImage && backdropImage !== prev.canvas.backdropImage) {
+        loadBackdrop(backdropImage).then(() => {
+          if (this.cssTheme.canvas.backdropImage === backdropImage) {
+            this.triggerRender(true);
+          }
+        });
+      }
     }
   }
 
