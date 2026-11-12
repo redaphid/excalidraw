@@ -117,6 +117,7 @@ The full design, with every zoom-dependent size and the alternatives that were r
 - Text whose font is far under a pixel, which Chrome measures and draws as nothing, is measured and drawn at a readable size and scaled back down ([`33c0e91c`](https://github.com/redaphid/excalidraw/commit/33c0e91c)).
 - An element's cache bitmap padding scales with its details, so a shape drawn at depth no longer allocates a bitmap many times its on-screen size ([`d12a81bf`](https://github.com/redaphid/excalidraw/commit/d12a81bf)).
 - Viewport culling and frame export test where a stroke paints, not its centre line, so a thick stroke crossing an edge is not dropped ([`ffcd1e95`](https://github.com/redaphid/excalidraw/commit/ffcd1e95)).
+- Culling asks a packed R-tree which elements touch the view instead of measuring every element each frame ([`1d9be26e`](https://github.com/redaphid/excalidraw/commit/1d9be26e)). The index keys elements by object and `version`, so a host must change elements through `mutateElement` or a new array passed to `excalidrawAPI.updateScene({ elements })`. An element whose fields a host writes in place by any other route, even with a `version` bump, keeps its old box in the index until the next scene change, and can be culled wrongly until then. The index is rebuilt in idle time once edits have paused for a second, in tasks that stop after 4 ms, so a rebuild never holds up input for long.
 
 ### Frame navigation: `frameNavigation`
 

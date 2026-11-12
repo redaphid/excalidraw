@@ -9,9 +9,10 @@ import { getElementMutationCount } from "./mutateElement";
 import type { ElementsMap, ExcalidrawElement } from "./types";
 
 const REBUILD_QUIET_MS = 1000;
-const REBUILD_SLICE_MS = 8;
-const MEASURE_CHUNK = 512;
-const CHUNKS_PER_TASK = 4;
+/** the time one idle task of a rebuild may spend, before its last chunk */
+export const REBUILD_SLICE_MS = 4;
+/** elements measured between two pauses of a rebuild */
+export const MEASURE_CHUNK = 512;
 const REBUILD_MIN_STALE = 32;
 
 const touches = (
@@ -93,6 +94,14 @@ const emptyIndex = <T>(): Index<T> => ({
   hitSlots: new Uint32Array(0),
 });
 
+/**
+ * Answers which elements touch a rect from a packed R-tree that survives
+ * element-array changes: indexed elements are matched by object and version,
+ * and only the new or changed ones are measured. Elements must change through
+ * `mutateElement` or a new array given to `updateScene({ elements })`; an
+ * element written in place by any other route keeps its old box here until
+ * the next scene change.
+ */
 export class ElementsRTree<T extends ExcalidrawElement> {
   private index: Index<T> = emptyIndex();
 
@@ -309,18 +318,16 @@ export class ElementsRTree<T extends ExcalidrawElement> {
   }
 
   private runIdleTask(idle: () => boolean) {
-    const start = performance.now();
+    const now = this.getOwnerWindow().performance;
+    const start = now.now();
     const until = start + REBUILD_SLICE_MS;
     const before = this.rebuildJob
       ? { ...this.rebuildJob.work }
       : { measured: 0, comparisons: 0, writes: 0 };
-    const job = this.runRebuildTask(
-      () => idle() && performance.now() < until,
-      CHUNKS_PER_TASK,
-    );
+    const job = this.runRebuildTask(() => idle() && now.now() < until);
     if (rebuildTaskObserver && job) {
       rebuildTaskObserver({
-        ms: performance.now() - start,
+        ms: now.now() - start,
         measured: job.work.measured - before.measured,
         comparisons: job.work.comparisons - before.comparisons,
         writes: job.work.writes - before.writes,
@@ -335,11 +342,14 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       this.getOwnerWindow().clearTimeout(this.quietTimer);
       this.quietTimer = null;
     }
-    this.runRebuildTask(() => true, Infinity);
+    this.runRebuildTask(() => true);
   }
 
-  /** runs the rebuild for one task and returns its job, if there was one */
-  private runRebuildTask(hasTime: () => boolean, chunks: number) {
+  /**
+   * Runs the rebuild one chunk at a time while `hasTime` holds, so a task
+   * overruns its time by at most one chunk, and returns the job, if any.
+   */
+  private runRebuildTask(hasTime: () => boolean) {
     this.cancelIdleTask?.();
     this.cancelIdleTask = null;
     if (!this.rebuildJob) {
@@ -349,17 +359,14 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       this.rebuildJob = this.startRebuild(this.elements, this.elementsMap);
     }
     const job = this.rebuildJob;
-    for (let chunk = 0; chunk < chunks; chunk++) {
+    do {
       const step = job.steps.next();
       if (step.done) {
         this.rebuildJob = null;
         this.install(job, step.value);
         return job;
       }
-      if (!hasTime()) {
-        break;
-      }
-    }
+    } while (hasTime());
     this.requestIdleTask();
     return job;
   }
