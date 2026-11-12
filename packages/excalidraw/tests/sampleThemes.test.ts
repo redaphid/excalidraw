@@ -53,10 +53,14 @@ describe("the sample themes index", () => {
     },
   );
 
-  it.each(catalog.themes.filter(({ mode }) => mode === "dark"))(
-    "warns about $name's dark canvas",
-    ({ caveats }) => {
-      expect(caveats.join(" ")).toMatch(/theme="dark"/);
+  it.each(catalog.themes)(
+    "paints $name's canvas in its mode under either host theme",
+    ({ name, mode }) => {
+      expect(read(`${name}.css`)).toMatch(
+        new RegExp(
+          `\\n:scope,\\n:scope\\.theme--dark \\{\\n  --canvas-mode: ${mode};\\n`,
+        ),
+      );
     },
   );
 

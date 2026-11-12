@@ -95,6 +95,22 @@ describe("renderFrameOverlay", () => {
     recorded = record();
   });
 
+  it.each([
+    ["dark", "light", "rgba(211, 211, 211, 0.35)"],
+    ["light", "dark", "rgba(30, 30, 30, 0.2)"],
+  ] as const)(
+    "strokes in a %s theme's canvas mode under a %s host",
+    (mode, host, color) => {
+      renderFrameOverlay(recorded.context, {
+        frames,
+        appState: { ...appStateAt(1), theme: host },
+        canvasTheme: { ...canvasTheme, mode },
+      });
+
+      expect(recorded.strokeColors[0]).toBe(color);
+    },
+  );
+
   describe("when frames are hidden", () => {
     beforeEach(() => {
       renderFrameOverlay(recorded.context, {

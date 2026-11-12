@@ -357,10 +357,10 @@ export const textWysiwyg = ({
     return false;
   };
 
-  let LAST_THEME = app.state.theme;
+  let LAST_THEME = app.getCanvasMode();
 
   const updateWysiwygStyle = () => {
-    LAST_THEME = app.state.theme;
+    LAST_THEME = app.getCanvasMode();
 
     const appState = app.state;
     const updatedTextElement = app.scene.getElement<
@@ -536,7 +536,7 @@ export const textWysiwyg = ({
         verticalAlign,
         color: applyDarkModeFilter(
           updatedTextElement.strokeColor,
-          appState.theme === THEME.DARK,
+          app.getCanvasMode() === THEME.DARK,
         ),
         opacity: updatedTextElement.opacity / 100,
       });
@@ -1240,7 +1240,7 @@ export const textWysiwyg = ({
 
   // FIXME after we start emitting updates from Store for appState.theme
   const unsubOnChange = app.onChangeEmitter.on((elements) => {
-    if (app.state.theme !== LAST_THEME) {
+    if (app.getCanvasMode() !== LAST_THEME) {
       updateWysiwygStyle();
     }
   });

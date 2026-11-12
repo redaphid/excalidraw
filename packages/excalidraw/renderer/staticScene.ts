@@ -292,7 +292,6 @@ export const getStaticSceneAppState = (
     hoveredElementIds: appState.hoveredElementIds,
     offsetLeft: appState.offsetLeft,
     offsetTop: appState.offsetTop,
-    theme: appState.theme,
     shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
     viewBackgroundColor: appState.viewBackgroundColor,
     viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
@@ -696,7 +695,7 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
     scale,
     normalizedWidth,
     normalizedHeight,
-    theme: appState.theme,
+    theme: renderConfig.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
     themeBackgroundColor: getThemeCanvasBackground(
