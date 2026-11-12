@@ -2,6 +2,7 @@ import {
   applyDarkModeFilter,
   COLOR_WHITE,
   FRAME_STYLE,
+  isShallowEqual,
   THEME,
   throttleRAF,
 } from "@excalidraw/common";
@@ -22,6 +23,7 @@ import {
 import {
   cacheSettledBitmaps,
   getRenderElementWithPositionOverride,
+  getSettledBitmapCount,
   resolveElementRenderState,
   renderElement,
 } from "@excalidraw/element";
@@ -290,7 +292,6 @@ export const getStaticSceneAppState = (
     hoveredElementIds: appState.hoveredElementIds,
     offsetLeft: appState.offsetLeft,
     offsetTop: appState.offsetTop,
-    theme: appState.theme,
     shouldCacheIgnoreZoom: appState.shouldCacheIgnoreZoom,
     viewBackgroundColor: appState.viewBackgroundColor,
     viewBackgroundColorPicked: appState.viewBackgroundColorPicked,
@@ -519,17 +520,129 @@ export const renderSceneElements = ({
   });
 };
 
-const _renderStaticScene = ({
-  canvas,
-  rc,
-  elementsMap,
-  allElementsMap,
-  visibleElements,
-  scale,
-  appState: unsnappedAppState,
-  renderConfig,
-  onPainted,
-}: StaticSceneRenderConfig) => {
+type PaintedUnderNewElement = {
+  config: StaticSceneRenderConfig;
+  newElementId: string;
+  sceneIds: string[];
+  sceneVersions: number[];
+  settledBitmapCount: number;
+  loadedImageCount: number;
+};
+
+const paintedUnderNewElement = new WeakMap<
+  HTMLCanvasElement,
+  PaintedUnderNewElement
+>();
+
+const countLoadedImages = (
+  imageCache: StaticCanvasRenderConfig["imageCache"],
+) => {
+  let count = 0;
+  for (const { image } of imageCache.values()) {
+    if (!(image instanceof Promise)) {
+      count++;
+    }
+  }
+  return count;
+};
+
+const recordPaintUnderNewElement = (config: StaticSceneRenderConfig) => {
+  const { newElement } = config.appState;
+  if (!newElement || config.renderConfig.isExporting) {
+    paintedUnderNewElement.delete(config.canvas);
+    return;
+  }
+  const sceneIds: string[] = [];
+  const sceneVersions: number[] = [];
+  for (const element of config.allElementsMap.values()) {
+    sceneIds.push(element.id);
+    sceneVersions.push(element.version);
+  }
+  paintedUnderNewElement.set(config.canvas, {
+    config,
+    newElementId: newElement.id,
+    sceneIds,
+    sceneVersions,
+    settledBitmapCount: getSettledBitmapCount(),
+    loadedImageCount: countLoadedImages(config.renderConfig.imageCache),
+  });
+};
+
+const elementsToPaintOver = (
+  painted: PaintedUnderNewElement | undefined,
+  next: StaticSceneRenderConfig,
+): NonDeletedExcalidrawElement[] | null => {
+  const frameHighlightClipsPaint =
+    next.appState.selectedElementsAreBeingDragged;
+  if (
+    !painted ||
+    next.appState.newElement ||
+    next.renderConfig.isExporting ||
+    next.scale !== painted.config.scale ||
+    painted.settledBitmapCount !== getSettledBitmapCount() ||
+    painted.loadedImageCount !==
+      countLoadedImages(next.renderConfig.imageCache) ||
+    painted.config.renderConfig.pendingFlowchartNodes?.length ||
+    !isShallowEqual(
+      getStaticSceneAppState(painted.config.appState as AppState),
+      getStaticSceneAppState(next.appState as AppState),
+      {
+        frameToHighlight: (a, b) => a === b || !frameHighlightClipsPaint,
+      },
+    ) ||
+    !isShallowEqual(painted.config.renderConfig, next.renderConfig, {
+      settledBitmapCount: () => true,
+    })
+  ) {
+    return null;
+  }
+
+  const { sceneIds, sceneVersions, newElementId } = painted;
+  if (next.allElementsMap.size !== sceneIds.length) {
+    return null;
+  }
+  let index = 0;
+  for (const element of next.allElementsMap.values()) {
+    if (
+      element.id !== sceneIds[index] ||
+      (element.version !== sceneVersions[index] && element.id !== newElementId)
+    ) {
+      return null;
+    }
+    index++;
+  }
+
+  const paintedElements = painted.config.visibleElements;
+  const over: NonDeletedExcalidrawElement[] = [];
+  let matched = 0;
+  for (const element of next.visibleElements) {
+    if (matched < paintedElements.length && !isIframeLikeElement(element)) {
+      if (element.id !== paintedElements[matched].id) {
+        return null;
+      }
+      matched++;
+    } else {
+      over.push(element);
+    }
+  }
+  return matched === paintedElements.length &&
+    !paintedElements.some(isIframeLikeElement)
+    ? over
+    : null;
+};
+
+const _renderStaticScene = (config: StaticSceneRenderConfig) => {
+  const {
+    canvas,
+    rc,
+    elementsMap,
+    allElementsMap,
+    visibleElements,
+    scale,
+    appState: unsnappedAppState,
+    renderConfig,
+    onPainted,
+  } = config;
   if (canvas === null) {
     return;
   }
@@ -539,6 +652,38 @@ const _renderStaticScene = ({
   const appState = isExporting
     ? unsnappedAppState
     : snapScrollToDevicePixels(unsnappedAppState, scale);
+
+  const paintOver = elementsToPaintOver(
+    paintedUnderNewElement.get(canvas),
+    config,
+  );
+  recordPaintUnderNewElement(config);
+
+  if (paintOver) {
+    const context = canvas.getContext("2d")!;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.scale(scale, scale);
+    context.scale(appState.zoom.value, appState.zoom.value);
+    renderSceneElements({
+      context,
+      rc,
+      elements: paintOver,
+      elementsMap,
+      allElementsMap,
+      appState,
+      renderConfig,
+    });
+    cacheSettledBitmaps(
+      canvas,
+      visibleElements,
+      elementsMap,
+      allElementsMap,
+      renderConfig,
+      appState,
+    );
+    onPainted?.(unsnappedAppState);
+    return;
+  }
 
   const [normalizedWidth, normalizedHeight] = getNormalizedCanvasDimensions(
     canvas,
@@ -550,7 +695,7 @@ const _renderStaticScene = ({
     scale,
     normalizedWidth,
     normalizedHeight,
-    theme: appState.theme,
+    theme: renderConfig.theme,
     isExporting,
     viewBackgroundColor: appState.viewBackgroundColor,
     themeBackgroundColor: getThemeCanvasBackground(

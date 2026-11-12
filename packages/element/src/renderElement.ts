@@ -95,6 +95,7 @@ import type {
   ExcalidrawTextElementWithContainer,
   NonDeletedSceneElementsMap,
   ElementsMap,
+  Theme,
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
@@ -357,7 +358,7 @@ const generateElementCanvas = (
   return {
     element,
     canvas,
-    theme: appState.theme,
+    theme: renderConfig.theme,
     scale,
     zoomValue: zoom.value,
     canvasOffsetX,
@@ -889,7 +890,7 @@ const generateElementWithCanvas = (
   if (
     !prevElementWithCanvas ||
     shouldRegenerateBecauseZoom ||
-    prevElementWithCanvas.theme !== appState.theme ||
+    prevElementWithCanvas.theme !== renderConfig.theme ||
     prevElementWithCanvas.imageCrop !== imageCrop ||
     prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity ||
     (isStickyNoteElement(element) &&
@@ -1273,12 +1274,13 @@ const settledElementCanvas = (
   element: NonDeletedExcalidrawElement,
   elementsMap: NonDeletedSceneElementsMap,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
+  theme: Theme,
 ) => {
   const cached = elementWithCanvasCache.get(element);
   return cached &&
     cached.zoomValue === appState.zoom.value &&
     cached.scale === appState.zoom.value &&
-    cached.theme === appState.theme &&
+    cached.theme === theme &&
     cached.containingFrameOpacity ===
       (getContainingFrame(element, elementsMap)?.opacity || 100)
     ? cached
@@ -1374,7 +1376,7 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
       element.id === appState.newElement?.id ||
       element.type === "selection" ||
       isFrameLikeElement(element) ||
-      settledElementCanvas(element, elementsMap, appState)
+      settledElementCanvas(element, elementsMap, appState, renderConfig.theme)
     ) {
       return false;
     }
@@ -1533,7 +1535,12 @@ export const renderElement = (
   const drawsDirectly =
     renderConfig.isExporting ||
     (shouldDrawDirectly(element, allElementsMap, appState) &&
-      !settledElementCanvas(element, allElementsMap, appState));
+      !settledElementCanvas(
+        element,
+        allElementsMap,
+        appState,
+        renderConfig.theme,
+      ));
 
   context.save();
   context.globalAlpha =
@@ -1592,14 +1599,14 @@ const drawElement = (
             appState.zoom.value;
           context.strokeStyle =
             renderConfig.canvasTheme?.frameColor ??
-            (appState.theme === THEME.DARK
+            (renderConfig.theme === THEME.DARK
               ? FRAME_STYLE.outlineColorDarkTheme
               : FRAME_STYLE.outlineColor);
 
           // TODO change later to only affect AI frames
           if (isMagicFrameElement(element)) {
             context.strokeStyle =
-              appState.theme === THEME.LIGHT
+              renderConfig.theme === THEME.LIGHT
                 ? FRAME_STYLE.magicStrokeColor
                 : FRAME_STYLE.magicStrokeColorDarkTheme;
           }

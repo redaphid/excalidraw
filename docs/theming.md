@@ -226,7 +226,7 @@ It parses them once into a plain object and keeps that object until a read finds
 
 Two groups of properties are read:
 
-- **Canvas colors** repaint the canvases: background, grid, selection, handles, frames, and the shadow and edge of sticky notes.
+- **Canvas colors** repaint the canvases: the canvas mode, background, grid, selection, handles, frames, and the shadow and edge of sticky notes.
 - **New-element defaults** are written to `appState` (`currentItemStrokeWidthKey`, `currentItemRoughness`, and the rest). The toolbar and the properties panel start on them, and new elements take them. Elements already in the scene keep their own style.
 
 New-element defaults are written when they differ from the last read. A light and dark toggle that changes nothing keeps the picks the user made since. When the scene loads, the defaults fill only what its `appState` did not save, so a returning user keeps their last stroke width, roughness and the rest. Quick swatches are filled per list: a list the user customized stays, a list they never touched takes the theme's.
@@ -239,6 +239,7 @@ A value the editor can't parse is ignored, and the built-in value stays.
 
 | Property | Value | Default |
 | --- | --- | --- |
+| `--canvas-mode` | `light` or `dark`: the mode the canvas paints element colors in (see [Dark themes](#dark-themes)) | the editor's `theme` |
 | `--canvas-background` | any CSS color, or `transparent` to show the root's own `background` | the scene's `viewBackgroundColor` |
 | `--canvas-grid-color` | any CSS color | no grid, or `#e5e5e5` when only the bold color is set |
 | `--canvas-grid-bold-color` | any CSS color, for every `gridStep`th line | no grid, or `#dddddd` when only the minor color is set |
@@ -329,6 +330,17 @@ Anything else is a selector away: the `css` prop is a stylesheet, so `:scope .fr
 
 ## Dark themes
 
+A theme declares the mode its canvas paints in. Set `--canvas-mode` on both selectors, like the UI variables:
+
+```css
+:scope,
+:scope.theme--dark {
+  --canvas-mode: dark;
+}
+```
+
+The canvas then paints in that mode whatever the `theme` prop says, so a light theme under a dark host keeps black ink black on its paper. The text editor, the color swatches, the eye dropper and the tool cursors follow the canvas mode too. Exports start in the canvas mode: the export dialog's dark mode switch is on for a dark theme and off for a light one. When the user flips that switch, their choice holds for the rest of the session. Without `--canvas-mode`, the canvas follows the `theme` prop, as it does with no `css`. `generateThemeCss` writes the line, and every sample theme declares it.
+
 In dark mode the editor displays element colors through a filter: it inverts lightness and keeps hue. So a scene looks right in both modes, and a theme's element colors follow the same rule:
 
 - Write `--element-*` and palette colors as the light-mode color. Black ink displays as near-white.
@@ -337,7 +349,7 @@ In dark mode the editor displays element colors through a filter: it inverts lig
 
 `removeDarkModeFilter` from `@excalidraw/common` turns a color you want to see in dark mode into the color to store.
 
-Give a dark canvas a dark theme. In light mode on a dark canvas, element colors display as written, but ink drawn under any other theme (black by default) is invisible, and on a shared board that is other people's work. `generateThemeCss` warns about it. The sample Terminal theme stays in dark mode: its element greens show at `#6fc76f`, the brightest dark mode displays, and its UI text keeps full-value phosphor.
+Give a dark canvas `--canvas-mode: dark`. In light mode on a dark canvas, element colors display as written, but ink drawn under any other theme (black by default) is invisible, and on a shared board that is other people's work. `generateThemeCss` warns about it. The sample Terminal theme stays in dark mode: its element greens show at `#6fc76f`, the brightest dark mode displays, and its UI text keeps full-value phosphor.
 
 ## Recipes
 

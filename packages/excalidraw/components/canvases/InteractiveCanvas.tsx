@@ -18,6 +18,7 @@ import type {
 import type {
   NonDeletedExcalidrawElement,
   NonDeletedSceneElementsMap,
+  Theme,
 } from "@excalidraw/element/types";
 
 import { t } from "../../i18n";
@@ -41,6 +42,7 @@ type InteractiveCanvasProps = {
   selectedElements: readonly NonDeletedExcalidrawElement[];
   allElementsMap: NonDeletedSceneElementsMap;
   canvasNonce: string;
+  canvasMode: Theme;
   selectionNonce: number | undefined;
   scale: number;
   appState: InteractiveCanvasAppState;
@@ -153,7 +155,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
       selectedElements: props.selectedElements,
       allElementsMap: props.allElementsMap,
       scale: window.devicePixelRatio,
-      appState: props.appState,
+      appState: { ...props.appState, theme: props.canvasMode },
       buttonHighlight: props.buttonHighlight,
       renderConfig: {
         remotePointerViewportCoords,
@@ -291,6 +293,7 @@ const areEqual = (
   if (
     prevProps.selectionNonce !== nextProps.selectionNonce ||
     prevProps.canvasNonce !== nextProps.canvasNonce ||
+    prevProps.canvasMode !== nextProps.canvasMode ||
     prevProps.scale !== nextProps.scale ||
     // we need to memoize on elementsMap because they may have renewed
     // even if canvasNonce didn't change (e.g. we filter elements out based

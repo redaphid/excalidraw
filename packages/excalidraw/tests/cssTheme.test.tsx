@@ -1,13 +1,16 @@
-import { FONT_FAMILY, THEME } from "@excalidraw/common";
+import { applyDarkModeFilter, FONT_FAMILY, THEME } from "@excalidraw/common";
 import {
   getFreedrawOutlinePoints,
   isFreeDrawElement,
+  ShapeCache,
 } from "@excalidraw/element";
 import { pointFrom } from "@excalidraw/math";
 
+import type { Theme } from "@excalidraw/element/types";
 import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 import type { LocalPoint } from "@excalidraw/math";
 
+import { actionExportWithDarkMode } from "../actions/actionExport";
 import { readCssTheme } from "../cssTheme";
 import { serializeAsJSON } from "../data/json";
 import { restoreElements } from "../data/restore";
@@ -15,7 +18,10 @@ import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
 import { Keyboard, Pointer, UI } from "./helpers/ui";
+import { getTextEditor } from "./queries/dom";
 import { act, fireEvent, GlobalTestState, render, waitFor } from "./test-utils";
+
+import type { Drawable } from "roughjs/bin/core";
 
 const { h } = window;
 
@@ -203,6 +209,18 @@ describe("readCssTheme", () => {
       styleOf({ "--color-palette-stroke": "#111, #222 #333" }),
     );
     expect(theme.palettes).toEqual({});
+  });
+
+  it("parses the canvas mode, ignoring anything but light or dark", () => {
+    expect(readCssTheme(styleOf({ "--canvas-mode": "light" })).canvas).toEqual({
+      mode: THEME.LIGHT,
+    });
+    expect(readCssTheme(styleOf({ "--canvas-mode": "dark" })).canvas).toEqual({
+      mode: THEME.DARK,
+    });
+    expect(readCssTheme(styleOf({ "--canvas-mode": "dim" })).canvas).toEqual(
+      {},
+    );
   });
 
   it("parses sticky note defaults, picks, shadow and edge", () => {
@@ -636,6 +654,203 @@ describe("css prop", () => {
     );
 
     expect(h.app.cssTheme.canvas.gridColor).toBe("#222222");
+  });
+
+  describe("canvas mode", () => {
+    const INK = "#1e1e1e";
+    const LIGHT_CANVAS = ":scope, :scope.theme--dark { --canvas-mode: light; }";
+    const DARK_CANVAS = ":scope, :scope.theme--dark { --canvas-mode: dark; }";
+
+    const paintedStroke = () =>
+      (ShapeCache.get(h.elements[0], null) as Drawable).options.stroke;
+
+    const renderInk = (props: { css?: string; theme: Theme }) =>
+      render(
+        <Excalidraw
+          {...props}
+          initialData={{
+            elements: [
+              API.createElement({ type: "rectangle", strokeColor: INK }),
+            ],
+          }}
+        />,
+      );
+
+    it("paints a light theme's ink as stored under a dark host", async () => {
+      await renderInk({ css: LIGHT_CANVAS, theme: THEME.DARK });
+
+      expect(paintedStroke()).toBe(INK);
+    });
+
+    it("paints a dark theme's ink through the filter under a light host", async () => {
+      await renderInk({ css: DARK_CANVAS, theme: THEME.LIGHT });
+
+      expect(paintedStroke()).toBe(applyDarkModeFilter(INK));
+    });
+
+    it("still filters ink in dark mode without css", async () => {
+      await renderInk({ theme: THEME.DARK });
+
+      expect(paintedStroke()).toBe(applyDarkModeFilter(INK));
+    });
+
+    it("repaints when the css changes the mode under the same host", async () => {
+      const { rerender } = await renderInk({
+        css: LIGHT_CANVAS,
+        theme: THEME.DARK,
+      });
+      rerender(<Excalidraw css={DARK_CANVAS} theme={THEME.DARK} />);
+      await act(async () => {});
+
+      expect(paintedStroke()).toBe(applyDarkModeFilter(INK));
+    });
+
+    it("colors the text editor in the canvas mode", async () => {
+      await render(<Excalidraw theme={THEME.DARK} css={LIGHT_CANVAS} />);
+      const text = API.createElement({
+        type: "text",
+        text: "ink",
+        strokeColor: "#ff0000",
+      });
+      API.setElements([text]);
+      new Pointer("mouse").doubleClickOn(text);
+
+      const editor = await getTextEditor({ waitForEditor: true });
+      expect(editor.style.color).toBe("rgb(255, 0, 0)");
+    });
+
+    it("shows swatches in the canvas mode", async () => {
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+      await render(
+        <Excalidraw
+          theme={THEME.DARK}
+          css={`
+            :scope,
+            :scope.theme--dark {
+              --canvas-mode: light;
+              --color-palette-stroke: ${INK}, #9e3a33;
+            }
+          `}
+        />,
+      );
+      const rectangle = UI.createElement("rectangle", {
+        width: 40,
+        height: 40,
+      });
+      API.setAppState({
+        selectedElementIds: { [rectangle.id]: true },
+        openPopup: "elementStroke",
+      });
+      await act(async () => {});
+
+      const swatches = [
+        ...document.querySelectorAll<HTMLElement>(
+          ".color-picker__button--large",
+        ),
+      ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
+      expect(swatches).toEqual(expect.arrayContaining([INK, "#9e3a33"]));
+    });
+
+    it("repaints open swatches when the css changes the mode under the same host", async () => {
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          observe() {}
+          unobserve() {}
+          disconnect() {}
+        },
+      );
+      const withMode = (mode: Theme) => `
+        :scope,
+        :scope.theme--dark {
+          --canvas-mode: ${mode};
+          --color-palette-stroke: ${INK};
+        }
+      `;
+      const { rerender } = await render(
+        <Excalidraw theme={THEME.DARK} css={withMode(THEME.LIGHT)} />,
+      );
+      const rectangle = UI.createElement("rectangle", {
+        width: 40,
+        height: 40,
+      });
+      API.setAppState({
+        selectedElementIds: { [rectangle.id]: true },
+        openPopup: "elementStroke",
+      });
+      await act(async () => {});
+
+      rerender(<Excalidraw theme={THEME.DARK} css={withMode(THEME.DARK)} />);
+      await act(async () => {});
+
+      const swatches = [
+        ...document.querySelectorAll<HTMLElement>(
+          ".color-picker__button--large",
+        ),
+      ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
+      expect(swatches).toContain(applyDarkModeFilter(INK));
+    });
+
+    it("redraws the eraser cursor when the css changes the mode under the same host", async () => {
+      const { rerender } = await renderInk({
+        css: LIGHT_CANVAS,
+        theme: THEME.DARK,
+      });
+      const cursorFills: string[] = [];
+      const spy = vi
+        .spyOn(HTMLCanvasElement.prototype, "toDataURL")
+        .mockImplementation(function (this: HTMLCanvasElement) {
+          cursorFills.push(String(this.getContext("2d")!.fillStyle));
+          return "data:,";
+        });
+      act(() => h.app.setActiveTool({ type: "eraser" }));
+
+      rerender(<Excalidraw theme={THEME.DARK} css={DARK_CANVAS} />);
+      await act(async () => {});
+      spy.mockRestore();
+
+      expect(cursorFills).toEqual(["#ffffff", "#000000"]);
+    });
+
+    it("exports a dark theme in dark mode under a light host", async () => {
+      await renderInk({ css: DARK_CANVAS, theme: THEME.LIGHT });
+
+      expect(h.state.exportWithDarkMode).toBe(true);
+    });
+
+    it("exports a light theme in light mode under a dark host", async () => {
+      await renderInk({ css: LIGHT_CANVAS, theme: THEME.DARK });
+
+      expect(h.state.exportWithDarkMode).toBe(false);
+    });
+
+    it.each([
+      ["off for a dark theme", DARK_CANVAS, THEME.LIGHT, false],
+      ["on for a light theme", LIGHT_CANVAS, THEME.DARK, true],
+    ] as const)(
+      "exports in the mode the user picked, switched %s",
+      async (_, css, host, picked) => {
+        await renderInk({ css, theme: host });
+
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionExportWithDarkMode,
+            "ui",
+            picked,
+          );
+        });
+        await act(async () => {});
+
+        expect(h.state.exportWithDarkMode).toBe(picked);
+      },
+    );
   });
 
   it("applies a changed css prop", async () => {
