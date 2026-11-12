@@ -1,5 +1,6 @@
 import { pointFrom } from "@excalidraw/math";
 
+import type { Bounds } from "@excalidraw/common";
 import type { AppState } from "@excalidraw/excalidraw/types";
 import type { LocalPoint } from "@excalidraw/math";
 
@@ -9,7 +10,6 @@ import {
   getCommonBounds,
   getElementBounds,
 } from "./bounds";
-import { getFrameContents } from "./frame";
 import { computeBoundTextPosition, getBoundTextElement } from "./textElement";
 import {
   isArrowElement,
@@ -106,6 +106,8 @@ export type ArrangePlan = {
   >;
   /** frames that a grown frame overlaps and did not overlap before */
   readonly overlappedFrameIds: readonly string[];
+  /** frame id -> the frame it is nested in, for frames whose frameId did not say so */
+  readonly frameIds: ReadonlyMap<string, string | null>;
 };
 
 export type ArrangeOutcome =
@@ -211,68 +213,191 @@ type FrameSizes = ReadonlyMap<
   { readonly width: number; readonly height: number }
 >;
 
+type Frame = NonDeleted<ExcalidrawFrameLikeElement>;
+
+type FrameTree = {
+  /** the frame a frame is nested in directly, or null */
+  readonly holderOf: (frame: { id: string }) => Frame | null;
+  /** the frames nested directly in a frame */
+  readonly nestedIn: (outer: { id: string }) => Frame[];
+  /** whether a frame is nested in another, at any depth */
+  readonly isWithin: (frameId: string, outerId: string) => boolean;
+  /** the frame, not nested in another, that a frame is nested in, or itself */
+  readonly topOf: (frameId: string) => string;
+  /** whether a frame, or a frame nested in it at any depth, is locked */
+  readonly holdsLocked: (frameId: string) => boolean;
+  /** whether a frame, or a frame it is nested in at any depth, is locked */
+  readonly inLocked: (frameId: string | null | undefined) => boolean;
+  /** frame id -> the frame it is nested in, where its frameId does not say so */
+  readonly unrecorded: ReadonlyMap<string, string | null>;
+};
+
 /**
- * A frame cannot hold a frame, so a smaller frame drawn wholly inside a larger
- * one is nested in it, the rule `getFrameContents` moves frames by. `sizes`
- * reads the frames as a plan would leave them.
+ * Which frame each frame is nested in. A frame's frameId says so, and arranging
+ * keeps a nested frame inside its frame, so every arrange reads the same
+ * nesting. The editor does not update a frame's frameId when the frame is
+ * dragged, so one naming a frame it does not lie in (or a deleted one, or one
+ * that nests frames in a circle) is stale: that frame is nested in the
+ * smallest frame drawn wholly around it, the rule a frame drag carries frames
+ * by, and the plan writes that down. A locked frame is never read from where
+ * it lies: a frame growing around it could not push it off. `sizes` reads the
+ * frames as a plan would leave them.
  */
-const nestedFrames = <Frame extends ExcalidrawFrameLikeElement>(
+const frameTree = (
   frames: readonly Frame[],
   elementsMap: NonDeletedSceneElementsMap,
   sizes: FrameSizes,
-) => {
-  const sizeOf = (frame: ExcalidrawFrameLikeElement) =>
-    sizes.get(frame.id) ?? frame;
+): FrameTree => {
+  const byId = new Map(frames.map((frame) => [frame.id, frame]));
   const bounds = new Map(
     frames.map((frame) => {
       const [left, top] = getElementBounds(frame, elementsMap);
-      const { width, height } = sizeOf(frame);
-      return [frame.id, [left, top, left + width, top + height] as const];
+      const { width, height } = sizes.get(frame.id) ?? frame;
+      return [frame.id, [left, top, left + width, top + height] as Bounds];
     }),
   );
-  const frameArea = (frame: ExcalidrawFrameLikeElement) =>
-    sizeOf(frame).width * sizeOf(frame).height;
-  const holds = (
-    outer: ExcalidrawFrameLikeElement,
-    inner: ExcalidrawFrameLikeElement,
-  ) =>
-    frameArea(inner) < frameArea(outer) &&
-    boundsContainBounds(bounds.get(outer.id)!, bounds.get(inner.id)!);
-  /**
-   * frame id -> the frames it is nested in, the innermost first. Of two that
-   * only overlap, the one nested in more of the others is innermost, not the
-   * smaller: a frame that grows past the other's size then still holds what
-   * it held.
-   */
-  const holders = new Map(
-    frames.map((inner) => {
-      const around = frames.filter((outer) => holds(outer, inner));
-      const depth = new Map(
-        around.map((frame) => [
-          frame.id,
-          around.filter((outer) => holds(outer, frame)).length,
-        ]),
-      );
-      return [
-        inner.id,
-        around.sort(
-          (a, b) =>
-            depth.get(b.id)! - depth.get(a.id)! || frameArea(a) - frameArea(b),
-        ),
-      ];
-    }),
-  );
-  return {
-    /** the frame a frame is nested directly in, or null */
-    holderOf: (frame: ExcalidrawFrameLikeElement) =>
-      holders.get(frame.id)?.[0] ?? null,
-    /** the frames nested directly in a frame */
-    nestedIn: (outer: ExcalidrawFrameLikeElement) =>
-      frames.filter((frame) => holders.get(frame.id)?.[0] === outer),
-    /** whether a frame is nested in another, at any depth */
-    isWithin: (frame: ExcalidrawFrameLikeElement, outer: { id: string }) =>
-      !!holders.get(frame.id)?.some((holder) => holder.id === outer.id),
+  const frameArea = (frame: Frame) => {
+    const [left, top, right, bottom] = bounds.get(frame.id)!;
+    return (right - left) * (bottom - top);
   };
+  const liesIn = (frame: Frame, holder: { id: string }) => {
+    const [left, top, right, bottom] = bounds.get(frame.id)!;
+    const [x1, y1, x2, y2] = bounds.get(holder.id)!;
+    return contains(
+      { x: x1, y: y1, width: x2 - x1, height: y2 - y1 },
+      { x: left, y: top, width: right - left, height: bottom - top },
+    );
+  };
+  const stored = new Map(
+    frames.flatMap((frame) => {
+      const holder = frame.frameId ? byId.get(frame.frameId) : undefined;
+      return holder && holder !== frame && liesIn(frame, holder)
+        ? [[frame.id, holder] as const]
+        : [];
+    }),
+  );
+  const holders = new Map<string, Frame | null>();
+  const reaches = (from: string | undefined, to: string) => {
+    for (let at = from, steps = 0; at && steps <= frames.length; steps++) {
+      if (at === to) {
+        return true;
+      }
+      at = (holders.has(at) ? holders.get(at) : stored.get(at))?.id;
+    }
+    return false;
+  };
+  // a frame whose stored holder leads back to it is read from where it lies
+  for (const frame of frames) {
+    if (reaches(stored.get(frame.id)?.id, frame.id)) {
+      stored.delete(frame.id);
+    }
+  }
+  for (const frame of frames) {
+    holders.set(frame.id, stored.get(frame.id) ?? null);
+  }
+  for (const frame of frames) {
+    if (stored.has(frame.id) || frame.locked) {
+      continue;
+    }
+    // the smallest frame wholly around it, the topmost of equal ones
+    let holder: Frame | null = null;
+    for (const outer of frames) {
+      if (
+        outer !== frame &&
+        frameArea(frame) < frameArea(outer) &&
+        boundsContainBounds(bounds.get(outer.id)!, bounds.get(frame.id)!) &&
+        (!holder || frameArea(outer) <= frameArea(holder)) &&
+        !reaches(outer.id, frame.id)
+      ) {
+        holder = outer;
+      }
+    }
+    holders.set(frame.id, holder);
+  }
+
+  const children = new Map<string, Frame[]>();
+  for (const frame of frames) {
+    const holder = holders.get(frame.id);
+    if (holder) {
+      children.set(holder.id, [...(children.get(holder.id) ?? []), frame]);
+    }
+  }
+  const isWithin = (frameId: string, outerId: string) =>
+    frameId !== outerId && reaches(frameId, outerId);
+  const topOf = (frameId: string): string => {
+    const holder = holders.get(frameId);
+    return holder ? topOf(holder.id) : frameId;
+  };
+  const holdsLocked = (frameId: string): boolean =>
+    !!byId.get(frameId)?.locked ||
+    (children.get(frameId) ?? []).some((frame) => holdsLocked(frame.id));
+  const inLocked = (frameId: string | null | undefined): boolean =>
+    !!frameId &&
+    (!!byId.get(frameId)?.locked || inLocked(holders.get(frameId)?.id));
+  return {
+    holderOf: (frame) => holders.get(frame.id) ?? null,
+    nestedIn: (outer) => children.get(outer.id) ?? [],
+    isWithin,
+    topOf,
+    holdsLocked,
+    inLocked,
+    unrecorded: new Map(
+      frames.flatMap((frame) => {
+        const holderId = holders.get(frame.id)?.id ?? null;
+        return (frame.frameId ?? null) === holderId
+          ? []
+          : [[frame.id, holderId] as const];
+      }),
+    ),
+  };
+};
+
+/**
+ * element id -> the frame that carries it when its frame moves: the smallest
+ * frame drawn wholly around it among its own frame and the frames nested in
+ * that (any frame, for an element in none), or else its own frame. Labels
+ * follow their containers instead. What a frame carries moves with it, so it
+ * still lies where it did when the next arrange reads it.
+ */
+const carriersOf = (
+  elements: readonly NonDeletedExcalidrawElement[],
+  elementsMap: NonDeletedSceneElementsMap,
+  frames: readonly Frame[],
+  tree: FrameTree,
+) => {
+  const frameBounds = frames.map(
+    (frame) =>
+      [
+        frame,
+        getElementBounds(frame, elementsMap),
+        frame.width * frame.height,
+      ] as const,
+  );
+  const carriers = new Map<string, string>();
+  for (const element of elements) {
+    if (isFrameLikeElement(element) || isBoundToContainer(element)) {
+      continue;
+    }
+    const own = element.frameId && elementsMap.get(element.frameId);
+    const ownId = own && isFrameLikeElement(own) ? own.id : null;
+    const bounds = getElementBounds(element, elementsMap);
+    let carrier: string | null = null;
+    let carrierArea = Infinity;
+    for (const [frame, around, frameArea] of frameBounds) {
+      if (
+        frameArea <= carrierArea &&
+        (!ownId || frame.id === ownId || tree.isWithin(frame.id, ownId)) &&
+        boundsContainBounds(around, bounds)
+      ) {
+        carrier = frame.id;
+        carrierArea = frameArea;
+      }
+    }
+    if (carrier ?? ownId) {
+      carriers.set(element.id, (carrier ?? ownId)!);
+    }
+  }
+  return carriers;
 };
 
 type Targets = {
@@ -287,6 +412,10 @@ type Targets = {
       readonly box: Box;
     }
   >;
+  readonly tree: FrameTree;
+  readonly carriers: ReadonlyMap<string, string>;
+  /** the frames whose contents are laid out */
+  readonly laidOutFrames: readonly Frame[];
 };
 
 /** the elements a request names, with frames resolved to what they hold and labels to their containers */
@@ -300,45 +429,35 @@ const resolveTargets = (
     (element): element is NonDeleted<ExcalidrawFrameLikeElement> =>
       isFrameLikeElement(element),
   );
-  const nesting = nestedFrames(frames, elementsMap, sizes);
+  const tree = frameTree(frames, elementsMap, sizes);
+  const carriers = carriersOf(elements, elementsMap, frames, tree);
   const named = elementIds?.length
     ? elementIds.flatMap((id) => elementsMap.get(id) ?? [])
     : elements;
 
   // the frames whose contents are laid out: those named, or, for the whole
   // scene, every frame not nested in another; a frame nested in one of them
-  // moves whole
-  const laidOutFrames = elementIds?.length
-    ? named.filter(isFrameLikeElement)
-    : frames.filter((frame) => !nesting.holderOf(frame));
+  // moves whole. A locked frame stays as it is, with all it holds
+  const laidOutFrames = (
+    elementIds?.length
+      ? named.filter(isFrameLikeElement)
+      : frames.filter((frame) => !tree.holderOf(frame))
+  ).filter((frame) => !tree.inLocked(frame.id));
   const nested = laidOutFrames.flatMap((outer) =>
-    nesting.nestedIn(outer).map((frame) => ({ holderId: outer.id, frame })),
+    tree.nestedIn(outer).map((frame) => ({ holderId: outer.id, frame })),
   );
-  // one pass over the scene for every nested frame: each element maps to the
-  // frame that carries it, which is the nested frame or a frame inside it
-  const contents = getFrameContents(
-    elements,
-    nested.map(({ frame }) => frame.id),
-  );
-  const asDrawn = sizes.size
-    ? nestedFrames(frames, elementsMap, new Map())
-    : nesting;
   const nestedUnits = nested.map(({ holderId, frame }) => {
-    const carries = (frameId: string | null | undefined) => {
-      const carrier = frameId ? elementsMap.get(frameId) : undefined;
-      return (
-        !!carrier &&
-        isFrameLikeElement(carrier) &&
-        (carrier === frame || asDrawn.isWithin(carrier, frame))
-      );
-    };
+    const carries = (frameId: string | null | undefined) =>
+      !!frameId && (frameId === frame.id || tree.isWithin(frameId, frame.id));
     return {
       holderId,
       nested: frame,
+      // a frame that is or holds a locked frame stays, with what it carries
+      fixed: tree.holdsLocked(frame.id),
       carried: elements.filter((element) =>
         isFrameLikeElement(element)
-          ? element !== frame && asDrawn.isWithin(element, frame)
-          : carries(contents.get(element.id)) &&
+          ? element !== frame && tree.isWithin(element.id, frame.id)
+          : carries(carriers.get(element.id)) &&
             (!element.locked || carries(element.frameId)),
       ),
     };
@@ -371,12 +490,17 @@ const resolveTargets = (
     string,
     { holderId: string; members: NonDeletedExcalidrawElement[]; box: Box }
   >();
-  for (const { holderId, nested, carried } of nestedUnits) {
+  const carriedIds = new Set<string>();
+  for (const { holderId, nested, fixed, carried } of nestedUnits) {
     const kept = carried.filter((element) =>
       element.groupIds.every(
         (groupId) => !around.has(groupId) || takesWhole(groupId),
       ),
     );
+    if (fixed) {
+      kept.forEach((element) => carriedIds.add(element.id));
+      continue;
+    }
     const taken = [
       ...new Set(
         [...around.keys()]
@@ -385,9 +509,11 @@ const resolveTargets = (
           .flatMap(groupOf),
       ),
     ].filter((element) => !kept.includes(element));
+    const members = [nested, ...kept, ...taken];
+    members.forEach((member) => carriedIds.add(member.id));
     frameUnits.set(nested.id, {
       holderId,
-      members: [nested, ...kept, ...taken],
+      members,
       box: boxOf(
         [
           nested,
@@ -400,11 +526,6 @@ const resolveTargets = (
       ),
     });
   }
-  const carriedIds = new Set(
-    [...frameUnits.values()].flatMap(({ members }) =>
-      members.map((member) => member.id),
-    ),
-  );
 
   const shapes = new Set(
     named
@@ -421,12 +542,14 @@ const resolveTargets = (
           !target.locked &&
           !isFrameLikeElement(target) &&
           !isBoundArrow(target) &&
-          !carriedIds.has(target.id)
+          !carriedIds.has(target.id) &&
+          !tree.inLocked(target.frameId) &&
+          !tree.inLocked(carriers.get(target.id))
           ? [target.id]
           : [];
       }),
   );
-  return { shapes, frameUnits };
+  return { shapes, frameUnits, tree, carriers, laidOutFrames };
 };
 
 /** each target joins the outermost of its groups whose members are all targets */
@@ -451,8 +574,7 @@ const groupUnits = (
       unitOf.set(member.id, unit);
     }
   };
-  // a frame's own frameId is always null, so the nested frame is laid out
-  // in the frame it was found nested in
+  // a nested frame is laid out in the frame it is nested in
   for (const [id, { holderId, members, box }] of targets.frameUnits) {
     add({ id, members: [...members], frameId: holderId, box });
   }
@@ -491,11 +613,8 @@ const unitsOf = (
 ) => {
   const elements = scene.getNonDeletedElements();
   const elementsMap = scene.getNonDeletedElementsMap();
-  const unitOf = groupUnits(
-    resolveTargets(elements, elementsMap, elementIds, sizes),
-    elements,
-    elementsMap,
-  );
+  const targets = resolveTargets(elements, elementsMap, elementIds, sizes);
+  const unitOf = groupUnits(targets, elements, elementsMap);
   const skipped = new Set<ExcalidrawElement["type"]>();
   for (const [id, unit] of unitOf) {
     const arrangeable = unit.members.some(
@@ -507,7 +626,7 @@ const unitsOf = (
       unit.members.forEach((member) => skipped.add(member.type));
     }
   }
-  return { unitOf, skipped: [...skipped].sort() };
+  return { unitOf, targets, skipped: [...skipped].sort() };
 };
 
 export const unarrangeableTypes = (
@@ -532,8 +651,8 @@ export const canArrange = (
 /**
  * Sorts a partition's loose elements, whatever stays put in its frame. One
  * drawn wholly inside a unit was drawn on it and travels with it; the rest
- * are obstacles the layout keeps off. On the free canvas, frames are
- * obstacles too.
+ * are obstacles the layout keeps off, a nested frame that stays among them.
+ * On the free canvas, frames are obstacles too.
  */
 const placeLoose = (
   partition: Partition,
@@ -541,15 +660,16 @@ const placeLoose = (
   elements: readonly NonDeletedExcalidrawElement[],
   elementsMap: NonDeletedSceneElementsMap,
   unitOf: ReadonlyMap<string, Unit>,
+  tree: FrameTree,
 ) => {
   for (const element of elements) {
     const belongs = isFrameLikeElement(element)
-      ? frameId === null
+      ? frameId === null || tree.holderOf(element)?.id === frameId
       : element.frameId === frameId;
     if (!belongs || unitOf.has(element.id) || follows(element)) {
       continue;
     }
-    if (isFrameLikeElement(element)) {
+    if (isFrameLikeElement(element) && frameId === null) {
       partition.frames.push(element);
       continue;
     }
@@ -620,8 +740,8 @@ const MAX_REPLANS = 4;
 const sameNesting = (scene: Scene, a: FrameSizes, b: FrameSizes) => {
   const frames = scene.getNonDeletedElements().filter(isFrameLikeElement);
   const elementsMap = scene.getNonDeletedElementsMap();
-  const was = nestedFrames(frames, elementsMap, a);
-  const now = nestedFrames(frames, elementsMap, b);
+  const was = frameTree(frames, elementsMap, a);
+  const now = frameTree(frames, elementsMap, b);
   return frames.every((frame) => was.holderOf(frame) === now.holderOf(frame));
 };
 
@@ -631,43 +751,19 @@ type FramePush = {
   readonly was: Box;
   /** where the plan leaves it */
   box: Box;
-  /** the frames nested in it, where they were and where its layout lays them */
-  readonly nested: readonly { readonly was: Box; readonly laid: Box }[];
+  /** it is or holds a locked frame, so it stays */
+  readonly fixed: boolean;
 };
 
-const relation = (a: Box, b: Box) =>
-  !overlap(a, b)
-    ? "apart"
-    : contains(a, b)
-    ? "holds"
-    : contains(b, a)
-    ? "held"
-    : "overlaps";
-
-/** whether `outer` came to overlap or hold a frame nested in `inner` */
-const reaches = (outer: FramePush, inner: FramePush) =>
-  inner.nested.some(({ was, laid }) => {
-    const now = relation(outer.box, {
-      ...laid,
-      x: laid.x + inner.box.x - inner.was.x,
-      y: laid.y + inner.box.y - inner.was.y,
-    });
-    return now !== "apart" && now !== relation(outer.was, was);
-  });
-
 /**
- * The shortest push, right or down, that takes one of two frames off the
- * other, when the plan made them, or a frame nested in one and the other,
- * overlap or nest where they did not. The frame that lay right of or below
- * the other moves on that way, so frames keep their order. Of two that
- * overlapped already, the one with the frame the other reached moves, or the
- * smaller. A locked frame stays.
+ * The shortest push, right or down, that takes one of two overlapping frames
+ * off the other. The frame that lay right of or below the other moves on that
+ * way, so frames keep their order; of two that overlapped already, the
+ * smaller. When that frame is or holds a locked frame, the other one moves
+ * past it instead.
  */
 const pushBetween = (a: FramePush, b: FramePush, gap: number) => {
-  const now = relation(a.box, b.box);
-  const changed = now !== "apart" && now !== relation(a.was, b.was);
-  const reached = changed ? null : reaches(a, b) ? b : reaches(b, a) ? a : null;
-  if (!changed && !reached) {
+  if (!overlap(a.box, b.box)) {
     return null;
   }
   const right = (mover: FramePush, other: FramePush) => ({
@@ -680,36 +776,45 @@ const pushBetween = (a: FramePush, b: FramePush, gap: number) => {
     dx: 0,
     dy: other.box.y + other.box.height + gap - mover.box.y,
   });
+  const past = (mover: FramePush, other: FramePush) => [
+    right(mover, other),
+    down(mover, other),
+  ];
   const leftOf = (first: Box, second: Box) => first.x + first.width <= second.x;
   const above = (first: Box, second: Box) => first.y + first.height <= second.y;
-  const inner = reached ?? (area(a.was) < area(b.was) ? a : b);
+  const inner = area(a.was) < area(b.was) ? a : b;
   const outer = inner === a ? b : a;
-  const pushes =
-    reached || overlap(a.was, b.was)
-      ? [right(inner, outer), down(inner, outer)]
-      : [
-          ...(leftOf(a.was, b.was) ? [right(b, a)] : []),
-          ...(leftOf(b.was, a.was) ? [right(a, b)] : []),
-          ...(above(a.was, b.was) ? [down(b, a)] : []),
-          ...(above(b.was, a.was) ? [down(a, b)] : []),
-        ];
-  return (
+  const shortest = (pushes: { mover: FramePush; dx: number; dy: number }[]) =>
     pushes
-      .filter(({ mover }) => !mover.frame.locked)
-      .sort((p, q) => p.dx + p.dy - (q.dx + q.dy))[0] ?? null
+      .filter(({ mover }) => !mover.fixed)
+      .sort((p, q) => p.dx + p.dy - (q.dx + q.dy))[0];
+  return (
+    shortest(
+      overlap(a.was, b.was)
+        ? past(inner, outer)
+        : [
+            ...(leftOf(a.was, b.was) ? [right(b, a)] : []),
+            ...(leftOf(b.was, a.was) ? [right(a, b)] : []),
+            ...(above(a.was, b.was) ? [down(b, a)] : []),
+            ...(above(b.was, a.was) ? [down(a, b)] : []),
+          ],
+    ) ??
+    shortest([...past(a, b), ...past(b, a)]) ??
+    null
   );
 };
 
 /**
  * A frame grows in place, right and down, into whatever frame lies there.
- * Each frame not nested in another is pushed off the frames that came to
- * overlap or nest it, taking along all it carries, so every frame holds what
- * it held and arranging the result again finds the same layout.
+ * Each frame not nested in another is pushed off the frames it overlaps,
+ * taking along all it carries, so no frame comes to lie in another that the
+ * next arrange would read as nested in it.
  */
 const keepFramesApart = (
-  allFrames: readonly ExcalidrawFrameLikeElement[],
+  frames: readonly ExcalidrawFrameLikeElement[],
   elements: readonly NonDeletedExcalidrawElement[],
   elementsMap: NonDeletedSceneElementsMap,
+  { tree, carriers }: Pick<Targets, "tree" | "carriers">,
   {
     frameBox,
     gap,
@@ -722,26 +827,13 @@ const keepFramesApart = (
     move: (element: ExcalidrawElement, dx: number, dy: number) => void;
   },
 ) => {
-  const nesting = nestedFrames(allFrames, elementsMap, new Map());
-  /** the frame not nested in another that a frame is nested in, or itself */
-  const outermost = (frameId: string | undefined): string => {
-    const frame = frameId ? elementsMap.get(frameId) : undefined;
-    const holder =
-      frame && isFrameLikeElement(frame) ? nesting.holderOf(frame) : null;
-    return holder ? outermost(holder.id) : frameId ?? "";
-  };
-  const tops: FramePush[] = allFrames
-    .filter((frame) => !nesting.holderOf(frame))
+  const tops: FramePush[] = frames
+    .filter((frame) => !tree.holderOf(frame))
     .map((frame) => ({
       frame,
       was: boxOf([frame], elementsMap),
       box: frameBox(frame),
-      nested: allFrames
-        .filter((each) => each !== frame && outermost(each.id) === frame.id)
-        .map((each) => ({
-          was: boxOf([each], elementsMap),
-          laid: frameBox(each),
-        })),
+      fixed: tree.holdsLocked(frame.id),
     }));
   for (let pushes = 0; pushes < MAX_PUSHES; pushes++) {
     const push = tops
@@ -764,17 +856,22 @@ const keepFramesApart = (
   if (!offsets.size) {
     return;
   }
-  const contents = getFrameContents(elements, [...offsets.keys()]);
   for (const element of elements) {
-    const offset = offsets.get(
-      outermost(
-        offsets.has(element.id) ? element.id : contents.get(element.id),
-      ),
-    );
-    // an arrow bound at both ends follows them, bends and all
+    const carrier = isFrameLikeElement(element)
+      ? element.id
+      : carriers.get(element.id);
+    const offset = carrier && offsets.get(tree.topOf(carrier));
+    // an arrow bound at both ends follows them, bends and all; a locked
+    // element moves only with its own frame
     const followsBoth =
       isArrowElement(element) && !!element.startBinding && !!element.endBinding;
-    if (offset && !followsBoth && !placedOnFreeCanvas(element.id)) {
+    const stays =
+      element.locked &&
+      !isFrameLikeElement(element) &&
+      (!element.frameId ||
+        !elementsMap.has(element.frameId) ||
+        tree.topOf(element.frameId) !== tree.topOf(carrier!));
+    if (offset && !followsBoth && !stays && !placedOnFreeCanvas(element.id)) {
       move(element, offset.dx, offset.dy);
     }
   }
@@ -785,11 +882,12 @@ const keepFramesApart = (
  * for the free canvas), without touching the scene. Reads the scene before its
  * first await, so a change made while the engine runs makes the plan stale.
  *
- * A plan reads which frame holds what from where things lie, so arranging the
- * result again moves nothing only if the plan's moves leave every frame
- * holding what it held. Arranging the whole scene keeps the frames apart, so
- * that holds; a selection leaves unselected frames where they are, so a frame
- * grown around one is planned again with it nested.
+ * A plan reads which frame a frame is nested in from its frameId, and writes
+ * the frameId of each frame it found nested only by where it lies, so the
+ * next arrange reads the same nesting. Arranging the whole scene keeps the
+ * frames apart, so no frame comes to lie newly inside another; a selection
+ * leaves unselected frames where they are, so a frame grown around one is
+ * planned again with it nested.
  */
 export const planArrange = async (
   scene: Scene,
@@ -848,7 +946,7 @@ const planWith = async (
     elkOptions: request.elkOptions,
   };
 
-  const { unitOf } = unitsOf(scene, request.elementIds, sizes);
+  const { unitOf, targets } = unitsOf(scene, request.elementIds, sizes);
 
   /** frame id (null: the free canvas) -> its units and the arrows joining two of them */
   const partitions = new Map<string | null, Partition>();
@@ -889,7 +987,7 @@ const planWith = async (
     return null;
   }
   for (const [frameId, partition] of laidOut) {
-    placeLoose(partition, frameId, elements, elementsMap, unitOf);
+    placeLoose(partition, frameId, elements, elementsMap, unitOf, targets.tree);
   }
 
   const versions = new Map<string, number>();
@@ -1014,7 +1112,7 @@ const planWith = async (
   done.filter(({ frame }) => frame).forEach(place);
   if (!request.elementIds?.length) {
     const freeCanvas = new Set(partitions.get(null)?.units);
-    keepFramesApart(allFrames, elements, elementsMap, {
+    keepFramesApart(allFrames, elements, elementsMap, targets, {
       frameBox,
       gap: spacing.node,
       // the free canvas's own layout places what is on it
@@ -1058,19 +1156,37 @@ const planWith = async (
     )
     .map((frame) => frame.id);
 
+  // the nesting this plan read, written down where the frames did not say
+  // so: for the whole scene, every frame; for a selection, the frames it
+  // lays out and those nested in them
+  const { tree, laidOutFrames } = targets;
+  const frameIds = new Map(
+    [...tree.unrecorded].filter(
+      ([id]) =>
+        !request.elementIds?.length ||
+        laidOutFrames.some(
+          (frame) => frame.id === id || tree.isWithin(id, frame.id),
+        ),
+    ),
+  );
+  for (const id of frameIds.keys()) {
+    read(elementsMap.get(id)!);
+  }
+
   return {
     versions,
     translations,
     arrows: arrows.map((arrow) => arrow.id),
     frames,
     overlappedFrameIds,
+    frameIds,
   };
 };
 
 /**
  * Moves what the plan arranged, lays each container's label out again, carries
- * the bends of arrows between arranged elements, follows with bound arrows and
- * grows frames; or does nothing and returns "stale" when anything the plan
+ * the bends of arrows between arranged elements, follows with bound arrows,
+ * grows frames and records which frame each frame is nested in; or does nothing and returns "stale" when anything the plan
  * read has changed since.
  */
 export const applyArrangePlan = (
@@ -1136,6 +1252,10 @@ export const applyArrangePlan = (
     const frame = elementsMap.get(id);
     return frame ? [scene.mutateElement(frame, size)] : [];
   });
+  const nesting = [...plan.frameIds].flatMap(([id, frameId]) => {
+    const frame = elementsMap.get(id);
+    return frame ? [scene.mutateElement(frame, { frameId })] : [];
+  });
   for (const element of arranged) {
     updateBoundElements(element, scene, { simultaneouslyUpdated: arranged });
   }
@@ -1178,5 +1298,7 @@ export const applyArrangePlan = (
     });
   }
 
-  return [...arranged, ...labels, ...arrows, ...frames];
+  return [
+    ...new Set([...arranged, ...labels, ...arrows, ...frames, ...nesting]),
+  ];
 };
