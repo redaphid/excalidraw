@@ -22,15 +22,7 @@ const loadWorker = async (): Promise<Layout | null> => {
   if (typeof Worker === "undefined") {
     return null;
   }
-  const [{ default: ELKApi }, { WorkerUrl }] = await Promise.all([
-    import("elkjs/lib/elk-api.js"),
-    import("./elk-worker.chunk"),
-  ]);
-  // undefined in nodejs, and the main bundle's own URL when the chunk was
-  // bundled into it, where a worker from it would load the whole editor
-  if (!WorkerUrl || WorkerUrl.href === import.meta.url) {
-    return null;
-  }
+  const { default: ELKApi } = await import("elkjs/lib/elk-api.js");
   let fail: (error: ElkWorkerError) => void = () => {};
   // ELK's API never hears about a worker that fails to load or crashes, so
   // its answers race the worker's own error events
@@ -40,7 +32,12 @@ const loadWorker = async (): Promise<Layout | null> => {
   failed.catch(() => {});
   const elk: ELK = new ELKApi({
     workerFactory: () => {
-      const worker = new Worker(WorkerUrl, { type: "module" });
+      // bundlers that build from source resolve the extensionless path to
+      // the .ts; the package build names the .js it writes beside index.js
+      const worker = new Worker(
+        new URL("./elk-worker.chunk", import.meta.url),
+        { type: "module" },
+      );
       worker.addEventListener("error", (event) =>
         fail(new ElkWorkerError(event.message)),
       );
