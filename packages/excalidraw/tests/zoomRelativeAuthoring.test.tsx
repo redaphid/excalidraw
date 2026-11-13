@@ -1,4 +1,9 @@
-import { KEYS, TEXT_MAX_WRAP_WIDTH } from "@excalidraw/common";
+import {
+  FONT_FAMILY,
+  getFontString,
+  KEYS,
+  TEXT_MAX_WRAP_WIDTH,
+} from "@excalidraw/common";
 import {
   elementWithCanvasCache,
   getBoundTextMaxWidth,
@@ -6,6 +11,7 @@ import {
   getElementBounds,
   getElementLineSegments,
   getFreedrawOutlinePoints,
+  getLineWidth,
   isTextElement,
   setCustomTextMetricsProvider,
   ShapeCache,
@@ -41,10 +47,13 @@ const mouse = new Pointer("mouse");
 const ZOOMS = [1, 100, 10_000];
 
 // the test canvas measures every glyph 10px wide at any font size; here text
-// grows with its font and, as in Chrome, measures nothing far under a pixel
+// grows with its font, and, as in Chrome, measures nothing far under a pixel
+// and, as in Firefox, measures a font over 2,000px as 2,000px
 setCustomTextMetricsProvider({
   getLineWidth: (text, font) =>
-    parseFloat(font) < 0.01 ? 0 : text.length * parseFloat(font) * 0.6,
+    parseFloat(font) < 0.01
+      ? 0
+      : text.length * Math.min(parseFloat(font), 2000) * 0.6,
 });
 
 const renderEditor = (authoringUnits?: AuthoringUnits) =>
@@ -822,5 +831,38 @@ describe("authoringUnits: scene (default)", () => {
       const note = latest().find((element) => element.type === "stickynote")!;
       expect(note.width).toBe(250);
     }
+  });
+});
+
+describe("text over 1,024px", () => {
+  const FONT_SIZE = 20_000;
+  const font = getFontString({
+    fontSize: FONT_SIZE,
+    fontFamily: FONT_FAMILY.Excalifont,
+  });
+
+  it("is measured at its own size", () => {
+    expect(getLineWidth("hello", font)).toBeCloseTo(5 * FONT_SIZE * 0.6, 6);
+  });
+
+  it("exports at a font size the browser draws, scaled back up", async () => {
+    await render(<Excalidraw />);
+    const text = API.createElement({
+      type: "text",
+      text: "hello",
+      fontSize: FONT_SIZE,
+    });
+    const svg = await exportToSvg(
+      [text as NonDeletedExcalidrawElement],
+      h.state,
+      {},
+    );
+    const node = svg.querySelector("text")!;
+    const fontSize = parseFloat(node.getAttribute("font-size")!);
+    const scale = Number(
+      node.parentElement!.getAttribute("transform")!.match(/scale\((.*)\)/)![1],
+    );
+    expect(fontSize).toBeLessThanOrEqual(1024);
+    expect(fontSize * scale).toBeCloseTo(FONT_SIZE, 9);
   });
 });
