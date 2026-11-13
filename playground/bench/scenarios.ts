@@ -4,7 +4,7 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { DEEP_CENTER, lateImage } from "./scenes";
 
-import type { SceneName } from "./scenes";
+import type { BenchScene, SceneName } from "./scenes";
 
 export type Scenario = {
   id: string;
@@ -23,6 +23,11 @@ export type Scenario = {
   step: (canvas: HTMLCanvasElement, i: number) => void;
   end: (canvas: HTMLCanvasElement) => void;
   minStepIntervalMs?: number;
+  /** the view the gesture starts from, in place of the scene's */
+  view?: (
+    api: ExcalidrawImperativeAPI,
+    scene: BenchScene,
+  ) => BenchScene["view"];
 };
 
 type PointerInit = {
@@ -446,3 +451,56 @@ export const PARITY_SCENARIOS: Scenario[] = [
       }),
   ),
 ];
+
+/** the scene's elements centered on the screen at `zoom` */
+const centeredAt =
+  (zoom: number) => (api: ExcalidrawImperativeAPI, scene: BenchScene) => {
+    const { width, height } = api.getAppState();
+    const xs = scene.elements.flatMap((e) => [e.x, e.x + e.width]);
+    const ys = scene.elements.flatMap((e) => [e.y, e.y + e.height]);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    return {
+      scrollX: width / 2 / zoom - cx,
+      scrollY: height / 2 / zoom - cy,
+      zoom: { value: zoom as never },
+    };
+  };
+
+/** a hand-tool pan in a 60 px circle, so the scene stays where it was in
+ * view */
+const orbit = (scene: SceneName, zoom: number, steps: number): Scenario => {
+  let origin = { x: 0, y: 0 };
+  const at = (i: number) => ({
+    x: origin.x + Math.cos((i / steps) * Math.PI * 4) * 60 - 60,
+    y: origin.y + Math.sin((i / steps) * Math.PI * 4) * 60,
+  });
+  return {
+    id: `${scene}/orbit@${zoom}`,
+    scene,
+    steps,
+    tool: "hand",
+    view: centeredAt(zoom),
+    begin: (_, canvas) => {
+      origin = center(canvas);
+      pointer(canvas, "pointerdown", at(0).x, at(0).y);
+    },
+    step: (canvas, i) => pointer(canvas, "pointermove", at(i).x, at(i).y),
+    end: (canvas) => pointer(canvas, "pointerup", at(steps).x, at(steps).y),
+  };
+};
+
+/** wheel from 1x out to a millionth (138 ticks of exp(-0.1)) and back */
+const zoomOutDeep = (scene: SceneName): Scenario => ({
+  ...zoom(scene, 140, 140, 10, (_, canvas) => center(canvas)),
+  id: `${scene}/zoom-out-deep`,
+  view: centeredAt(1),
+});
+
+/** gestures with the whole scene in view, from 1x down to the zoom floor */
+export const ZOOM_OUT_SCENARIOS: Scenario[] = (
+  ["mixed", "freedraw", "big"] as const
+).flatMap((scene) => [
+  ...[1, 0.1, 0.001, 0.000_001].map((zoom) => orbit(scene, zoom, 120)),
+  zoomOutDeep(scene),
+]);

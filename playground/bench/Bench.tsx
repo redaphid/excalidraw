@@ -9,6 +9,7 @@ import {
   LARGE_BOARD_SCENARIOS,
   PARITY_SCENARIOS,
   SCENARIOS,
+  ZOOM_OUT_SCENARIOS,
 } from "./scenarios";
 import { SCENES } from "./scenes";
 
@@ -365,7 +366,7 @@ const runScenario = async (
 ): Promise<ScenarioResult> => {
   api.updateScene({
     appState: {
-      ...scene.view,
+      ...(scenario.view?.(api, scene) ?? scene.view),
       selectedElementIds: {},
       theme: "light",
       viewBackgroundColor: "#fff",
@@ -447,9 +448,12 @@ const runScenario = async (
 };
 
 const selected = only
-  ? [...SCENARIOS, ...LARGE_BOARD_SCENARIOS, ...PARITY_SCENARIOS].filter((s) =>
-      only.includes(s.id),
-    )
+  ? [
+      ...SCENARIOS,
+      ...LARGE_BOARD_SCENARIOS,
+      ...PARITY_SCENARIOS,
+      ...ZOOM_OUT_SCENARIOS,
+    ].filter((s) => only.includes(s.id))
   : SCENARIOS;
 const sceneOrder = [...new Set(selected.map((s) => s.scene))];
 
