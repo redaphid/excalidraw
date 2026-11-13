@@ -258,6 +258,15 @@ export const actionZoomOut = register({
     (event[KEYS.CTRL_OR_CMD] || event.shiftKey),
 });
 
+/** whole percents from 1% up, as upstream; two significant figures under
+ * that, so a zoom of a millionth reads 0.0001% rather than 0% */
+const formatZoomPercent = (zoom: number) => {
+  const percent = zoom * 100;
+  return percent >= 1
+    ? percent.toFixed(0)
+    : String(Number(percent.toPrecision(2)));
+};
+
 export const actionResetZoom = register({
   name: "resetZoom",
   label: "buttons.resetZoom",
@@ -306,7 +315,7 @@ export const actionResetZoom = register({
             updateData(null);
           }}
         >
-          {(zoomValue * 100).toFixed(0)}%
+          {formatZoomPercent(zoomValue)}%
         </IconButton>
       </Tooltip>
     );

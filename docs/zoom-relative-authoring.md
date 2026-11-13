@@ -1,6 +1,6 @@
 # Zoom-relative authoring
 
-draw.hypnodroid.com zooms from 0.1x to 1,000,000x. Upstream Excalidraw sizes everything the user makes in scene units: a medium stroke is 2 units wide, a new text is 20 units tall, a clicked sticky note is 250 units square. At 100x those are 200, 2,000 and 25,000 pixels on screen, so work done while zoomed in is drawn with a broom. This fork adds one setting that makes new work look the same on screen at any zoom, and one optional element field, `authoringScale`, that keeps the details drawn around that work the same too.
+draw.hypnodroid.com zooms from 0.000001x to 1,000,000x. Upstream Excalidraw sizes everything the user makes in scene units: a medium stroke is 2 units wide, a new text is 20 units tall, a clicked sticky note is 250 units square. At 100x those are 200, 2,000 and 25,000 pixels on screen, so work done while zoomed in is drawn with a broom. This fork adds one setting that makes new work look the same on screen at any zoom, and one optional element field, `authoringScale`, that keeps the details drawn around that work the same too.
 
 ```tsx
 <Excalidraw authoringUnits="screen" freedrawStrokeWidth={penWidth} />

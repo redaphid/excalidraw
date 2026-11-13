@@ -74,9 +74,27 @@ describe("flightPath", () => {
   });
 
   describe("between two views at 1x, 400 views apart", () => {
-    // uncapped, this path would zoom out to about 0.01x
+    // the optimal path zooms out to about 0.0024x
     const from = viewport(0, 0, 1);
     const target = viewport(-400_000, -100_000, 1);
+    const path = flightPath(from, target, screen);
+    const zooms = samples(4000).map((f) => path.at(f).zoom.value);
+
+    it("zooms out past 10% on the way, as the optimal path does", () => {
+      expect(Math.min(...zooms)).toBeLessThan(0.1);
+      expect(Math.min(...zooms)).toBeGreaterThan(MIN_ZOOM);
+    });
+
+    it("starts and lands exactly on its endpoints", () => {
+      expect(path.at(0)).toEqual(from);
+      expect(path.at(1)).toEqual(target);
+    });
+  });
+
+  describe("between two views at 1x, ten million views apart", () => {
+    // uncapped, this path would zoom out to about 0.0000001x
+    const from = viewport(0, 0, 1);
+    const target = viewport(-10_000_000_000, -2_500_000_000, 1);
     const path = flightPath(from, target, screen);
     const views = samples(4000).map((f) => path.at(f));
     const zooms = views.map((v) => v.zoom.value);

@@ -5,6 +5,8 @@ import { Excalidraw } from "../index";
 import { SCROLL_TO_CONTENT_ANIMATION_KEY } from "../components/App.viewport";
 import { AnimationController } from "../renderer/animation";
 import { getNormalizedZoom } from "../scene";
+import { getDefaultAppState } from "../appState";
+import { zoomToFitBounds } from "../viewport";
 
 import { API } from "./helpers/api";
 import { act, render } from "./test-utils";
@@ -471,5 +473,41 @@ describe("flight", () => {
       expected,
     );
     expect(h.state.zoom.value).toBe(1);
+  });
+});
+
+describe("a stepped fit under 10%", () => {
+  it("fits content that needs a zoom under the 10% step", () => {
+    // 20,000 units wide on a 1000 px screen: a fit of 5%
+    const { appState } = zoomToFitBounds({
+      bounds: [0, 0, 20_000, 1_000],
+      appState: {
+        ...getDefaultAppState(),
+        width: 1000,
+        height: 600,
+        offsetLeft: 0,
+        offsetTop: 0,
+      },
+      fit: "contain",
+      steppedZoom: true,
+    });
+    expect(appState.zoom.value).toBeLessThanOrEqual(0.05);
+    expect(appState.zoom.value).toBeGreaterThan(0.025);
+  });
+
+  it("still steps a fit of 10% and up down to a tenth", () => {
+    const { appState } = zoomToFitBounds({
+      bounds: [0, 0, 2_100, 100],
+      appState: {
+        ...getDefaultAppState(),
+        width: 1000,
+        height: 600,
+        offsetLeft: 0,
+        offsetTop: 0,
+      },
+      fit: "contain",
+      steppedZoom: true,
+    });
+    expect(appState.zoom.value).toBe(0.4);
   });
 });

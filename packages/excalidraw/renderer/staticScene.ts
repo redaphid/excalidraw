@@ -2,6 +2,7 @@ import {
   applyDarkModeFilter,
   COLOR_WHITE,
   FRAME_STYLE,
+  getGridSizeAtScale,
   isShallowEqual,
   THEME,
   throttleRAF,
@@ -70,6 +71,9 @@ const GridLineColor = {
   },
 } as const;
 
+/** the smallest grid cell drawn, in CSS pixels: upstream's, at 10% */
+const MIN_GRID_CELL_PX = 2;
+
 const strokeGrid = (
   context: CanvasRenderingContext2D,
   /** grid cell pixel size */
@@ -88,6 +92,16 @@ const strokeGrid = (
   const boldColor = canvasTheme?.gridBoldColor ?? GridLineColor[theme].bold;
   const regularColor = canvasTheme?.gridColor ?? GridLineColor[theme].regular;
   const dashed = canvasTheme?.gridStyle !== "solid";
+
+  // Zoomed out past 10%, cells would shrink under upstream's smallest and
+  // the loops below would visit millions of lines a frame. The grid nests
+  // instead: cells grow by whole steps, so every line is one a finer level
+  // drew.
+  gridSize = getGridSizeAtScale(
+    gridSize,
+    gridStep,
+    Math.max(1, MIN_GRID_CELL_PX / (gridSize * zoom.value)),
+  );
 
   const offsetX = (scrollX % gridSize) - gridSize;
   const offsetY = (scrollY % gridSize) - gridSize;

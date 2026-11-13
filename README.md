@@ -68,6 +68,7 @@ Each item links the commit that made it. The commit messages hold the reasoning 
   api.updateScene({ appState: { zoom: { value: 100_000 } } });
   ```
 
+- **`MIN_ZOOM` is 1/1,000,000** instead of 0.1, the mirror of `MAX_ZOOM`, so zooming out goes as far as zooming in. A zoom is rounded to six decimals, as upstream, or six significant figures, whichever keeps more digits, so every zoom from 0.1 up rounds as before and one near a millionth keeps its precision. The zoom readout shows two significant figures under 1% (0.0001% at the floor). Zoomed out past 10%, the grid nests: its cells grow by whole grid steps so no cell is drawn under 2 px, the size upstream draws at 10%.
 - **The wheel and trackpad zoom multiplicatively.** Each event scales the zoom by `exp(-delta / 100)`, so a pinch moves the same amount at 100% and at 1,000,000%. Upstream added a fixed step, which barely moved the zoom deep in ([`f74f90dd`](https://github.com/redaphid/excalidraw/commit/f74f90dd)).
 
 ### `setViewport` flights
@@ -85,7 +86,7 @@ api.setViewport({ target: frame, animation: { path: "direct" } });
 
 - With no `path`, a move flies when it covers more than about two views of pan or about 17x of zoom. Shorter moves keep upstream's straight blend and its 500 ms default.
 - A flight's default duration grows with its length, clamped to 400 to 2,500 ms. An explicit `duration` wins.
-- A flight never zooms out past `MIN_ZOOM` (0.1). A longer move pans across at 0.1x instead, and both ends land exactly on the target ([`88ef60a5`](https://github.com/redaphid/excalidraw/commit/88ef60a5)).
+- A flight follows the optimal path's zoom-out, which is about 0.0024x between two 1x views 400 views apart. It never zooms out past `MIN_ZOOM` (a millionth): a longer move pans across at that zoom instead, and both ends land exactly on the target ([`88ef60a5`](https://github.com/redaphid/excalidraw/commit/88ef60a5)).
 - Shapes stay sharp on the way in: a cached bitmap is redrawn once it would be shown at more than twice the size it was drawn at ([`88ef60a5`](https://github.com/redaphid/excalidraw/commit/88ef60a5)).
 
 ### Zoom-relative authoring: `authoringUnits`

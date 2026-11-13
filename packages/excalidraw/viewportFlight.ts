@@ -33,7 +33,8 @@ export type FlightPath = {
  * of `width` by `height` px: between distant targets it zooms out, pans
  * across at the wider view, and zooms back in, so the destination comes into
  * view early instead of rushing past at full zoom. It never zooms out past
- * MIN_ZOOM: one that would zoom out further pans across at MIN_ZOOM instead.
+ * MIN_ZOOM (a millionth): one that would zoom out further pans across at
+ * MIN_ZOOM instead.
  */
 export const flightPath = (
   from: Viewport,
