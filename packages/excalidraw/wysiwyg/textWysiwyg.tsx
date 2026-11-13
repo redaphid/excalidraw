@@ -167,7 +167,8 @@ const measureNativeLineCaretPositions = ({
 
   // the line is laid out at a size the browser can lay out and the rects
   // are read back in scene px (see getFontRenderScale): under a pixel they
-  // all collapse to the line's edge
+  // all collapse to the line's edge, and far over 1,000px Firefox lays the
+  // font out smaller than asked
   const fontScale = getFontRenderScale(fontSize);
   const [, size, family] = font.match(/^([^ ]+)px (.*)$/) ?? [];
   const mirrorFont =
@@ -491,9 +492,11 @@ export const textWysiwyg = ({
       // Text written while zoomed deep in has a scene font size far under
       // a pixel, where a DOM box collapses: its lines quantize to no
       // height, the caret and selection vanish, and wrapping loses the
-      // text. So the editor is laid out `fontScale` times scene size — the
-      // font a pixel or more, as the canvas measures and draws such text
-      // (see getFontRenderScale) — and scaled back by that much in the
+      // text. Text written while zoomed far out has one far over 1,000px,
+      // which Firefox lays out smaller than asked. So the editor is laid
+      // out `fontScale` times scene size — the font from a pixel to
+      // 1,024px, as the canvas measures and draws such text (see
+      // getFontRenderScale) — and scaled back by that much in the
       // transform, landing at the same on-screen size.
       const fontScale = getFontRenderScale(updatedTextElement.fontSize);
       const presentedFont = getFontString({

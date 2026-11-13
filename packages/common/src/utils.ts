@@ -150,7 +150,7 @@ export const MAX_CANVAS_FONT_SIZE = 1024;
  * trip is exact, and 1 for a font already in that range.
  */
 export const getFontRenderScale = (fontSize: number) => {
-  if (!(fontSize > 0)) {
+  if (!(fontSize > 0) || fontSize === Infinity) {
     return 1;
   }
   if (fontSize < 1) {
