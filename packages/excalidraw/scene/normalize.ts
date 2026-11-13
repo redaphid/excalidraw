@@ -15,6 +15,14 @@ export const getNormalizedZoom = (zoom: number): NormalizedZoomValue => {
   return round(clamped, decimals) as NormalizedZoomValue;
 };
 
+/** a zoom as a percent: whole from 1% up, two significant digits under */
+export const formatZoomPercent = (zoom: number) => {
+  const percent = zoom * 100;
+  return percent >= 1
+    ? percent.toFixed(0)
+    : String(Number(percent.toPrecision(2)));
+};
+
 export const getNormalizedGridSize = (gridStep: number) => {
   return clamp(Math.round(gridStep), 1, 100);
 };

@@ -364,6 +364,12 @@ describe("MIDI knobs", () => {
       expect(h.elements).toHaveLength(0);
     });
 
+    it("toasts a zoom under 1% as a percent, not 0%", () => {
+      turn(KNOB.zoom, -240);
+      // 1.02 ** -240 = 0.00864
+      expect(h.state.toast?.message).toBe("Zoom 0.86%");
+    });
+
     it("zooms about the middle of the view, and a press goes back to 100%", () => {
       turn(KNOB.zoom, 10);
       expect(h.state.zoom.value).toBeCloseTo(1.02 ** 10, 4);
