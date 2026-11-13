@@ -170,7 +170,9 @@ describe("the grid at upstream's zooms", () => {
 });
 
 // each sweep renders a few hundred frames
-describe("the grid zoomed out past 10%", { timeout: 30_000 }, () => {
+const SWEEP_TIMEOUT_MS = 30_000;
+
+describe("the grid zoomed out past 10%", () => {
   // (grid size 1 draws thousands of lines a frame, too slow to sweep; its
   // frames at 10% and over are compared with master's above)
   const GRIDS = [
@@ -207,6 +209,7 @@ describe("the grid zoomed out past 10%", { timeout: 30_000 }, () => {
         .filter(({ change }) => change > 0.4);
       expect(pops).toEqual([]);
     },
+    SWEEP_TIMEOUT_MS,
   );
 
   it.each(GRIDS)(
@@ -222,6 +225,7 @@ describe("the grid zoomed out past 10%", { timeout: 30_000 }, () => {
         .filter(({ near, far }) => Math.abs(near - far) > 0.4 + near * 0.02);
       expect(differ).toEqual([]);
     },
+    SWEEP_TIMEOUT_MS,
   );
 
   it.each(GRIDS)(
@@ -236,5 +240,6 @@ describe("the grid zoomed out past 10%", { timeout: 30_000 }, () => {
       );
       expect(most).toBeLessThanOrEqual((atTenth + 8) * (base + 1));
     },
+    SWEEP_TIMEOUT_MS,
   );
 });
