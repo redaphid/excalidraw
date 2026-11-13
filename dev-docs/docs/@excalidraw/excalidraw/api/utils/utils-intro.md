@@ -447,6 +447,28 @@ elementsOverlappingBBox(<br/>&nbsp;
 import { elementsOverlappingBBox } from "@excalidraw/excalidraw";
 ```
 
+Candidates come from an R-tree kept per `elements` array. The first call over an array measures every element and builds the tree; later calls over the same array, with the same `elementsMap`, test only the elements near `bounds`. A scene's arrays and maps keep their identity until the scene changes, so pass them as they are.
+
+### elementsTouchingBBox
+
+The elements whose box, grown by half their stroke and by an arrow's label, touches `bounds` (borders included), in array order. This is the candidate set `elementsOverlappingBBox` tests, served from the same R-tree. Use it when your own test per element is cheap and a box is enough, such as asking which elements wholly contain a tile before you export it.
+
+**_Signature_**
+
+<pre>
+elementsTouchingBBox(<br/>&nbsp;
+  elements: readonly NonDeletedExcalidrawElement[],<br/>&nbsp;
+  bounds: <a href="https://github.com/excalidraw/excalidraw/blob/9c425224c789d083bf16e0597ce4a429b9ee008e/src/element/bounds.ts#L37-L42">Bounds</a>,<br/>&nbsp;
+  elementsMap?: ElementsMap,<br/>
+): NonDeletedExcalidrawElement[];
+</pre>
+
+**_How to use_**
+
+```js
+import { elementsTouchingBBox } from "@excalidraw/excalidraw";
+```
+
 ### isElementInsideBBox
 
 Lower-level API than `elementsOverlappingBBox` to check if a single `element` is inside `bounds`. If `eitherDirection=true`, returns `true` if `element` is fully inside `bounds` rectangle, or vice versa. When `false`, it returns `true` only for the former case.

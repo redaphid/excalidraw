@@ -295,6 +295,28 @@ describe("ElementsRTree", () => {
     expect(result).toEqual(linear(next));
   });
 
+  it("rebuilds at once when asked while many elements are unindexed, then measures nothing", () => {
+    const elements = grid();
+    const { index, query, rebuildWork } = setup(elements);
+    const next = moveCopies(elements, 100, 1100);
+
+    expect(query(next).measured).toBe(100);
+    expect(rebuildWork(() => index.rebuildIfStale())).toBe(elements.length);
+    const { result, measured } = query(next);
+    expect(measured).toBe(0);
+    expect(result).toEqual(linear(next));
+  });
+
+  it("leaves a few changed elements unindexed when asked to rebuild if stale", () => {
+    const elements = grid();
+    const { index, query, rebuildWork } = setup(elements);
+    const next = moveCopies(elements, 3, 1100);
+
+    query(next);
+    expect(rebuildWork(() => index.rebuildIfStale())).toBe(0);
+    expect(query(next).measured).toBe(3);
+  });
+
   it("does not rebuild during a drag of a thousand elements", () => {
     const elements = grid();
     const { query, clock, rebuildWork } = setup(elements);

@@ -295,6 +295,17 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     }
   }
 
+  /**
+   * Rebuilds now, instead of on idle, once enough of the synced array lies
+   * outside the tree that each query measures it again. For a run of queries
+   * that cannot wait, such as export tiles, the array is then measured once.
+   */
+  rebuildIfStale() {
+    if (this.stale >= REBUILD_MIN_STALE || this.rebuildJob !== null) {
+      this.rebuild();
+    }
+  }
+
   /** rebuilds the tree from the synced array now, in one go */
   rebuild() {
     if (this.quietTimer !== null) {
