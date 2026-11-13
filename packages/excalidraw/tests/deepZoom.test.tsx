@@ -74,10 +74,10 @@ describe("deep zoom", () => {
     expect(getNormalizedZoom(0)).toBe(0.000_001);
   });
 
-  it("keeps six significant figures of a zoom under 10%", () => {
+  it("keeps seven significant figures of a zoom under 10%", () => {
     expect(getNormalizedZoom(0.000_001_4)).toBe(0.000_001_4);
-    expect(getNormalizedZoom(0.000_001_234_567_8)).toBe(0.000_001_234_57);
-    expect(getNormalizedZoom(0.012_345_678)).toBe(0.012_345_7);
+    expect(getNormalizedZoom(0.000_001_234_567_89)).toBe(0.000_001_234_568);
+    expect(getNormalizedZoom(0.012_345_678_9)).toBe(0.012_345_68);
   });
 
   it("rounds a zoom of 10% and up to six decimals, as upstream", () => {

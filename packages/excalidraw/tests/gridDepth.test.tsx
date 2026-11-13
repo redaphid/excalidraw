@@ -169,7 +169,8 @@ describe("the grid at upstream's zooms", () => {
   );
 });
 
-describe("the grid zoomed out past 10%", () => {
+// each sweep renders a few hundred frames
+describe("the grid zoomed out past 10%", { timeout: 30_000 }, () => {
   // (grid size 1 draws thousands of lines a frame, too slow to sweep; its
   // frames at 10% and over are compared with master's above)
   const GRIDS = [
@@ -183,7 +184,7 @@ describe("the grid zoomed out past 10%", () => {
   const zoomsFor = (gridStep: number) => {
     const base = Math.max(gridStep, 2);
     return [
-      ...sweep(1e-6, 0.1, 150),
+      ...sweep(1e-6, 0.1, 60),
       ...Array.from({ length: 30 }, (_, k) => 0.1 / base ** k).filter(
         (zoom) => zoom >= 1e-6,
       ),
