@@ -490,6 +490,22 @@ const orbit = (scene: SceneName, zoom: number, steps: number): Scenario => {
   };
 };
 
+/** the orbit with the grid on (gridSize 20, step 5) */
+const gridOrbit = (scene: SceneName, zoom: number, steps: number) => {
+  const base = orbit(scene, zoom, steps);
+  return {
+    ...base,
+    id: `${scene}/grid-orbit@${zoom}`,
+    view: (api: ExcalidrawImperativeAPI, benchScene: BenchScene) =>
+      ({
+        ...centeredAt(zoom)(api, benchScene),
+        gridModeEnabled: true,
+        gridSize: 20,
+        gridStep: 5,
+      } as BenchScene["view"]),
+  };
+};
+
 /** wheel from 1x out to a millionth (138 ticks of exp(-0.1)) and back */
 const zoomOutDeep = (scene: SceneName): Scenario => ({
   ...zoom(scene, 140, 140, 10, (_, canvas) => center(canvas)),
@@ -503,4 +519,5 @@ export const ZOOM_OUT_SCENARIOS: Scenario[] = (
 ).flatMap((scene) => [
   ...[1, 0.1, 0.001, 0.000_001].map((zoom) => orbit(scene, zoom, 120)),
   zoomOutDeep(scene),
+  ...[0.1, 0.02].map((zoom) => gridOrbit(scene, zoom, 120)),
 ]);

@@ -366,6 +366,7 @@ const runScenario = async (
 ): Promise<ScenarioResult> => {
   api.updateScene({
     appState: {
+      gridModeEnabled: false,
       ...(scenario.view?.(api, scene) ?? scene.view),
       selectedElementIds: {},
       theme: "light",
