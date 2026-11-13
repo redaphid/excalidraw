@@ -297,6 +297,14 @@ const cappedElementCanvasSize = (
   width = Math.floor(width * scale);
   height = Math.floor(height * scale);
 
+  // A straight line's bitmap is only its padding thick, which floors to 0
+  // zoomed far out though the line is long on screen: keep a pixel of it.
+  // Under a pixel both ways, there is still nothing to draw.
+  if (width || height) {
+    width = Math.max(1, width);
+    height = Math.max(1, height);
+  }
+
   return { width, height, scale };
 };
 
