@@ -33,7 +33,8 @@ export type FlightPath = {
  * of `width` by `height` px: between distant targets it zooms out, pans
  * across at the wider view, and zooms back in, so the destination comes into
  * view early instead of rushing past at full zoom. It never zooms out past
- * MIN_ZOOM: one that would zoom out further pans across at MIN_ZOOM instead.
+ * MIN_ZOOM (a millionth): one that would zoom out further pans across at
+ * MIN_ZOOM instead.
  */
 export const flightPath = (
   from: Viewport,
@@ -80,11 +81,12 @@ export const flightPath = (
     };
   }
 
-  const r = (w: number, sign: 1 | -1) => {
-    const b =
-      (w1 * w1 - w0 * w0 + sign * RHO ** 4 * d * d) / (2 * w * RHO ** 2 * d);
-    return Math.log(Math.sqrt(b * b + 1) - b);
-  };
+  // the paper's log(sqrt(b² + 1) - b), which cancels to 0 once b is large
+  // (a flight of thousands of views) and makes the path miss its landing
+  const r = (w: number, sign: 1 | -1) =>
+    -Math.asinh(
+      (w1 * w1 - w0 * w0 + sign * RHO ** 4 * d * d) / (2 * w * RHO ** 2 * d),
+    );
   const r0 = r(w0, 1);
   const r1 = r(w1, -1);
   const length = (r1 - r0) / RHO;

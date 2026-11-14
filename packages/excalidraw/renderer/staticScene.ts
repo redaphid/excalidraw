@@ -70,6 +70,11 @@ const GridLineColor = {
   },
 } as const;
 
+/** upstream's smallest zoom, under which the grid nests instead of shrinking */
+const GRID_NESTING_ZOOM = 0.1;
+
+type GridLineStyle = "bold" | "regular" | null;
+
 const strokeGrid = (
   context: CanvasRenderingContext2D,
   /** grid cell pixel size */
@@ -89,10 +94,23 @@ const strokeGrid = (
   const regularColor = canvasTheme?.gridColor ?? GridLineColor[theme].regular;
   const dashed = canvasTheme?.gridStyle !== "solid";
 
+  // Zoomed out past upstream's 10%, the loops below would visit millions of
+  // lines a frame. The grid repeats how it looks at 10% instead, a step
+  // coarser each time the zoom falls by a step. Over each step, the lines
+  // the coarser grid drops or draws in another style cross-fade into it, so
+  // nothing pops. At 10% and over, `fade` is 0 and this is upstream's grid.
+  const base = Math.max(gridStep, 2);
+  const nesting = Math.max(
+    0,
+    Math.log(GRID_NESTING_ZOOM / zoom.value) / Math.log(base),
+  );
+  const level = Math.floor(nesting);
+  const fade = nesting - level;
+  const actualGridSize = gridSize * Math.max(zoom.value, GRID_NESTING_ZOOM);
+  gridSize *= base ** level;
+
   const offsetX = (scrollX % gridSize) - gridSize;
   const offsetY = (scrollY % gridSize) - gridSize;
-
-  const actualGridSize = gridSize * zoom.value;
 
   const spaceWidth = 1 / zoom.value;
 
@@ -108,9 +126,10 @@ const strokeGrid = (
   const snap = (position: number, maxWidthInCssPixels: number) => {
     // a line is `min(1 / zoom, max)` scene units wide; computed straight in
     // device pixels, so `(1 / zoom) × zoom` never lands just under 1
+    // (and kept at 10%'s past it, so a nested grid looks like 10%'s)
     const widthInDevicePixels = Math.min(
       scale,
-      maxWidthInCssPixels * devicePixels,
+      maxWidthInCssPixels * Math.max(zoom.value, GRID_NESTING_ZOOM) * scale,
     );
     if (widthInDevicePixels < 1) {
       return { position, lineWidth: widthInDevicePixels / devicePixels };
@@ -126,44 +145,72 @@ const strokeGrid = (
 
   context.save();
 
-  // vertical lines
-  for (let x = offsetX; x < offsetX + width + gridSize * 2; x += gridSize) {
-    const isBold =
-      gridStep > 1 && Math.round((x - scrollX) / gridSize) % gridStep === 0;
-    // don't render regular lines when zoomed out and they're barely visible
-    if (!isBold && actualGridSize < 10) {
-      continue;
-    }
+  // don't render regular lines when zoomed out and they're barely visible
+  const styleOf = (index: number): GridLineStyle =>
+    gridStep > 1 && index % gridStep === 0
+      ? "bold"
+      : actualGridSize < 10
+      ? null
+      : "regular";
 
-    const { position, lineWidth } = snap(x, isBold ? 4 : 1);
+  const strokeLine = (
+    style: GridLineStyle,
+    alpha: number,
+    at: number,
+    vertical: boolean,
+  ) => {
+    if (!style || !alpha) {
+      return;
+    }
+    const isBold = style === "bold";
+    const { position, lineWidth } = snap(at, isBold ? 4 : 1);
     context.lineWidth = lineWidth;
     const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
 
     context.beginPath();
     context.setLineDash(isBold || !dashed ? [] : lineDash);
     context.strokeStyle = isBold ? boldColor : regularColor;
-    context.moveTo(position, offsetY - gridSize);
-    context.lineTo(position, Math.ceil(offsetY + height + gridSize * 2));
+    context.globalAlpha = alpha;
+    if (vertical) {
+      context.moveTo(position, offsetY - gridSize);
+      context.lineTo(position, Math.ceil(offsetY + height + gridSize * 2));
+    } else {
+      context.moveTo(offsetX - gridSize, position);
+      context.lineTo(Math.ceil(offsetX + width + gridSize * 2), position);
+    }
     context.stroke();
+  };
+
+  /** a line as this grid draws it and as the next coarser one does */
+  const strokeGridLine = (at: number, scroll: number, vertical: boolean) => {
+    const index = Math.round((at - scroll) / gridSize);
+    const style = styleOf(index);
+    const coarser = !fade
+      ? style
+      : index % base === 0
+      ? styleOf(index / base)
+      : null;
+    if (style === coarser) {
+      strokeLine(style, 1, at, vertical);
+    } else {
+      strokeLine(style, 1 - fade, at, vertical);
+      strokeLine(coarser, fade, at, vertical);
+    }
+  };
+
+  // Past 10% with regular lines hidden, only every step's line can show, so
+  // the loops visit only those (upstream's visit every line, at most 10x10
+  // as many as it draws)
+  const stride =
+    nesting > 0 && actualGridSize < 10 ? gridSize * gridStep : gridSize;
+  const startX = stride === gridSize ? offsetX : (scrollX % stride) - stride;
+  const startY = stride === gridSize ? offsetY : (scrollY % stride) - stride;
+
+  for (let x = startX; x < offsetX + width + gridSize * 2; x += stride) {
+    strokeGridLine(x, scrollX, true);
   }
-
-  for (let y = offsetY; y < offsetY + height + gridSize * 2; y += gridSize) {
-    const isBold =
-      gridStep > 1 && Math.round((y - scrollY) / gridSize) % gridStep === 0;
-    if (!isBold && actualGridSize < 10) {
-      continue;
-    }
-
-    const { position, lineWidth } = snap(y, isBold ? 4 : 1);
-    context.lineWidth = lineWidth;
-    const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
-
-    context.beginPath();
-    context.setLineDash(isBold || !dashed ? [] : lineDash);
-    context.strokeStyle = isBold ? boldColor : regularColor;
-    context.moveTo(offsetX - gridSize, position);
-    context.lineTo(Math.ceil(offsetX + width + gridSize * 2), position);
-    context.stroke();
+  for (let y = startY; y < offsetY + height + gridSize * 2; y += stride) {
+    strokeGridLine(y, scrollY, false);
   }
   context.restore();
 };

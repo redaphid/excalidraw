@@ -347,8 +347,9 @@ export const zoomToFitBounds = ({
     });
   }
 
+  // under one step, flooring to a step would give 0
   const targetZoomValue =
-    steppedZoom && fit !== "none"
+    steppedZoom && fit !== "none" && adjustedZoomValue >= ZOOM_STEP
       ? roundToStep(adjustedZoomValue, ZOOM_STEP, "floor")
       : adjustedZoomValue;
 

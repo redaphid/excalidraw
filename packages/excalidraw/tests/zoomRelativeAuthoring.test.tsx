@@ -34,6 +34,7 @@ import { serializeAsJSON } from "../data/json";
 import { restoreElements } from "../data/restore";
 import { exportToCanvas, exportToSvg } from "../scene/export";
 import { getNormalizedZoom } from "../scene";
+import { getViewportForZoomWithScrollConstraints } from "../viewport";
 
 import { API } from "./helpers/api";
 import { Keyboard, Pointer, UI } from "./helpers/ui";
@@ -464,6 +465,86 @@ describe("authoringUnits: screen", () => {
       }).toEqual({ zoom, selected: true });
     }
   });
+});
+
+describe("authoringUnits: screen, made at the zoom floor", () => {
+  beforeEach(async () => {
+    await renderEditor("screen");
+  });
+
+  afterEach(async () => {
+    await act(async () => {});
+  });
+
+  /** an element's box and strokes on screen, in px */
+  const screenBox = (element: ExcalidrawElement) => {
+    const { scrollX, scrollY, offsetLeft, offsetTop, zoom } = h.state;
+    return {
+      x: (element.x + scrollX) * zoom.value + offsetLeft,
+      y: (element.y + scrollY) * zoom.value + offsetTop,
+      ...onScreen(element, zoom.value),
+    };
+  };
+
+  // the floor, and a zoom near it whose inverse is not a round number
+  it.each([1e-6, 2.345678e-6])(
+    "keeps a rectangle, line, text and freedraw made at %s the drawn size, and a million-odd times it at 1x",
+    async (zoom) => {
+      const makeAll = async () => [
+        UI.createElement("rectangle", {
+          x: 100,
+          y: 100,
+          width: 120,
+          height: 80,
+        }),
+        UI.createElement("line", { x: 300, y: 120, width: 120, height: 80 }),
+        UI.createElement("freedraw", {
+          x: 500,
+          y: 100,
+          points: [
+            [0, 0],
+            [40, 30],
+            [80, 0],
+          ] as any,
+        }),
+        await createText(700, 300, "far out"),
+      ];
+      atZoom(1);
+      const atOneX = (await makeAll()).map(screenBox);
+      atZoom(zoom);
+      const made = await makeAll();
+      const atFloor = made.map(screenBox);
+      // made where and as big as at 1x, with the same strokes and font
+      atFloor.forEach((box, i) => expectSameOnScreen(box, atOneX[i]));
+
+      const { offsetLeft, offsetTop } = h.state;
+      API.setAppState(
+        getViewportForZoomWithScrollConstraints(
+          {
+            viewportX: offsetLeft,
+            viewportY: offsetTop,
+            nextZoom: getNormalizedZoom(1),
+          },
+          h.state,
+        ),
+      );
+      const scale = 1 / zoom;
+      made.forEach((element, i) => {
+        const now = screenBox(h.elements.find(({ id }) => id === element.id)!);
+        const scaled = Object.fromEntries(
+          Object.entries(atFloor[i]).map(([key, value]) => [
+            key,
+            key === "x"
+              ? (value - offsetLeft) * scale + offsetLeft
+              : key === "y"
+              ? (value - offsetTop) * scale + offsetTop
+              : value * scale,
+          ]),
+        );
+        expectSameOnScreen(now, scaled);
+      });
+    },
+  );
 });
 
 describe("authoringUnits: screen, a long new text", () => {
