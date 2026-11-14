@@ -135,17 +135,32 @@ export const getFontFamilyString = ({
   return WINDOWS_EMOJI_FALLBACK_FONT;
 };
 
+/** The largest canvas font that Chrome and Firefox measure and draw true. */
+export const MAX_CANVAS_FONT_SIZE = 1024;
+
 /**
- * Chrome measures and draws nothing for a canvas font much under a pixel
- * (text thins out below 0.02px and is gone by 0.005px), and text made while
- * zoomed far in is that small. Such text is measured and drawn this many
- * times larger and scaled back down: a power of two, so the round trip is
- * exact, and 1 from a pixel up.
+ * Canvas text is measured and drawn true only for fonts from about a pixel
+ * to about 2,000px. Chrome measures and draws nothing for a font much under
+ * a pixel (text thins out below 0.02px and is gone by 0.005px), and text made
+ * while zoomed far in is that small. Firefox measures and draws a font over
+ * about 2,000px at about 2,000px, and Chrome caps fonts at 10,000px, and text
+ * made while zoomed far out is that big. Such text is measured and drawn at
+ * this many times its size, which brings it from 1 to
+ * MAX_CANVAS_FONT_SIZE px, and scaled back: a power of two, so the round
+ * trip is exact, and 1 for a font already in that range.
  */
-export const getFontSizeUpscale = (fontSize: number) =>
-  fontSize >= 1 || !(fontSize > 0)
-    ? 1
-    : 2 ** Math.ceil(Math.log2(1 / fontSize));
+export const getFontRenderScale = (fontSize: number) => {
+  if (!(fontSize > 0) || fontSize === Infinity) {
+    return 1;
+  }
+  if (fontSize < 1) {
+    return 2 ** Math.ceil(Math.log2(1 / fontSize));
+  }
+  if (fontSize > MAX_CANVAS_FONT_SIZE) {
+    return 2 ** -Math.ceil(Math.log2(fontSize / MAX_CANVAS_FONT_SIZE));
+  }
+  return 1;
+};
 
 /** returns fontSize+fontFamily string for assignment to DOM elements */
 export const getFontString = ({

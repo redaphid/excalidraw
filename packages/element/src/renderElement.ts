@@ -14,7 +14,7 @@ import {
   DEFAULT_REDUCED_GLOBAL_ALPHA,
   ELEMENT_READY_TO_ERASE_OPACITY,
   FRAME_STYLE,
-  getFontSizeUpscale,
+  getFontRenderScale,
   DARK_THEME_FILTER,
   MIME_TYPES,
   THEME,
@@ -598,10 +598,10 @@ const drawElementOnCanvas = (
         // element change anyway
         const footer = getStickyNoteFooter(element);
         if (footer) {
-          // see `getFontSizeUpscale`
-          const upscale = getFontSizeUpscale(footer.fontSize);
-          context.scale(1 / upscale, 1 / upscale);
-          context.font = `${footer.fontSize * upscale}px ${
+          // see `getFontRenderScale`
+          const fontScale = getFontRenderScale(footer.fontSize);
+          context.scale(1 / fontScale, 1 / fontScale);
+          context.font = `${footer.fontSize * fontScale}px ${
             STICKY_NOTE_FOOTER.fontFamily
           }`;
           context.textAlign = "right";
@@ -611,7 +611,11 @@ const drawElementOnCanvas = (
             renderConfig.theme === THEME.DARK,
           );
           context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
-          context.fillText(footer.text, footer.x * upscale, footer.y * upscale);
+          context.fillText(
+            footer.text,
+            footer.x * fontScale,
+            footer.y * fontScale,
+          );
         }
       } finally {
         context.restore();
@@ -789,11 +793,11 @@ const drawElementOnCanvas = (
         context.canvas.setAttribute("dir", rtl ? "rtl" : "ltr");
         context.save();
         try {
-          // see `getFontSizeUpscale`
-          const upscale = getFontSizeUpscale(element.fontSize);
-          context.scale(1 / upscale, 1 / upscale);
+          // see `getFontRenderScale`
+          const fontScale = getFontRenderScale(element.fontSize);
+          context.scale(1 / fontScale, 1 / fontScale);
           context.font = getFontString({
-            fontSize: element.fontSize * upscale,
+            fontSize: element.fontSize * fontScale,
             fontFamily: element.fontFamily,
           });
           context.fillStyle = applyDarkModeFilter(
@@ -826,8 +830,8 @@ const drawElementOnCanvas = (
           for (let index = 0; index < lines.length; index++) {
             context.fillText(
               lines[index],
-              horizontalOffset * upscale,
-              (index * lineHeightPx + verticalOffset) * upscale,
+              horizontalOffset * fontScale,
+              (index * lineHeightPx + verticalOffset) * fontScale,
             );
           }
         } finally {
