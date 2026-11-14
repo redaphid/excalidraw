@@ -105,9 +105,14 @@ Shapes (rectangle, diamond, ellipse, line, arrow, embeddable) are generated at t
 | `element/src/bounds.ts:1011` `getElementPaintExtent` | how far paint reaches past the centre-line bounds, used by `getElementsOverlappingFrame` (frame export) and `isElementInViewport` (culling) | D |
 | `element/src/renderElement.ts` `getCanvasPadding` | room around an element's cache bitmap, 20 or 40; in scene units a 220 by 130 px rectangle made at 100x got a 4,440 by 4,260 px bitmap, 64 MB, and a new one on each pointer move while it was drawn | D |
 
-### Text far under a pixel
+### Text outside the sizes a canvas draws
 
-Chrome 154 measures and draws nothing for a canvas font much under a pixel: in the bench Chrome, "Hello world" keeps its width per pixel of font size down to 0.02px, thins out at 0.015px and is gone at 0.005px, while 20px text made at 1,000x is 0.02 units. `getFontSizeUpscale` (`common/src/utils.ts`) picks a power of two that brings the font to at least a pixel; text is measured (`textMeasurements.ts` `getLineWidth`) and drawn (`renderElement.ts` text and sticky note footer, `staticSvgScene.ts` text and footer) at that size and scaled back down. Fonts of a pixel or more are untouched.
+Canvas text is measured and drawn true only for fonts from about a pixel to about 2,000 px.
+
+- Chrome 154 measures and draws nothing for a canvas font much under a pixel: in the bench Chrome, "Hello world" keeps its width per pixel of font size down to 0.02px, thins out at 0.015px and is gone at 0.005px, while 20px text made at 1,000x is 0.02 units.
+- Firefox measures and draws a canvas font over about 2,000px at about 2,000px: a 4,096px "Hello world" measures half its width and inks half its area. Chrome caps a canvas font at 10,000px, and draws nothing at 2,000,000px. 20px text made at 0.001x is 20,000 units.
+
+`getFontRenderScale` (`common/src/utils.ts`) picks a power of two that brings the font to between a pixel and `MAX_CANVAS_FONT_SIZE` (1,024px, which both browsers measure exactly); text is measured (`textMeasurements.ts` `getLineWidth`), drawn (`renderElement.ts` text and sticky note footer, `staticSvgScene.ts` text and footer) and edited (`wysiwyg/textWysiwyg.tsx`) at that size and scaled back. Fonts already in that range are untouched.
 
 ### Left in scene units
 

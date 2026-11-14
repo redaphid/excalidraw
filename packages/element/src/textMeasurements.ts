@@ -2,7 +2,7 @@ import {
   BOUND_TEXT_PADDING,
   DEFAULT_FONT_SIZE,
   DEFAULT_FONT_FAMILY,
-  getFontSizeUpscale,
+  getFontRenderScale,
   getFontString,
   isTestEnv,
   normalizeEOL,
@@ -162,15 +162,15 @@ export const getLineWidth = (text: string, font: FontString) => {
   }
 
   const [, size, family] = font.match(/^([^ ]+)px (.*)$/) ?? [];
-  const upscale = getFontSizeUpscale(Number(size));
-  if (upscale === 1) {
+  const fontScale = getFontRenderScale(Number(size));
+  if (fontScale === 1) {
     return textMetricsProvider.getLineWidth(text, font);
   }
   return (
     textMetricsProvider.getLineWidth(
       text,
-      `${Number(size) * upscale}px ${family}` as FontString,
-    ) / upscale
+      `${Number(size) * fontScale}px ${family}` as FontString,
+    ) / fontScale
   );
 };
 

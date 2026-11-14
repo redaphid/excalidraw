@@ -1,4 +1,10 @@
-import { KEYS, TEXT_MAX_WRAP_WIDTH } from "@excalidraw/common";
+import {
+  FONT_FAMILY,
+  getFontRenderScale,
+  getFontString,
+  KEYS,
+  TEXT_MAX_WRAP_WIDTH,
+} from "@excalidraw/common";
 import {
   elementWithCanvasCache,
   getBoundTextMaxWidth,
@@ -6,6 +12,8 @@ import {
   getElementBounds,
   getElementLineSegments,
   getFreedrawOutlinePoints,
+  getLineWidth,
+  getStickyNoteFooter,
   isTextElement,
   setCustomTextMetricsProvider,
   ShapeCache,
@@ -15,6 +23,7 @@ import type {
   ExcalidrawArrowElement,
   ExcalidrawElement,
   ExcalidrawFreeDrawElement,
+  ExcalidrawStickyNoteElement,
   ExcalidrawTextElement,
   NonDeleted,
   NonDeletedExcalidrawElement,
@@ -23,7 +32,7 @@ import type {
 import { Excalidraw } from "../index";
 import { serializeAsJSON } from "../data/json";
 import { restoreElements } from "../data/restore";
-import { exportToSvg } from "../scene/export";
+import { exportToCanvas, exportToSvg } from "../scene/export";
 import { getNormalizedZoom } from "../scene";
 import { getViewportForZoomWithScrollConstraints } from "../viewport";
 
@@ -42,10 +51,13 @@ const mouse = new Pointer("mouse");
 const ZOOMS = [1, 100, 10_000];
 
 // the test canvas measures every glyph 10px wide at any font size; here text
-// grows with its font and, as in Chrome, measures nothing far under a pixel
+// grows with its font, and, as in Chrome, measures nothing far under a pixel
+// and, as in Firefox, measures a font over 2,000px as 2,000px
 setCustomTextMetricsProvider({
   getLineWidth: (text, font) =>
-    parseFloat(font) < 0.01 ? 0 : text.length * parseFloat(font) * 0.6,
+    parseFloat(font) < 0.01
+      ? 0
+      : text.length * Math.min(parseFloat(font), 2000) * 0.6,
 });
 
 const renderEditor = (authoringUnits?: AuthoringUnits) =>
@@ -903,5 +915,187 @@ describe("authoringUnits: scene (default)", () => {
       const note = latest().find((element) => element.type === "stickynote")!;
       expect(note.width).toBe(250);
     }
+  });
+});
+
+describe("text over 1,024px", () => {
+  const FONT_SIZE = 20_000;
+  const font = getFontString({
+    fontSize: FONT_SIZE,
+    fontFamily: FONT_FAMILY.Excalifont,
+  });
+
+  /** the font sizes set on any canvas (the mock canvas reads its font
+   * back as 10px whatever it was set to) */
+  const spyFillTextFonts = () => {
+    const font = vi.spyOn(CanvasRenderingContext2D.prototype, "font", "set");
+    return () => font.mock.calls.map(([value]) => parseFloat(value));
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    [0, 1],
+    [Infinity, 1],
+    [NaN, 1],
+    [-5, 1],
+    [0.3, 4],
+    [1, 1],
+    [20, 1],
+    [1024, 1],
+    [1024.000_000_000_000_2, 0.5],
+    [2048, 0.5],
+    [2049, 0.25],
+    [20_000, 1 / 32],
+  ])("scales a %s px font by %s", (fontSize, scale) => {
+    expect(getFontRenderScale(fontSize)).toBe(scale);
+  });
+
+  it("is measured at its own size", () => {
+    expect(getLineWidth("hello", font)).toBeCloseTo(5 * FONT_SIZE * 0.6, 6);
+  });
+
+  it("is drawn on a canvas at 1,024px or less", async () => {
+    await render(<Excalidraw />);
+    const text = API.createElement({
+      type: "text",
+      text: "hello",
+      fontSize: FONT_SIZE,
+    });
+    const fonts = spyFillTextFonts();
+    await exportToCanvas(
+      [text as NonDeletedExcalidrawElement],
+      h.state,
+      {},
+      {
+        exportBackground: false,
+        viewBackgroundColor: "#fff",
+      },
+    );
+    expect(fonts()).toContain(FONT_SIZE / 32);
+    expect(Math.max(...fonts())).toBeLessThanOrEqual(1024);
+  });
+
+  it("draws a sticky note's footer on a canvas at 1,024px or less", async () => {
+    await render(<Excalidraw />);
+    // made at 0.001x: its footer's font is 12,000px
+    const note = {
+      ...API.createElement({
+        type: "stickynote",
+        width: 250_000,
+        height: 250_000,
+      }),
+      authoringScale: 1000,
+    } as ExcalidrawStickyNoteElement;
+    const fonts = spyFillTextFonts();
+    await exportToCanvas(
+      [note as NonDeletedExcalidrawElement],
+      h.state,
+      {},
+      {
+        exportBackground: false,
+        viewBackgroundColor: "#fff",
+      },
+    );
+    expect(fonts()).toContain(12_000 / 16);
+    expect(Math.max(...fonts())).toBeLessThanOrEqual(1024);
+  });
+
+  /** an exported `<text>` node's font size, position and the scale that
+   * brings it back to scene size */
+  const exportedText = (node: SVGTextElement) => {
+    const transform =
+      node.getAttribute("transform") ??
+      node.parentElement!.getAttribute("transform")!;
+    return {
+      fontSize: parseFloat(node.getAttribute("font-size")!),
+      y: parseFloat(node.getAttribute("y")!),
+      scale: Number(transform.match(/scale\((.*?)\)/)![1]),
+    };
+  };
+
+  it("exports at a font size the browser draws, scaled back up", async () => {
+    await render(<Excalidraw />);
+    const text = API.createElement({
+      type: "text",
+      text: "hello\nworld",
+      fontSize: FONT_SIZE,
+    });
+    const svg = await exportToSvg(
+      [text as NonDeletedExcalidrawElement],
+      h.state,
+      {},
+    );
+    const [first, second] = [...svg.querySelectorAll("text")].map(exportedText);
+    expect(first.fontSize).toBeLessThanOrEqual(1024);
+    expect(first.fontSize * first.scale).toBeCloseTo(FONT_SIZE, 9);
+    // the second line sits a line height below the first, in scene units
+    expect((second.y - first.y) * second.scale).toBeCloseTo(
+      FONT_SIZE * text.lineHeight,
+      6,
+    );
+  });
+
+  it("exports a sticky note's footer at 1,024px or less, where it is drawn", async () => {
+    await render(<Excalidraw />);
+    // made at 0.001x: its footer's font is 12,000px
+    const note = {
+      ...API.createElement({
+        type: "stickynote",
+        width: 250_000,
+        height: 250_000,
+      }),
+      authoringScale: 1000,
+    } as ExcalidrawStickyNoteElement;
+    const svg = await exportToSvg(
+      [note as NonDeletedExcalidrawElement],
+      h.state,
+      {},
+    );
+    const footer = getStickyNoteFooter(note)!;
+    const node = [...svg.querySelectorAll("text")].find(
+      (candidate) => candidate.textContent === footer.text,
+    )!;
+    const { fontSize, y, scale } = exportedText(node);
+    expect(fontSize).toBeLessThanOrEqual(1024);
+    expect(fontSize * scale).toBeCloseTo(footer.fontSize, 9);
+    expect(y * scale).toBeCloseTo(footer.y, 6);
+  });
+
+  it("edits at a font size the browser lays out, scaled back up", async () => {
+    const FONT_SIZE = 1500;
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    API.setAppState({
+      zoom: { value: getNormalizedZoom(0.1) },
+      scrollX: 0,
+      scrollY: 0,
+      width: 1024,
+      height: 768,
+    });
+    const text = API.createElement({
+      type: "text",
+      text: "hello",
+      x: 100,
+      y: 100,
+      fontSize: FONT_SIZE,
+    });
+    API.setElements([text]);
+    API.setSelectedElements([text]);
+    Keyboard.keyPress(KEYS.ENTER);
+    const editor = await getTextEditor();
+
+    const fontSize = parseFloat(editor.style.fontSize || editor.style.font);
+    const scale = Number(editor.style.transform.match(/scale\((.*?)\)/)![1]);
+    expect(fontSize).toBeLessThanOrEqual(1024);
+    expect(fontSize * scale).toBeCloseTo(FONT_SIZE * 0.1, 6);
+
+    updateTextEditor(editor, "hello!");
+    Keyboard.exitTextEditor(editor);
+    // wider than TEXT_MAX_WRAP_WIDTH, so it is wrapped
+    expect(latest().find(isTextElement)!.text.replace(/\n/g, "")).toBe(
+      "hello!",
+    );
   });
 });
