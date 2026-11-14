@@ -13,6 +13,7 @@ import {
   getFontString,
   getUpdatedTimestamp,
   getLineHeight,
+  normalizeFontAxes,
 } from "@excalidraw/common";
 
 import type { Radians } from "@excalidraw/math";
@@ -343,6 +344,7 @@ export const newTextElement = (
     originalText?: string;
     fontSize?: number;
     fontFamily?: FontFamilyValues;
+    fontAxes?: ExcalidrawTextElement["fontAxes"];
     textAlign?: TextAlign;
     verticalAlign?: VerticalAlign;
     containerId?: ExcalidrawTextContainer["id"] | null;
@@ -354,11 +356,12 @@ export const newTextElement = (
 ): NonDeleted<ExcalidrawTextElement> => {
   const fontFamily = opts.fontFamily || DEFAULT_FONT_FAMILY;
   const fontSize = opts.fontSize || DEFAULT_FONT_SIZE;
+  const fontAxes = normalizeFontAxes(fontFamily, opts.fontAxes);
   const lineHeight = opts.lineHeight || getLineHeight(fontFamily);
   const text = normalizeText(opts.text);
   const metrics = measureText(
     text,
-    getFontString({ fontFamily, fontSize }),
+    getFontString({ fontFamily, fontSize, fontAxes }),
     lineHeight,
   );
   const textAlign = opts.textAlign || DEFAULT_TEXT_ALIGN;
@@ -374,6 +377,7 @@ export const newTextElement = (
     fontSize,
     baseFontSize: opts.baseFontSize ?? null,
     fontFamily,
+    ...(fontAxes ? { fontAxes } : {}),
     textAlign,
     verticalAlign,
     x: opts.x - offsets.x,

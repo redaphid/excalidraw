@@ -2,6 +2,7 @@ import type { LocalPoint, Radians } from "@excalidraw/math";
 
 import type {
   FONT_FAMILY,
+  FontAxes,
   ROUNDNESS,
   TEXT_ALIGN,
   THEME,
@@ -268,6 +269,15 @@ export type ExcalidrawTextElement = _ExcalidrawElementBase &
     type: "text";
     fontSize: number;
     fontFamily: FontFamilyValues;
+    /**
+     * Variation axis values by OpenType axis tag, such as
+     * `{ wght: 650, BNCE: 40 }`, for a variable `fontFamily` (one whose
+     * `FONT_METADATA` has `axes`). The text is measured and drawn in that
+     * instance of the font. Absent, or in any other family, it is the
+     * family's regular instance. `restore` clamps values to their axes and
+     * drops tags the family lacks (`normalizeFontAxes`).
+     */
+    fontAxes?: FontAxes;
     /**
      * The font size the user picked, from which the layout derives `fontSize`.
      * Today only sticky note labels have one: the auto-fit shrinks below it
