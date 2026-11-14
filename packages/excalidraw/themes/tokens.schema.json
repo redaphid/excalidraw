@@ -400,7 +400,7 @@
         },
         "canvas": {
           "type": "object",
-          "description": "the font new text is drawn in: one of Virgil, Helvetica, Cascadia, Excalifont, Nunito, Lilita One, Comic Shanns, Liberation Sans, Assistant",
+          "description": "the font new text is drawn in: one of Virgil, Helvetica, Cascadia, Excalifont, Nunito, Lilita One, Comic Shanns, Liberation Sans, Assistant, Shantell Sans",
           "properties": {
             "$value": {
               "anyOf": [

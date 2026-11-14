@@ -20,6 +20,9 @@ import {
   WINDOWS_EMOJI_FALLBACK_FONT,
 } from "./constants";
 
+import { getFontInstanceFamily } from "./font-axes";
+
+import type { FontAxes } from "./font-axes";
 import type { MaybePromise, ResolutionType } from "./utility-types";
 
 import type { EVENT } from "./constants";
@@ -120,16 +123,26 @@ export const isWritableElement = (
   );
 };
 
+/**
+ * The font families a text draws with, in order. With `fontAxes` on a
+ * variable family the first is the instance's own family (see
+ * `getFontInstanceFamily`), quoted, and the family itself follows, so the
+ * text shows in the regular instance until the instance's faces have loaded.
+ */
 export const getFontFamilyString = ({
   fontFamily,
+  fontAxes,
 }: {
   fontFamily: FontFamilyValues;
+  fontAxes?: FontAxes | null;
 }) => {
   for (const [fontFamilyString, id] of Object.entries(FONT_FAMILY)) {
     if (id === fontFamily) {
-      return `${fontFamilyString}${getFontFamilyFallbacks(id)
+      const instance = getFontInstanceFamily(id, fontAxes);
+      const families = `${fontFamilyString}${getFontFamilyFallbacks(id)
         .map((x) => `, ${x}`)
         .join("")}`;
+      return instance ? `"${instance}", ${families}` : families;
     }
   }
   return WINDOWS_EMOJI_FALLBACK_FONT;
@@ -147,15 +160,23 @@ export const getFontSizeUpscale = (fontSize: number) =>
     ? 1
     : 2 ** Math.ceil(Math.log2(1 / fontSize));
 
-/** returns fontSize+fontFamily string for assignment to DOM elements */
+/**
+ * returns fontSize+fontFamily string for assignment to DOM elements and
+ * canvas contexts; a text's `fontAxes` name its instance's family first
+ */
 export const getFontString = ({
   fontSize,
   fontFamily,
+  fontAxes,
 }: {
   fontSize: number;
   fontFamily: FontFamilyValues;
+  fontAxes?: FontAxes | null;
 }) => {
-  return `${fontSize}px ${getFontFamilyString({ fontFamily })}` as FontString;
+  return `${fontSize}px ${getFontFamilyString({
+    fontFamily,
+    fontAxes,
+  })}` as FontString;
 };
 
 /** executes callback in the frame that's after the current one */

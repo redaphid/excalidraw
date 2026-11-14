@@ -11,6 +11,7 @@ export type {
 } from "./designTokens";
 export { svgDataUrl } from "./designTokens";
 export * from "./constants";
+export * from "./font-axes";
 export * from "./font-metadata";
 export * from "./queue";
 export * from "./keys";
