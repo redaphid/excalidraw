@@ -13,7 +13,9 @@ import { containsCJK } from "@excalidraw/element";
 import {
   FONT_METADATA,
   type FontMetadata,
+  getFontInstanceFamily,
   getFontString,
+  getFontVariationSettings,
   PromisePool,
   promiseTry,
 } from "@excalidraw/common";
@@ -34,14 +36,26 @@ import type { Scene } from "@excalidraw/element";
 import { CascadiaFontFaces } from "./Cascadia";
 import { ComicShannsFontFaces } from "./ComicShanns";
 import { EmojiFontFaces } from "./Emoji";
-import { ExcalidrawFontFace } from "./ExcalidrawFontFace";
+import {
+  ExcalidrawFontFace,
+  type FontFaceVariationDescriptors,
+} from "./ExcalidrawFontFace";
 import { ExcalifontFontFaces } from "./Excalifont";
 import { HelveticaFontFaces } from "./Helvetica";
 import { LiberationFontFaces } from "./Liberation";
 import { LilitaFontFaces } from "./Lilita";
 import { NunitoFontFaces } from "./Nunito";
+import { RecentlyUsed } from "./RecentlyUsed";
+import { ShantellSansFontFaces } from "./ShantellSans";
 import { VirgilFontFaces } from "./Virgil";
 import { XiaolaiFontFaces } from "./Xiaolai";
+
+/**
+ * How many instances of variable fonts a document keeps font faces for, beyond
+ * those the elements last loaded draw with. Every instance is its own family
+ * of faces, and a text's `fontAxes` can name thousands.
+ */
+const MAX_INSTANCE_FACES = 64;
 
 export class Fonts {
   // it's ok to track fonts across multiple instances only once, so let's use
@@ -56,6 +70,12 @@ export class Fonts {
   private static readonly loadedChars = new WeakMap<
     Document,
     Map<ExcalidrawTextElement["fontFamily"], Set<string>>
+  >();
+
+  /** The font faces made for variable font instances, per document. */
+  private static readonly instanceFaces = new WeakMap<
+    Document,
+    RecentlyUsed<FontFace[]>
   >();
 
   private static _registered:
@@ -162,15 +182,14 @@ export class Fonts {
    */
   public loadSceneFonts = async (): Promise<FontFace[]> => {
     const sceneFamilies = this.getSceneFamilies();
-    const charsPerFamily = Fonts.getCharsPerFamily(
-      this.scene.getNonDeletedElements(),
-    );
+    const elements = this.scene.getNonDeletedElements();
+    const charsPerFamily = Fonts.getCharsPerFamily(elements);
 
-    return Fonts.loadFontFaces(
-      sceneFamilies,
-      charsPerFamily,
-      this.ownerDocument,
-    );
+    const [fontFaces, instanceFaces] = await Promise.all([
+      Fonts.loadFontFaces(sceneFamilies, charsPerFamily, this.ownerDocument),
+      Fonts.loadInstanceFaces(elements, this.ownerDocument),
+    ]);
+    return [...fontFaces, ...instanceFaces];
   };
 
   /**
@@ -183,8 +202,118 @@ export class Fonts {
     const fontFamilies = Fonts.getUniqueFamilies(elements);
     const charsPerFamily = Fonts.getCharsPerFamily(elements);
 
-    return Fonts.loadFontFaces(fontFamilies, charsPerFamily, ownerDocument);
+    const [fontFaces, instanceFaces] = await Promise.all([
+      Fonts.loadFontFaces(fontFamilies, charsPerFamily, ownerDocument),
+      Fonts.loadInstanceFaces(elements, ownerDocument),
+    ]);
+    return [...fontFaces, ...instanceFaces];
   };
+
+  /**
+   * The font instances the elements draw with, by the family name their
+   * faces go under (see `getFontInstanceFamily`), with the characters drawn
+   * in each: one for every distinct `fontAxes` of a variable family that is
+   * off the family's regular instance.
+   */
+  public static getInstances(elements: ReadonlyArray<ExcalidrawElement>) {
+    const instances = new Map<
+      string,
+      {
+        fontFamily: ExcalidrawTextElement["fontFamily"];
+        fontAxes: ExcalidrawTextElement["fontAxes"];
+        variationSettings: string;
+        chars: Set<string>;
+      }
+    >();
+
+    for (const element of elements) {
+      if (!isTextElement(element)) {
+        continue;
+      }
+      const { fontFamily, fontAxes } = element;
+      const family = getFontInstanceFamily(fontFamily, fontAxes);
+      const variationSettings = getFontVariationSettings(fontFamily, fontAxes);
+      if (!family || !variationSettings) {
+        continue;
+      }
+      const instance = instances.get(family) ?? {
+        fontFamily,
+        fontAxes,
+        variationSettings,
+        chars: new Set<string>(),
+      };
+      for (const char of element.originalText) {
+        instance.chars.add(char);
+      }
+      instances.set(family, instance);
+    }
+
+    return instances;
+  }
+
+  /**
+   * Puts the faces of each font instance the elements draw with into
+   * `document.fonts` and loads them, so text with `fontAxes` is measured and
+   * drawn in its instance. The document keeps the faces of the instances
+   * asked for most recently and lets go of the rest (`MAX_INSTANCE_FACES`).
+   */
+  private static async loadInstanceFaces(
+    elements: ReadonlyArray<ExcalidrawElement>,
+    ownerDocument: Document,
+  ): Promise<FontFace[]> {
+    const instances = Fonts.getInstances(elements);
+    if (instances.size === 0) {
+      return [];
+    }
+
+    let held = Fonts.instanceFaces.get(ownerDocument);
+    if (!held) {
+      held = new RecentlyUsed<FontFace[]>(MAX_INSTANCE_FACES, (fontFaces) => {
+        for (const fontFace of fontFaces) {
+          ownerDocument.fonts.delete(fontFace);
+        }
+      });
+      Fonts.instanceFaces.set(ownerDocument, held);
+    }
+
+    for (const [family, { fontFamily, variationSettings }] of instances) {
+      held.take(family, () => {
+        const fontFaces = (
+          Fonts.registered.get(fontFamily)?.fontFaces ?? []
+        ).map((face) => face.instance(family, variationSettings));
+        for (const fontFace of fontFaces) {
+          ownerDocument.fonts.add(fontFace);
+        }
+        return fontFaces;
+      });
+    }
+    held.trim(new Set(instances.keys()));
+
+    const loaded = await Promise.all(
+      Array.from(
+        instances.values(),
+        async ({ fontFamily, fontAxes, chars }) => {
+          const font = getFontString({
+            fontFamily,
+            fontAxes,
+            fontSize: FONT_SIZES.sm,
+          });
+          const text = Array.from(chars).join("");
+          if (ownerDocument.fonts.check(font, text)) {
+            return [];
+          }
+          try {
+            return await ownerDocument.fonts.load(font, text);
+          } catch (e) {
+            // don't let it all fail if just one instance fails to load
+            console.error(`Failed to load font "${font}"`, e);
+            return [];
+          }
+        },
+      ),
+    );
+    return loaded.flat();
+  }
 
   /**
    * Generate CSS @font-face declarations for the given elements.
@@ -446,6 +575,7 @@ export class Fonts {
     init("Liberation Sans", ...LiberationFontFaces);
     init("Lilita One", ...LilitaFontFaces);
     init("Nunito", ...NunitoFontFaces);
+    init("Shantell Sans", ...ShantellSansFontFaces);
     init("Virgil", ...VirgilFontFaces);
 
     // fallback font faces
@@ -521,5 +651,5 @@ export class Fonts {
 
 export interface ExcalidrawFontFaceDescriptor {
   uri: string;
-  descriptors?: FontFaceDescriptors;
+  descriptors?: FontFaceVariationDescriptors;
 }

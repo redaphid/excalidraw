@@ -4,6 +4,14 @@ import { subsetWoff2GlyphsByCodepoints } from "../subset/subset-main";
 
 type DataURL = string;
 
+/**
+ * `FontFaceDescriptors` with the `font-variation-settings` descriptor of CSS
+ * Fonts 4, which TypeScript's DOM types leave out and Chromium applies.
+ */
+export type FontFaceVariationDescriptors = FontFaceDescriptors & {
+  variationSettings?: string;
+};
+
 export class ExcalidrawFontFace {
   public readonly urls: URL[] | DataURL[];
   public readonly fontFace: FontFace;
@@ -14,19 +22,41 @@ export class ExcalidrawFontFace {
       : "@excalidraw/excalidraw" // fallback to the latest package version (i.e. for app)
   }/dist/prod/`;
 
-  constructor(family: string, uri: string, descriptors?: FontFaceDescriptors) {
+  private readonly sources: string;
+  private readonly descriptors: FontFaceVariationDescriptors;
+
+  constructor(
+    family: string,
+    uri: string,
+    descriptors?: FontFaceVariationDescriptors,
+  ) {
     this.urls = ExcalidrawFontFace.createUrls(uri);
 
-    const sources = this.urls
+    this.sources = this.urls
       .map((url) => `url(${url}) ${ExcalidrawFontFace.getFormat(url)}`)
       .join(", ");
 
-    this.fontFace = new FontFace(family, sources, {
+    this.descriptors = {
       display: "swap",
       style: "normal",
       weight: "400",
       ...descriptors,
-    });
+    };
+
+    this.fontFace = new FontFace(family, this.sources, this.descriptors);
+  }
+
+  /**
+   * A face of the same font file and unicode range for one instance of a
+   * variable font, under the instance's own family name: canvas text takes
+   * its variation axes from the face it names, having no setter for them.
+   */
+  public instance(family: string, variationSettings: string): FontFace {
+    const descriptors: FontFaceVariationDescriptors = {
+      ...this.descriptors,
+      variationSettings,
+    };
+    return new FontFace(family, this.sources, descriptors);
   }
 
   /**
