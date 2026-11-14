@@ -564,6 +564,10 @@ export type {
 } from "./components/TTDDialog/types";
 
 export type {
+  ArrangeOutcome,
+  ArrangeRequest,
+  LayoutAlgorithm,
+  LayoutDirection,
   ViewportStatusFrame,
   FrameNavigation,
   Slide,

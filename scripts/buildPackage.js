@@ -56,6 +56,36 @@ const precompile = (source, sourcePath) => {
   });
 };
 
+// `new URL("./x.chunk", import.meta.url)` spawns a worker from a chunk
+// entry. Bundlers that build from source resolve the extensionless path to
+// x.chunk.ts; this build writes the entry as x.chunk.js beside index.js, so
+// the URL has to name that file for the worker to load in a consumer.
+const CHUNK_URL =
+  /new URL\((["'])(\.\/[^"']+\.chunk)\1,\s*import\.meta\.url\)/g;
+
+const chunkUrlPlugin = {
+  name: "chunk-url",
+  setup(build) {
+    build.onLoad({ filter: /\.tsx?$/ }, async (args) => {
+      const source = await fs.promises.readFile(args.path, "utf8");
+      // the rest load as esbuild would load them
+      if (!source.match(CHUNK_URL)) {
+        return undefined;
+      }
+      return {
+        contents: source.replace(
+          CHUNK_URL,
+          (_, quote, chunk) =>
+            `new URL(${quote}./${path.basename(
+              chunk,
+            )}.js${quote}, import.meta.url)`,
+        ),
+        loader: args.path.endsWith(".tsx") ? "tsx" : "ts",
+      };
+    });
+  },
+};
+
 // excludes all external dependencies and bundles only the source code
 const getConfig = (outdir) => ({
   outdir,
@@ -67,6 +97,7 @@ const getConfig = (outdir) => ({
     sassPlugin({
       precompile,
     }),
+    chunkUrlPlugin,
   ],
   target: "es2020",
   assetNames: "[dir]/[name]",

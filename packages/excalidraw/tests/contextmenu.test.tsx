@@ -221,6 +221,7 @@ describe("contextMenu element", () => {
       "pasteStyles",
       "deleteSelectedElements",
       "group",
+      "arrangeElements",
       "addToLibrary",
       "flipHorizontal",
       "flipVertical",

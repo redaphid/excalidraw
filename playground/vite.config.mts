@@ -30,5 +30,10 @@ export default defineConfig({
       },
     ]),
   },
+  // found only when the first arrange starts the layout worker, which would
+  // otherwise reload the page mid-arrange on a cold dependency cache
+  optimizeDeps: {
+    include: ["elkjs/lib/elk-worker.min.js", "elkjs/lib/elk-api.js"],
+  },
   plugins: [react()],
 });
