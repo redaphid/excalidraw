@@ -32,3 +32,7 @@ release/
 
 # local output of scripts/theme-screenshots
 /theme-screenshots/
+
+# local output of perf-bench
+perf-bench/builds/
+perf-bench/results/

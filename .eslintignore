@@ -11,3 +11,5 @@ dev-dist
 coverage
 e2e/test-results
 e2e/playwright-report
+perf-bench/builds
+perf-bench/results
