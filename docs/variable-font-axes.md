@@ -26,6 +26,17 @@ Canvas 2D has no setter for variation axes: `ctx.font` reaches `wght` only, thro
 
 Measured in Chromium 153: an instance face draws pixel for pixel what a weight-range face draws at the same `wght`, and `measureText` equals the DOM's width under CSS `font-variation-settings` for `wght`, `INFM`, `BNCE` and `SPAC`. A canvas element's own `font-variation-settings` style also reaches its text, but only while the canvas is in the document, which the measuring canvas is not.
 
+## Base
+
+The branch `feat/variable-font-axes` is based on `v1.9.0` (230142c2), the release draw pins. `v1.9.1` (65589719) exists on `master` and the branch is not rebased onto it. Two of the files this branch changes also changed in v1.9.1, in the same places:
+
+- `packages/common/src/utils.ts`: v1.9.1 replaces `getFontSizeUpscale` with `getFontRenderScale`, directly above `getFontString`.
+- `packages/element/src/renderElement.ts`: v1.9.1 rewrites the text drawing block around the `getFontString` call that this branch passes `fontAxes` to.
+
+A rebase keeps both sides in each. v1.9.1 also changes `packages/element/src/textMeasurements.ts` and `packages/excalidraw/wysiwyg/textWysiwyg.tsx`, which this branch does not touch but which measure and edit text, so the checks in this document need running again after it.
+
+Local builds of this branch are versioned `1.9.0-fontaxes.N`, so a tarball of it cannot be taken for a release. The version is stamped at build time by draw's `bench/hillclimb/build-fork.mjs` and never committed here.
+
 ## Not done yet
 
 - SVG export: `generateFontFaceDeclarations` inlines the family's file but writes no `font-variation-settings`, so an exported SVG shows the regular instance.
