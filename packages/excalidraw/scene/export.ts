@@ -55,6 +55,12 @@ import { serializeAsJSON } from "../data/json";
 
 import { Fonts } from "../fonts";
 
+import { exportedCanvasTheme } from "../cssTheme";
+import {
+  appendSvgBackdrop,
+  getBackdrop,
+  loadBackdrop,
+} from "../renderer/backdrop";
 import { renderStaticScene } from "../renderer/staticScene";
 import { renderSceneToSvg } from "../renderer/staticSvgScene";
 
@@ -270,6 +276,11 @@ export const exportToCanvas = async (
     files,
   });
 
+  const exportedTheme = exportedCanvasTheme(canvasTheme);
+  if (exportedTheme?.backdropImage) {
+    await loadBackdrop(exportedTheme.backdropImage);
+  }
+
   renderStaticScene({
     canvas,
     rc: rough.canvas(canvas),
@@ -300,6 +311,7 @@ export const exportToCanvas = async (
       elementsPendingErasure: new Set(),
       pendingFlowchartNodes: null,
       theme: appState.exportWithDarkMode ? THEME.DARK : THEME.LIGHT,
+      canvasTheme: exportedTheme,
     },
   });
 
@@ -323,6 +335,9 @@ export const exportToSvg = async (
     exportWithDarkMode?: boolean;
     exportEmbedScene?: boolean;
     frameRendering?: AppState["frameRendering"];
+    /** with `gridStep`, the backdrop's tile size when the theme sets none */
+    gridSize?: AppState["gridSize"];
+    gridStep?: AppState["gridStep"];
   },
   files: BinaryFiles | null,
   opts?: {
@@ -492,6 +507,20 @@ export const exportToSvg = async (
       applyDarkModeFilter(viewBackgroundColor, exportWithDarkMode),
     );
     svgRoot.appendChild(rect);
+
+    const defaults = getDefaultAppState();
+    const backdrop = getBackdrop(exportedCanvasTheme(opts?.canvasTheme), {
+      gridSize: appState.gridSize ?? defaults.gridSize,
+      gridStep: appState.gridStep ?? defaults.gridStep,
+    });
+    if (backdrop) {
+      appendSvgBackdrop(svgRoot, defsElement, backdrop, {
+        offsetX,
+        offsetY,
+        width,
+        height,
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------

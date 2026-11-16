@@ -12,6 +12,9 @@
   --canvas-grid-color: rgba(80, 120, 190, 0.14);
   --canvas-grid-bold-color: rgba(80, 120, 190, 0.14);
   --canvas-grid-style: solid;
+  --canvas-backdrop: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%239c8a66%22%20stroke-opacity%3D%22.3%22%20stroke-width%3D%22.7%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20vector-effect%3D%22non-scaling-stroke%22%20d%3D%22M12%2018l6-3M40%209l5%204M71%2022l7-2M23%2047l4%206M58%2052l8%201M86%2044l3%207M9%2078l7%202M37%2085l6-4M66%2074l4%206M90%2088l5-3M50%2030l3-5M80%2064l-6%202M30%2094l5%201M5%2058l4%203%22%2F%3E%3C%2Fg%3E%3Cg%20fill%3D%22%237a6a4c%22%20fill-opacity%3D%22.16%22%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%2270%22%20r%3D%22.9%22%2F%3E%3Ccircle%20cx%3D%2262%22%20cy%3D%2236%22%20r%3D%22.8%22%2F%3E%3Ccircle%20cx%3D%2218%22%20cy%3D%2233%22%20r%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2276%22%20cy%3D%2290%22%20r%3D%22.9%22%2F%3E%3Ccircle%20cx%3D%2293%22%20cy%3D%2212%22%20r%3D%22.7%22%2F%3E%3Ccircle%20cx%3D%2248%22%20cy%3D%2260%22%20r%3D%22.8%22%2F%3E%3Ccircle%20cx%3D%2284%22%20cy%3D%2230%22%20r%3D%22.6%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2288%22%20r%3D%22.6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E")
+    100;
+  --canvas-backdrop-export: on;
   --canvas-handle-fill: #fffaf0;
   --canvas-frame-color: rgba(51, 49, 46, 0.5);
   --canvas-frame-width: 1.5;

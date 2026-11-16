@@ -19,6 +19,10 @@
         "border": "bold",
         "shadow": "hard"
       },
+      "backdrop": {
+        "image": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><g fill=\"#111\"><circle cx=\"13\" cy=\"21\" r=\"1\" opacity=\".12\"/><circle cx=\"47\" cy=\"8\" r=\".7\" opacity=\".09\"/><circle cx=\"81\" cy=\"17\" r=\"1.2\" opacity=\".07\"/><circle cx=\"29\" cy=\"44\" r=\".8\" opacity=\".1\"/><circle cx=\"64\" cy=\"39\" r=\"1\" opacity=\".08\"/><circle cx=\"92\" cy=\"52\" r=\".6\" opacity=\".12\"/><circle cx=\"9\" cy=\"67\" r=\"1.1\" opacity=\".07\"/><circle cx=\"41\" cy=\"73\" r=\".7\" opacity=\".11\"/><circle cx=\"73\" cy=\"66\" r=\".9\" opacity=\".09\"/><circle cx=\"23\" cy=\"91\" r=\".8\" opacity=\".1\"/><circle cx=\"56\" cy=\"93\" r=\"1.2\" opacity=\".06\"/><circle cx=\"88\" cy=\"84\" r=\".7\" opacity=\".11\"/><circle cx=\"52\" cy=\"57\" r=\".5\" opacity=\".13\"/><circle cx=\"35\" cy=\"26\" r=\".6\" opacity=\".09\"/></g></svg>",
+        "export": false
+      },
       "extra": ":scope {\n  font-weight: 700;\n}\n\n:scope .frame-breadcrumb {\n  border-radius: 0;\n  text-transform: uppercase;\n}"
     }
   },

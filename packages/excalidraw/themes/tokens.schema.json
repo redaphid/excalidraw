@@ -38,7 +38,22 @@
               }
             },
             "washes": { "type": "array", "description": "the four background swatches, as names of color.palette tokens", "items": { "type": "string" }, "minItems": 4, "maxItems": 4 },
-            "backdrop": { "type": "string", "description": "a CSS background behind a transparent canvas, such as a gradient" },
+            "backdrop": {
+              "description": "a CSS background behind a transparent canvas, such as a gradient; or an SVG tile drawn on the canvas, repeating in scene units",
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["image"],
+                  "properties": {
+                    "image": { "type": "string", "description": "SVG markup, or a data: URL" },
+                    "size": { "type": "number", "exclusiveMinimum": 0, "description": "one tile in scene units at zoom 1; default: one bold grid cell" },
+                    "export": { "type": "boolean", "description": "whether PNG and SVG exports draw it" }
+                  }
+                }
+              ]
+            },
             "extra": { "type": "string", "description": "CSS appended verbatim; prefix each selector with :scope" }
           }
         }

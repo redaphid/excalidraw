@@ -15,6 +15,8 @@ The fork changes six things:
 - **Frame navigation.** An opt-in frames drawer, breadcrumb, arrow-key stepping between frames and bookmark keys.
 - **Themes.** A `css` prop restyles one editor: its UI, its canvas (background, grid, selection, frames) and the stroke character of new elements, from a stylesheet or from JSON tokens through `generateThemeCss`. See [docs/theming.md](docs/theming.md).
 
+[draw](https://draw.hypnodroid.com) builds portals on this deep zoom. A portal is a shape that shows a frame from the same board or from another board. Zoom into a portal and the camera passes into its frame with no reload, then through any portals inside that frame. Zoom out and it comes back the same way.
+
 For everything else, see [upstream's README](https://github.com/excalidraw/excalidraw/blob/master/README.md) (or [the copy at the fork point](https://github.com/excalidraw/excalidraw/blob/5a406e51875157bece389b9bc92d41ff241d5f3d/README.md)).
 
 | Wheel zoom from 0.83x to 1,000,000x and back | Drawing at 1,000,000x |
@@ -22,6 +24,8 @@ For everything else, see [upstream's README](https://github.com/excalidraw/excal
 | ![ctrl+wheel zoom through seven nested boxes, each ten times smaller than the last, from 83% to 100,000,000% and back](docs/media/wheel-dive.gif) | ![a rectangle, an arrow, a pen stroke and a text drawn at 1,000,000x, then zoomed out and back in](docs/media/draw-at-depth.gif) |
 | **`setViewport` flight from 1x to 10,000x** | **Pen-size flyout** |
 | ![an animated setViewport from Frame A at 1x to Frame B, ten thousand times smaller and about 23,000 units away, and back](docs/media/setviewport-flight.gif) | ![picking the pen opens a flyout with a pen-size slider; three strokes at 0.077, 0.56 and 2.6](docs/media/pen-size-flyout.gif) |
+| **Zooming through four nested portals in draw** |  |
+| ![wheel zoom through four portals in draw: from the hub into a frame on the same board, across to a second board, into its other frame, across to a third board, then back out to the hub](docs/media/portal-dive.gif) |  |
 
 ## Install
 
@@ -64,6 +68,7 @@ Each item links the commit that made it. The commit messages hold the reasoning 
   api.updateScene({ appState: { zoom: { value: 100_000 } } });
   ```
 
+- **`MIN_ZOOM` is 1/1,000,000** instead of 0.1, the mirror of `MAX_ZOOM`, so zooming out goes as far as zooming in. A zoom is rounded to six decimals, as upstream, or six significant figures, whichever keeps more digits, so every zoom from 0.1 up rounds as before and one near a millionth keeps its precision. The zoom readout shows two significant figures under 1% (0.0001% at the floor). Zoomed out past 10%, the grid nests: its cells grow by whole grid steps so no cell is drawn under 2 px, the size upstream draws at 10%.
 - **The wheel and trackpad zoom multiplicatively.** Each event scales the zoom by `exp(-delta / 100)`, so a pinch moves the same amount at 100% and at 1,000,000%. Upstream added a fixed step, which barely moved the zoom deep in ([`f74f90dd`](https://github.com/redaphid/excalidraw/commit/f74f90dd)).
 
 ### `setViewport` flights
@@ -81,7 +86,7 @@ api.setViewport({ target: frame, animation: { path: "direct" } });
 
 - With no `path`, a move flies when it covers more than about two views of pan or about 17x of zoom. Shorter moves keep upstream's straight blend and its 500 ms default.
 - A flight's default duration grows with its length, clamped to 400 to 2,500 ms. An explicit `duration` wins.
-- A flight never zooms out past `MIN_ZOOM` (0.1). A longer move pans across at 0.1x instead, and both ends land exactly on the target ([`88ef60a5`](https://github.com/redaphid/excalidraw/commit/88ef60a5)).
+- A flight follows the optimal path's zoom-out, which is about 0.0024x between two 1x views 400 views apart. It never zooms out past `MIN_ZOOM` (a millionth): a longer move pans across at that zoom instead, and both ends land exactly on the target ([`88ef60a5`](https://github.com/redaphid/excalidraw/commit/88ef60a5)).
 - Shapes stay sharp on the way in: a cached bitmap is redrawn once it would be shown at more than twice the size it was drawn at ([`88ef60a5`](https://github.com/redaphid/excalidraw/commit/88ef60a5)).
 
 ### Zoom-relative authoring: `authoringUnits`
@@ -114,7 +119,7 @@ The full design, with every zoom-dependent size and the alternatives that were r
 - Each freehand stroke's `Path2D` is cached and reused across frames ([`7489a610`](https://github.com/redaphid/excalidraw/commit/7489a610)), and its SVG path is cached across exports ([`06c5f394`](https://github.com/redaphid/excalidraw/commit/06c5f394)).
 - Freehand path coordinates keep full precision instead of being cut to two decimals, which turned strokes drawn deep in a zoom into staircases or dots ([`426f6f60`](https://github.com/redaphid/excalidraw/commit/426f6f60)).
 - perfect-freehand 1.2.0 is vendored with two changes so strokes a fraction of a unit wide keep their shape. Unpatched, the vendored copy matches the npm build's output ([`f95e168a`](https://github.com/redaphid/excalidraw/commit/f95e168a)).
-- Text whose font is far under a pixel, which Chrome measures and draws as nothing, is measured and drawn at a readable size and scaled back down ([`33c0e91c`](https://github.com/redaphid/excalidraw/commit/33c0e91c)).
+- Text whose font is far under a pixel, which Chrome measures and draws as nothing, is measured and drawn at a readable size and scaled back down ([`33c0e91c`](https://github.com/redaphid/excalidraw/commit/33c0e91c)). Text whose font is over 1,024px, which Firefox draws at about 2,000px and Chrome at most at 10,000px, is measured, drawn and edited at a font of 1,024px or less and scaled back up.
 - An element's cache bitmap padding scales with its details, so a shape drawn at depth no longer allocates a bitmap many times its on-screen size ([`d12a81bf`](https://github.com/redaphid/excalidraw/commit/d12a81bf)).
 - Viewport culling and frame export test where a stroke paints, not its centre line, so a thick stroke crossing an edge is not dropped ([`ffcd1e95`](https://github.com/redaphid/excalidraw/commit/ffcd1e95)).
 - Culling asks a packed R-tree which elements touch the view instead of measuring every element each frame ([`1d9be26e`](https://github.com/redaphid/excalidraw/commit/1d9be26e)). The index keys elements by object and `version`, so a host must change elements through `mutateElement` or a new array passed to `excalidrawAPI.updateScene({ elements })`. An element whose fields a host writes in place by any other route, even with a `version` bump, keeps its old box in the index until the next scene change, and can be culled wrongly until then. The index is rebuilt in idle time once edits have paused for a second, in tasks that stop after 4 ms, so a rebuild never holds up input for long.

@@ -26,6 +26,7 @@ type Overrides = {
   note?: { shadow?: string; edge?: string };
   papers?: Record<string, string>;
   noteInk?: string;
+  backdrop?: unknown;
 };
 
 const tokens = ({
@@ -38,6 +39,7 @@ const tokens = ({
   note,
   papers,
   noteInk,
+  backdrop,
 }: Overrides = {}): ThemeTokens => ({
   $description: "A quiet test theme.",
   $extensions: {
@@ -54,6 +56,7 @@ const tokens = ({
       pen: { pressure: true },
       surface,
       ...(note && { note }),
+      ...(backdrop !== undefined && { backdrop }),
     },
   },
   color: {
@@ -470,4 +473,60 @@ describe("generateThemeCss sticky notes", () => {
       expect.objectContaining({ token: "color.note.p5" }),
     );
   });
+});
+
+describe("generateThemeCss backdrop", () => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="1"/></svg>`;
+  const url = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+
+  it("draws a tile on the canvas and keeps the canvas color", () => {
+    const { css, warnings } = generateThemeCss(
+      tokens({ backdrop: { image: svg, size: 50, export: true } }),
+    );
+
+    expect({
+      backdrop: property(css, "--canvas-backdrop"),
+      exported: property(css, "--canvas-backdrop-export"),
+      background: property(css, "--canvas-background"),
+    }).toEqual({
+      backdrop: `url("${url}") 50`,
+      exported: "on",
+      background: "#ebe4d6",
+    });
+    expect(css).not.toContain("\n:scope {\n  background:");
+    expect(warnings).toEqual([]);
+  });
+
+  it("passes a data: URL through, with no size and exports off by default", () => {
+    const { css } = generateThemeCss(tokens({ backdrop: { image: url } }));
+
+    expect(property(css, "--canvas-backdrop")).toBe(`url("${url}")`);
+    expect(property(css, "--canvas-backdrop-export")).toBe("off");
+  });
+
+  it("puts a CSS background behind a transparent canvas", () => {
+    const { css } = generateThemeCss(
+      tokens({ backdrop: "linear-gradient(#fff, #eee)" }),
+    );
+
+    expect(property(css, "--canvas-background")).toBe("transparent");
+    expect(property(css, "--canvas-backdrop")).toBeUndefined();
+    expect(css).toContain(
+      "\n:scope {\n  background: linear-gradient(#fff, #eee);\n}",
+    );
+  });
+
+  it.each([{ size: 50 }, { image: svg, size: 0 }, 7])(
+    "warns on %j and draws none",
+    (backdrop) => {
+      const { css, warnings } = generateThemeCss(tokens({ backdrop }));
+
+      expect(property(css, "--canvas-backdrop")).toBeUndefined();
+      expect(warnings).toContainEqual(
+        expect.objectContaining({
+          token: `$extensions["${THEME_TOKENS_VENDOR}"].backdrop`,
+        }),
+      );
+    },
+  );
 });

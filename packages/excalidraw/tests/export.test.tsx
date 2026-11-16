@@ -5,6 +5,7 @@ import { SVG_NS } from "@excalidraw/common";
 import type { FileId } from "@excalidraw/element/types";
 
 import { getDefaultAppState } from "../appState";
+
 import { getDataURL } from "../data/blob";
 import { encodePngMetadata } from "../data/image";
 import { serializeAsJSON } from "../data/json";
@@ -17,6 +18,8 @@ import {
 
 import { API } from "./helpers/api";
 import { render, waitFor } from "./test-utils";
+
+import type { CanvasTheme } from "../cssTheme";
 
 const { h } = window;
 
@@ -217,5 +220,81 @@ describe("export", () => {
     // in case of regressions, save the SVG to a file and visually compare to:
     // src/tests/fixtures/svg-image-exporting-reference.svg
     expect(svgText).toMatchSnapshot(`svg export output`);
+  });
+
+  describe("a theme backdrop", () => {
+    const image =
+      "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%2F%3E";
+    const exported = (
+      exportBackground: boolean,
+      canvasTheme: CanvasTheme = {
+        backdropImage: image,
+        backdropSize: 50,
+        backdropExport: true,
+      },
+    ) =>
+      exportToSvg(
+        [
+          API.createElement({
+            type: "rectangle",
+            x: 123,
+            y: 45,
+            width: 10,
+            height: 10,
+          }),
+        ],
+        { ...getDefaultAppState(), exportBackground },
+        {},
+        { canvasTheme },
+      );
+
+    it("exports as a pattern anchored to the scene origin when the theme exports it", async () => {
+      const svg = await exported(true);
+
+      const pattern = svg.querySelector("pattern#backdrop")!;
+      const [background, rect] = Array.from(svg.children).filter(
+        (child) => child.tagName === "rect",
+      );
+      // the export offset is -123 + 10 of padding, so the tile grid starts 37 in
+      expect([
+        pattern.getAttribute("patternUnits"),
+        pattern.getAttribute("width"),
+        pattern.getAttribute("x"),
+        pattern.querySelector("image")?.getAttribute("href"),
+      ]).toEqual(["userSpaceOnUse", "50", "37", image]);
+      expect(rect.getAttribute("fill")).toBe("url(#backdrop)");
+      expect(rect.getAttribute("width")).toBe(background.getAttribute("width"));
+    });
+
+    it("tiles at the grid's major spacing when the theme sets no size", async () => {
+      const svg = await exportToSvg(
+        [API.createElement({ type: "rectangle", width: 10, height: 10 })],
+        {
+          ...getDefaultAppState(),
+          exportBackground: true,
+          gridSize: 10,
+          gridStep: 3,
+        },
+        {},
+        { canvasTheme: { backdropImage: image, backdropExport: true } },
+      );
+
+      expect(svg.querySelector("pattern#backdrop")?.getAttribute("width")).toBe(
+        "30",
+      );
+    });
+
+    it("stays out of a transparent export", async () => {
+      expect((await exported(false)).querySelector("pattern")).toBeNull();
+    });
+
+    it("stays out when the theme keeps it to the editor", async () => {
+      const svg = await exported(true, {
+        backdropImage: image,
+        backdropExport: false,
+      });
+
+      expect(svg.querySelector("pattern")).toBeNull();
+    });
   });
 });
