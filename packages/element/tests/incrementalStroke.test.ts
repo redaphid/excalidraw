@@ -204,6 +204,31 @@ describe("IncrementalStroke", () => {
       getStroke(withPressures(points, lighter), options),
     );
   });
+
+  it("keeps its outlines intact when one it returned is changed in place", () => {
+    const { points, pressures } = randomStroke(seeded(0xf2e), 100, 1);
+    const options = excalidrawOptions(4.25, false, 0.5);
+    const stroke = new IncrementalStroke(options);
+    const refusals = new Set<string>();
+    for (let n = 1; n < points.length; n++) {
+      const outline = stroke.getOutline(
+        points.slice(0, n),
+        pressures.slice(0, n),
+      );
+      for (const point of outline) {
+        try {
+          point[0] += 1000;
+        } catch (error) {
+          refusals.add((error as Error).constructor.name);
+        }
+      }
+    }
+
+    expect(stroke.getOutline(points, pressures)).toEqual(
+      getStroke(withPressures(points, pressures), options),
+    );
+    expect([...refusals]).toEqual(["TypeError"]);
+  });
 });
 
 describe("a freedraw element drawn point by point", () => {

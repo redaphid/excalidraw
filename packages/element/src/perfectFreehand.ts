@@ -34,6 +34,8 @@
  * SOFTWARE.
  */
 
+import { isDevEnv, isTestEnv } from "@excalidraw/common";
+
 /**
  * The options object for `getStroke` or `getStrokePoints`.
  * @param points An array of points (as `[x, y, pressure]` or `{x, y, pressure}`). Pressure is optional in both cases.
@@ -1059,8 +1061,16 @@ export class IncrementalStroke {
     }
 
     const outline = (this.outline ??= startOutline(strokePoints, s));
+    const { length: left } = outline.leftPts;
+    const { length: right } = outline.rightPts;
     for (let i = this.outlined; i <= last; i++) {
       addOutlinePoint(outline, strokePoints, i, s);
+    }
+    if (isDevEnv() || isTestEnv()) {
+      // every outline returned from now on shares these points, so changing
+      // one in place would change them all
+      outline.leftPts.slice(left).forEach(Object.freeze);
+      outline.rightPts.slice(right).forEach(Object.freeze);
     }
     this.outlined = last + 1;
     return this.outlined;
