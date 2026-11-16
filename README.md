@@ -155,9 +155,10 @@ const canvas = await exportToCanvas({
 
 ## Releasing
 
+Every merge to `master` whose PR title is a `feat`, `fix`, `perf`, `revert` or breaking change releases the next version on its own; other types release nothing. To pick a version by hand:
+
 ```sh
-node scripts/semver/bump.js 1.1.0   # merge this in a pull request
-git tag v1.1.0 && git push origin v1.1.0
+node scripts/semver/bump.js 1.1.0   # merge this in a pull request; the merge releases it
 ```
 
 A `vX.Y.Z` tag publishes the five packages (`common`, `fractional-indexing`, `math`, `element`, `excalidraw`) to GitHub Packages at that version and attaches their tarballs to a GitHub release. [docs/releasing.md](docs/releasing.md) has the details. The `v0.19.0-draw.N` releases before 1.0.0 stay available for URL installs.
