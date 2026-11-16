@@ -1371,9 +1371,8 @@ const getVariableWidthFreedrawOutline = (
  * Uniform (constant width) freedraw outline, rendered with the laser-pointer
  * geometry. Pressure is pinned to 1 so the stroke keeps a constant width.
  *
- * The laser pointer drops the start cap under a size of 0.1, a one- or
- * two-point stroke under 0.5, and reads corners from pointer speed, all in
- * absolute units. The outline is built at the element's size at 1x and
+ * The laser pointer drops the start cap under a size of 0.1 and reads
+ * corners from pointer speed, both in absolute units. The outline is built at the element's size at 1x and
  * scaled back, so a stroke drawn deep in a zoom looks as it does at 1x.
  */
 const getConstantWidthFreedrawOutline = (
