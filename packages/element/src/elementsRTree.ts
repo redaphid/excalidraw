@@ -15,13 +15,18 @@ export const REBUILD_SLICE_MS = 4;
 export const MEASURE_CHUNK = 512;
 const REBUILD_MIN_STALE = 32;
 
-const touches = (
+const touchesGrown = (
   [x1, y1, x2, y2]: Bounds,
+  grow: number,
   minX: number,
   minY: number,
   maxX: number,
   maxY: number,
-) => minX <= x2 && minY <= y2 && maxX >= x1 && maxY >= y1;
+) =>
+  minX <= x2 + grow &&
+  minY <= y2 + grow &&
+  maxX >= x1 - grow &&
+  maxY >= y1 - grow;
 
 const isFiniteBounds = ([x1, y1, x2, y2]: Bounds) =>
   Number.isFinite(x1) &&
@@ -41,6 +46,8 @@ type Index<T> = {
   slotSyncedAt: Uint32Array;
   slotHitAt: Uint32Array;
   hitSlots: Uint32Array;
+  /** the largest `slackOf` among the elements in the tree */
+  maxSlack: number;
 };
 
 export type ElementsRTreeRebuildWork = {
@@ -92,6 +99,7 @@ const emptyIndex = <T>(): Index<T> => ({
   slotSyncedAt: new Uint32Array(0),
   slotHitAt: new Uint32Array(0),
   hitSlots: new Uint32Array(0),
+  maxSlack: 0,
 });
 
 /**
@@ -130,6 +138,11 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     ) => ExcalidrawElement | null,
     private readonly getOwnerWindow: () => Window = () =>
       globalThis as unknown as Window,
+    /** how far past its box `queryWithSlack` looks for an element */
+    private readonly slackOf: (
+      element: T,
+      elementsMap: ElementsMap,
+    ) => number = () => 0,
   ) {}
 
   /**
@@ -147,14 +160,55 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     const zoomed =
       Math.abs(maxX - minX - width) > 1e-9 * Math.abs(width) ||
       Math.abs(maxY - minY - height) > 1e-9 * Math.abs(height);
+    if (zoomed && this.isRebuildPending()) {
+      this.deferRebuild();
+    }
+    return this.collect(
+      elements,
+      elementsMap,
+      [minX, minY, maxX, maxY],
+      alwaysIncludedId === null ? null : new Set([alwaysIncludedId]),
+      false,
+    );
+  }
 
+  /**
+   * The elements of `elements` whose box grown by their `slackOf` touches
+   * the rect, borders included, plus those in `alwaysIncluded` wherever they
+   * are, in array order. May return more elements than that. Unlike `query`,
+   * a call does not count as a zoom, so it can come between the view's
+   * queries without postponing a rebuild.
+   */
+  queryWithSlack(
+    elements: readonly T[],
+    elementsMap: ElementsMap,
+    rect: Bounds,
+    alwaysIncluded: ReadonlySet<string> | null,
+  ): T[] {
+    return this.collect(elements, elementsMap, rect, alwaysIncluded, true);
+  }
+
+  private collect(
+    elements: readonly T[],
+    elementsMap: ElementsMap,
+    [minX, minY, maxX, maxY]: Bounds,
+    alwaysIncluded: ReadonlySet<string> | null,
+    withSlack: boolean,
+  ): T[] {
     const index = this.index;
     const stamp = ++this.queryStamp;
+    const treeSlack = withSlack ? index.maxSlack : 0;
     let hitCount = 0;
-    index.tree.search(minX, minY, maxX, maxY, (slot) => {
-      index.slotHitAt[slot] = stamp;
-      index.hitSlots[hitCount++] = slot;
-    });
+    index.tree.search(
+      minX - treeSlack,
+      minY - treeSlack,
+      maxX + treeSlack,
+      maxY + treeSlack,
+      (slot) => {
+        index.slotHitAt[slot] = stamp;
+        index.hitSlots[hitCount++] = slot;
+      },
+    );
 
     if (
       elements !== this.elements ||
@@ -166,20 +220,17 @@ export class ElementsRTree<T extends ExcalidrawElement> {
         elementsMap,
         stamp,
         [minX, minY, maxX, maxY],
-        alwaysIncludedId,
+        alwaysIncluded,
+        withSlack,
       );
       if (this.stale >= REBUILD_MIN_STALE || this.isRebuildPending()) {
         this.deferRebuild();
       }
       return result;
     }
-    if (zoomed && this.isRebuildPending()) {
-      this.deferRebuild();
-    }
 
     const positions = this.positions;
     let count = 0;
-    let alwaysIncludedFound = false;
     for (let k = 0; k < hitCount; k++) {
       const slot = index.hitSlots[k];
       if (index.slotSyncedAt[slot] === this.syncGeneration) {
@@ -189,21 +240,30 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     for (const position of this.unindexed) {
       const element = elements[position];
       if (
-        element.id === alwaysIncludedId ||
-        touches(this.measure(element, elementsMap), minX, minY, maxX, maxY)
+        alwaysIncluded?.has(element.id) ||
+        touchesGrown(
+          this.measure(element, elementsMap),
+          withSlack ? this.slackOf(element, elementsMap) : 0,
+          minX,
+          minY,
+          maxX,
+          maxY,
+        )
       ) {
         positions[count++] = position;
-        alwaysIncludedFound ||= element.id === alwaysIncludedId;
       }
     }
-    if (alwaysIncludedId !== null && !alwaysIncludedFound) {
-      const slot = index.slotOf.get(alwaysIncludedId);
+    // the unindexed elements were all tested above; an indexed one is added
+    // here unless the tree search already found it
+    for (const id of alwaysIncluded ?? []) {
+      const slot = index.slotOf.get(id);
       if (
         slot !== undefined &&
         index.slotSyncedAt[slot] === this.syncGeneration &&
         index.slotInTree[slot] &&
         index.slotHitAt[slot] !== stamp
       ) {
+        index.slotHitAt[slot] = stamp;
         positions[count++] = index.slotPositions[slot];
       }
     }
@@ -221,7 +281,8 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     elementsMap: ElementsMap,
     stamp: number,
     [minX, minY, maxX, maxY]: Bounds,
-    alwaysIncludedId: string | null,
+    alwaysIncluded: ReadonlySet<string> | null,
+    withSlack: boolean,
   ): T[] {
     const index = this.index;
     this.elements = elements;
@@ -246,7 +307,7 @@ export class ElementsRTree<T extends ExcalidrawElement> {
         if (index.slotInTree[slot]) {
           if (
             index.slotHitAt[slot] === stamp ||
-            element.id === alwaysIncludedId
+            alwaysIncluded?.has(element.id)
           ) {
             result.push(element);
           }
@@ -258,8 +319,15 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       }
       this.unindexed.push(position);
       if (
-        element.id === alwaysIncludedId ||
-        touches(this.measure(element, elementsMap), minX, minY, maxX, maxY)
+        alwaysIncluded?.has(element.id) ||
+        touchesGrown(
+          this.measure(element, elementsMap),
+          withSlack ? this.slackOf(element, elementsMap) : 0,
+          minX,
+          minY,
+          maxX,
+          maxY,
+        )
       ) {
         result.push(element);
       }
@@ -401,6 +469,7 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     yield;
 
     let itemCount = 0;
+    let maxSlack = 0;
     for (let slot = 0; slot < count; slot++) {
       const element = elements[slot];
       const bounds = this.measure(element, elementsMap);
@@ -412,6 +481,12 @@ export class ElementsRTree<T extends ExcalidrawElement> {
         boxes.set(bounds, slot * 4);
         slotInTree[slot] = 1;
         items[itemCount++] = slot;
+        const slack = this.slackOf(element, elementsMap);
+        // a NaN slack would void every search; it comes from a NaN threshold
+        // or fill, which no point hits
+        if (slack > maxSlack) {
+          maxSlack = slack;
+        }
       } else {
         job.slotsWithoutBox.push(slot);
       }
@@ -458,6 +533,7 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       slotSyncedAt,
       slotHitAt,
       hitSlots,
+      maxSlack,
     };
   }
 
