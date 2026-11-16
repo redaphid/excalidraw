@@ -1543,6 +1543,12 @@ export interface ExcalidrawImperativeAPI {
     typeof App
   >["setElementRenderOverrides"];
   registerAction: (action: Action) => void;
+  /**
+   * Lays out the given elements (the whole scene when none are given) with
+   * ELK as one undoable step. Resolves "stale", changing nothing, when the
+   * scene changed under the targets while the layout ran.
+   */
+  arrange: InstanceType<typeof App>["arrange"];
   refresh: InstanceType<typeof App>["refresh"];
   setToast: InstanceType<typeof App>["setToast"];
   addFiles: (data: BinaryFileData[]) => void;
@@ -1765,3 +1771,10 @@ export type ViewportOffsets = Offsets & {
  * default if the surface hasn't been rendered yet.
  */
 export type ViewportUIName = "sidebar" | "stylesPanel" | "stats";
+
+export type {
+  ArrangeOutcome,
+  ArrangeRequest,
+  LayoutAlgorithm,
+  LayoutDirection,
+} from "@excalidraw/element";

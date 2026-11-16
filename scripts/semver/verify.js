@@ -151,6 +151,46 @@ const verifyBundles = (project, channel) => {
   }
 };
 
+// A worker spawned from `new URL("./…", import.meta.url)` loads only if the
+// file it names ships beside the script that names it.
+const verifyWorkerUrls = (project, channel) => {
+  const dist = path.join(
+    project,
+    "node_modules",
+    sourceName("excalidraw"),
+    "dist",
+  );
+  const scripts = fs
+    .readdirSync(dist, { recursive: true })
+    .filter((file) => file.endsWith(".js"))
+    .map((file) => path.join(dist, file));
+  const urls = scripts.flatMap((script) =>
+    [
+      ...fs
+        .readFileSync(script, "utf-8")
+        .matchAll(/new URL\(["'](\.{1,2}\/[^"']+)["'],\s*import\.meta\.url\)/g),
+    ].map(([, url]) => ({ script, url })),
+  );
+  const missing = urls.filter(
+    ({ script, url }) =>
+      !fs.existsSync(path.resolve(path.dirname(script), url)),
+  );
+  if (!urls.length || missing.length) {
+    throw new Error(
+      `${channel.tarball("excalidraw")} ${
+        urls.length
+          ? `names files it does not ship: ${missing
+              .map(
+                ({ script, url }) => `${url} in ${path.relative(dist, script)}`,
+              )
+              .join(", ")}`
+          : "names no worker by URL, so this check reads the wrong pattern"
+      }`,
+    );
+  }
+  return urls.length;
+};
+
 // draw imports the sample themes as text at build time through ./themes/*.
 const themeFiles = () => {
   const { themes } = JSON.parse(fs.readFileSync(THEMES_INDEX, "utf-8"));
@@ -237,6 +277,12 @@ const verify = ({ version }) => {
         )} installs alone at ${version} and bundles draw's imports for ${MODES.join(
           " and ",
         )}`,
+      );
+      const workerUrls = verifyWorkerUrls(editor, channel);
+      console.info(
+        `${channel.label}: the ${workerUrls} worker URLs in ${channel.tarball(
+          "excalidraw",
+        )} name files it ships`,
       );
       verifyThemesImport(editor, channel, themes);
       console.info(
