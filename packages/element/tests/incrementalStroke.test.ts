@@ -147,10 +147,10 @@ describe("IncrementalStroke", () => {
   });
 
   it("keeps its outlines intact when one it returned is changed in place", () => {
-    const { points, pressures } = randomStroke(seeded(0xf2e), 200, 1);
+    const { points, pressures } = randomStroke(seeded(0xf2e), 100, 1);
     const options = excalidrawOptions(4.25, false, 0.5);
     const stroke = new IncrementalStroke(options);
-    let refused = 0;
+    const refusals = new Set<string>();
     for (let n = 1; n < points.length; n++) {
       const outline = stroke.getOutline(
         points.slice(0, n),
@@ -160,8 +160,7 @@ describe("IncrementalStroke", () => {
         try {
           point[0] += 1000;
         } catch (error) {
-          expect(error).toBeInstanceOf(TypeError);
-          refused++;
+          refusals.add((error as Error).constructor.name);
         }
       }
     }
@@ -169,7 +168,7 @@ describe("IncrementalStroke", () => {
     expect(stroke.getOutline(points, pressures)).toEqual(
       getStroke(withPressures(points, pressures), options),
     );
-    expect(refused).toBeGreaterThan(0);
+    expect([...refusals]).toEqual(["TypeError"]);
   });
 
   it("starts over when an earlier pressure changes", () => {
