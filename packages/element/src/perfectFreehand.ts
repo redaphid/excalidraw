@@ -1075,23 +1075,26 @@ export class IncrementalStroke {
     points: readonly (readonly number[])[],
     pressures?: readonly number[],
   ) {
-    const { inputs, readPoints, readPressures } = this;
+    const { inputs, readPoints } = this;
     if (inputs.length >= points.length) {
       return false;
     }
+    const samePressures = pressures === this.readPressures;
+    const current = (!samePressures && pressures) || [];
+    const read = (!samePressures && this.readPressures) || [];
     for (let i = 0; i < inputs.length; i++) {
       const point = points[i];
       if (
         point === readPoints[i] &&
-        (pressures === readPressures || pressures?.[i] === readPressures?.[i])
+        (samePressures || current[i] === read[i])
       ) {
         continue;
       }
-      const read = inputs[i];
+      const input = inputs[i];
       if (
-        read[0] !== point[0] ||
-        read[1] !== point[1] ||
-        read[2] !== pressureOf(points, pressures, i)
+        input[0] !== point[0] ||
+        input[1] !== point[1] ||
+        input[2] !== pressureOf(points, pressures, i)
       ) {
         return false;
       }
