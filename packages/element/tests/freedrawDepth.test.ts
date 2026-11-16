@@ -339,3 +339,16 @@ describe.each([1, 100_000])("a constant-width tap drawn at %dx", (zoom) => {
     },
   );
 });
+
+// The laser trail scales its size by the authoring scale, so zoomed in past
+// 20x its pen is thinner than 0.1 scene units.
+describe.each([0.02, 0.1, 0.5, 2])("a laser stroke of size %d", (size) => {
+  it("keeps its round start cap", () => {
+    const laserPointer = new LaserPointer({ size, simplify: 0 });
+    [0, 10, 20, 30].forEach((x) => laserPointer.addPoint([x * size, 0, 1]));
+    const outline = laserPointer.getStrokeOutline();
+    expect(outline).not.toEqual([]);
+    const behindStart = Math.max(...outline.map(([x]) => -x));
+    expect(behindStart).toBeCloseTo(size, 6);
+  });
+});
