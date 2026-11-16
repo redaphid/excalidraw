@@ -4,10 +4,20 @@ on:
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
-
-concurrency:
-  group: release
-  cancel-in-progress: false
+  # auto-release.yml calls this when master's manifests hold a version no tag
+  # has released, after a bump PR merges. It tags master's own commit.
+  # A tag pushed with GITHUB_TOKEN starts no workflow, so the tag push above
+  # fires only for a tag a person pushes.
+  workflow_call:
+    inputs:
+      sha:
+        description: The master commit to release.
+        required: true
+        type: string
+      version:
+        description: The version to release, without the v.
+        required: true
+        type: string
 
 permissions: {}
 
@@ -15,38 +25,77 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Job-level, so a call from auto-release.yml cannot deadlock against the
+    # caller's own group. Tag pushes and calls queue on the same group.
+    concurrency:
+      group: release
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: write
+    env:
+      CALLED: ${{ inputs.version && 'true' || 'false' }}
+      SHA: ${{ inputs.sha || github.sha }}
+      TAG: ${{ inputs.version && format('v{0}', inputs.version) || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ env.SHA }}
           persist-credentials: false
-      - name: The tag is on master
+      - name: The commit is on master
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/master...$GITHUB_SHA" --jq .status)
-          if [ "$status" != identical ] && [ "$status" != behind ]; then
-            echo "::error::$GITHUB_REF_NAME points at $GITHUB_SHA, which is not on master ($status). Tag a master commit."
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG is not a vX.Y.Z tag."
             exit 1
           fi
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/master...$SHA" --jq .status)
+          if [ "$status" != identical ] && [ "$status" != behind ]; then
+            echo "::error::$TAG would release $SHA, which is not on master ($status). Release a master commit."
+            exit 1
+          fi
+      - name: The tag is free or already this release
+        if: env.CALLED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_sha=$(git rev-parse HEAD)
+          if [ "$release_sha" != "$SHA" ]; then
+            echo "::error::Checked out $release_sha, not $SHA."
+            exit 1
+          fi
+          echo "RELEASE_SHA=$release_sha" >> "$GITHUB_ENV"
+          tagged=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --jq .object.sha 2>/dev/null || true)
+          if [ -n "$tagged" ] && [ "$tagged" != "$release_sha" ]; then
+            echo "::error::$TAG already points at $tagged, not $release_sha. Refusing to release a second build of $TAG."
+            exit 1
+          fi
+          echo "$TAG -> $release_sha${tagged:+ (already tagged by a rerun or by hand)}"
       - uses: ./.github/actions/setup
-      - run: node scripts/semver/pack.js --version="${GITHUB_REF_NAME#v}"
-      - run: node scripts/semver/typecheck-consumer.js --version="${GITHUB_REF_NAME#v}"
-      - run: node scripts/semver/verify.js --version="${GITHUB_REF_NAME#v}"
+      - run: node scripts/semver/pack.js --version="${TAG#v}"
+      - run: node scripts/semver/typecheck-consumer.js --version="${TAG#v}"
+      - run: node scripts/semver/verify.js --version="${TAG#v}"
+      # Only after every check passes, so a failed check leaves no tag behind.
+      - name: Push the tag
+        if: env.CALLED == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag "$TAG" "$RELEASE_SHA"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$TAG"
       - env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/semver/publish.js --version="${GITHUB_REF_NAME#v}"
+        run: node scripts/semver/publish.js --version="${TAG#v}"
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # A create that failed partway leaves a draft, which a rerun replaces.
           gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
-            --jq ".[] | select(.draft and .tag_name == \"$GITHUB_REF_NAME\") | .id" |
+            --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" |
             while read -r id; do
               gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"
             done
-          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" release/*.tgz \
-              --verify-tag --generate-notes --title "${GITHUB_REF_NAME#v}"
+          gh release view "$TAG" > /dev/null 2>&1 ||
+            gh release create "$TAG" release/*.tgz \
+              --verify-tag --generate-notes --title "${TAG#v}"

@@ -155,9 +155,10 @@ const canvas = await exportToCanvas({
 
 ## Releasing
 
+Merge the feature, then a bump PR, and the bump PR's merge releases. After a `feat`, `fix`, `perf`, `revert` or breaking change, the `Auto release` run on `master` says which version to bump to:
+
 ```sh
-node scripts/semver/bump.js 1.1.0   # merge this in a pull request
-git tag v1.1.0 && git push origin v1.1.0
+node scripts/semver/bump.js 1.11.0   # merge this in a pull request; the merge releases it
 ```
 
 A `vX.Y.Z` tag publishes the five packages (`common`, `fractional-indexing`, `math`, `element`, `excalidraw`) to GitHub Packages at that version and attaches their tarballs to a GitHub release. [docs/releasing.md](docs/releasing.md) has the details. The `v0.19.0-draw.N` releases before 1.0.0 stay available for URL installs.
