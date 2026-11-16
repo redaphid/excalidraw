@@ -216,6 +216,52 @@ describe("a freedraw element drawn point by point", () => {
   );
 });
 
+describe("freedraw elements outlined in turn", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("outline only their new points as each grows", () => {
+    const random = seeded(0x2a1);
+    const strokes = [
+      randomStroke(random, 1500, 1),
+      randomStroke(random, 1500, 1),
+    ];
+    const ids = strokes.map(
+      () =>
+        (API.createElement({ type: "freedraw" }) as ExcalidrawFreeDrawElement)
+          .id,
+    );
+    const element = (k: number, n: number): ExcalidrawFreeDrawElement => ({
+      ...(API.createElement({
+        type: "freedraw",
+        id: ids[k],
+        strokeOptions: { variability: "variable", streamline: 0.5 },
+        points: strokes[k].points
+          .slice(0, n)
+          .map(([x, y]) => pointFrom<LocalPoint>(x, y)),
+      }) as ExcalidrawFreeDrawElement),
+      simulatePressure: false,
+      pressures: strokes[k].pressures.slice(0, n),
+    });
+
+    for (let n = 1; n < 1500; n++) {
+      getFreedrawOutlinePoints(element(0, n));
+      getFreedrawOutlinePoints(element(1, n));
+    }
+
+    // the pressure easing runs once per outlined point
+    const sin = vi.spyOn(Math, "sin");
+    const grown = element(0, 1500);
+    const outline = getFreedrawOutlinePoints(grown);
+    const outlined = sin.mock.calls.length;
+    sin.mockRestore();
+
+    expect(outline).toEqual(getVariableWidthFreedrawOutline(grown));
+    expect(outlined).toBeLessThan(150);
+  });
+});
+
 describe("IncrementalSvgPath", () => {
   it.each([
     { pen: "variable", simulatePressure: true },
