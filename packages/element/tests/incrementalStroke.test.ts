@@ -146,6 +146,18 @@ describe("IncrementalStroke", () => {
     expect(stroke.getOutline(shorter)).toEqual(getStroke(shorter, options));
   });
 
+  it("starts over when an earlier pressure changes", () => {
+    const { points, pressures } = randomStroke(random, 120, 1);
+    const options = excalidrawOptions(4.25, false, 0.5);
+    const stroke = new IncrementalStroke(options);
+    stroke.getOutline(points, pressures);
+
+    const lighter = pressures.map((pressure) => pressure / 2);
+    expect(stroke.getOutline(points, lighter)).toEqual(
+      getStroke(withPressures(points, lighter), options),
+    );
+  });
+
   it("keeps its outlines intact when one it returned is changed in place", () => {
     const { points, pressures } = randomStroke(seeded(0xf2e), 100, 1);
     const options = excalidrawOptions(4.25, false, 0.5);
@@ -169,18 +181,6 @@ describe("IncrementalStroke", () => {
       getStroke(withPressures(points, pressures), options),
     );
     expect([...refusals]).toEqual(["TypeError"]);
-  });
-
-  it("starts over when an earlier pressure changes", () => {
-    const { points, pressures } = randomStroke(random, 120, 1);
-    const options = excalidrawOptions(4.25, false, 0.5);
-    const stroke = new IncrementalStroke(options);
-    stroke.getOutline(points, pressures);
-
-    const lighter = pressures.map((pressure) => pressure / 2);
-    expect(stroke.getOutline(points, lighter)).toEqual(
-      getStroke(withPressures(points, lighter), options),
-    );
   });
 });
 
