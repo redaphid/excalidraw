@@ -19,15 +19,17 @@ const { values: opts } = parseArgs({
     counters: { type: "boolean", default: false },
     label: { type: "string", default: "run" },
     wait: { type: "string" },
+    "scene-file": { type: "string" },
   },
 });
 
 if (!opts.builds) {
   console.error(
-    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--channel chromium|chrome|msedge] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name] [--wait ms-before-each-gesture]",
+    "usage: node perf-bench/run.mjs --builds base,cand [--runs 5] [--engine chromium|firefox|webkit] [--channel chromium|chrome|msedge] [--throttle 4] [--device laptop|phone] [--only mixed/pan,...] [--counters] [--label name] [--wait ms-before-each-gesture] [--scene-file board.excalidraw, benched as the file/* scenarios]",
   );
   process.exit(2);
 }
+const SCENE_FILE_PATH = "/scene.json";
 const builds = opts.builds.split(",");
 const runs = Number(opts.runs);
 const throttle = Number(opts.throttle);
@@ -55,7 +57,13 @@ const serve = () =>
   new Promise((resolve) => {
     const root = path.join(here, "builds");
     const server = createServer((req, res) => {
-      const file = path.join(root, decodeURIComponent(new URL(req.url, "http://x").pathname));
+      const pathname = decodeURIComponent(new URL(req.url, "http://x").pathname);
+      if (pathname === SCENE_FILE_PATH && opts["scene-file"]) {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(readFileSync(opts["scene-file"]));
+        return;
+      }
+      const file = path.join(root, pathname);
       if (!file.startsWith(root) || !existsSync(file)) {
         res.writeHead(404).end();
         return;
@@ -95,6 +103,7 @@ const runOnce = async (browser, port, build) => {
   if (opts.only) query.set("only", opts.only);
   if (opts.counters) query.set("counters", "1");
   if (opts.wait) query.set("wait", opts.wait);
+  if (opts["scene-file"]) query.set("sceneUrl", SCENE_FILE_PATH);
   await page.goto(`http://127.0.0.1:${port}/${build}/index.html?${query}`);
   await page.waitForFunction(() => window.benchReport || window.benchError, null, {
     timeout: 15 * 60_000,
@@ -215,11 +224,14 @@ const main = async () => {
     }
   }
   for (const build of builds) {
-    const perRun = reports[build].map((r) => r.rebuildIdleTaskMs ?? []);
-    const tasks = perRun.flat().sort((a, b) => a - b);
+    const perRun = reports[build].map((r) => r.rebuildTasks ?? []);
+    const tasks = perRun.flat().sort((a, b) => a.ms - b.ms);
     if (tasks.length) {
+      const ms = tasks.map((t) => t.ms);
+      const longest = tasks[tasks.length - 1];
+      const over = (limit) => ms.filter((x) => x > limit).length;
       console.log(
-        `rebuild idle tasks ${build}: ${perRun.map((t) => t.length).join("/")} per run, median ${median(tasks)}ms p95 ${tasks[Math.floor(tasks.length * 0.95)]}ms max ${tasks[tasks.length - 1]}ms, over 16ms ${tasks.filter((ms) => ms > 16).length}, over 50ms ${tasks.filter((ms) => ms > 50).length}`,
+        `rebuild idle tasks ${build}: ${perRun.map((t) => t.length).join("/")} per run, median ${median(ms)}ms p95 ${ms[Math.floor(ms.length * 0.95)]}ms max ${longest.ms}ms (measured ${longest.measured}, comparisons ${longest.comparisons}, writes ${longest.writes}${longest.done ? ", finished" : ""}), over 8ms ${over(8)}, over 16ms ${over(16)}, over 50ms ${over(50)}`,
       );
     }
   }
