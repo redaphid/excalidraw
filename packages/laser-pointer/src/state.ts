@@ -340,9 +340,7 @@ export class LaserPointer {
 
     const endCap: Point[] = [];
 
-    // Lowered threshold to 0.1,
-    // ensuring virtually all strokes get proper rounded caps for visual consistency.
-    if (startCapSize > 0.1) {
+    if (startCapSize > 0) {
       for (let theta = 0; theta <= Math.PI; theta += Math.PI / 16) {
         startCap.unshift(
           m.add(first, m.rot(m.smul(ppdirFS, startCapSize), -theta)),
