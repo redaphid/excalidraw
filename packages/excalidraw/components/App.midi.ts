@@ -63,7 +63,11 @@ import {
   actionBringForward,
   actionSendBackward,
 } from "../actions/actionZindex";
-import { getNormalizedGridStep, getNormalizedZoom } from "../scene";
+import {
+  formatZoomPercent,
+  getNormalizedGridStep,
+  getNormalizedZoom,
+} from "../scene";
 import { getViewportForZoomWithScrollConstraints } from "../viewport";
 
 import {
@@ -936,7 +940,7 @@ export class AppMidi {
         captureUpdate: CaptureUpdateAction.EVENTUALLY,
       });
       this.sendRing("zoom");
-      this.toast(`Zoom ${Math.round(nextZoom * 100)}%`);
+      this.toast(`Zoom ${formatZoomPercent(nextZoom)}%`);
       return;
     }
     const delta = (detents * this.stepOf(target.id)) / state.zoom.value;

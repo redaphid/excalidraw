@@ -1,3 +1,4 @@
+import { FREEDRAW_STROKE_WIDTH } from "@excalidraw/common";
 import { LaserPointer } from "@excalidraw/laser-pointer";
 import { pointFrom, type LocalPoint } from "@excalidraw/math";
 import * as stock from "perfect-freehand";
@@ -307,4 +308,34 @@ describe("constant-width freedraw", () => {
       expect(extent(dash.map(([x]) => x))).toBeCloseTo(1.5 + 2 * 2 * 1.4, 6);
     });
   });
+});
+
+// A tap is the pointer-down point plus the pointer-up point, nudged by a
+// ten-thousandth of the stroke's scale so it is not zero-sized.
+describe.each([1, 100_000])("a constant-width tap drawn at %dx", (zoom) => {
+  const tap = (strokeWidth: number) =>
+    ({
+      ...API.createElement({
+        type: "freedraw",
+        strokeWidth: strokeWidth / zoom,
+        points: [
+          pointFrom<LocalPoint>(0, 0),
+          pointFrom<LocalPoint>(0.0001 / zoom, 0.0001 / zoom),
+        ],
+        strokeOptions: { variability: "constant", streamline: 0.5 },
+      }),
+      ...(zoom !== 1 && { authoringScale: 1 / zoom }),
+    } as ExcalidrawFreeDrawElement);
+
+  it.each(Object.entries(FREEDRAW_STROKE_WIDTH))(
+    "draws a dot at the %s width",
+    (_, strokeWidth) => {
+      const path = svgPath(tap(strokeWidth));
+      expect(path).not.toBe("");
+      const onScreen = pathPoints(path).map(([x, y]) => [x * zoom, y * zoom]);
+      const diameter = 2 * strokeWidth * 1.4;
+      expect(extent(onScreen.map(([x]) => x))).toBeCloseTo(diameter, 3);
+      expect(extent(onScreen.map(([, y]) => y))).toBeCloseTo(diameter, 3);
+    },
+  );
 });
