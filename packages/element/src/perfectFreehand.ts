@@ -68,6 +68,21 @@ export interface StrokeOptions {
   last?: boolean;
 }
 
+const isSameLineEnd = (a: StrokeOptions["start"], b: StrokeOptions["start"]) =>
+  a?.cap === b?.cap && a?.taper === b?.taper && a?.easing === b?.easing;
+
+/** Whether two option sets draw the same outline from the same points. */
+export const isSameStrokeOptions = (a: StrokeOptions, b: StrokeOptions) =>
+  a.size === b.size &&
+  a.thinning === b.thinning &&
+  a.smoothing === b.smoothing &&
+  a.streamline === b.streamline &&
+  a.easing === b.easing &&
+  a.simulatePressure === b.simulatePressure &&
+  isSameLineEnd(a.start, b.start) &&
+  isSameLineEnd(a.end, b.end) &&
+  a.last === b.last;
+
 /**
  * The points returned by `getStrokePoints`, and the input for `getStrokeOutlinePoints`.
  */

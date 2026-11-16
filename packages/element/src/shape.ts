@@ -50,6 +50,7 @@ import {
   getStroke,
   getStrokePoints,
   IncrementalStroke,
+  isSameStrokeOptions,
 } from "./perfectFreehand";
 
 import { elementWithCanvasCache } from "./renderElement";
@@ -1317,14 +1318,6 @@ let strokeBeingDrawn: {
   options: StrokeOptions;
   stroke: IncrementalStroke;
 } | null = null;
-
-const isSameStrokeOptions = (a: StrokeOptions, b: StrokeOptions) =>
-  a.simulatePressure === b.simulatePressure &&
-  a.size === b.size &&
-  a.thinning === b.thinning &&
-  a.streamline === b.streamline &&
-  a.start?.taper === b.start?.taper &&
-  a.end?.taper === b.end?.taper;
 
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
