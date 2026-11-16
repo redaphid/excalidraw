@@ -957,6 +957,10 @@ export class IncrementalStroke {
   private readonly growable: boolean;
 
   private inputs: number[][] = [];
+  // The arrays last read, so an unchanged point is recognized by identity
+  // instead of by value: callers append to a copy of the previous points.
+  private readPoints: readonly (readonly number[])[] = [];
+  private readPressures: readonly number[] | undefined;
   private strokePoints: StrokePointsState | null = null;
   private outline: OutlineState | null = null;
   private outlined = 0;
@@ -991,6 +995,8 @@ export class IncrementalStroke {
     if (!this.isGrowing(points, pressures)) {
       this.reset();
     }
+    this.readPoints = points;
+    this.readPressures = pressures;
 
     const max = points.length - 1;
     const state = (this.strokePoints ??= startStrokePoints(
@@ -1069,17 +1075,26 @@ export class IncrementalStroke {
     points: readonly (readonly number[])[],
     pressures?: readonly number[],
   ) {
-    const { inputs } = this;
+    const { inputs, readPoints } = this;
     if (inputs.length >= points.length) {
       return false;
     }
+    const samePressures = pressures === this.readPressures;
+    const current = (!samePressures && pressures) || [];
+    const read = (!samePressures && this.readPressures) || [];
     for (let i = 0; i < inputs.length; i++) {
-      const read = inputs[i];
       const point = points[i];
       if (
-        read[0] !== point[0] ||
-        read[1] !== point[1] ||
-        read[2] !== pressureOf(points, pressures, i)
+        point === readPoints[i] &&
+        (samePressures || current[i] === read[i])
+      ) {
+        continue;
+      }
+      const input = inputs[i];
+      if (
+        input[0] !== point[0] ||
+        input[1] !== point[1] ||
+        input[2] !== pressureOf(points, pressures, i)
       ) {
         return false;
       }

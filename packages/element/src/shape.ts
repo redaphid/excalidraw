@@ -1446,8 +1446,9 @@ const med = (A: number[], B: number[]) => {
   return [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
 };
 
+// Settled outline points are the same arrays from one outline to the next.
 const isSamePoint = (A: number[], B: number[]) =>
-  A[0] === B[0] && A[1] === B[1];
+  A === B || (A[0] === B[0] && A[1] === B[1]);
 
 const joinSegments = (a: string, b: string) => (a && b ? `${a} ${b}` : a || b);
 
