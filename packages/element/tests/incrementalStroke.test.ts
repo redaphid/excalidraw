@@ -66,6 +66,23 @@ const excalidrawOptions = (
 const withPressures = (points: number[][], pressures: number[]) =>
   points.map(([x, y], i) => [x, y, pressures[i]]);
 
+/** the points, wrapped to count how many coordinates are read from them */
+const countingReads = (points: number[][]) => {
+  const reads = { count: 0 };
+  const counted = points.map(
+    (point) =>
+      new Proxy(point, {
+        get: (target, key, receiver) => {
+          if (key === "0" || key === "1" || key === "2") {
+            reads.count++;
+          }
+          return Reflect.get(target, key, receiver);
+        },
+      }),
+  );
+  return { counted, reads };
+};
+
 describe("IncrementalStroke", () => {
   const random = seeded(0x0de1);
 
@@ -145,6 +162,36 @@ describe("IncrementalStroke", () => {
     const shorter = moved.slice(0, 60);
     expect(stroke.getOutline(shorter)).toEqual(getStroke(shorter, options));
   });
+
+  it.each([true, false])(
+    "reads only the new points when a long stroke grows (simulatePressure %s)",
+    (simulatePressure) => {
+      const { points, pressures } = randomStroke(seeded(0x6e5), 3000, 1);
+      const { counted, reads } = countingReads(points);
+      const stroke = new IncrementalStroke(
+        excalidrawOptions(4.25, simulatePressure, 0.5),
+      );
+      const draw = (n: number) =>
+        simulatePressure
+          ? stroke.getOutline(counted.slice(0, n))
+          : stroke.getOutline(counted.slice(0, n), pressures.slice(0, n));
+      for (let n = 1; n < points.length; n++) {
+        draw(n);
+      }
+
+      reads.count = 0;
+      const outline = draw(points.length);
+      const read = reads.count;
+
+      const input = simulatePressure
+        ? points
+        : withPressures(points, pressures);
+      expect(outline).toEqual(
+        getStroke(input, excalidrawOptions(4.25, simulatePressure, 0.5)),
+      );
+      expect(read).toBeLessThan(20);
+    },
+  );
 
   it("starts over when an earlier pressure changes", () => {
     const { points, pressures } = randomStroke(random, 120, 1);
@@ -244,6 +291,26 @@ describe("IncrementalSvgPath", () => {
       }
     },
   );
+
+  it("reads only the points around a change to a long outline", () => {
+    const outline = randomStroke(seeded(0x10e), 4000, 1).points;
+    const { counted, reads } = countingReads(outline);
+    const path = new IncrementalSvgPath();
+    path.getPath(counted);
+
+    const grown = [
+      ...counted.slice(0, 2000),
+      [1, 2],
+      [3, 4],
+      ...counted.slice(2000),
+    ];
+    reads.count = 0;
+    const pathed = path.getPath(grown);
+    const read = reads.count;
+
+    expect(pathed).toBe(getSvgPathFromStroke(grown));
+    expect(read).toBeLessThan(50);
+  });
 
   it("paths outlines edited anywhere as before", () => {
     const random = seeded(0xed17);
