@@ -146,6 +146,32 @@ describe("IncrementalStroke", () => {
     expect(stroke.getOutline(shorter)).toEqual(getStroke(shorter, options));
   });
 
+  it("keeps its outlines intact when one it returned is changed in place", () => {
+    const { points, pressures } = randomStroke(seeded(0xf2e), 200, 1);
+    const options = excalidrawOptions(4.25, false, 0.5);
+    const stroke = new IncrementalStroke(options);
+    let refused = 0;
+    for (let n = 1; n < points.length; n++) {
+      const outline = stroke.getOutline(
+        points.slice(0, n),
+        pressures.slice(0, n),
+      );
+      for (const point of outline) {
+        try {
+          point[0] += 1000;
+        } catch (error) {
+          expect(error).toBeInstanceOf(TypeError);
+          refused++;
+        }
+      }
+    }
+
+    expect(stroke.getOutline(points, pressures)).toEqual(
+      getStroke(withPressures(points, pressures), options),
+    );
+    expect(refused).toBeGreaterThan(0);
+  });
+
   it("starts over when an earlier pressure changes", () => {
     const { points, pressures } = randomStroke(random, 120, 1);
     const options = excalidrawOptions(4.25, false, 0.5);
