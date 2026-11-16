@@ -3,7 +3,11 @@ import { pointFrom, type LocalPoint } from "@excalidraw/math";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
 import { getElementPaintBounds } from "../src/bounds";
-import { ElementsRTree } from "../src/elementsRTree";
+import {
+  ElementsRTree,
+  MEASURE_CHUNK,
+  REBUILD_SLICE_MS,
+} from "../src/elementsRTree";
 import { mutateElement, newElementWith } from "../src/mutateElement";
 import { getContainerElement } from "../src/textElement";
 import { isTextElement } from "../src/typeChecks";
@@ -32,8 +36,12 @@ const grid = () => {
 
 const view: Bounds = [1000, 1000, 1200, 1100];
 
+/** what measuring one element costs on the test window's performance clock */
+const MEASURE_COST_MS = 0.05;
+
 const testWindow = () => {
   let now = 0;
+  let perfNow = 0;
   let nextId = 1;
   const timers = new Map<number, { at: number; run: () => void }>();
   const idle = new Map<number, IdleRequestCallback>();
@@ -48,7 +56,11 @@ const testWindow = () => {
       return nextId++;
     },
     cancelIdleCallback: (id: number) => idle.delete(id),
+    performance: { now: () => perfNow },
   } as unknown as Window;
+  const tick = (ms: number) => {
+    perfNow += ms;
+  };
   const advance = (ms: number) => {
     now += ms;
     for (const [id, timer] of [...timers]) {
@@ -66,7 +78,7 @@ const testWindow = () => {
     }
     return pending.length;
   };
-  return { window, advance, runIdle };
+  return { window, advance, runIdle, tick };
 };
 
 const setup = (elements: readonly ExcalidrawElement[]) => {
@@ -75,6 +87,7 @@ const setup = (elements: readonly ExcalidrawElement[]) => {
   const index = new ElementsRTree<ExcalidrawElement>(
     (element, elementsMap) => {
       measured++;
+      clock.tick(MEASURE_COST_MS);
       return getElementPaintBounds(element, elementsMap);
     },
     (element, elementsMap) =>
@@ -251,7 +264,7 @@ describe("ElementsRTree", () => {
     expect(result).toEqual(linear(next));
   });
 
-  it("bounds the work of each idle task, and keeps the old tree until the new one is complete", () => {
+  it("stops each idle task once its slice is spent, and keeps the old tree until the new one is complete", () => {
     const elements = grid();
     const { query, clock, rebuildWork } = setup(elements);
     const next = moveCopies(elements, elements.length, 5);
@@ -274,8 +287,9 @@ describe("ElementsRTree", () => {
       }
       expect(perTask.length).toBeLessThan(1000);
     }
-    expect(Math.max(...perTask)).toBeLessThanOrEqual(2048);
-    expect(perTask.length).toBeGreaterThan(next.length / 2048);
+    const perSlice = REBUILD_SLICE_MS / MEASURE_COST_MS + MEASURE_CHUNK;
+    expect(Math.max(...perTask)).toBeLessThanOrEqual(perSlice);
+    expect(perTask.length).toBeGreaterThan(next.length / perSlice);
   });
 
   it("leaves a few changed elements unindexed instead of rebuilding", () => {
