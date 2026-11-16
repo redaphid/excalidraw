@@ -3,7 +3,11 @@ import { pointFrom, type LocalPoint } from "@excalidraw/math";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
 import { ShapeCache, getFreedrawOutlinePoints } from "../src";
-import { IncrementalStroke } from "../src/perfectFreehand";
+import {
+  IncrementalStroke,
+  getStroke as getVendoredStroke,
+  isSameStrokeOptions,
+} from "../src/perfectFreehand";
 import { IncrementalSvgPath } from "../src/shape";
 
 import {
@@ -278,5 +282,58 @@ describe("IncrementalSvgPath", () => {
     expect(path.getPath(outline.slice(0, 1))).toBe(
       getSvgPathFromStroke(outline.slice(0, 1)),
     );
+  });
+});
+
+describe("isSameStrokeOptions", () => {
+  const sine = (t: number) => Math.sin((t * Math.PI) / 2);
+  const square = (t: number) => t * t;
+  const options = (overrides: StrokeOptions = {}): StrokeOptions => ({
+    size: 16,
+    thinning: 0.6,
+    smoothing: 0.5,
+    streamline: 0.5,
+    easing: sine,
+    simulatePressure: true,
+    last: true,
+    ...overrides,
+  });
+  const points = Array.from({ length: 24 }, (_, i) => [
+    i * 6,
+    Math.sin(i / 3) * 20,
+  ]);
+
+  it("matches equal options built as separate objects", () => {
+    expect(
+      isSameStrokeOptions(
+        options({ start: { taper: 30 }, end: { taper: 30 } }),
+        options({ start: { taper: 30 }, end: { taper: 30 } }),
+      ),
+    ).toBe(true);
+  });
+
+  // Each pair draws a different outline, so a cached stroke built for one
+  // must not serve the other.
+  it.each<[string, StrokeOptions, StrokeOptions]>([
+    ["smoothing", options(), options({ smoothing: 0.1 })],
+    ["easing", options(), options({ easing: square })],
+    ["last", options(), options({ last: false })],
+    ["start cap", options(), options({ start: { cap: false } })],
+    ["end cap", options(), options({ end: { cap: false } })],
+    [
+      "start easing",
+      options({ start: { taper: 40 } }),
+      options({ start: { taper: 40, easing: square } }),
+    ],
+    [
+      "end easing",
+      options({ end: { taper: 40 } }),
+      options({ end: { taper: 40, easing: square } }),
+    ],
+  ])("tells apart options that differ in %s", (_, a, b) => {
+    expect(getVendoredStroke(points, a)).not.toEqual(
+      getVendoredStroke(points, b),
+    );
+    expect(isSameStrokeOptions(a, b)).toBe(false);
   });
 });
