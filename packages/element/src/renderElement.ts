@@ -86,7 +86,10 @@ import {
 
 import type {
   ExcalidrawButtonElement,
+  ExcalidrawDiamondElement,
   ExcalidrawElement,
+  ExcalidrawEllipseElement,
+  ExcalidrawRectangleElement,
   ExcalidrawTextElement,
   NonDeleted,
   NonDeletedExcalidrawElement,
@@ -99,6 +102,7 @@ import type {
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
+import type { Drawable } from "roughjs/bin/core";
 
 const isPendingImageElement = (
   element: ExcalidrawElement,
@@ -140,9 +144,72 @@ const getCanvasPadding = (element: ExcalidrawElement) => {
           getElementDetailScale(element) +
         strokeReach(element)
       );
+    case "rectangle":
+    case "diamond":
+    case "ellipse":
+      return getRoughShapePadding(element) + strokeReach(element);
     default:
       return 20 * getElementDetailScale(element) + strokeReach(element);
   }
+};
+
+/**
+ * 20 detail units hold the wobble of a shape of ordinary size. A smaller
+ * shape, such as one made at 1x and seen 50x in, would get 1,000 px a side
+ * around a few px of shape, so it gets room for what it paints instead: its
+ * strokes' and fill's reach past its box, or its own size if that is larger.
+ */
+const getRoughShapePadding = (
+  element:
+    | ExcalidrawRectangleElement
+    | ExcalidrawDiamondElement
+    | ExcalidrawEllipseElement,
+) => {
+  const fixed = 20 * getElementDetailScale(element);
+  const size =
+    Math.max(element.width, element.height) * window.devicePixelRatio;
+  if (size >= fixed) {
+    return fixed;
+  }
+  return Math.min(
+    fixed,
+    Math.max(size, getRoughReach(element) * window.devicePixelRatio),
+  );
+};
+
+const roughReachCache = new WeakMap<Drawable, number>();
+
+/**
+ * How far a shape's rough strokes and fill reach past its box, in scene
+ * units. Curves stay within their control points, so this never falls short.
+ */
+const getRoughReach = (
+  element:
+    | ExcalidrawRectangleElement
+    | ExcalidrawDiamondElement
+    | ExcalidrawEllipseElement,
+) => {
+  // the geometry is the same in every theme, so any cached shape will do
+  const drawable = ShapeCache.generateElementShape(element, null);
+  let reach = roughReachCache.get(drawable);
+  if (reach === undefined) {
+    reach = 0;
+    for (const { ops } of drawable.sets) {
+      for (const { data } of ops) {
+        for (let i = 0; i < data.length; i += 2) {
+          reach = Math.max(
+            reach,
+            -data[i],
+            -data[i + 1],
+            data[i] - element.width,
+            data[i + 1] - element.height,
+          );
+        }
+      }
+    }
+    roughReachCache.set(drawable, reach);
+  }
+  return reach;
 };
 
 export type RenderPositionOffset = Readonly<{ x: number; y: number }>;

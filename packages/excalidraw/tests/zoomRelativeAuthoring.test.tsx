@@ -21,8 +21,11 @@ import {
 
 import type {
   ExcalidrawArrowElement,
+  ExcalidrawDiamondElement,
   ExcalidrawElement,
+  ExcalidrawEllipseElement,
   ExcalidrawFreeDrawElement,
+  ExcalidrawRectangleElement,
   ExcalidrawStickyNoteElement,
   ExcalidrawTextElement,
   NonDeleted,
@@ -1098,4 +1101,75 @@ describe("text over 1,024px", () => {
       "hello!",
     );
   });
+});
+
+// A shape made at 1x and seen far in, or made through the API, has no
+// authoringScale, so its bitmap padding is sized for a shape seen at 1x.
+describe("a shape smaller than its bitmap padding", () => {
+  beforeEach(async () => {
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+  });
+
+  type Shape =
+    | ExcalidrawRectangleElement
+    | ExcalidrawDiamondElement
+    | ExcalidrawEllipseElement;
+
+  /** how far the shape's strokes and fill reach past its box, in scene units */
+  const wobble = (element: Shape) => {
+    const drawable = ShapeCache.generateElementShape(element, null);
+    let reach = 0;
+    for (const { ops } of drawable.sets) {
+      for (const { data } of ops) {
+        for (let i = 0; i < data.length; i += 2) {
+          reach = Math.max(
+            reach,
+            -data[i],
+            -data[i + 1],
+            data[i] - element.width,
+            data[i + 1] - element.height,
+          );
+        }
+      }
+    }
+    return reach;
+  };
+
+  it.each(["rectangle", "diamond", "ellipse"] as const)(
+    "caches a %s in a bitmap that holds its paint and little else",
+    async (type) => {
+      const zoom = 15;
+      atZoom(zoom);
+      API.setElements([
+        API.createElement({
+          type,
+          x: 10,
+          y: 10,
+          width: 0.5,
+          height: 0.4,
+          strokeWidth: 0.02,
+          backgroundColor: "#ffc9c9",
+          fillStyle: "hachure",
+        }),
+      ]);
+      await act(async () => {});
+      const [shape] = latest() as Shape[];
+      const cached = elementWithCanvasCache.get(shape);
+      expect(cached).toBeDefined();
+
+      const painted = (side: number) =>
+        (side + 2 * (wobble(shape) + shape.strokeWidth / 2)) *
+        window.devicePixelRatio *
+        zoom;
+      expect(cached!.canvas.width).toBeGreaterThanOrEqual(
+        Math.floor(painted(shape.width)),
+      );
+      expect(cached!.canvas.height).toBeGreaterThanOrEqual(
+        Math.floor(painted(shape.height)),
+      );
+      const largest = painted(Math.max(shape.width, shape.height));
+      expect(cached!.canvas.width).toBeLessThanOrEqual(3 * largest);
+      expect(cached!.canvas.height).toBeLessThanOrEqual(3 * largest);
+    },
+  );
 });
