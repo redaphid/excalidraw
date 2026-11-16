@@ -39,6 +39,7 @@ import { getBoundTextElement, getContainerElement } from "./textElement";
 import {
   isArrowElement,
   isBoundToContainer,
+  isElbowArrow,
   isFrameLikeElement,
   isFreeDrawElement,
   isLinearElement,
@@ -1070,6 +1071,30 @@ export const getElementPaintBounds = (
   return [x1 - extent, y1 - extent, x2 + extent, y2 + extent];
 };
 
+/** how far the shape a hit test tests can reach past `getElementBounds` */
+const getHitShapeOvershoot = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+) => {
+  if (element.type === "diamond") {
+    // each vertex is off by under one nominal unit along one local axis,
+    // which rotation turns into at most that distance along any axis
+    return getElementDetailScale(element);
+  }
+  if (isElbowArrow(element) && element.angle !== 0) {
+    // its collision shape keeps within its unrotated points
+    const [x1, y1, x2, y2] = getElementBounds(element, elementsMap);
+    let overshoot = 0;
+    for (const [x, y] of element.points) {
+      const px = element.x + x;
+      const py = element.y + y;
+      overshoot = Math.max(overshoot, x1 - px, y1 - py, px - x2, py - y2);
+    }
+    return overshoot;
+  }
+  return 0;
+};
+
 /** the part of an element's hit threshold that does not depend on the zoom */
 export const getElementStrokeHitThreshold = (element: ExcalidrawElement) =>
   element.strokeWidth / 2 + 0.1 * getElementDetailScale(element);
@@ -1077,10 +1102,15 @@ export const getElementStrokeHitThreshold = (element: ExcalidrawElement) =>
 /**
  * How far past `getElementPaintBounds` a point can lie and still hit the
  * element, leaving out the zoom-dependent part of the hit threshold. A hit
- * lies within the element's threshold of `getElementBounds`, and the paint
- * bounds already reach half the stroke past those. A freedraw hit can also
- * reach the stroke radius past them, which the paint bounds include in full,
- * and the fill of a rotated freedraw loop can bulge past its points' bounds.
+ * lies within the element's threshold of the shape it is tested against,
+ * and the paint bounds reach half the stroke past `getElementBounds`. A
+ * freedraw hit can also reach the stroke radius past them, which the paint
+ * bounds include in full. Where the tested shape strays from those bounds,
+ * the slack adds how far:
+ * - a diamond's vertices sit up to one nominal unit off the box midpoints
+ *   its bounds are built from (`getDiamondPoints` rounds them);
+ * - a rotated elbow arrow is tested along its unrotated points;
+ * - the fill of a rotated freedraw loop can bulge past its points' bounds.
  */
 export const getElementHitSlack = (
   element: ExcalidrawElement,
@@ -1088,9 +1118,9 @@ export const getElementHitSlack = (
 ) => {
   const threshold = getElementStrokeHitThreshold(element);
   if (!isFreeDrawElement(element)) {
-    return Math.max(
-      threshold - element.strokeWidth / 2,
-      -element.strokeWidth / 2,
+    return (
+      Math.max(threshold - element.strokeWidth / 2, -element.strokeWidth / 2) +
+      getHitShapeOvershoot(element, elementsMap)
     );
   }
   if (element.angle === 0 || !shouldTestInside(element)) {

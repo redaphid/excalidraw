@@ -7,13 +7,16 @@ import {
 } from "@excalidraw/math";
 import {
   getContainingFrame,
+  getDiamondPoints,
   getElementBounds,
+  getElementDetailScale,
   getElementHitSlack,
   getElementPaintBounds,
   getFreedrawFillPolygon,
   getElementStrokeHitThreshold,
   getBoundTextElement,
   isCursorInFrame,
+  isElbowArrow,
   isFrameLikeElement,
   isIframeLikeElement,
   isTextElement,
@@ -171,7 +174,7 @@ const randomElements = (
   const scaled = <T extends ExcalidrawElement>(element: T): T =>
     authoringScale === undefined ? element : { ...element, authoringScale };
 
-  const kind = Math.floor(rng() * 10);
+  const kind = Math.floor(rng() * 12);
   if (kind === 0 || kind === 1) {
     const closed = rng() < 0.5;
     return [
@@ -241,6 +244,42 @@ const randomElements = (
       }),
     ];
   }
+  if (kind === 11) {
+    // drawn with its vertices rounded off the box midpoints
+    return [
+      scaled(
+        API.createElement({
+          ...common,
+          type: "diamond",
+          angle: between(rng, 0, Math.PI * 2),
+          roughness: 0,
+          roundness: null,
+        }),
+      ),
+    ];
+  }
+  if (kind === 10) {
+    // the editor never rotates an elbow arrow, but imported data can
+    const consistent = rng() < 0.5;
+    return [
+      API.createElement({
+        ...common,
+        type: "arrow",
+        elbowed: true,
+        roundness: null,
+        angle: rng() < 0.7 ? between(rng, 0, Math.PI * 2) : 0,
+        width: consistent ? size * 2 : size,
+        height: consistent ? size : common.height,
+        points: [
+          pointFrom<LocalPoint>(0, 0),
+          pointFrom<LocalPoint>(size, 0),
+          pointFrom<LocalPoint>(size, size),
+          pointFrom<LocalPoint>(size * 2, size),
+        ],
+        endArrowhead: pick(rng, ARROWHEADS),
+      }),
+    ];
+  }
   if (kind === 6) {
     return [
       API.createElement({
@@ -285,6 +324,34 @@ const randomBoard = (rng: Rng, count: number) => {
 
 /** a point near an edge, corner or label of an element, or above a frame
  * where its name sits, and now and then anywhere */
+/** a diamond's drawn vertices, or a rotated elbow arrow's points, where the
+ * hit test looks for them */
+const hitShapeCorners = (element: ExcalidrawElement): [number, number][] => {
+  if (element.type === "diamond") {
+    const [tx, ty, rx, ry, bx, by, lx, ly] = getDiamondPoints(element);
+    const center = pointFrom<GlobalPoint>(
+      element.x + element.width / 2,
+      element.y + element.height / 2,
+    );
+    return [
+      [tx, ty],
+      [rx, ry],
+      [bx, by],
+      [lx, ly],
+    ].map(([x, y]) =>
+      pointRotateRads(
+        pointFrom<GlobalPoint>(element.x + x, element.y + y),
+        center,
+        element.angle,
+      ),
+    );
+  }
+  if (isElbowArrow(element) && element.angle !== 0) {
+    return element.points.map(([x, y]) => [element.x + x, element.y + y]);
+  }
+  return [];
+};
+
 const randomPoint = (rng: Rng): [number, number] => {
   const elements = h.app.scene.getNonDeletedElements();
   const elementsMap = h.app.scene.getNonDeletedElementsMap();
@@ -299,12 +366,35 @@ const randomPoint = (rng: Rng): [number, number] => {
       anchor.y - between(rng, -0.2, 1.2) * (60 / zoom),
     ];
   }
+  const corners = hitShapeCorners(anchor);
+  if (corners.length && rng() < 0.4) {
+    // just inside or outside the hit area around a corner of the shape the
+    // hit test tests, which can stray from the element's bounds
+    const [cx, cy] = pick(rng, corners);
+    const threshold = Math.max(
+      getElementStrokeHitThreshold(anchor),
+      zoomThreshold(),
+    );
+    const distance = threshold * between(rng, 0.6, 1.05);
+    const direction = between(rng, 0, Math.PI * 2);
+    return [
+      cx + Math.cos(direction) * distance,
+      cy + Math.sin(direction) * distance,
+    ];
+  }
   const [x1, y1, x2, y2] = getElementPaintBounds(anchor, elementsMap);
-  // half the points sit just inside or outside the furthest an element's
-  // hit can reach from its paint bounds
+  // reaches at least as far as any hit can, without asking the code under
+  // test: the zoom's and the element's own threshold, a diamond's vertex
+  // rounding, and a rotated elbow arrow's unrotated hit shape
+  const reach =
+    zoomThreshold() +
+    getElementStrokeHitThreshold(anchor) +
+    getElementDetailScale(anchor) +
+    (isElbowArrow(anchor) && anchor.angle !== 0
+      ? Math.hypot(anchor.width, anchor.height) / 2
+      : 0);
   const band =
-    (zoomThreshold() + getElementHitSlack(anchor, elementsMap)) *
-    (rng() < 0.5 ? between(rng, 0, 1.5) : between(rng, 0.8, 1.05));
+    reach * (rng() < 0.5 ? between(rng, 0, 1.5) : between(rng, 0, 1.05));
   const across = (min: number, max: number) =>
     rng() < 0.6
       ? pick(rng, [min - band, max + band])
@@ -339,6 +429,12 @@ const farHitKind = (
     if (x >= lx1 && x <= lx2 && y >= ly1 && y <= ly2) {
       return "label";
     }
+  }
+  if (element.type === "diamond") {
+    return "diamond vertex";
+  }
+  if (isElbowArrow(element) && element.angle !== 0) {
+    return "rotated elbow";
   }
   const own = getElementStrokeHitThreshold(element);
   if (
@@ -553,11 +649,164 @@ describe("getElementsAtPosition", () => {
     expect(result.hits).toBeGreaterThan(1000);
     // the scan hit elements in every way that lies past an element's paint
     // bounds grown by the zoom threshold
-    expect(result.farHits.slack).toBeGreaterThan(0);
+    expect(result.farHits["diamond vertex"]).toBeGreaterThan(0);
+    expect(result.farHits["rotated elbow"]).toBeGreaterThan(0);
     expect(result.farHits["frame name"]).toBeGreaterThan(0);
     expect(result.farHits["selection box"]).toBeGreaterThan(0);
     expect(result.farHits.label).toBeGreaterThan(0);
   }, 120_000);
+
+  it("selects a rotated architect diamond where master does", () => {
+    // from the review of #175: the drawn vertices sit up to one nominal unit
+    // off the box midpoints its bounds are built from
+    const diamond = API.createElement({
+      type: "diamond",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 60,
+      angle: 0.5,
+      strokeWidth: 2,
+      roughness: 0,
+      roundness: null,
+    });
+    API.setElements([diamond]);
+    forceRebuild();
+    API.setAppState({ zoom: { value: 30 as NormalizedZoomValue } });
+    expect(ids(scanElementsAtPosition(4.746, 6.73, {}))).toBe(diamond.id);
+    expect(h.app.getElementAtPosition(4.746, 6.73)?.id).toBe(diamond.id);
+  }, 120_000);
+
+  it("finds what the scan finds around the edge of single elements whose hit shape is not their bounds' shape", () => {
+    const architect = {
+      x: 0,
+      y: 0,
+      strokeWidth: 2,
+      roughness: 0,
+      roundness: null,
+    } as const;
+    const elbow = (width: number, height: number, size: number) =>
+      API.createElement({
+        ...architect,
+        type: "arrow",
+        elbowed: true,
+        width,
+        height,
+        points: [
+          pointFrom<LocalPoint>(0, 0),
+          pointFrom<LocalPoint>(size, 0),
+          pointFrom<LocalPoint>(size, size),
+          pointFrom<LocalPoint>(size * 2, size),
+        ],
+      });
+    const cases: [ExcalidrawElement, number][] = [];
+    for (const [width, height, angle, zoom] of [
+      [100, 60, 0.5, 10],
+      [100, 60, 0.5, 30],
+      [101, 61, 0.7, 30],
+      [37, 23, 1, 30],
+      [100, 60, 2, 50],
+      [100, 60, 0.5, 1000],
+      [1.5, 1.2, 0, 1000],
+      [1.5, 1.2, 0.8, 1000],
+    ] as const) {
+      cases.push([
+        API.createElement({
+          ...architect,
+          type: "diamond",
+          width,
+          height,
+          angle: angle as never,
+        }),
+        zoom,
+      ]);
+      cases.push([
+        {
+          ...API.createElement({
+            ...architect,
+            type: "diamond",
+            width: width * 10,
+            height: height * 10,
+            angle: angle as never,
+          }),
+          authoringScale: 10,
+        },
+        zoom,
+      ]);
+    }
+    for (const angle of [0, 0.4, 1.3, 2.6, 4]) {
+      for (const zoom of [1, 20, 300]) {
+        cases.push([{ ...elbow(200, 100, 100), angle: angle as never }, zoom]);
+        cases.push([{ ...elbow(100, 37, 100), angle: angle as never }, zoom]);
+      }
+    }
+    for (const type of ["rectangle", "ellipse", "stickynote"] as const) {
+      cases.push([
+        API.createElement({
+          ...architect,
+          type,
+          width: 100,
+          height: 60,
+          angle: 0.5 as never,
+        }),
+        30,
+      ]);
+    }
+    cases.push([
+      API.createElement({
+        ...architect,
+        type: "line",
+        width: 100,
+        height: 60,
+        angle: 0.9 as never,
+        points: [pointFrom<LocalPoint>(0, 0), pointFrom<LocalPoint>(100, 60)],
+      }),
+      30,
+    ]);
+
+    const misses: string[] = [];
+    let hits = 0;
+    for (const [element, zoom] of cases) {
+      API.setElements([element]);
+      forceRebuild();
+      API.setAppState({
+        zoom: { value: zoom as NormalizedZoomValue },
+        selectedElementIds: {},
+      });
+      const elementsMap = h.app.scene.getNonDeletedElementsMap();
+      const [x1, y1, x2, y2] = getElementPaintBounds(element, elementsMap);
+      const reach =
+        zoomThreshold() + Math.max(getElementHitSlack(element, elementsMap), 3);
+      // the paint box's perimeter, grown by up to 1.2 times the reach
+      for (let ring = 0; ring <= 24; ring++) {
+        const g = (ring / 20) * reach;
+        for (let k = 0; k <= 200; k++) {
+          const t = k / 200;
+          for (const [x, y] of [
+            [x1 - g + (x2 - x1 + 2 * g) * t, y1 - g],
+            [x1 - g + (x2 - x1 + 2 * g) * t, y2 + g],
+            [x1 - g, y1 - g + (y2 - y1 + 2 * g) * t],
+            [x2 + g, y1 - g + (y2 - y1 + 2 * g) * t],
+          ]) {
+            const expected = ids(scanElementsAtPosition(x, y, {}));
+            hits += expected ? 1 : 0;
+            if (expected !== ids(h.app.getElementsAtPosition(x, y))) {
+              misses.push(
+                `${element.type} ${element.width}x${element.height} angle ${element.angle} zoom ${zoom} at (${x}, ${y})`,
+              );
+            }
+          }
+        }
+      }
+    }
+    const byCase: Record<string, number> = {};
+    for (const miss of misses) {
+      const key = miss.slice(0, miss.indexOf(" at "));
+      byCase[key] = (byCase[key] ?? 0) + 1;
+    }
+    expect(byCase).toEqual({});
+    expect(hits).toBeGreaterThan(10_000);
+  }, 600_000);
 
   it("finds a rotated freedraw loop by its fill where the fill bulges past the stroke", () => {
     // found by a random search: its fill reaches 38 units past its paint
