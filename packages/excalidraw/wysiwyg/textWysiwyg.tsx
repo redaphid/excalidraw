@@ -6,7 +6,7 @@ import {
   THEME,
   isWritableElement,
   getFontString,
-  getFontSizeUpscale,
+  getFontRenderScale,
   getFontFamilyString,
   isTestEnv,
   MIME_TYPES,
@@ -92,7 +92,7 @@ export const CARET_FOLLOW_PADDING = 5;
  * the *scaled* size from the box's top-left, while the origin sits at half
  * the unscaled size — the translate makes up the difference.
  *
- * The box is laid out at `upscale` times scene size (see
+ * The box is laid out at `fontScale` times scene size (see
  * updateWysiwygStyle), so the scale reaching for the zoom is that much
  * less, and the translate is figured on the laid-out size.
  */
@@ -101,13 +101,13 @@ const getTransform = (
   height: number,
   angle: number,
   appState: AppState,
-  upscale: number,
+  fontScale: number,
 ) => {
   const { zoom } = appState;
   const degree = (180 * angle) / Math.PI;
-  const scale = zoom.value / upscale;
-  const translateX = (width * upscale * (scale - 1)) / 2;
-  const translateY = (height * upscale * (scale - 1)) / 2;
+  const scale = zoom.value / fontScale;
+  const translateX = (width * fontScale * (scale - 1)) / 2;
+  const translateY = (height * fontScale * (scale - 1)) / 2;
   return `translate(${translateX}px, ${translateY}px) scale(${scale}) rotate(${degree}deg)`;
 };
 
@@ -166,14 +166,15 @@ const measureNativeLineCaretPositions = ({
   }
 
   // the line is laid out at a size the browser can lay out and the rects
-  // are read back in scene px (see getFontSizeUpscale): under a pixel they
-  // all collapse to the line's edge
-  const upscale = getFontSizeUpscale(fontSize);
+  // are read back in scene px (see getFontRenderScale): under a pixel they
+  // all collapse to the line's edge, and far over 1,000px Firefox lays the
+  // font out smaller than asked
+  const fontScale = getFontRenderScale(fontSize);
   const [, size, family] = font.match(/^([^ ]+)px (.*)$/) ?? [];
   const mirrorFont =
-    upscale === 1 || size === undefined
+    fontScale === 1 || size === undefined
       ? font
-      : (`${fontSize * upscale}px ${family}` as typeof font);
+      : (`${fontSize * fontScale}px ${family}` as typeof font);
 
   const mirror = ownerDocument.createElement("div");
   const textNode = ownerDocument.createTextNode(text);
@@ -192,7 +193,7 @@ const measureNativeLineCaretPositions = ({
     pointerEvents: "none",
     whiteSpace: "pre",
     font: mirrorFont,
-    lineHeight: `${lineHeightPx * upscale}px`,
+    lineHeight: `${lineHeightPx * fontScale}px`,
   });
   mirror.append(textNode);
   ownerDocument.body.append(mirror);
@@ -212,8 +213,8 @@ const measureNativeLineCaretPositions = ({
       positions.push(caretRect.left);
     }
     return {
-      left: left / upscale,
-      positions: positions.map((position) => position / upscale),
+      left: left / fontScale,
+      positions: positions.map((position) => position / fontScale),
     };
   } catch {
     return null;
@@ -349,7 +350,7 @@ export const textWysiwyg = ({
     if (
       `${
         updatedTextElement.fontSize *
-        getFontSizeUpscale(updatedTextElement.fontSize)
+        getFontRenderScale(updatedTextElement.fontSize)
       }px` !== editable.style.fontSize
     ) {
       return true;
@@ -491,13 +492,15 @@ export const textWysiwyg = ({
       // Text written while zoomed deep in has a scene font size far under
       // a pixel, where a DOM box collapses: its lines quantize to no
       // height, the caret and selection vanish, and wrapping loses the
-      // text. So the editor is laid out `upscale` times scene size — the
-      // font a pixel or more, as the canvas measures and draws such text
-      // (see getFontSizeUpscale) — and scaled back by that much in the
+      // text. Text written while zoomed far out has one far over 1,000px,
+      // which Firefox lays out smaller than asked. So the editor is laid
+      // out `fontScale` times scene size — the font from a pixel to
+      // 1,024px, as the canvas measures and draws such text (see
+      // getFontRenderScale) — and scaled back by that much in the
       // transform, landing at the same on-screen size.
-      const upscale = getFontSizeUpscale(updatedTextElement.fontSize);
+      const fontScale = getFontRenderScale(updatedTextElement.fontSize);
       const presentedFont = getFontString({
-        fontSize: updatedTextElement.fontSize * upscale,
+        fontSize: updatedTextElement.fontSize * fontScale,
         fontFamily: updatedTextElement.fontFamily,
       });
       const editorBoxLeft = updateEditorBoxInsets();
@@ -516,21 +519,21 @@ export const textWysiwyg = ({
         font: presentedFont,
         // must be defined *after* font ¯\_(ツ)_/¯
         lineHeight: updatedTextElement.lineHeight,
-        width: `${width * upscale}px`,
-        height: `${height * upscale}px`,
+        width: `${width * fontScale}px`,
+        height: `${height * fontScale}px`,
         left: `${viewportX - editorBoxLeft}px`,
         top: `${viewportY}px`,
         // about the text's center, whatever size the box itself ends up
         // (the 5% buffer) — see getTransform
-        transformOrigin: `${(updatedTextElement.width * upscale) / 2}px ${
-          (updatedTextElement.height * upscale) / 2
+        transformOrigin: `${(updatedTextElement.width * fontScale) / 2}px ${
+          (updatedTextElement.height * fontScale) / 2
         }px`,
         transform: getTransform(
           updatedTextElement.width,
           updatedTextElement.height,
           angle,
           appState,
-          upscale,
+          fontScale,
         ),
         textAlign,
         verticalAlign,
@@ -869,7 +872,7 @@ export const textWysiwyg = ({
           value.slice(0, selectionStart) + text + value.slice(selectionEnd);
         const wrappedText = wrapText(nextText, font, maxWidth);
         const width = Math.min(getTextWidth(wrappedText, font), maxWidth);
-        editable.style.width = `${width * getFontSizeUpscale(fontSize)}px`;
+        editable.style.width = `${width * getFontRenderScale(fontSize)}px`;
       }
     };
 

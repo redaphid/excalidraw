@@ -138,7 +138,7 @@ export class LaserPointer {
 
       const size = this.getSize(sizeOverride, c[2], 0, len, 0);
 
-      if (size < 0.5) {
+      if (size <= 0) {
         return [];
       }
 
@@ -168,7 +168,7 @@ export class LaserPointer {
       const cSize = this.getSize(sizeOverride, c[2], 0, len, 0);
       const nSize = this.getSize(sizeOverride, n[2], 0, len, 0);
 
-      if (cSize < 0.5 || nSize < 0.5) {
+      if (cSize <= 0 || nSize <= 0) {
         return [];
       }
 

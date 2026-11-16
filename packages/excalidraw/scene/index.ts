@@ -16,6 +16,7 @@ export {
   canChangeRoundness,
 } from "@excalidraw/element";
 export {
+  formatZoomPercent,
   getNormalizedZoom,
   getNormalizedGridSize,
   getNormalizedGridStep,

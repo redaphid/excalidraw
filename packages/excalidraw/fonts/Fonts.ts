@@ -48,6 +48,16 @@ export class Fonts {
   // a static member to reduce memory footprint
   public static readonly loadedFontsCache = new Set<string>();
 
+  /**
+   * Characters whose font faces `document.fonts` confirmed loaded, per
+   * document and font family. A loaded face stays loaded for the document's
+   * lifetime, so later loads skip `fonts.check` for these characters.
+   */
+  private static readonly loadedChars = new WeakMap<
+    Document,
+    Map<ExcalidrawTextElement["fontFamily"], Set<string>>
+  >();
+
   private static _registered:
     | Map<
         number,
@@ -246,6 +256,23 @@ export class Fonts {
     return fontFaces.flat().filter(Boolean);
   }
 
+  private static loadedCharsOf(
+    ownerDocument: Document,
+    fontFamily: ExcalidrawTextElement["fontFamily"],
+  ): Set<string> {
+    let perFamily = Fonts.loadedChars.get(ownerDocument);
+    if (!perFamily) {
+      perFamily = new Map();
+      Fonts.loadedChars.set(ownerDocument, perFamily);
+    }
+    let chars = perFamily.get(fontFamily);
+    if (!chars) {
+      chars = new Set();
+      perFamily.set(fontFamily, chars);
+    }
+    return chars;
+  }
+
   private static *fontFacesLoader(
     fontFamilies: Array<ExcalidrawTextElement["fontFamily"]>,
     charsPerFamily: Record<number, Set<string>>,
@@ -259,14 +286,29 @@ export class Fonts {
 
       // WARN: without "text" param it does not have to mean that all font faces are loaded as it could be just one irrelevant font face!
       // instead, we are always checking chars used in the family, so that no required font faces remain unloaded
-      const text = Fonts.getCharacters(charsPerFamily, fontFamily);
+      const loaded = Fonts.loadedCharsOf(ownerDocument, fontFamily);
+      const pending = Array.from(charsPerFamily[fontFamily] ?? []).filter(
+        (char) => !loaded.has(char),
+      );
+      if (pending.length === 0) {
+        continue;
+      }
+      const text = pending.join("");
+      const confirmLoaded = () => {
+        for (const char of pending) {
+          loaded.add(char);
+        }
+      };
 
-      if (!ownerDocument.fonts.check(font, text)) {
+      if (ownerDocument.fonts.check(font, text)) {
+        confirmLoaded();
+      } else {
         yield promiseTry(async () => {
           try {
             // WARN: browser prioritizes loading only font faces with unicode ranges for characters which are present in the document (html & canvas), other font faces could stay unloaded
             // we might want to retry here, i.e.  in case CDN is down, but so far I didn't experience any issues - maybe it handles retry-like logic under the hood
             const fontFaces = await ownerDocument.fonts.load(font, text);
+            confirmLoaded();
 
             return [index, fontFaces];
           } catch (e) {
