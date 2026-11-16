@@ -20,12 +20,15 @@ const { values: opts } = parseArgs({
     throttle: { type: "string", default: "1" },
     channel: { type: "string", default: "chromium" },
     label: { type: "string", default: "pointerdown" },
+    // ms to wait after loading the board, so the element index's idle
+    // rebuild can finish before the clicks
+    settle: { type: "string", default: "0" },
   },
 });
 
 if (!opts.builds) {
   console.error(
-    "usage: node perf-bench/pointerdown.mjs --builds base,cand [--counts 5000,50000] [--tools freedraw,rectangle,selection] [--runs 3] [--repeats 15] [--throttle 1] [--channel chromium|chrome|msedge] [--label name]",
+    "usage: node perf-bench/pointerdown.mjs --builds base,cand [--counts 5000,50000] [--tools freedraw,rectangle,selection] [--runs 3] [--repeats 15] [--throttle 1] [--channel chromium|chrome|msedge] [--label name] [--settle ms]",
   );
   process.exit(2);
 }
@@ -63,6 +66,8 @@ const serve = () =>
     server.listen(0, "127.0.0.1", () => resolve(server));
   });
 
+const mean = (xs) => xs.reduce((sum, x) => sum + x, 0) / xs.length;
+
 const median = (xs) => {
   const s = [...xs].sort((a, b) => a - b);
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
@@ -70,7 +75,7 @@ const median = (xs) => {
 
 // Runs in the page: loads `count` rectangles, then times each tool's
 // pointerdown dispatch, which returns once the editor's handler has run.
-const measureInPage = async ({ count, tools, repeats }) => {
+const measureInPage = async ({ count, tools, repeats, settle }) => {
   const api = window.excalidrawAPI;
   const DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const index = (i) =>
@@ -108,6 +113,7 @@ const measureInPage = async ({ count, tools, repeats }) => {
   const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
   await frame();
   await frame();
+  await new Promise((r) => setTimeout(r, settle));
   const canvas = document.querySelector("canvas.interactive");
   const rect = canvas.getBoundingClientRect();
   const fire = (type, x, y) =>
@@ -161,7 +167,12 @@ const runOnce = async (browser, port, build, count) => {
   }
   await page.goto(`http://127.0.0.1:${port}/${build}/index.html`);
   await page.waitForFunction(() => window.excalidrawAPI, null, { timeout: 120_000 });
-  const result = await page.evaluate(measureInPage, { count, tools, repeats });
+  const result = await page.evaluate(measureInPage, {
+    count,
+    tools,
+    repeats,
+    settle: Number(opts.settle),
+  });
   await context.close();
   return result;
 };
@@ -174,6 +185,8 @@ const main = async () => {
     headless: opts.channel === "chromium",
   });
   const samples = {};
+  // each run's mean, per board size, tool and build
+  const runMeans = {};
   for (let run = 0; run < runs; run++) {
     const order = run % 2 ? [...builds].reverse() : builds;
     for (const count of counts) {
@@ -183,6 +196,8 @@ const main = async () => {
           const key = `${count}/${tool}`;
           samples[key] ??= Object.fromEntries(builds.map((b) => [b, []]));
           samples[key][build].push(...xs);
+          runMeans[key] ??= Object.fromEntries(builds.map((b) => [b, []]));
+          runMeans[key][build].push(mean(xs));
         }
         console.error(`run ${run + 1}/${runs} ${count} ${build}`);
       }
@@ -198,7 +213,13 @@ const main = async () => {
       Object.fromEntries(
         Object.entries(byBuild).map(([build, xs]) => [
           build,
-          { median: median(xs), max: Math.max(...xs), n: xs.length },
+          {
+            median: median(xs),
+            mean: mean(xs),
+            max: Math.max(...xs),
+            n: xs.length,
+            runMeans: runMeans[key][build],
+          },
         ]),
       ),
     ]),
@@ -210,14 +231,22 @@ const main = async () => {
   const file = path.join(out, `${stamp}-${opts.label}.json`);
   writeFileSync(file, JSON.stringify({ opts, userAgent, summary, samples }, null, 1));
 
+  // the run means' spread around their mean
+  const spread = ({ mean: m, runMeans: rs }) =>
+    `±${((Math.max(...rs.map((r) => Math.abs(r - m))) / m) * 100).toFixed(0)}%`;
+
   const [base, ...others] = builds;
   console.log(`pointerdown handler ms, ${opts.channel} throttle ${throttle}x, ${runs} runs x ${repeats} repeats, ${userAgent}`);
   for (const [key, byBuild] of Object.entries(summary)) {
     const b = byBuild[base];
-    const line = [`${key.padEnd(18)} ${base} median ${b.median.toFixed(2)} max ${b.max.toFixed(2)}`];
+    const line = [
+      `${key.padEnd(18)} ${base} mean ${b.mean.toFixed(2)} (${spread(b)}) median ${b.median.toFixed(2)} max ${b.max.toFixed(2)}`,
+    ];
     for (const other of others) {
       const c = byBuild[other];
-      line.push(`| ${other} median ${c.median.toFixed(2)} max ${c.max.toFixed(2)} (${(b.median / c.median).toFixed(1)}x)`);
+      line.push(
+        `| ${other} mean ${c.mean.toFixed(2)} (${spread(c)}) median ${c.median.toFixed(2)} max ${c.max.toFixed(2)} (mean ${(b.mean / c.mean).toFixed(1)}x)`,
+      );
     }
     console.log(line.join(" "));
   }
