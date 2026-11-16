@@ -1,15 +1,22 @@
 name: Auto release
 
-# Each merge to master releases the next version its conventional PR titles
-# call for: feat bumps the minor, fix, perf and revert the patch, and a ! or a
-# BREAKING CHANGE footer the major. Other types release nothing.
-# scripts/semver/next.js holds the rule.
+# Releases go feature PR, then bump PR, then release. On each merge to master,
+# scripts/semver/next.js decides:
+# - master's manifests hold a version no tag has released (a bump PR merged):
+#   call release.yml, which tags master's own commit and publishes it.
+# - feat, fix, perf, revert or breaking changes since the last tag, with the
+#   manifests not yet bumped: succeed with "Release pending: open a bump PR to
+#   X.Y.Z" in the summary. feat bumps the minor, fix, perf and revert the patch,
+#   and a ! or a BREAKING CHANGE footer the major.
+# - anything else: no release.
+# Nothing here pushes to master; the bump lands through a PR.
 
 on:
   push:
     branches:
       - master
-  # Rehearses a release at the version master would get, without publishing.
+  # Rehearses a release at the version master holds or should get, without
+  # publishing.
   pull_request:
     paths:
       - .github/workflows/auto-release.yml
@@ -33,7 +40,7 @@ jobs:
     outputs:
       release: ${{ steps.next.outputs.release }}
       version: ${{ steps.next.outputs.version }}
-      bump: ${{ steps.next.outputs.bump }}
+      pending: ${{ steps.next.outputs.pending }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,18 +61,20 @@ jobs:
 
   rehearse:
     needs: plan
-    if: github.event_name == 'pull_request' && needs.plan.outputs.release == 'true'
+    if: github.event_name == 'pull_request' && (needs.plan.outputs.release == 'true' || needs.plan.outputs.pending != '')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
     env:
-      VERSION: ${{ needs.plan.outputs.version }}
+      VERSION: ${{ needs.plan.outputs.version || needs.plan.outputs.pending }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      # A no-op for a version master already holds. A pending version is set in
+      # this workspace only, never committed.
       - run: node scripts/semver/bump.js "$VERSION"
       - run: node scripts/semver/pack.js --version="$VERSION"
       - run: node scripts/semver/typecheck-consumer.js --version="$VERSION"
@@ -83,4 +92,3 @@ jobs:
     with:
       sha: ${{ github.sha }}
       version: ${{ needs.plan.outputs.version }}
-      bump: ${{ needs.plan.outputs.bump == 'true' }}

@@ -39,38 +39,42 @@ GitHub Packages requires a token for every npm install, public packages included
 
 Types resolve with npm and with pnpm's default layout. Under pnpm `hoist=false`, some declarations inside common and element reach types from packages they do not declare, such as `jotai`, and those turn into `any`.
 
-## Releases happen on every merge
+## Cut a release
 
-Each push to `master` runs `.github/workflows/auto-release.yml`. `scripts/semver/next.js` reads the conventional titles of the commits since the highest `vX.Y.Z` tag and picks the next version:
+A release takes three steps: merge the feature, merge a bump PR, and the bump PR's merge releases. `master`'s package manifests always hold the latest release's version, and nothing but a pull request changes them.
 
-| Titles since the last tag | Release |
-| --- | --- |
-| any `!` after the type, or a `BREAKING CHANGE:` footer | major |
-| any `feat` | minor |
-| any `fix`, `perf` or `revert` | patch |
-| only other types, such as `chore`, `docs`, `ci`, `refactor` or `test` | none |
+1. **Merge the feature.** Each push to `master` runs `.github/workflows/auto-release.yml`. `scripts/semver/next.js` reads the conventional titles of the commits since the highest `vX.Y.Z` tag:
 
-It then calls `.github/workflows/release.yml`, which runs `bump.js` and commits the result as `github-actions[bot]` on top of the merge commit. Master's required checks refuse a direct push from a workflow, so that commit is reachable only from its tag, and the packages' version on `master` stays where the last hand bump left it. The next release counts from the tag's parent, which is on `master`. The commit has a fixed author and date, so a rerun builds the same commit and the same tag. The tag is pushed only after the tarballs pass every check below.
+   | Titles since the last tag | Next version |
+   | --- | --- |
+   | any `!` after the type, or a `BREAKING CHANGE:` footer | major |
+   | any `feat` | minor |
+   | any `fix`, `perf` or `revert` | patch |
+   | only other types, such as `chore`, `docs`, `ci`, `refactor` or `test` | none |
 
-A merge that a tag already contains releases nothing, so a tag pushed by hand on a merge commit is never released twice. If the packages on `master` are at a version that no tag has released, from a bump PR merged by hand, the merge releases that version as is, without another bump. A pull request that changes the release workflows or `scripts/semver/` rehearses the release at the version `master` would get, through `publish.js --dry-run`.
+   When one of those calls for a version, the run succeeds with `Release pending: open a bump PR to X.Y.Z` in its summary and as a notice. It does not tag or publish anything.
 
-## Cut a release by hand
-
-To pick a version yourself:
-
-1. Set the five packages to the new version and merge that in a pull request:
+2. **Merge a bump PR** at that version:
 
    ```sh
-   node scripts/semver/bump.js 1.1.0
+   node scripts/semver/bump.js 1.11.0
    ```
 
-2. The merge releases that version. You may still tag the merge commit and push the tag yourself; whichever tag lands first releases it, and the other run finds the tag on the same commit:
+   Title it `chore(repo): version the packages 1.11.0`.
 
-   ```sh
-   git tag v1.1.0 && git push origin v1.1.0
-   ```
+3. **The bump PR's merge releases.** Its run finds `master`'s manifests at a version no tag has released, and calls `.github/workflows/release.yml` for that commit. The release builds and checks the tarballs, pushes the tag on `master`'s own commit only after every check passes, then publishes.
 
-Either path runs `.github/workflows/release.yml`, one release at a time. It builds and packs the packages at the tag's version, refuses to continue if any package is at another version, and checks the tarballs the way a consumer uses them. `scripts/semver/typecheck-consumer.js` typechecks draw's calls against them. `scripts/semver/verify.js` installs the local tarballs into fresh projects, once from the release-asset tarballs and once from the GitHub Packages tarballs, with npm `overrides` pointing their sibling aliases at the local files instead of the registry. Nothing is fetched from GitHub Packages. There, `@excalidraw/excalidraw` has to install alone at the release version and bundle draw's calls and `index.css` with esbuild, under both the `development` and `production` conditions, every file in `themes/index.json` has to import through `./themes/*`, and common, fractional-indexing, math and element each have to load on their own in Node. It then checks each tarball's name, version, registry and sibling aliases, publishes the five packages to GitHub Packages, and creates a GitHub release with the five tarballs attached.
+A merge that a tag already contains releases nothing, so a tag pushed by hand is never released twice. You may still push the tag on the bump PR's merge commit yourself:
+
+```sh
+git tag v1.11.0 && git push origin v1.11.0
+```
+
+Whichever lands first releases it. The other run finds the tag already on that commit, and carries on idempotently. A tag on any other commit stops the release with an error.
+
+A pull request that changes the release workflows or `scripts/semver/` rehearses the release through `publish.js --dry-run`, at the version `master` holds or should get.
+
+Both paths run `.github/workflows/release.yml`, one release at a time. It builds and packs the packages at the tag's version, refuses to continue if any package is at another version, and checks the tarballs the way a consumer uses them. `scripts/semver/typecheck-consumer.js` typechecks draw's calls against them. `scripts/semver/verify.js` installs the local tarballs into fresh projects, once from the release-asset tarballs and once from the GitHub Packages tarballs, with npm `overrides` pointing their sibling aliases at the local files instead of the registry. Nothing is fetched from GitHub Packages. There, `@excalidraw/excalidraw` has to install alone at the release version and bundle draw's calls and `index.css` with esbuild, under both the `development` and `production` conditions, every file in `themes/index.json` has to import through `./themes/*`, and common, fractional-indexing, math and element each have to load on their own in Node. It then checks each tarball's name, version, registry and sibling aliases, publishes the five packages to GitHub Packages, and creates a GitHub release with the five tarballs attached.
 
 If a run fails, rerun it. It skips the packages that are already published.
 

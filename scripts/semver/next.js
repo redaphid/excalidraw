@@ -66,6 +66,10 @@ const highestLevel = (commits) =>
 // lastTag: the highest vX.Y.Z tag. containingTag: a release tag that already
 // contains the commit, if any. treeVersion: the packages' version in the
 // commit's tree. commits: what the commit adds since lastTag.
+//
+// Only a bump PR changes the version on master, so a release is always the
+// version master's manifests already hold. Changes without a bump yield the
+// version that bump PR should set.
 const plan = ({ lastTag, containingTag, treeVersion, commits }) => {
   const lastVersion = lastTag.slice(1);
   if (containingTag) {
@@ -74,13 +78,11 @@ const plan = ({ lastTag, containingTag, treeVersion, commits }) => {
       reason: `${containingTag} already contains this commit`,
     };
   }
-  // A bump PR set the version by hand and nobody has tagged it yet.
   if (compareVersions(treeVersion, lastVersion) > 0) {
     return {
       release: true,
       version: treeVersion,
-      bump: false,
-      reason: `the packages are at ${treeVersion}, which no tag has released`,
+      reason: `master's manifests are at ${treeVersion}, which no tag has released`,
     };
   }
   const level = highestLevel(commits);
@@ -91,11 +93,20 @@ const plan = ({ lastTag, containingTag, treeVersion, commits }) => {
     };
   }
   return {
-    release: true,
-    version: bumpVersion(lastVersion, level),
-    bump: true,
-    reason: `a ${level} change since ${lastTag}`,
+    release: false,
+    pending: bumpVersion(lastVersion, level),
+    reason: `a ${level} change since ${lastTag}, and the manifests are still at ${treeVersion}`,
   };
+};
+
+const headline = (result) => {
+  if (result.release) {
+    return `Release ${result.version} from master's manifests: ${result.reason}.`;
+  }
+  if (result.pending) {
+    return `Release pending: open a bump PR to ${result.pending} (node scripts/semver/bump.js ${result.pending}). ${result.reason}.`;
+  }
+  return `No release: ${result.reason}.`;
 };
 
 const git = (args, cwd) =>
@@ -164,9 +175,7 @@ if (require.main === module) {
     }
     const result = plan(repository);
     const lines = [
-      result.release
-        ? `Release ${result.version}: ${result.reason}.`
-        : `No release: ${result.reason}.`,
+      headline(result),
       "",
       `Last tag ${repository.lastTag}; packages at ${repository.treeVersion} in ${sha}.`,
       "",
@@ -180,6 +189,9 @@ if (require.main === module) {
       ),
     ];
     console.info(lines.join("\n"));
+    if (result.pending) {
+      console.info(`::notice title=Release pending::${lines[0]}`);
+    }
     if (process.env.GITHUB_STEP_SUMMARY) {
       fs.appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
@@ -192,7 +204,7 @@ if (require.main === module) {
         [
           `release=${result.release}`,
           `version=${result.version ?? ""}`,
-          `bump=${result.bump ?? false}`,
+          `pending=${result.pending ?? ""}`,
           "",
         ].join("\n"),
       );
@@ -205,6 +217,7 @@ if (require.main === module) {
 
 module.exports = {
   bumpVersion,
+  headline,
   compareVersions,
   plan,
   readRepository,

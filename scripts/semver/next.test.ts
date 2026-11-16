@@ -5,7 +5,7 @@ import os from "os";
 import path from "path";
 
 const require = createRequire(import.meta.url);
-const { plan, readRepository, releaseLevel } = require("./next");
+const { headline, plan, readRepository, releaseLevel } = require("./next");
 
 type Commit = { subject: string; body?: string };
 
@@ -55,7 +55,7 @@ describe("releaseLevel", () => {
 });
 
 describe("plan", () => {
-  it("takes the largest change since the last tag", () => {
+  it("asks for a bump PR at the largest change since the last tag", () => {
     expect(
       next(
         titles(
@@ -64,60 +64,68 @@ describe("plan", () => {
           "fix(element): a tap draws nothing (#167)",
         ),
       ),
-    ).toMatchObject({ release: true, version: "1.11.0", bump: true });
+    ).toMatchObject({ release: false, pending: "1.11.0" });
   });
 
-  it("bumps the patch for fixes and perf alone", () => {
+  it("asks for a patch for fixes and perf alone", () => {
     expect(
       next(titles("fix(element): x (#1)", "perf(editor): y (#2)")),
-    ).toMatchObject({ release: true, version: "1.10.1" });
+    ).toMatchObject({ release: false, pending: "1.10.1" });
   });
 
-  it("bumps the major and resets minor and patch for a breaking change", () => {
+  it("asks for a major, resetting minor and patch, for a breaking change", () => {
     expect(
       next(titles("fix(element): x (#1)", "feat(editor)!: y (#2)")),
-    ).toMatchObject({ release: true, version: "2.0.0" });
+    ).toMatchObject({ release: false, pending: "2.0.0" });
   });
 
-  it("does not release chores and docs alone", () => {
-    expect(
-      next(titles("chore(repo): tidy (#1)", "docs(repo): explain (#2)")),
-    ).toMatchObject({ release: false });
+  it("asks for nothing after chores and docs alone", () => {
+    const result = next(
+      titles("chore(repo): tidy (#1)", "docs(repo): explain (#2)"),
+    );
+    expect(result).toMatchObject({ release: false });
+    expect(result.pending).toBeUndefined();
   });
 
-  it("does not release nothing", () => {
-    expect(next([])).toMatchObject({ release: false });
+  it("asks for nothing after nothing", () => {
+    expect(next([]).pending).toBeUndefined();
   });
 
-  it("releases a hand bump at its own version, without another bump", () => {
+  it("releases the version a merged bump PR put in master's manifests", () => {
     expect(
       next(
         titles(
           "feat(editor): x (#1)",
-          "chore(repo): version the packages 1.10.1 (#2)",
+          "chore(repo): version the packages 1.11.0 (#2)",
         ),
-        "1.10.1",
+        "1.11.0",
       ),
-    ).toMatchObject({ release: true, version: "1.10.1", bump: false });
-  });
-
-  it("bumps past the last tag when master's packages lag behind it", () => {
-    expect(next(titles("fix(element): x (#1)"), "1.9.0")).toMatchObject({
-      release: true,
-      version: "1.10.1",
-      bump: true,
-    });
+    ).toMatchObject({ release: true, version: "1.11.0" });
   });
 
   it("does not release a commit a tag already contains", () => {
-    expect(
-      plan({
-        lastTag: "v1.10.1",
-        containingTag: "v1.10.1",
-        treeVersion: "1.10.1",
-        commits: [],
-      }),
-    ).toMatchObject({ release: false });
+    const result = plan({
+      lastTag: "v1.10.1",
+      containingTag: "v1.10.1",
+      treeVersion: "1.10.1",
+      commits: titles("fix(element): x (#1)"),
+    });
+    expect(result).toMatchObject({ release: false });
+    expect(result.pending).toBeUndefined();
+  });
+});
+
+describe("headline", () => {
+  it("names the bump PR to open", () => {
+    expect(headline(next(titles("feat(editor): x (#1)")))).toMatch(
+      /^Release pending: open a bump PR to 1\.11\.0 \(node scripts\/semver\/bump\.js 1\.11\.0\)/,
+    );
+  });
+
+  it("names the release from master's manifests", () => {
+    expect(headline(next([], "1.11.0"))).toMatch(
+      /^Release 1\.11\.0 from master's manifests/,
+    );
   });
 });
 
@@ -151,35 +159,21 @@ describe("readRepository", { timeout: 30_000 }, () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it("counts from the master commit under a bot bump commit's tag", () => {
-    const released = commit("fix(element): released (#1)");
-    git("checkout", "-q", "--detach");
-    commit("chore(repo): version the packages 1.0.1", "1.0.1");
-    git("tag", "v1.0.1");
-    git("checkout", "-q", "master");
-    expect(planAt(released)).toMatchObject({ release: false });
-
-    const feature = commit("feat(editor): after the release (#2)");
-    expect(planAt(feature)).toMatchObject({
-      release: true,
-      version: "1.1.0",
-      bump: true,
-    });
-    expect(readRepository({ sha: feature, cwd: dir }).commits).toHaveLength(1);
-  });
-
-  it("skips a commit that a hand tag already points at", () => {
+  it("goes feature, then bump PR, then release, then counts from the tag", () => {
     commit("chore(repo): start", "1.0.0");
     git("tag", "v1.0.0");
-    commit("fix(element): x (#1)");
+    const fix = commit("fix(element): x (#1)");
+    expect(planAt(fix)).toMatchObject({ release: false, pending: "1.0.1" });
+
     const bumped = commit("chore(repo): version the packages 1.0.1", "1.0.1");
-    expect(planAt(bumped)).toMatchObject({
-      release: true,
-      version: "1.0.1",
-      bump: false,
-    });
-    git("tag", "v1.0.1");
+    expect(planAt(bumped)).toMatchObject({ release: true, version: "1.0.1" });
+
+    git("tag", "v1.0.1", bumped);
     expect(planAt(bumped)).toMatchObject({ release: false });
+
+    const feature = commit("feat(editor): y (#2)", "1.0.1");
+    expect(planAt(feature)).toMatchObject({ release: false, pending: "1.1.0" });
+    expect(readRepository({ sha: feature, cwd: dir }).commits).toHaveLength(1);
   });
 
   it("does not release a commit under a tag other than the highest", () => {
@@ -187,7 +181,9 @@ describe("readRepository", { timeout: 30_000 }, () => {
     git("tag", "v1.1.0");
     const fix = commit("fix(element): x (#1)");
     git("tag", "v1.0.1");
-    expect(planAt(fix)).toMatchObject({ release: false });
+    const result = planAt(fix);
+    expect(result).toMatchObject({ release: false });
+    expect(result.pending).toBeUndefined();
   });
 
   it("reads the highest tag by semver, not by name", () => {
@@ -196,6 +192,6 @@ describe("readRepository", { timeout: 30_000 }, () => {
     git("tag", "v1.10.0");
     git("tag", "v1.10.0-rc.1");
     const fix = commit("fix(element): x (#1)", "1.10.0");
-    expect(planAt(fix)).toMatchObject({ version: "1.10.1" });
+    expect(planAt(fix)).toMatchObject({ pending: "1.10.1" });
   });
 });
