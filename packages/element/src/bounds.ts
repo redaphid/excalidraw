@@ -28,7 +28,11 @@ import type { AppState } from "@excalidraw/excalidraw/types";
 import type { Mutable } from "@excalidraw/common/utility-types";
 
 import { getElementDetailScale, getNominalSize } from "./authoring";
-import { generateRoughOptions, getFreedrawMaxStrokeRadius } from "./shape";
+import {
+  generateRoughOptions,
+  getFreedrawFillPolygon,
+  getFreedrawMaxStrokeRadius,
+} from "./shape";
 import { ShapeCache } from "./shape";
 import { LinearElementEditor } from "./linearElementEditor";
 import { getBoundTextElement, getContainerElement } from "./textElement";
@@ -47,7 +51,7 @@ import {
   deconstructDiamondElement,
   deconstructRectanguloidElement,
 } from "./utils";
-import { intersectElementWithLineSegment } from "./collision";
+import { intersectElementWithLineSegment, shouldTestInside } from "./collision";
 import { elementOverlapsWithFrame, getContainingFrame } from "./frame";
 
 import type { Drawable, Op } from "roughjs/bin/core";
@@ -1064,6 +1068,48 @@ export const getElementPaintBounds = (
   const [x1, y1, x2, y2] = getElementBounds(element, elementsMap);
   const extent = getElementPaintExtent(element);
   return [x1 - extent, y1 - extent, x2 + extent, y2 + extent];
+};
+
+/** the part of an element's hit threshold that does not depend on the zoom */
+export const getElementStrokeHitThreshold = (element: ExcalidrawElement) =>
+  element.strokeWidth / 2 + 0.1 * getElementDetailScale(element);
+
+/**
+ * How far past `getElementPaintBounds` a point can lie and still hit the
+ * element, leaving out the zoom-dependent part of the hit threshold. A hit
+ * lies within the element's threshold of `getElementBounds`, and the paint
+ * bounds already reach half the stroke past those. A freedraw hit can also
+ * reach the stroke radius past them, which the paint bounds include in full,
+ * and the fill of a rotated freedraw loop can bulge past its points' bounds.
+ */
+export const getElementHitSlack = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+) => {
+  const threshold = getElementStrokeHitThreshold(element);
+  if (!isFreeDrawElement(element)) {
+    return Math.max(
+      threshold - element.strokeWidth / 2,
+      -element.strokeWidth / 2,
+    );
+  }
+  if (element.angle === 0 || !shouldTestInside(element)) {
+    return threshold;
+  }
+  // the fill test rotates the point about the centre of the unrotated bounds
+  const [ux1, uy1, ux2, uy2] = getElementBounds(element, elementsMap, true);
+  const center = pointFrom<GlobalPoint>((ux1 + ux2) / 2, (uy1 + uy2) / 2);
+  const [x1, y1, x2, y2] = getElementBounds(element, elementsMap);
+  let bulge = 0;
+  for (const [x, y] of getFreedrawFillPolygon(element)) {
+    const [px, py] = pointRotateRads(
+      pointFrom<GlobalPoint>(element.x + x, element.y + y),
+      center,
+      element.angle,
+    );
+    bulge = Math.max(bulge, x1 - px, y1 - py, px - x2, py - y2);
+  }
+  return Math.max(threshold, bulge - getFreedrawMaxStrokeRadius(element));
 };
 
 export const getCommonBounds = (
