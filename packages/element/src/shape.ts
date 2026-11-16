@@ -1314,10 +1314,33 @@ const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
 
 const easeOutSine = (t: number) => Math.sin((t * Math.PI) / 2);
 
-let strokeBeingDrawn: {
-  options: StrokeOptions;
-  stroke: IncrementalStroke;
-} | null = null;
+/**
+ * The incremental strokes of the variable-width freedraw elements outlined
+ * last, by element id, least recent first. More than one so that strokes
+ * outlined in turn, such as a collaborator's growing while you draw, keep
+ * growing instead of starting over each time.
+ */
+const variableStrokes = new Map<
+  ExcalidrawFreeDrawElement["id"],
+  { options: StrokeOptions; stroke: IncrementalStroke }
+>();
+const VARIABLE_STROKES_KEPT = 4;
+
+const getVariableStroke = (
+  id: ExcalidrawFreeDrawElement["id"],
+  options: StrokeOptions,
+) => {
+  let entry = variableStrokes.get(id);
+  variableStrokes.delete(id);
+  if (!entry || !isSameStrokeOptions(entry.options, options)) {
+    entry = { options, stroke: new IncrementalStroke(options) };
+  }
+  variableStrokes.set(id, entry);
+  if (variableStrokes.size > VARIABLE_STROKES_KEPT) {
+    variableStrokes.delete(variableStrokes.keys().next().value!);
+  }
+  return entry.stroke;
+};
 
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
@@ -1347,14 +1370,7 @@ const getVariableWidthFreedrawOutline = (
     return getStroke([[0, 0, 0.5]], options) as [number, number][];
   }
 
-  if (
-    !strokeBeingDrawn ||
-    !isSameStrokeOptions(strokeBeingDrawn.options, options)
-  ) {
-    strokeBeingDrawn = { options, stroke: new IncrementalStroke(options) };
-  }
-
-  return strokeBeingDrawn.stroke.getOutline(
+  return getVariableStroke(element.id, options).getOutline(
     element.points,
     element.simulatePressure ? undefined : element.pressures,
   ) as [number, number][];
