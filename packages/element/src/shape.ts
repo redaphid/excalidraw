@@ -50,6 +50,7 @@ import {
   getStroke,
   getStrokePoints,
   IncrementalStroke,
+  isSameStrokeOptions,
 } from "./perfectFreehand";
 
 import { elementWithCanvasCache } from "./renderElement";
@@ -1313,18 +1314,33 @@ const getFreedrawStreamline = (element: ExcalidrawFreeDrawElement) =>
 
 const easeOutSine = (t: number) => Math.sin((t * Math.PI) / 2);
 
-let strokeBeingDrawn: {
-  options: StrokeOptions;
-  stroke: IncrementalStroke;
-} | null = null;
+/**
+ * The incremental strokes of the variable-width freedraw elements outlined
+ * last, by element id, least recent first. More than one so that strokes
+ * outlined in turn, such as a collaborator's growing while you draw, keep
+ * growing instead of starting over each time.
+ */
+const variableStrokes = new Map<
+  ExcalidrawFreeDrawElement["id"],
+  { options: StrokeOptions; stroke: IncrementalStroke }
+>();
+const VARIABLE_STROKES_KEPT = 4;
 
-const isSameStrokeOptions = (a: StrokeOptions, b: StrokeOptions) =>
-  a.simulatePressure === b.simulatePressure &&
-  a.size === b.size &&
-  a.thinning === b.thinning &&
-  a.streamline === b.streamline &&
-  a.start?.taper === b.start?.taper &&
-  a.end?.taper === b.end?.taper;
+const getVariableStroke = (
+  id: ExcalidrawFreeDrawElement["id"],
+  options: StrokeOptions,
+) => {
+  let entry = variableStrokes.get(id);
+  variableStrokes.delete(id);
+  if (!entry || !isSameStrokeOptions(entry.options, options)) {
+    entry = { options, stroke: new IncrementalStroke(options) };
+  }
+  variableStrokes.set(id, entry);
+  if (variableStrokes.size > VARIABLE_STROKES_KEPT) {
+    variableStrokes.delete(variableStrokes.keys().next().value!);
+  }
+  return entry.stroke;
+};
 
 /**
  * Pressure-sensitive (variable width) freedraw outline, rendered with
@@ -1354,14 +1370,7 @@ const getVariableWidthFreedrawOutline = (
     return getStroke([[0, 0, 0.5]], options) as [number, number][];
   }
 
-  if (
-    !strokeBeingDrawn ||
-    !isSameStrokeOptions(strokeBeingDrawn.options, options)
-  ) {
-    strokeBeingDrawn = { options, stroke: new IncrementalStroke(options) };
-  }
-
-  return strokeBeingDrawn.stroke.getOutline(
+  return getVariableStroke(element.id, options).getOutline(
     element.points,
     element.simulatePressure ? undefined : element.pressures,
   ) as [number, number][];
@@ -1371,9 +1380,9 @@ const getVariableWidthFreedrawOutline = (
  * Uniform (constant width) freedraw outline, rendered with the laser-pointer
  * geometry. Pressure is pinned to 1 so the stroke keeps a constant width.
  *
- * The laser pointer drops the start cap under a size of 0.1 and reads
- * corners from pointer speed, both in absolute units. The outline is built at the element's size at 1x and
- * scaled back, so a stroke drawn deep in a zoom looks as it does at 1x.
+ * The laser pointer reads corners from pointer speed in absolute units. The
+ * outline is built at the element's size at 1x and scaled back, so a stroke
+ * drawn deep in a zoom looks as it does at 1x.
  */
 const getConstantWidthFreedrawOutline = (
   element: ExcalidrawFreeDrawElement,
@@ -1453,8 +1462,9 @@ const med = (A: number[], B: number[]) => {
   return [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
 };
 
+// Settled outline points are the same arrays from one outline to the next.
 const isSamePoint = (A: number[], B: number[]) =>
-  A[0] === B[0] && A[1] === B[1];
+  A === B || (A[0] === B[0] && A[1] === B[1]);
 
 const joinSegments = (a: string, b: string) => (a && b ? `${a} ${b}` : a || b);
 

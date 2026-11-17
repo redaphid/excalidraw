@@ -34,6 +34,8 @@
  * SOFTWARE.
  */
 
+import { isDevEnv, isTestEnv } from "@excalidraw/common";
+
 /**
  * The options object for `getStroke` or `getStrokePoints`.
  * @param points An array of points (as `[x, y, pressure]` or `{x, y, pressure}`). Pressure is optional in both cases.
@@ -67,6 +69,21 @@ export interface StrokeOptions {
   // Whether to handle the points as a completed stroke.
   last?: boolean;
 }
+
+const isSameLineEnd = (a: StrokeOptions["start"], b: StrokeOptions["start"]) =>
+  a?.cap === b?.cap && a?.taper === b?.taper && a?.easing === b?.easing;
+
+/** Whether two option sets draw the same outline from the same points. */
+export const isSameStrokeOptions = (a: StrokeOptions, b: StrokeOptions) =>
+  a.size === b.size &&
+  a.thinning === b.thinning &&
+  a.smoothing === b.smoothing &&
+  a.streamline === b.streamline &&
+  a.easing === b.easing &&
+  a.simulatePressure === b.simulatePressure &&
+  isSameLineEnd(a.start, b.start) &&
+  isSameLineEnd(a.end, b.end) &&
+  a.last === b.last;
 
 /**
  * The points returned by `getStrokePoints`, and the input for `getStrokeOutlinePoints`.
@@ -942,6 +959,10 @@ export class IncrementalStroke {
   private readonly growable: boolean;
 
   private inputs: number[][] = [];
+  // The arrays last read, so an unchanged point is recognized by identity
+  // instead of by value: callers append to a copy of the previous points.
+  private readPoints: readonly (readonly number[])[] = [];
+  private readPressures: readonly number[] | undefined;
   private strokePoints: StrokePointsState | null = null;
   private outline: OutlineState | null = null;
   private outlined = 0;
@@ -976,6 +997,8 @@ export class IncrementalStroke {
     if (!this.isGrowing(points, pressures)) {
       this.reset();
     }
+    this.readPoints = points;
+    this.readPressures = pressures;
 
     const max = points.length - 1;
     const state = (this.strokePoints ??= startStrokePoints(
@@ -1038,8 +1061,16 @@ export class IncrementalStroke {
     }
 
     const outline = (this.outline ??= startOutline(strokePoints, s));
+    const { length: left } = outline.leftPts;
+    const { length: right } = outline.rightPts;
     for (let i = this.outlined; i <= last; i++) {
       addOutlinePoint(outline, strokePoints, i, s);
+    }
+    if (isDevEnv() || isTestEnv()) {
+      // every outline returned from now on shares these points, so changing
+      // one in place would change them all
+      outline.leftPts.slice(left).forEach(Object.freeze);
+      outline.rightPts.slice(right).forEach(Object.freeze);
     }
     this.outlined = last + 1;
     return this.outlined;
@@ -1054,17 +1085,26 @@ export class IncrementalStroke {
     points: readonly (readonly number[])[],
     pressures?: readonly number[],
   ) {
-    const { inputs } = this;
+    const { inputs, readPoints } = this;
     if (inputs.length >= points.length) {
       return false;
     }
+    const samePressures = pressures === this.readPressures;
+    const current = (!samePressures && pressures) || [];
+    const read = (!samePressures && this.readPressures) || [];
     for (let i = 0; i < inputs.length; i++) {
-      const read = inputs[i];
       const point = points[i];
       if (
-        read[0] !== point[0] ||
-        read[1] !== point[1] ||
-        read[2] !== pressureOf(points, pressures, i)
+        point === readPoints[i] &&
+        (samePressures || current[i] === read[i])
+      ) {
+        continue;
+      }
+      const input = inputs[i];
+      if (
+        input[0] !== point[0] ||
+        input[1] !== point[1] ||
+        input[2] !== pressureOf(points, pressures, i)
       ) {
         return false;
       }

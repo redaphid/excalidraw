@@ -106,6 +106,7 @@ import {
   isSelectionLikeTool,
   oneOf,
   getStrokeWidthByKey,
+  type Bounds,
 } from "@excalidraw/common";
 
 import {
@@ -157,6 +158,7 @@ import {
   getAuthoringScale,
   getAuthoringScaleField,
   getElementDetailScale,
+  getElementStrokeHitThreshold,
   getCornerRadius,
   isPathALoop,
   createSrcDoc,
@@ -283,6 +285,8 @@ import type {
 
 import type { TransformHandleDirection } from "@excalidraw/element";
 
+import type { ArrangeOutcome, ArrangeRequest } from "@excalidraw/element";
+
 import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
 
 import {
@@ -319,6 +323,7 @@ import {
   actionToggleMidpointSnapping,
   actionToggleCropEditor,
 } from "../actions";
+import { actionArrangeElements, arrangeScene } from "../actions/actionArrange";
 import { actionWrapTextInContainer } from "../actions/actionBoundText";
 import { actionPaste } from "../actions/actionClipboard";
 import { actionCopyElementLink } from "../actions/actionElementLink";
@@ -871,6 +876,7 @@ class App extends React.Component<AppProps, AppState> {
       onUserFollow: (cb) => this.onUserFollowEmitter.on(cb),
       onStateChange: this.onStateChange,
       onEvent: this.onEvent,
+      arrange: this.arrange,
     };
     return api;
   }
@@ -3385,6 +3391,19 @@ class App extends React.Component<AppProps, AppState> {
   });
 
   public scheduleCapture = () => this.store.scheduleCapture();
+
+  public arrange = async (
+    request: ArrangeRequest = {},
+  ): Promise<ArrangeOutcome> => {
+    const outcome = await arrangeScene(this.scene, this.state, request);
+    if (outcome.status === "arranged") {
+      this.syncActionResult({
+        elements: this.scene.getElementsIncludingDeleted(),
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+      });
+    }
+    return outcome;
+  };
 
   // Lifecycle
 
@@ -6394,18 +6413,17 @@ ${css}
     const iframeLikes: Ordered<NonDeleted<ExcalidrawIframeLikeElement>>[] = [];
 
     const elementsMap = this.scene.getNonDeletedElementsMap();
+    const candidates = this.getHitTestCandidates(x, y);
 
     const elements = (
       opts?.includeBoundTextElement && opts?.includeLockedElements
-        ? this.scene.getNonDeletedElements()
-        : this.scene
-            .getNonDeletedElements()
-            .filter(
-              (element) =>
-                (opts?.includeLockedElements || !element.locked) &&
-                (opts?.includeBoundTextElement ||
-                  !(isTextElement(element) && element.containerId)),
-            )
+        ? candidates
+        : candidates.filter(
+            (element) =>
+              (opts?.includeLockedElements || !element.locked) &&
+              (opts?.includeBoundTextElement ||
+                !(isTextElement(element) && element.containerId)),
+          )
     )
       .filter((el) => this.hitElement(x, y, el))
       .filter((element) => {
@@ -6443,14 +6461,57 @@ ${css}
     return elements;
   }
 
+  /**
+   * The elements `getElementsAtPosition` has to test at (x, y), in scene
+   * order: those whose paint bounds lie within the largest threshold
+   * `hitElement` can give them, the frames (their names sit outside them),
+   * the selected elements (their bounding box can reach past their paint),
+   * and the containers of labels near the point (a label can overflow its
+   * container). May include elements the point cannot hit.
+   */
+  private getHitTestCandidates(x: number, y: number) {
+    // covers rounding that differs between the index and the hit test
+    const margin =
+      this.getZoomHitThreshold() + 1e-9 * Math.max(1, Math.abs(x), Math.abs(y));
+    const rect: Bounds = [x - margin, y - margin, x + margin, y + margin];
+    const alwaysIncluded = new Set<string>();
+    for (const frame of this.scene.getNonDeletedFramesLikes()) {
+      alwaysIncluded.add(frame.id);
+    }
+    for (const id in this.state.selectedElementIds) {
+      alwaysIncluded.add(id);
+    }
+    const candidates = this.renderer.getHitTestCandidates(rect, alwaysIncluded);
+
+    let candidateIds: Set<string> | null = null;
+    let missingContainer = false;
+    for (const element of candidates) {
+      if (isBoundToContainer(element)) {
+        candidateIds ??= new Set(candidates.map((candidate) => candidate.id));
+        if (!candidateIds.has(element.containerId)) {
+          alwaysIncluded.add(element.containerId);
+          missingContainer = true;
+        }
+      }
+    }
+    return missingContainer
+      ? this.renderer.getHitTestCandidates(rect, alwaysIncluded)
+      : candidates;
+  }
+
   getElementHitThreshold(element: ExcalidrawElement) {
     return Math.max(
-      element.strokeWidth / 2 + 0.1 * getElementDetailScale(element),
-      // NOTE: Here be dragons. Do not go under the 0.63 multiplier unless you're
-      // willing to test extensively. The hit testing starts to become unreliable
-      // due to FP imprecision under 0.63 in high zoom levels.
-      0.85 * (DEFAULT_COLLISION_THRESHOLD / this.state.zoom.value),
+      getElementStrokeHitThreshold(element),
+      this.getZoomHitThreshold(),
     );
+  }
+
+  /** the part of `getElementHitThreshold` that depends on the zoom */
+  private getZoomHitThreshold() {
+    // NOTE: Here be dragons. Do not go under the 0.63 multiplier unless you're
+    // willing to test extensively. The hit testing starts to become unreliable
+    // due to FP imprecision under 0.63 in high zoom levels.
+    return 0.85 * (DEFAULT_COLLISION_THRESHOLD / this.state.zoom.value);
   }
 
   hitElement(
@@ -13203,6 +13264,7 @@ ${css}
       actionBindText,
       actionWrapTextInContainer,
       actionUngroup,
+      actionArrangeElements,
       CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,

@@ -1,6 +1,7 @@
 import {
   ElementsRTree,
   getCommonFrameId,
+  getElementHitSlack,
   getElementPaintBounds,
   getFrameChildrenInsertionIndex,
   getContainerElement,
@@ -11,6 +12,7 @@ import {
 
 import {
   arrayToMap,
+  type Bounds,
   memoize,
   toBrandedType,
   viewportCoordsToSceneCoords,
@@ -20,8 +22,8 @@ import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
   NonDeleted,
-  NonDeletedElementsMap,
   NonDeletedExcalidrawElement,
+  Ordered,
 } from "@excalidraw/element/types";
 
 import type { Scene } from "@excalidraw/element";
@@ -222,21 +224,46 @@ export class Renderer {
     return set;
   }
 
-  private visibleElementsTree = new ElementsRTree<NonDeletedExcalidrawElement>(
+  /**
+   * The scene's non-deleted elements by paint bounds, shared by the view's
+   * cull and hit testing. Both query it with the scene's array and map, so
+   * neither makes it re-sync for the other.
+   */
+  private elementsTree = new ElementsRTree<
+    Ordered<NonDeletedExcalidrawElement>
+  >(
     getElementPaintBounds,
     (element, elementsMap) =>
       isTextElement(element) ? getContainerElement(element, elementsMap) : null,
     () => this.getOwnerWindow(),
+    getElementHitSlack,
   );
 
+  /**
+   * The scene's non-deleted elements that a point in `rect` could hit with
+   * a zoom-dependent threshold up to the rect's margin, plus those in
+   * `alwaysIncluded`, in scene order. May include elements it cannot hit.
+   */
+  public getHitTestCandidates(
+    rect: Bounds,
+    alwaysIncluded: ReadonlySet<string> | null,
+  ): readonly Ordered<NonDeletedExcalidrawElement>[] {
+    return this.elementsTree.queryWithSlack(
+      this.scene.getNonDeletedElements(),
+      this.scene.getNonDeletedElementsMap(),
+      rect,
+      alwaysIncluded,
+    );
+  }
+
   private getVisibleCanvasElements({
-    elements,
+    renderableElements,
     elementsMap,
     newElement,
     ...viewport
   }: {
-    elements: readonly NonDeletedExcalidrawElement[];
-    elementsMap: NonDeletedElementsMap;
+    renderableElements: readonly NonDeletedExcalidrawElement[];
+    elementsMap: RenderableElementsMap;
     newElement: AppState["newElement"];
     zoom: AppState["zoom"];
     offsetLeft: AppState["offsetLeft"];
@@ -257,12 +284,18 @@ export class Renderer {
       },
       viewport,
     );
-    return this.visibleElementsTree.query(
+    const elements = this.scene.getNonDeletedElements();
+    const visibleElements = this.elementsTree.query(
       elements,
-      elementsMap,
+      this.scene.getNonDeletedElementsMap(),
       [topLeft.x, topLeft.y, bottomRight.x, bottomRight.y],
       newElement?.id ?? null,
     );
+    return renderableElements.length === elements.length
+      ? visibleElements
+      : visibleElements.filter(
+          (element) => elementsMap.get(element.id) === element,
+        );
   }
 
   // keyed on what decides its entries, so pan, zoom and in-frame drawing
@@ -382,7 +415,7 @@ export class Renderer {
         });
 
       const visibleElements = this.getVisibleCanvasElements({
-        elements: renderableElements,
+        renderableElements,
         elementsMap,
         newElement,
         zoom,
@@ -506,6 +539,6 @@ export class Renderer {
     this._getRenderableElements.clear();
     this._getVisibleElementsWithRenderOffsets.clear();
     this._splitAtNewElement.clear();
-    this.visibleElementsTree.destroy();
+    this.elementsTree.destroy();
   }
 }

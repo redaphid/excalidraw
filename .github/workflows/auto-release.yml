@@ -1,0 +1,94 @@
+name: Auto release
+
+# Releases go feature PR, then bump PR, then release. On each merge to master,
+# scripts/semver/next.js decides:
+# - master's manifests hold a version no tag has released (a bump PR merged):
+#   call release.yml, which tags master's own commit and publishes it.
+# - feat, fix, perf, revert or breaking changes since the last tag, with the
+#   manifests not yet bumped: succeed with "Release pending: open a bump PR to
+#   X.Y.Z" in the summary. feat bumps the minor, fix, perf and revert the patch,
+#   and a ! or a BREAKING CHANGE footer the major.
+# - anything else: no release.
+# Nothing here pushes to master; the bump lands through a PR.
+
+on:
+  push:
+    branches:
+      - master
+  # Rehearses a release at the version master holds or should get, without
+  # publishing.
+  pull_request:
+    paths:
+      - .github/workflows/auto-release.yml
+      - .github/workflows/release.yml
+      - scripts/semver/**
+
+# One master run at a time, in order. A newer push replaces a pending run, and
+# its commit contains the older one's.
+concurrency:
+  group: auto-release-${{ github.event_name == 'push' && 'master' || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      release: ${{ steps.next.outputs.release }}
+      version: ${{ steps.next.outputs.version }}
+      pending: ${{ steps.next.outputs.pending }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - id: next
+        env:
+          # On a pull request, master's tip plus this PR's title as if merged.
+          SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ -n "$PR_TITLE" ]; then
+            node scripts/semver/next.js --sha="$SHA" --title="$PR_TITLE"
+          else
+            node scripts/semver/next.js --sha="$SHA"
+          fi
+
+  rehearse:
+    needs: plan
+    if: github.event_name == 'pull_request' && (needs.plan.outputs.release == 'true' || needs.plan.outputs.pending != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.plan.outputs.version || needs.plan.outputs.pending }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      # A no-op for a version master already holds. A pending version is set in
+      # this workspace only, never committed.
+      - run: node scripts/semver/bump.js "$VERSION"
+      - run: node scripts/semver/pack.js --version="$VERSION"
+      - run: node scripts/semver/typecheck-consumer.js --version="$VERSION"
+      - run: node scripts/semver/verify.js --version="$VERSION"
+      - run: node scripts/semver/publish.js --version="$VERSION" --dry-run
+      - run: echo "Rehearsed $VERSION; publish.js --dry-run passed." >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    needs: plan
+    if: github.event_name == 'push' && needs.plan.outputs.release == 'true'
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/release.yml
+    with:
+      sha: ${{ github.sha }}
+      version: ${{ needs.plan.outputs.version }}

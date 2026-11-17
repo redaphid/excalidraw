@@ -3,7 +3,11 @@ import { pointFrom, type LocalPoint } from "@excalidraw/math";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
 import { ShapeCache, getFreedrawOutlinePoints } from "../src";
-import { IncrementalStroke } from "../src/perfectFreehand";
+import {
+  IncrementalStroke,
+  getStroke as getVendoredStroke,
+  isSameStrokeOptions,
+} from "../src/perfectFreehand";
 import { IncrementalSvgPath } from "../src/shape";
 
 import {
@@ -61,6 +65,23 @@ const excalidrawOptions = (
 
 const withPressures = (points: number[][], pressures: number[]) =>
   points.map(([x, y], i) => [x, y, pressures[i]]);
+
+/** the points, wrapped to count how many coordinates are read from them */
+const countingReads = (points: number[][]) => {
+  const reads = { count: 0 };
+  const counted = points.map(
+    (point) =>
+      new Proxy(point, {
+        get: (target, key, receiver) => {
+          if (key === "0" || key === "1" || key === "2") {
+            reads.count++;
+          }
+          return Reflect.get(target, key, receiver);
+        },
+      }),
+  );
+  return { counted, reads };
+};
 
 describe("IncrementalStroke", () => {
   const random = seeded(0x0de1);
@@ -142,6 +163,36 @@ describe("IncrementalStroke", () => {
     expect(stroke.getOutline(shorter)).toEqual(getStroke(shorter, options));
   });
 
+  it.each([true, false])(
+    "reads only the new points when a long stroke grows (simulatePressure %s)",
+    (simulatePressure) => {
+      const { points, pressures } = randomStroke(seeded(0x6e5), 3000, 1);
+      const { counted, reads } = countingReads(points);
+      const stroke = new IncrementalStroke(
+        excalidrawOptions(4.25, simulatePressure, 0.5),
+      );
+      const draw = (n: number) =>
+        simulatePressure
+          ? stroke.getOutline(counted.slice(0, n))
+          : stroke.getOutline(counted.slice(0, n), pressures.slice(0, n));
+      for (let n = 1; n < points.length; n++) {
+        draw(n);
+      }
+
+      reads.count = 0;
+      const outline = draw(points.length);
+      const read = reads.count;
+
+      const input = simulatePressure
+        ? points
+        : withPressures(points, pressures);
+      expect(outline).toEqual(
+        getStroke(input, excalidrawOptions(4.25, simulatePressure, 0.5)),
+      );
+      expect(read).toBeLessThan(20);
+    },
+  );
+
   it("starts over when an earlier pressure changes", () => {
     const { points, pressures } = randomStroke(random, 120, 1);
     const options = excalidrawOptions(4.25, false, 0.5);
@@ -152,6 +203,31 @@ describe("IncrementalStroke", () => {
     expect(stroke.getOutline(points, lighter)).toEqual(
       getStroke(withPressures(points, lighter), options),
     );
+  });
+
+  it("keeps its outlines intact when one it returned is changed in place", () => {
+    const { points, pressures } = randomStroke(seeded(0xf2e), 100, 1);
+    const options = excalidrawOptions(4.25, false, 0.5);
+    const stroke = new IncrementalStroke(options);
+    const refusals = new Set<string>();
+    for (let n = 1; n < points.length; n++) {
+      const outline = stroke.getOutline(
+        points.slice(0, n),
+        pressures.slice(0, n),
+      );
+      for (const point of outline) {
+        try {
+          point[0] += 1000;
+        } catch (error) {
+          refusals.add((error as Error).constructor.name);
+        }
+      }
+    }
+
+    expect(stroke.getOutline(points, pressures)).toEqual(
+      getStroke(withPressures(points, pressures), options),
+    );
+    expect([...refusals]).toEqual(["TypeError"]);
   });
 });
 
@@ -212,6 +288,52 @@ describe("a freedraw element drawn point by point", () => {
   );
 });
 
+describe("freedraw elements outlined in turn", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("outline only their new points as each grows", () => {
+    const random = seeded(0x2a1);
+    const strokes = [
+      randomStroke(random, 1500, 1),
+      randomStroke(random, 1500, 1),
+    ];
+    const ids = strokes.map(
+      () =>
+        (API.createElement({ type: "freedraw" }) as ExcalidrawFreeDrawElement)
+          .id,
+    );
+    const element = (k: number, n: number): ExcalidrawFreeDrawElement => ({
+      ...(API.createElement({
+        type: "freedraw",
+        id: ids[k],
+        strokeOptions: { variability: "variable", streamline: 0.5 },
+        points: strokes[k].points
+          .slice(0, n)
+          .map(([x, y]) => pointFrom<LocalPoint>(x, y)),
+      }) as ExcalidrawFreeDrawElement),
+      simulatePressure: false,
+      pressures: strokes[k].pressures.slice(0, n),
+    });
+
+    for (let n = 1; n < 1500; n++) {
+      getFreedrawOutlinePoints(element(0, n));
+      getFreedrawOutlinePoints(element(1, n));
+    }
+
+    // the pressure easing runs once per outlined point
+    const sin = vi.spyOn(Math, "sin");
+    const grown = element(0, 1500);
+    const outline = getFreedrawOutlinePoints(grown);
+    const outlined = sin.mock.calls.length;
+    sin.mockRestore();
+
+    expect(outline).toEqual(getVariableWidthFreedrawOutline(grown));
+    expect(outlined).toBeLessThan(150);
+  });
+});
+
 describe("IncrementalSvgPath", () => {
   it.each([
     { pen: "variable", simulatePressure: true },
@@ -240,6 +362,26 @@ describe("IncrementalSvgPath", () => {
       }
     },
   );
+
+  it("reads only the points around a change to a long outline", () => {
+    const outline = randomStroke(seeded(0x10e), 4000, 1).points;
+    const { counted, reads } = countingReads(outline);
+    const path = new IncrementalSvgPath();
+    path.getPath(counted);
+
+    const grown = [
+      ...counted.slice(0, 2000),
+      [1, 2],
+      [3, 4],
+      ...counted.slice(2000),
+    ];
+    reads.count = 0;
+    const pathed = path.getPath(grown);
+    const read = reads.count;
+
+    expect(pathed).toBe(getSvgPathFromStroke(grown));
+    expect(read).toBeLessThan(50);
+  });
 
   it("paths outlines edited anywhere as before", () => {
     const random = seeded(0xed17);
@@ -278,5 +420,58 @@ describe("IncrementalSvgPath", () => {
     expect(path.getPath(outline.slice(0, 1))).toBe(
       getSvgPathFromStroke(outline.slice(0, 1)),
     );
+  });
+});
+
+describe("isSameStrokeOptions", () => {
+  const sine = (t: number) => Math.sin((t * Math.PI) / 2);
+  const square = (t: number) => t * t;
+  const options = (overrides: StrokeOptions = {}): StrokeOptions => ({
+    size: 16,
+    thinning: 0.6,
+    smoothing: 0.5,
+    streamline: 0.5,
+    easing: sine,
+    simulatePressure: true,
+    last: true,
+    ...overrides,
+  });
+  const points = Array.from({ length: 24 }, (_, i) => [
+    i * 6,
+    Math.sin(i / 3) * 20,
+  ]);
+
+  it("matches equal options built as separate objects", () => {
+    expect(
+      isSameStrokeOptions(
+        options({ start: { taper: 30 }, end: { taper: 30 } }),
+        options({ start: { taper: 30 }, end: { taper: 30 } }),
+      ),
+    ).toBe(true);
+  });
+
+  // Each pair draws a different outline, so a cached stroke built for one
+  // must not serve the other.
+  it.each<[string, StrokeOptions, StrokeOptions]>([
+    ["smoothing", options(), options({ smoothing: 0.1 })],
+    ["easing", options(), options({ easing: square })],
+    ["last", options(), options({ last: false })],
+    ["start cap", options(), options({ start: { cap: false } })],
+    ["end cap", options(), options({ end: { cap: false } })],
+    [
+      "start easing",
+      options({ start: { taper: 40 } }),
+      options({ start: { taper: 40, easing: square } }),
+    ],
+    [
+      "end easing",
+      options({ end: { taper: 40 } }),
+      options({ end: { taper: 40, easing: square } }),
+    ],
+  ])("tells apart options that differ in %s", (_, a, b) => {
+    expect(getVendoredStroke(points, a)).not.toEqual(
+      getVendoredStroke(points, b),
+    );
+    expect(isSameStrokeOptions(a, b)).toBe(false);
   });
 });
