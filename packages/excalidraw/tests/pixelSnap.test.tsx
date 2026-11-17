@@ -408,6 +408,39 @@ describe("element placement after the snap", () => {
     }
     expect(worst).toBeLessThanOrEqual(0.5 + 1e-6);
   });
+
+  // During a zoom gesture the bitmaps drawn at the last zoom are stretched,
+  // not snapped: their phase is stretched with them.
+  it("keeps a stretched bitmap where the scene puts it during a zoom gesture", async () => {
+    const dpr = window.devicePixelRatio;
+    API.setElements([
+      API.createElement({
+        type: "rectangle",
+        x: 10.37,
+        y: 20.61,
+        width: 120,
+        height: 60,
+      }),
+    ]);
+    await renderAt(1, 3.3, -7.77);
+    (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+    const zoom = 1.37;
+    API.setAppState({
+      shouldCacheIgnoreZoom: true,
+      zoom: { value: zoom as NormalizedZoomValue },
+    });
+    const [origin] = await waitFor(() => {
+      const origins = getElementOrigins();
+      expect(origins.length).toBeGreaterThan(0);
+      return origins;
+    });
+    const snapped = snapScrollToDevicePixels(
+      { scrollX: 3.3, scrollY: -7.77, zoom: { value: zoom } },
+      dpr,
+    );
+    expect(origin.x).toBeCloseTo((10.37 + snapped.scrollX) * zoom * dpr, 6);
+    API.setAppState({ shouldCacheIgnoreZoom: false });
+  });
 });
 
 describe("scroll pixel snap", () => {

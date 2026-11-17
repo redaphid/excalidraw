@@ -1214,11 +1214,10 @@ const drawElementFromCanvas = (
       drawX = 0;
       drawY = 0;
     } else if (elementWithCanvas.phaseX || elementWithCanvas.phaseY) {
-      // unsnapped, the bitmap goes where it belongs less its phase; a phase
-      // is only ever taken unrotated and unmirrored, where `a` and `d` are
-      // the device pixels per unit here
-      drawX -= elementWithCanvas.phaseX / transform.a;
-      drawY -= elementWithCanvas.phaseY / transform.d;
+      // unsnapped, the bitmap goes where it belongs less its phase, which
+      // is stretched with it: a device pixel at the zoom it was drawn at
+      drawX -= elementWithCanvas.phaseX / elementWithCanvas.zoomValue;
+      drawY -= elementWithCanvas.phaseY / elementWithCanvas.zoomValue;
     }
 
     const visible = visibleBitmapRect(
