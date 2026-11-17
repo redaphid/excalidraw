@@ -2,12 +2,14 @@ import {
   ElementsRTree,
   getCommonFrameId,
   getElementHitSlack,
-  getElementPaintBounds,
-  getFrameChildrenInsertionIndex,
+  getElementIndexBounds,
+  getElementIndexDependency,
   getContainerElement,
+  getFrameChildrenInsertionIndex,
   isElementInViewport,
   isIframeLikeElement,
   isTextElement,
+  shareElementsRTree,
 } from "@excalidraw/element";
 
 import {
@@ -66,11 +68,24 @@ export type NewElementSplit = {
 export class Renderer {
   private scene: Scene;
 
+  private unsubscribeFromScene: () => void;
+
   constructor(
     scene: Scene,
     private getOwnerWindow: () => Window = () => window,
   ) {
     this.scene = scene;
+    this.shareElementsTree();
+    this.unsubscribeFromScene = scene.onUpdate(() => this.shareElementsTree());
+  }
+
+  /** lets overlap queries over the scene's elements read the view's tree */
+  private shareElementsTree() {
+    shareElementsRTree(
+      this.scene.getNonDeletedElements(),
+      this.scene.getNonDeletedElementsMap(),
+      this.elementsTree,
+    );
   }
 
   /**
@@ -225,16 +240,16 @@ export class Renderer {
   }
 
   /**
-   * The scene's non-deleted elements by paint bounds, shared by the view's
-   * cull and hit testing. Both query it with the scene's array and map, so
-   * neither makes it re-sync for the other.
+   * The scene's non-deleted elements by paint bounds, grown by an arrow's
+   * label, shared by the view's cull, hit testing and the overlap queries of
+   * box selection and frames (`shareElementsRTree`). All query it with the
+   * scene's array and map, so none makes it re-sync for another.
    */
   private elementsTree = new ElementsRTree<
     Ordered<NonDeletedExcalidrawElement>
   >(
-    getElementPaintBounds,
-    (element, elementsMap) =>
-      isTextElement(element) ? getContainerElement(element, elementsMap) : null,
+    getElementIndexBounds,
+    getElementIndexDependency,
     () => this.getOwnerWindow(),
     getElementHitSlack,
   );
@@ -539,6 +554,7 @@ export class Renderer {
     this._getRenderableElements.clear();
     this._getVisibleElementsWithRenderOffsets.clear();
     this._splitAtNewElement.clear();
+    this.unsubscribeFromScene();
     this.elementsTree.destroy();
   }
 }

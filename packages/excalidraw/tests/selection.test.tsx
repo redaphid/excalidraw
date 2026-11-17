@@ -3,6 +3,7 @@ import { vi } from "vitest";
 
 import { KEYS, ROUNDNESS, arrayToMap, reseed } from "@excalidraw/common";
 import {
+  ElementsRTree,
   getElementBounds,
   getElementLineSegments,
   getElementsWithinSelection,
@@ -62,6 +63,35 @@ const getOutlineBounds = (element: ReturnType<typeof API.createElement>) => {
 describe("box-selection", () => {
   beforeEach(async () => {
     await render(<Excalidraw />);
+  });
+
+  it("takes its candidates from the renderer's index, building none of its own", async () => {
+    const rects = Array.from({ length: 64 }, (_, i) =>
+      API.createElement({
+        type: "rectangle",
+        x: (i % 8) * 100,
+        y: Math.floor(i / 8) * 100,
+        width: 50,
+        height: 50,
+      }),
+    );
+    API.setElements(rects);
+    const rebuildIfStale = vi.spyOn(ElementsRTree.prototype, "rebuildIfStale");
+
+    mouse.downAt(-20, -20);
+    mouse.move(-1000, -1000);
+    mouse.moveTo(170, 170);
+    mouse.up();
+    const ownTreeRebuilds = rebuildIfStale.mock.calls.length;
+    rebuildIfStale.mockRestore();
+
+    expect({
+      selected: Object.keys(h.state.selectedElementIds).sort(),
+      ownTreeRebuilds,
+    }).toEqual({
+      selected: [rects[0].id, rects[1].id, rects[8].id, rects[9].id].sort(),
+      ownTreeRebuilds: 0,
+    });
   });
 
   it("should allow adding to selection via box-select when holding shift", async () => {

@@ -7,7 +7,12 @@ import {
   elementsOverlappingBBox,
   elementsTouchingBBox,
   getElementBounds,
+  getElementHitSlack,
+  getElementIndexBounds,
+  getElementIndexDependency,
+  shareElementsRTree,
 } from "../src/bounds";
+import { ElementsRTree } from "../src/elementsRTree";
 import { getContainingFrame } from "../src/frame";
 import { LinearElementEditor } from "../src/linearElementEditor";
 import { mutateElement } from "../src/mutateElement";
@@ -189,17 +194,31 @@ const touchingByScan = (
 };
 
 describe("elementsOverlappingBBox", () => {
-  it("finds what a scan of every element finds, in order, across random boards, boxes and edits", () => {
-    const rng = mulberry32(5);
+  /** random boards, boxes and edits, each query checked against the scan;
+   * `share` gives each array a tree of its own before it is queried, as an
+   * editor's renderer does for its scene */
+  const fuzz = (
+    seed: number,
+    share:
+      | ((
+          elements: readonly ExcalidrawElement[],
+          elementsMap: ElementsMap,
+        ) => void)
+      | null,
+  ) => {
+    const rng = mulberry32(seed);
     let found = 0;
     for (let board = 0; board < 10; board++) {
       let elements = randomBoard(rng, 120);
       for (let step = 0; step < 40; step++) {
         const elementsMap: ElementsMap | undefined =
-          rng() < 0.5 ? arrayToMap(elements) : undefined;
+          share || rng() < 0.5 ? arrayToMap(elements) : undefined;
+        if (share) {
+          share(elements, elementsMap!);
+        }
         const opts = {
           elements,
-          elementsMap,
+          elementsMap: share && rng() < 0.5 ? undefined : elementsMap,
           bounds: randomBounds(rng, elements),
           type: rng() < 0.5 ? ("overlap" as const) : ("contain" as const),
           excludeElementsInFrames: rng() < 0.5,
@@ -212,17 +231,19 @@ describe("elementsOverlappingBBox", () => {
         };
         const expected = ids(linearElementsOverlappingBBox(opts));
         expect(ids(elementsOverlappingBBox(opts))).toEqual(expected);
-        expect(
-          ids(elementsTouchingBBox(elements, opts.bounds, elementsMap)),
-        ).toEqual(
-          ids(
-            touchingByScan(
-              elements,
-              opts.bounds,
-              elementsMap ?? arrayToMap(elements),
-            ).touching,
-          ),
-        );
+        if (!share) {
+          expect(
+            ids(elementsTouchingBBox(elements, opts.bounds, elementsMap)),
+          ).toEqual(
+            ids(
+              touchingByScan(
+                elements,
+                opts.bounds,
+                elementsMap ?? arrayToMap(elements),
+              ).touching,
+            ),
+          );
+        }
         found += expected.length;
 
         const target = elements[Math.floor(rng() * elements.length)];
@@ -244,7 +265,33 @@ describe("elementsOverlappingBBox", () => {
         }
       }
     }
-    expect(found).toBeGreaterThan(400);
+    return found;
+  };
+
+  it("finds what a scan of every element finds, in order, across random boards, boxes and edits", () => {
+    expect(fuzz(5, null)).toBeGreaterThan(400);
+  });
+
+  it("finds what a scan finds from a tree shared over the array, as a renderer shares its scene's", () => {
+    const tree = new ElementsRTree<ExcalidrawElement>(
+      getElementIndexBounds,
+      getElementIndexDependency,
+      undefined,
+      getElementHitSlack,
+    );
+    const rebuildIfStale = vi.spyOn(ElementsRTree.prototype, "rebuildIfStale");
+
+    const found = fuzz(6, (elements, elementsMap) =>
+      shareElementsRTree(elements, elementsMap, tree),
+    );
+    tree.destroy();
+    const ownTreeRebuilds = rebuildIfStale.mock.calls.length;
+    rebuildIfStale.mockRestore();
+
+    expect({ found: found > 400, ownTreeRebuilds }).toEqual({
+      found: true,
+      ownTreeRebuilds: 0,
+    });
   });
 
   it("reads only the elements whose box touches a small box, and what they point to, once the array has been seen", () => {
