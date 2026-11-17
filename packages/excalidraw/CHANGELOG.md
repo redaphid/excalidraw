@@ -57,6 +57,7 @@ Please add the latest change on the top under the correct section.
 ### `elementsOverlappingBBox` reads from an R-tree, `elementsTouchingBBox` (2026-11-11)
 
 - `elementsOverlappingBBox` takes its candidates from an R-tree kept per `elements` array instead of testing every element on each call. The first call over an array measures every element and builds the tree; later calls over the same array and `elementsMap` test only the elements near `bounds`. Results are unchanged. Pass a scene's arrays and maps as they are, so calls share one tree.
+- Inside the editor, calls over the scene's non-deleted elements (`scene.getNonDeletedElements()`, as box selection, frame membership and the frames menu pass them) read the renderer's own tree, the one its cull and hit tests use, so no second tree is built or rebuilt over the scene. That tree's boxes now hold an arrow's label.
 - New `elementsTouchingBBox(elements, bounds, elementsMap?)`: the elements whose box, grown by half their stroke and by an arrow's label, touches `bounds`, in array order, from the same tree. For callers with their own cheap test per element, such as a tile exporter asking which elements wholly contain a tile.
 
 ### `setViewport` stops following a collaborator (2026-09-26) [#XXXX](https://github.com/excalidraw/excalidraw/pull/XXXX)
