@@ -83,6 +83,7 @@ import {
   type StickyNoteChrome,
   type StickyNotePathCommand,
 } from "./stickyNote";
+import { cullDrawableToView } from "./cullDrawable";
 
 import type {
   ExcalidrawButtonElement,
@@ -99,6 +100,7 @@ import type {
 } from "./types";
 
 import type { RoughCanvas } from "roughjs/bin/canvas";
+import type { Drawable } from "roughjs/bin/core";
 
 const isPendingImageElement = (
   element: ExcalidrawElement,
@@ -106,6 +108,23 @@ const isPendingImageElement = (
 ) =>
   isInitializedImageElement(element) &&
   !renderConfig.imageCache.has(element.fileId);
+
+/** draws a rough.js shape, leaving out what lands off the canvas (#134) */
+const drawInView = (
+  rc: RoughCanvas,
+  context: CanvasRenderingContext2D,
+  drawable: Drawable | null,
+) => {
+  if (!drawable) {
+    return;
+  }
+  rc.draw(
+    // a test canvas without getTransform draws the shape as it is
+    context.getTransform
+      ? cullDrawableToView(drawable, context.getTransform(), context.canvas)
+      : drawable,
+  );
+};
 
 /** Half a stroke paints outside the element's bounds, in device pixels. */
 const strokeReach = (element: ExcalidrawElement) =>
@@ -630,7 +649,11 @@ const drawElementOnCanvas = (
       context.lineJoin = "round";
       context.lineCap = "round";
 
-      rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      drawInView(
+        rc,
+        context,
+        ShapeCache.generateElementShape(element, renderConfig),
+      );
       if (isButtonElement(element)) {
         drawButtonIcon(element, context, renderConfig);
       }
@@ -643,7 +666,7 @@ const drawElementOnCanvas = (
 
       ShapeCache.generateElementShape(element, renderConfig).forEach(
         (shape) => {
-          rc.draw(shape);
+          drawInView(rc, context, shape);
         },
       );
       break;
