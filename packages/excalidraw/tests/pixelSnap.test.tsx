@@ -179,11 +179,16 @@ describe("element pixel snap", () => {
         for (const blit of blits) {
           expect(distanceToWholePixel(blit)).toBeLessThan(1e-6);
         }
-        // the container's bitmap is the wider one
-        const [labelBlit, boxBlit] = [...blits].sort(
+        // the container's bitmap is the wider one; what must hold still is
+        // where each is drawn, its bitmap's place plus its phase in it
+        const [labelAt, boxAt] = getElementOrigins().sort(
           (p, q) => p.width - q.width,
         );
-        offsets.add(`${labelBlit.x - boxBlit.x},${labelBlit.y - boxBlit.y}`);
+        offsets.add(
+          `${(labelAt.x - boxAt.x).toFixed(6)},${(labelAt.y - boxAt.y).toFixed(
+            6,
+          )}`,
+        );
       }
       expect(offsets.size).toBe(1);
     },
@@ -216,7 +221,7 @@ describe("element pixel snap", () => {
   });
 
   it.each([0, Math.PI / 2, 0.4])(
-    "places overridden bitmaps like translated document geometry (%s rad)",
+    "places overridden bitmaps within half a device pixel of translated document geometry (%s rad)",
     async (angle) => {
       const ownerWindow = GlobalTestState.canvas.ownerDocument.defaultView!;
       const pixelRatioDescriptor = Object.getOwnPropertyDescriptor(
@@ -252,6 +257,7 @@ describe("element pixel snap", () => {
               expect(blits).toHaveLength(1);
               return blits;
             });
+            const [overriddenAt] = getElementOrigins();
             act(() => window.h.app.api.setElementRenderOverrides(null));
             API.setElements([
               API.createElement({
@@ -261,8 +267,16 @@ describe("element pixel snap", () => {
               }),
             ]);
             const [translated] = await renderAt(zoom, 3.3, -7.77);
-            expect(overridden.x).toBeCloseTo(translated.x, 6);
-            expect(overridden.y).toBeCloseTo(translated.y, 6);
+            const [translatedAt] = getElementOrigins();
+            // a bitmap keeps the phase it was drawn with, so an offset moves
+            // it by whole device pixels, at most half of one from where the
+            // translated element's own bitmap is drawn
+            expect(
+              Math.abs(overriddenAt.x - translatedAt.x),
+            ).toBeLessThanOrEqual(0.5 + 1e-6);
+            expect(
+              Math.abs(overriddenAt.y - translatedAt.y),
+            ).toBeLessThanOrEqual(0.5 + 1e-6);
             expect(overridden.scale).toBeCloseTo(translated.scale, 6);
             if (angle !== 0.4) {
               expect(distanceToWholePixel(overridden)).toBeLessThan(1e-6);
@@ -317,6 +331,82 @@ describe("element pixel snap", () => {
       offsets.add(`${labelBlit.x - boxBlit.x},${labelBlit.y - boxBlit.y}`);
     }
     expect(offsets.size).toBe(1);
+  });
+});
+
+/**
+ * Where each blitted element's own origin (its x, y) lands on the static
+ * canvas, in device pixels: the blit's origin plus where the element was
+ * drawn inside its cached bitmap.
+ */
+const getElementOrigins = () => {
+  const context = GlobalTestState.canvas.getContext("2d") as any;
+  return (context.__getEvents() as (CanvasEvent & { props: { img: any } })[])
+    .filter((event) => event.type === "drawImage")
+    .map(({ transform: [a, b, c, d, e, f], props }) => {
+      const [, , , , inX, inY] = (
+        props.img.getContext("2d").__getEvents() as CanvasEvent[]
+      ).find((event) =>
+        ["stroke", "fill", "fillText"].includes(event.type),
+      )!.transform;
+      const x =
+        props.dx + (inX - (props.sx ?? 0)) * (props.dWidth / props.sWidth);
+      const y =
+        props.dy + (inY - (props.sy ?? 0)) * (props.dHeight / props.sHeight);
+      return {
+        scale: Math.hypot(a, b),
+        x: a * x + c * y + e,
+        y: b * x + d * y + f,
+        width: props.dWidth,
+      };
+    });
+};
+
+describe("element placement after the snap", () => {
+  beforeEach(async () => {
+    await render(<Excalidraw />);
+    API.setAppState({ width: 800, height: 600 });
+  });
+
+  // The scroll is rounded to whole device pixels and then each bitmap's
+  // origin is too: the two roundings must not add up past half a pixel.
+  it("lands a shape within half a device pixel of the camera", async () => {
+    const dpr = window.devicePixelRatio;
+    let worst = 0;
+    for (const zoom of [0.73, 1.37, 2.98643]) {
+      for (const x of [10.21, 10.37, 10.61, 10.83]) {
+        for (const scrollX of [3.3, 3.43, 3.71]) {
+          API.setElements([
+            API.createElement({
+              type: "rectangle",
+              x,
+              y: 20.61,
+              width: 120,
+              height: 60,
+            }),
+          ]);
+          (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+          API.setAppState({
+            zoom: { value: zoom as NormalizedZoomValue },
+            scrollX,
+            scrollY: -7.77,
+          });
+          const [origin] = await waitFor(() => {
+            const origins = getElementOrigins().filter(
+              (o) => Math.abs(o.scale - zoom) < 1e-9,
+            );
+            expect(origins.length).toBeGreaterThan(0);
+            return origins;
+          });
+          worst = Math.max(
+            worst,
+            Math.abs(origin.x - (x + scrollX) * zoom * dpr),
+            Math.abs(origin.y - (20.61 - 7.77) * zoom * dpr),
+          );
+        }
+      }
+    }
+    expect(worst).toBeLessThanOrEqual(0.5 + 1e-6);
   });
 });
 

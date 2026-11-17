@@ -239,6 +239,9 @@ export interface ExcalidrawElementWithCanvas {
   zoomValue: AppState["zoom"]["value"];
   canvasOffsetX: number;
   canvasOffsetY: number;
+  /** see `bitmapPhase`, in device pixels */
+  phaseX: number;
+  phaseY: number;
   imageCrop: ExcalidrawImageElement["crop"] | null;
   containingFrameOpacity: number;
   /** the theme a sticky note's shadow and edge were drawn with */
@@ -308,6 +311,37 @@ const cappedElementCanvasSize = (
   return { width, height, scale };
 };
 
+const NO_PHASE = { x: 0, y: 0 };
+
+/**
+ * The fraction of a device pixel past a whole one at which an element's
+ * bitmap origin lands, leaving out the scroll, which the renderers round to
+ * whole device pixels (`snapScrollToDevicePixels`). The bitmap is drawn
+ * shifted by it, so snapping the blit to whole device pixels rounds only
+ * what is left: rounding both the scroll and the blit moved an element up
+ * to a whole device pixel from where its camera puts it.
+ *
+ * Only for an unrotated, unmirrored element, whose bitmap pixels run along
+ * the device's; the others keep the plain snap.
+ */
+const bitmapPhase = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+  zoom: number,
+) => {
+  if (
+    element.angle ||
+    ("scale" in element && (element.scale[0] !== 1 || element.scale[1] !== 1))
+  ) {
+    return NO_PHASE;
+  }
+  const [x1, y1] = getElementAbsoluteCoords(element, elementsMap);
+  const padding = getCanvasPadding(element);
+  const x = zoom * (x1 * window.devicePixelRatio - padding);
+  const y = zoom * (y1 * window.devicePixelRatio - padding);
+  return { x: x - Math.floor(x), y: y - Math.floor(y) };
+};
+
 const generateElementCanvas = (
   element: NonDeletedExcalidrawElement,
   elementsMap: NonDeletedSceneElementsMap,
@@ -350,8 +384,14 @@ const generateElementCanvas = (
     context.translate(canvasOffsetX, canvasOffsetY);
   }
 
+  // a device pixel is zoom ÷ scale bitmap pixels wide
+  const phase = bitmapPhase(element, elementsMap, zoom.value);
+
   context.save();
-  context.translate(padding * scale, padding * scale);
+  context.translate(
+    (padding + phase.x / zoom.value) * scale,
+    (padding + phase.y / zoom.value) * scale,
+  );
   context.scale(
     window.devicePixelRatio * scale,
     window.devicePixelRatio * scale,
@@ -371,6 +411,8 @@ const generateElementCanvas = (
     zoomValue: zoom.value,
     canvasOffsetX,
     canvasOffsetY,
+    phaseX: phase.x,
+    phaseY: phase.y,
     containingFrameOpacity:
       getContainingFrame(element, elementsMap)?.opacity || 100,
     imageCrop: isImageElement(element) ? element.crop : null,
@@ -1135,6 +1177,13 @@ const drawElementFromCanvas = (
           devicePixelRatio -
         anchorPadding;
 
+      // the bitmaps were drawn shifted by their phase (`bitmapPhase`), so
+      // what is rounded here is only the rest of the way
+      const anchorPhase =
+        anchor === element
+          ? { x: elementWithCanvas.phaseX, y: elementWithCanvas.phaseY }
+          : bitmapPhase(anchor, allElementsMap, appState.zoom.value);
+
       // Form the relative vector before introducing the scroll translation.
       const dx =
         (x1 - anchorSceneX) * devicePixelRatio + anchorPadding - padding;
@@ -1145,13 +1194,31 @@ const drawElementFromCanvas = (
         b,
         c,
         d,
-        Math.round(a * anchorX + c * anchorY + e) +
-          Math.round(a * dx + c * dy + SNAP_TIE_BIAS),
-        Math.round(b * anchorX + d * anchorY + f) +
-          Math.round(b * dx + d * dy + SNAP_TIE_BIAS),
+        Math.round(a * anchorX + c * anchorY + e - anchorPhase.x) +
+          Math.round(
+            a * dx +
+              c * dy +
+              anchorPhase.x -
+              elementWithCanvas.phaseX +
+              SNAP_TIE_BIAS,
+          ),
+        Math.round(b * anchorX + d * anchorY + f - anchorPhase.y) +
+          Math.round(
+            b * dx +
+              d * dy +
+              anchorPhase.y -
+              elementWithCanvas.phaseY +
+              SNAP_TIE_BIAS,
+          ),
       );
       drawX = 0;
       drawY = 0;
+    } else if (elementWithCanvas.phaseX || elementWithCanvas.phaseY) {
+      // unsnapped, the bitmap goes where it belongs less its phase; a phase
+      // is only ever taken unrotated and unmirrored, where `a` and `d` are
+      // the device pixels per unit here
+      drawX -= elementWithCanvas.phaseX / transform.a;
+      drawY -= elementWithCanvas.phaseY / transform.d;
     }
 
     const visible = visibleBitmapRect(
