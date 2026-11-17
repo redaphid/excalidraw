@@ -7,14 +7,27 @@ import {
 
 import type { NullableGridSize } from "@excalidraw/excalidraw/types";
 
+// One pass, no spread: a freedraw stroke calls this on every pointermove,
+// and a spread of its coordinates overflows the stack past ~125k points.
+// Math.min/Math.max keep the old answers for NaN, -0 and an empty list.
 export const getSizeFromPoints = (
   points: readonly (GlobalPoint | LocalPoint)[],
 ) => {
-  const xs = points.map((point) => point[0]);
-  const ys = points.map((point) => point[1]);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const x = points[i][0];
+    const y = points[i][1];
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
   return {
-    width: Math.max(...xs) - Math.min(...xs),
-    height: Math.max(...ys) - Math.min(...ys),
+    width: maxX - minX,
+    height: maxY - minY,
   };
 };
 
