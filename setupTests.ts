@@ -85,14 +85,17 @@ Object.defineProperty(window, "FontFace", {
   },
 });
 
-Object.defineProperty(document, "fonts", {
-  value: {
-    load: vi.fn().mockResolvedValue([]),
-    check: vi.fn().mockResolvedValue(true),
-    has: vi.fn().mockResolvedValue(true),
-    add: vi.fn(),
-  },
-});
+const fontFaceSet = {
+  size: 0,
+  load: vi.fn().mockResolvedValue([]),
+  check: vi.fn().mockResolvedValue(true),
+  has: vi.fn().mockResolvedValue(true),
+  add: vi.fn(() => {
+    fontFaceSet.size++;
+  }),
+};
+
+Object.defineProperty(document, "fonts", { value: fontFaceSet });
 
 Object.defineProperty(window, "EXCALIDRAW_ASSET_PATH", {
   value: `file://${__dirname}/`,

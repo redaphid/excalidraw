@@ -51,11 +51,16 @@ export class Fonts {
   /**
    * Characters whose font faces `document.fonts` confirmed loaded, per
    * document and font family. A loaded face stays loaded for the document's
-   * lifetime, so later loads skip `fonts.check` for these characters.
+   * lifetime, so later loads skip `fonts.check` for these characters, until
+   * the document's font set changes size: a face added later may cover them
+   * and still be unloaded.
    */
   private static readonly loadedChars = new WeakMap<
     Document,
-    Map<ExcalidrawTextElement["fontFamily"], Set<string>>
+    Map<
+      ExcalidrawTextElement["fontFamily"],
+      { fontSetSize: number; chars: Set<string> }
+    >
   >();
 
   private static _registered:
@@ -265,12 +270,13 @@ export class Fonts {
       perFamily = new Map();
       Fonts.loadedChars.set(ownerDocument, perFamily);
     }
-    let chars = perFamily.get(fontFamily);
-    if (!chars) {
-      chars = new Set();
-      perFamily.set(fontFamily, chars);
+    const fontSetSize = ownerDocument.fonts.size;
+    let confirmed = perFamily.get(fontFamily);
+    if (!confirmed || confirmed.fontSetSize !== fontSetSize) {
+      confirmed = { fontSetSize, chars: new Set() };
+      perFamily.set(fontFamily, confirmed);
     }
-    return chars;
+    return confirmed.chars;
   }
 
   private static *fontFacesLoader(

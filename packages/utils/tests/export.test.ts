@@ -165,6 +165,33 @@ describe("exportToCanvas", async () => {
       await exportText(elements);
       expect(fonts.check).toHaveBeenCalledTimes(1);
     });
+
+    it("waits for a font face added after the family was confirmed", async () => {
+      const elements = textElements("οπρ");
+      await exportText(elements);
+      document.fonts.add(
+        new FontFace("Excalifont", "url(late.woff2)", {
+          unicodeRange: "U+03BF-03C1",
+        }),
+      );
+      let loaded!: () => void;
+      fonts.check.mockReturnValueOnce(false);
+      fonts.load.mockReturnValueOnce(
+        new Promise((resolve) => {
+          loaded = () => resolve([]);
+        }),
+      );
+      let exported = false;
+      const exporting = exportText(elements).then(() => {
+        exported = true;
+      });
+      await settle();
+      expect(fonts.load).toHaveBeenCalledTimes(1);
+      expect(exported).toBe(false);
+      loaded();
+      await exporting;
+      expect(exported).toBe(true);
+    });
   });
 });
 
