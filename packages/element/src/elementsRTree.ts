@@ -1,7 +1,7 @@
 import {
   PackedRTree,
-  PACKED_RTREE_BUILD_CHUNK,
   type Bounds,
+  type PackedRTreeBuildPace,
 } from "@excalidraw/common";
 
 import { getElementMutationCount } from "./mutateElement";
@@ -9,10 +9,18 @@ import { getElementMutationCount } from "./mutateElement";
 import type { ElementsMap, ExcalidrawElement } from "./types";
 
 const REBUILD_QUIET_MS = 1000;
-/** the time one idle task of a rebuild may spend, before its last chunk */
+/** the time one idle task of a rebuild may spend before its last step */
 export const REBUILD_SLICE_MS = 4;
-/** elements measured between two pauses of a rebuild */
-export const MEASURE_CHUNK = 512;
+/**
+ * What one step of a rebuild aims to take, and so about how far a task runs
+ * past its slice. Each step sizes itself from the last one's time per unit
+ * of work (a measure, a comparison, a write, an id lookup), since that time
+ * varies a hundredfold with the device, the element and whether the code is
+ * still cold, and a clock read per unit costs as much as cheap units do.
+ */
+export const REBUILD_STEP_MS = 0.5;
+/** a step grows at most this much over the last one */
+const STEP_GROWTH = 4;
 const REBUILD_MIN_STALE = 32;
 
 const touchesGrown = (
@@ -54,6 +62,8 @@ export type ElementsRTreeRebuildWork = {
   measured: number;
   comparisons: number;
   writes: number;
+  /** ids written into or dropped from the id lookup */
+  lookupWrites: number;
 };
 
 /** one idle task of an index rebuild: how long it ran and what it did */
@@ -85,6 +95,13 @@ type RebuildJob<T> = {
   work: ElementsRTreeRebuildWork;
   steps: Generator<void, Index<T>, void>;
   slotsWithoutBox: number[];
+  /** a retired index's id lookup, brought up to date for this one */
+  slotOf: Map<string, number>;
+  /**
+   * units of work per step; sized from each step's time while the rebuild
+   * runs in idle tasks, unbounded once it runs to the end at once
+   */
+  pace: PackedRTreeBuildPace & { timed: boolean };
 };
 
 const emptyIndex = <T>(): Index<T> => ({
@@ -125,6 +142,13 @@ export class ElementsRTree<T extends ExcalidrawElement> {
   private lastQuerySize: [number, number] = [NaN, NaN];
 
   private rebuildJob: RebuildJob<T> | null = null;
+  /**
+   * The id lookup of the index before the current one, which no query reads
+   * any more. A rebuild rewrites only the ids whose slot moved, since filling
+   * a fresh `Map` with every id costs tens of milliseconds on a large board
+   * and rehashes it, all in one `set`, each time it doubles.
+   */
+  private spareSlotOf: Map<string, number> | null = null;
   private quietTimer: number | null = null;
   private cancelIdleTask: (() => void) | null = null;
 
@@ -402,14 +426,15 @@ export class ElementsRTree<T extends ExcalidrawElement> {
     const until = start + REBUILD_SLICE_MS;
     const before = this.rebuildJob
       ? { ...this.rebuildJob.work }
-      : { measured: 0, comparisons: 0, writes: 0 };
-    const job = this.runRebuildTask(() => idle() && now.now() < until);
+      : { measured: 0, comparisons: 0, writes: 0, lookupWrites: 0 };
+    const job = this.runRebuildTask(() => idle() && now.now() < until, now);
     if (rebuildTaskObserver && job) {
       rebuildTaskObserver({
         ms: now.now() - start,
         measured: job.work.measured - before.measured,
         comparisons: job.work.comparisons - before.comparisons,
         writes: job.work.writes - before.writes,
+        lookupWrites: job.work.lookupWrites - before.lookupWrites,
         done: this.rebuildJob === null,
       });
     }
@@ -421,14 +446,16 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       this.getOwnerWindow().clearTimeout(this.quietTimer);
       this.quietTimer = null;
     }
-    this.runRebuildTask(() => true);
+    this.runRebuildTask(() => true, null);
   }
 
   /**
-   * Runs the rebuild one chunk at a time while `hasTime` holds, so a task
-   * overruns its time by at most one chunk, and returns the job, if any.
+   * Runs the rebuild one step at a time while `hasTime` holds, so a task
+   * overruns its time by at most one step, and returns the job, if any.
+   * With a `clock`, each step is sized to take about `REBUILD_STEP_MS`;
+   * without, the rebuild runs to the end.
    */
-  private runRebuildTask(hasTime: () => boolean) {
+  private runRebuildTask(hasTime: () => boolean, clock: Performance | null) {
     this.cancelIdleTask?.();
     this.cancelIdleTask = null;
     if (!this.rebuildJob) {
@@ -438,12 +465,34 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       this.rebuildJob = this.startRebuild(this.elements, this.elementsMap);
     }
     const job = this.rebuildJob;
+    const { pace } = job;
+    if (!clock) {
+      pace.timed = false;
+      pace.stride = Infinity;
+    }
+    let stepStart = clock?.now() ?? 0;
     do {
+      const units = pace.units;
       const step = job.steps.next();
       if (step.done) {
         this.rebuildJob = null;
         this.install(job, step.value);
         return job;
+      }
+      if (clock && pace.timed) {
+        const stepEnd = clock.now();
+        const stepUnits = pace.units - units;
+        if (stepUnits > 0) {
+          const unitMs = (stepEnd - stepStart) / stepUnits;
+          pace.stride = Math.max(
+            1,
+            Math.min(
+              Math.floor(REBUILD_STEP_MS / unitMs),
+              pace.stride * STEP_GROWTH,
+            ),
+          );
+        }
+        stepStart = stepEnd;
       }
     } while (hasTime());
     this.requestIdleTask();
@@ -460,16 +509,36 @@ export class ElementsRTree<T extends ExcalidrawElement> {
       mutationCount: getElementMutationCount(),
       syncGenerationAtStart: this.syncGeneration,
       generation: ++this.generations,
-      work: { measured: 0, comparisons: 0, writes: 0 },
+      work: { measured: 0, comparisons: 0, writes: 0, lookupWrites: 0 },
       steps: undefined!,
       slotsWithoutBox: [],
+      slotOf: this.spareSlotOf ?? new Map(),
+      pace: { stride: 1, units: 0, timed: true },
     };
+    this.spareSlotOf = null;
     job.steps = this.rebuildSteps(job);
     return job;
   }
 
   private *rebuildSteps(job: RebuildJob<T>): Generator<void, Index<T>, void> {
-    const { elements, elementsMap, work } = job;
+    const { elements, elementsMap, work, pace } = job;
+    let sinceStep = 0;
+    /** begins a run of units whose cost may differ from the last run's */
+    const startPhase = () => {
+      sinceStep = 0;
+      if (pace.timed) {
+        pace.stride = 1;
+      }
+    };
+    /** counts one unit of work, and says whether the step is over */
+    const endsStep = () => {
+      pace.units++;
+      if (++sinceStep < pace.stride) {
+        return false;
+      }
+      sinceStep = 0;
+      return true;
+    };
     const count = elements.length;
     const boxes = new Float64Array(count * 4);
     const items = new Uint32Array(count);
@@ -481,6 +550,7 @@ export class ElementsRTree<T extends ExcalidrawElement> {
 
     let itemCount = 0;
     let maxSlack = 0;
+    startPhase();
     for (let slot = 0; slot < count; slot++) {
       const element = elements[slot];
       const bounds = this.measure(element, elementsMap);
@@ -502,30 +572,61 @@ export class ElementsRTree<T extends ExcalidrawElement> {
         job.slotsWithoutBox.push(slot);
       }
       work.measured++;
-      if ((slot + 1) % MEASURE_CHUNK === 0) {
+      if (endsStep()) {
         yield;
       }
     }
     yield;
 
+    startPhase();
     const tree = yield* PackedRTree.build(
       boxes,
       items.subarray(0, itemCount),
       work,
+      pace,
     );
     yield;
 
-    const slotOf = new Map<string, number>();
+    const { slotOf } = job;
     const slotPositions = new Uint32Array(count);
     const slotSyncedAt = new Uint32Array(count);
     yield;
+    // the last of an id's slots wins, as `set` in array order would leave it
+    let duplicates = 0;
+    startPhase();
     for (let slot = 0; slot < count; slot++) {
-      slotOf.set(elements[slot].id, slot);
+      const id = elements[slot].id;
+      const previous = slotOf.get(id);
+      if (previous !== slot) {
+        if (
+          previous !== undefined &&
+          previous < slot &&
+          elements[previous].id === id
+        ) {
+          duplicates++;
+        }
+        slotOf.set(id, slot);
+        work.lookupWrites++;
+      }
       slotPositions[slot] = slot;
       slotSyncedAt[slot] = job.generation;
       work.writes++;
-      if ((slot + 1) % (PACKED_RTREE_BUILD_CHUNK / 2) === 0) {
+      if (endsStep()) {
         yield;
+      }
+    }
+    // every id of the array now leads to its slot; any other id left from
+    // the retired index leads nowhere and goes
+    if (slotOf.size > count - duplicates) {
+      startPhase();
+      for (const [id, slot] of slotOf) {
+        if (elements[slot]?.id !== id) {
+          slotOf.delete(id);
+          work.lookupWrites++;
+        }
+        if (endsStep()) {
+          yield;
+        }
       }
     }
     const slotHitAt = new Uint32Array(count);
@@ -549,6 +650,7 @@ export class ElementsRTree<T extends ExcalidrawElement> {
   }
 
   private install(job: RebuildJob<T>, index: Index<T>) {
+    this.spareSlotOf = this.index.slotOf;
     this.index = index;
     this.queryStamp = 0;
     if (

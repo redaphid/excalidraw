@@ -5,8 +5,9 @@ import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 import { getElementPaintBounds } from "../src/bounds";
 import {
   ElementsRTree,
-  MEASURE_CHUNK,
+  observeElementsRTreeRebuildTasks,
   REBUILD_SLICE_MS,
+  REBUILD_STEP_MS,
 } from "../src/elementsRTree";
 import { mutateElement, newElementWith } from "../src/mutateElement";
 import { getContainerElement } from "../src/textElement";
@@ -61,6 +62,7 @@ const testWindow = () => {
   const tick = (ms: number) => {
     perfNow += ms;
   };
+  const elapsed = () => perfNow;
   const advance = (ms: number) => {
     now += ms;
     for (const [id, timer] of [...timers]) {
@@ -78,16 +80,19 @@ const testWindow = () => {
     }
     return pending.length;
   };
-  return { window, advance, runIdle, tick };
+  return { window, advance, runIdle, tick, elapsed };
 };
 
-const setup = (elements: readonly ExcalidrawElement[]) => {
+const setup = (
+  elements: readonly ExcalidrawElement[],
+  measureCostMs = MEASURE_COST_MS,
+) => {
   let measured = 0;
   const clock = testWindow();
   const index = new ElementsRTree<ExcalidrawElement>(
     (element, elementsMap) => {
       measured++;
-      clock.tick(MEASURE_COST_MS);
+      clock.tick(measureCostMs);
       return getElementPaintBounds(element, elementsMap);
     },
     (element, elementsMap) =>
@@ -287,10 +292,44 @@ describe("ElementsRTree", () => {
       }
       expect(perTask.length).toBeLessThan(1000);
     }
-    const perSlice = REBUILD_SLICE_MS / MEASURE_COST_MS + MEASURE_CHUNK;
+    const perSlice = Math.ceil(
+      (REBUILD_SLICE_MS + REBUILD_STEP_MS) / MEASURE_COST_MS,
+    );
     expect(Math.max(...perTask)).toBeLessThanOrEqual(perSlice);
-    expect(perTask.length).toBeGreaterThan(next.length / perSlice);
+    expect(perTask.length).toBeGreaterThanOrEqual(next.length / perSlice);
   });
+
+  // a frame at 60 Hz is 16.7 ms; a slice of 4 ms leaves the frame's own work
+  // the rest, so long as no task runs on far past its slice
+  it.each([0.05, 0.5, 3])(
+    "overruns its slice by at most one step, or one measure when that is longer, when a measure costs %s ms",
+    (measureCostMs) => {
+      const elements = grid();
+      const { query, clock } = setup(elements, measureCostMs);
+      const next = moveCopies(elements, elements.length, 5);
+      query(next);
+      clock.advance(1000);
+
+      const taskMs: number[] = [];
+      const observed: number[] = [];
+      observeElementsRTreeRebuildTasks((task) => observed.push(task.ms));
+      try {
+        let started = clock.elapsed();
+        while (clock.runIdle()) {
+          taskMs.push(clock.elapsed() - started);
+          started = clock.elapsed();
+        }
+      } finally {
+        observeElementsRTreeRebuildTasks(null);
+      }
+      expect(query(next).measured).toBe(0);
+      expect(taskMs.length).toBeGreaterThan(1);
+      expect(observed).toEqual(taskMs);
+      expect(Math.max(...taskMs)).toBeLessThanOrEqual(
+        REBUILD_SLICE_MS + Math.max(REBUILD_STEP_MS, measureCostMs) + 1e-9,
+      );
+    },
+  );
 
   it("leaves a few changed elements unindexed instead of rebuilding", () => {
     const elements = grid();
@@ -403,4 +442,197 @@ describe("ElementsRTree", () => {
     }
     expect(rebuilt).toBe(0);
   });
+
+  it("rewrites only the id lookups whose slot moved, from one rebuild to the next", () => {
+    const elements = grid();
+    const { query, clock } = setup(elements);
+    const rebuildLookupWrites = (next: readonly ExcalidrawElement[]) => {
+      query(next);
+      clock.advance(1000);
+      let lookupWrites = 0;
+      observeElementsRTreeRebuildTasks((task) => {
+        lookupWrites += task.lookupWrites;
+      });
+      try {
+        while (clock.runIdle()) {}
+      } finally {
+        observeElementsRTreeRebuildTasks(null);
+      }
+      expect(query(next).measured).toBe(0);
+      return lookupWrites;
+    };
+
+    // the first rebuild after the one in `setup` starts from an empty lookup
+    let next = moveCopies(elements, elements.length, 5);
+    expect(rebuildLookupWrites(next)).toBe(elements.length);
+
+    next = moveCopies(next, elements.length, 5);
+    expect(rebuildLookupWrites(next)).toBe(0);
+
+    const added = API.createElement({ type: "rectangle", x: 1100, y: 1050 });
+    next = [...moveCopies(next, 100, 5), added];
+    expect(rebuildLookupWrites(next)).toBe(1);
+
+    // the spare lookup is two rebuilds old, from before the append: every
+    // kept id moves down 100 slots, the added id is new to it, and the 100
+    // deleted ids go
+    next = next.slice(100);
+    expect(rebuildLookupWrites(next)).toBe(elements.length - 100 + 1 + 100);
+    expect(query(next).result).toEqual(linear(next));
+  });
+});
+
+const mulberry32 = (seed: number) => () => {
+  seed = (seed + 0x6d2b79f5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+
+type IndexInternals = {
+  index: {
+    slotOf: Map<string, number>;
+    slotElements: readonly ExcalidrawElement[];
+  };
+};
+
+/** what `rebuildSteps` used to build from scratch: each id at its last slot */
+const freshSlotOf = (elements: readonly ExcalidrawElement[]) => {
+  const slotOf = new Map<string, number>();
+  elements.forEach((element, slot) => slotOf.set(element.id, slot));
+  return slotOf;
+};
+
+const sortedEntries = (slotOf: Map<string, number>) =>
+  [...slotOf].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+
+describe("ElementsRTree rebuilt in idle slices", () => {
+  it.each([1, 2, 3, 4, 5, 6])(
+    "answers as a fresh index would, through random edits and partial rebuilds (seed %i)",
+    (seed) => {
+      const rng = mulberry32(seed);
+      const int = (n: number) => Math.floor(rng() * n);
+      const shape = () =>
+        API.createElement({
+          type: rng() < 0.5 ? "rectangle" : "ellipse",
+          x: int(3000),
+          y: int(2000),
+          width: 5 + int(200),
+          height: 5 + int(200),
+          angle: (rng() < 0.3 ? rng() * 6 : 0) as ExcalidrawElement["angle"],
+          strokeWidth: 0,
+          roughness: 0,
+        });
+      let elements: readonly ExcalidrawElement[] = Array.from(
+        { length: seed % 2 ? 300 : 1500 },
+        shape,
+      );
+      const deleted: ExcalidrawElement[] = [];
+      const measureCostMs = [0.01, 0.2, 2][seed % 3];
+      const { index, query, clock } = setup(elements, measureCostMs);
+      const internals = index as unknown as IndexInternals;
+      let installed = internals.index;
+      let checkedInstalls = 0;
+      const taskMs: number[] = [];
+      observeElementsRTreeRebuildTasks((task) => taskMs.push(task.ms));
+
+      const edits = [
+        // appended
+        () => [...elements, ...Array.from({ length: 1 + int(40) }, shape)],
+        // deleted
+        () => {
+          const next = [...elements];
+          for (let k = int(40); k >= 0 && next.length > 1; k--) {
+            deleted.push(...next.splice(int(next.length), 1));
+          }
+          return next;
+        },
+        // a run moved elsewhere in z-order
+        () => {
+          const next = [...elements];
+          const run = next.splice(int(next.length), 1 + int(200));
+          next.splice(int(next.length + 1), 0, ...run);
+          return next;
+        },
+        // copies moved, in place in the array
+        () =>
+          elements.map((element) =>
+            rng() < 0.2
+              ? newElementWith(element, { x: element.x + int(300) - 150 })
+              : element,
+          ),
+        // edited in place, same array
+        () => {
+          const map = arrayToMap(elements);
+          for (let k = int(30); k >= 0; k--) {
+            const element = elements[int(elements.length)];
+            mutateElement(element, map, { y: element.y + int(100) - 50 });
+          }
+          return elements;
+        },
+        // brought back, as undo would
+        () => {
+          const back = deleted.splice(int(deleted.length), 1 + int(20));
+          const next = [...elements];
+          for (const element of back) {
+            next.splice(int(next.length + 1), 0, element);
+          }
+          return next;
+        },
+        // a copy that keeps its id, as a bad merge could leave
+        () => {
+          const next = [...elements];
+          const twin = newElementWith(next[int(next.length)], { x: int(3000) });
+          next.splice(int(next.length + 1), 0, twin);
+          return next;
+        },
+        // a duplicate dropped again
+        () => {
+          const seen = new Set<string>();
+          return elements.filter((element) => {
+            const twin = seen.has(element.id) && rng() < 0.8;
+            seen.add(element.id);
+            return !twin;
+          });
+        },
+      ];
+
+      try {
+        for (let step = 0; step < 60; step++) {
+          elements = edits[int(edits.length)]();
+          const x = int(3000);
+          const y = int(2000);
+          const bounds: Bounds = [x, y, x + int(1500), y + int(1000)];
+          expect(query(elements, bounds).result).toEqual(
+            linear(elements, bounds),
+          );
+
+          const progress = rng();
+          if (progress < 0.25) {
+            index.rebuild();
+          } else if (progress < 0.75) {
+            clock.advance(1000);
+            for (let task = int(12); task > 0 && clock.runIdle(); task--) {}
+          }
+
+          if (internals.index !== installed) {
+            installed = internals.index;
+            checkedInstalls++;
+            expect(sortedEntries(installed.slotOf)).toEqual(
+              sortedEntries(freshSlotOf(installed.slotElements)),
+            );
+          }
+          expect(query(elements, bounds).result).toEqual(
+            linear(elements, bounds),
+          );
+        }
+      } finally {
+        observeElementsRTreeRebuildTasks(null);
+      }
+      expect(checkedInstalls).toBeGreaterThan(10);
+      expect(Math.max(...taskMs)).toBeLessThanOrEqual(
+        REBUILD_SLICE_MS + Math.max(REBUILD_STEP_MS, measureCostMs) + 1e-9,
+      );
+    },
+  );
 });
