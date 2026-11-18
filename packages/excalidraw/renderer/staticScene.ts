@@ -26,6 +26,7 @@ import {
   getSettledBitmapCount,
   resolveElementRenderState,
   renderElement,
+  startBitmapBuildBudget,
 } from "@excalidraw/element";
 
 import { getElementAbsoluteCoords } from "@excalidraw/element";
@@ -698,6 +699,9 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
   }
 
   const { renderGrid = true, isExporting } = renderConfig;
+  if (!isExporting) {
+    startBitmapBuildBudget();
+  }
   // export draws vectors, not cached bitmaps — nothing to keep on the grid
   const appState = isExporting
     ? unsnappedAppState

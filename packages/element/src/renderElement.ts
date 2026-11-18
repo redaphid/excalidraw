@@ -879,9 +879,10 @@ const withinRescaleRedrawBudget = (zoom: number) => {
   return now < rescaleRedrawFrame.until;
 };
 
-const generateElementWithCanvas = (
+/** The element's cached bitmap if this frame may draw from it, else null. */
+const reusableElementCanvas = (
   element: NonDeletedExcalidrawElement,
-  elementsMap: NonDeletedSceneElementsMap,
+  elementsMap: ElementsMap,
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
 ) => {
@@ -908,23 +909,93 @@ const generateElementWithCanvas = (
     (isStickyNoteElement(element) &&
       prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme)
   ) {
-    const elementWithCanvas = generateElementCanvas(
-      element,
-      elementsMap,
-      zoom,
-      renderConfig,
-      appState,
-    );
-
-    if (!elementWithCanvas) {
-      return null;
-    }
-
-    elementWithCanvasCache.set(element, elementWithCanvas);
-
-    return elementWithCanvas;
+    return null;
   }
   return prevElementWithCanvas;
+};
+
+const generateElementWithCanvas = (
+  element: NonDeletedExcalidrawElement,
+  elementsMap: NonDeletedSceneElementsMap,
+  renderConfig: StaticCanvasRenderConfig,
+  appState: StaticCanvasAppState | InteractiveCanvasAppState,
+) => {
+  const reusable = reusableElementCanvas(
+    element,
+    elementsMap,
+    renderConfig,
+    appState,
+  );
+  if (reusable) {
+    return reusable;
+  }
+  const zoom: Zoom = renderConfig ? appState.zoom : DEFAULT_ZOOM;
+  const elementWithCanvas = generateElementCanvas(
+    element,
+    elementsMap,
+    zoom,
+    renderConfig,
+    appState,
+  );
+
+  if (!elementWithCanvas) {
+    return null;
+  }
+
+  elementWithCanvasCache.set(element, elementWithCanvas);
+
+  return elementWithCanvas;
+};
+
+/**
+ * The most time one frame spends building new bitmaps. Past it, an element
+ * with no bitmap it may use draws straight onto the canvas, as the exporter
+ * does, and gets its bitmap in idle time ({@link cacheSettledBitmaps}). The
+ * first full redraw of a dense view otherwise built every bitmap in one task:
+ * about 1,000 on a phone, a quarter of a second.
+ */
+const BITMAP_BUILD_BUDGET_MS = 8;
+/** Bitmaps every frame may build whatever the clock says, so a small scene
+ * always draws from bitmaps, however slow its first frame. */
+const BITMAPS_PER_FRAME = 24;
+
+let bitmapBuildUntil = 0;
+let bitmapsLeft = 0;
+/** what the current frame drew directly for want of time to build bitmaps */
+let deferredBitmaps = new Set<NonDeletedExcalidrawElement>();
+
+/** Starts a static frame's time for building bitmaps. */
+export const startBitmapBuildBudget = () => {
+  bitmapBuildUntil = performance.now() + BITMAP_BUILD_BUDGET_MS;
+  bitmapsLeft = BITMAPS_PER_FRAME;
+  deferredBitmaps = new Set();
+};
+
+/** Whether the element draws directly this frame because its bitmap would
+ * have to be built and the frame has no time left to build it. Images
+ * always get theirs: the crop editor draws only from the bitmap. */
+const defersBitmap = (
+  element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
+  renderConfig: StaticCanvasRenderConfig,
+  appState: StaticCanvasAppState | InteractiveCanvasAppState,
+) => {
+  if (
+    element.type === "image" ||
+    isFrameLikeElement(element) ||
+    // while the zoom animates, the rescale budget decides which old bitmaps
+    // are redrawn
+    (appState.shouldCacheIgnoreZoom && elementWithCanvasCache.has(element)) ||
+    reusableElementCanvas(element, elementsMap, renderConfig, appState)
+  ) {
+    return false;
+  }
+  if (bitmapsLeft > 0 || performance.now() < bitmapBuildUntil) {
+    bitmapsLeft--;
+    return false;
+  }
+  deferredBitmaps.add(element);
+  return true;
 };
 
 /**
@@ -1319,6 +1390,8 @@ let settledBuild: {
   elementsMap: NonDeletedSceneElementsMap;
   renderConfig: StaticCanvasRenderConfig;
   appState: StaticCanvasAppState;
+  /** what the frame drew directly for want of time to build bitmaps */
+  deferred: ReadonlySet<NonDeletedExcalidrawElement>;
   /** the scan for elements near the view, which a re-armed build carries on
    * while the elements it scans are the same */
   ahead: {
@@ -1409,7 +1482,8 @@ const buildSettledBitmaps = (hasTime: () => boolean) => {
   while (build.next < elements.length && hasTime()) {
     const element = elements[build.next++];
     if (
-      shouldDrawDirectly(element, elementsMap, appState) &&
+      (shouldDrawDirectly(element, elementsMap, appState) ||
+        build.deferred.has(element)) &&
       buildForView(element)
     ) {
       settledBitmapCount++;
@@ -1510,6 +1584,7 @@ export const cacheSettledBitmaps = (
     elementsMap,
     renderConfig,
     appState,
+    deferred: deferredBitmaps,
     ahead: {
       candidates,
       cursor:
@@ -1552,7 +1627,8 @@ export const renderElement = (
         allElementsMap,
         appState,
         renderConfig.theme,
-      ));
+      )) ||
+    defersBitmap(element, allElementsMap, renderConfig, appState);
 
   context.save();
   context.globalAlpha =
