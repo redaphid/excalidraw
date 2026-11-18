@@ -5,6 +5,7 @@ import {
   BOUND_TEXT_PADDING,
   FONT_FAMILY,
   FRAME_STYLE,
+  getFontFamilyString,
 } from "@excalidraw/common";
 
 import { pointFrom } from "@excalidraw/math";
@@ -889,6 +890,61 @@ describe("exporting a frame's outline to SVG", () => {
 
     it("sets the ink's alpha as stroke-opacity, which SVG 1.1 reads", () => {
       expect(outline?.getAttribute("stroke-opacity")).toBe(opacity);
+    });
+  });
+});
+
+describe("exportToSvg with font axes", () => {
+  const svgText = async (text: Partial<ExcalidrawTextElement>) => {
+    const svg = await exportUtils.exportToSvg(
+      [
+        {
+          ...textFixture,
+          fontFamily: FONT_FAMILY["Shantell Sans"],
+          index: "a0",
+          ...text,
+        } as NonDeletedExcalidrawElement,
+      ],
+      { exportBackground: false, viewBackgroundColor: "#ffffff" },
+      null,
+      { skipInliningFonts: true },
+    );
+    return svg.querySelector("text")!;
+  };
+
+  describe("when a text has axes", () => {
+    let text: SVGTextElement;
+
+    beforeEach(async () => {
+      text = await svgText({ fontAxes: { wght: 650, BNCE: 40 } });
+    });
+
+    it("writes the instance's font-variation-settings", () => {
+      expect(text.style.getPropertyValue("font-variation-settings")).toBe(
+        `"wght" 650, "INFM" 0, "BNCE" 40, "SPAC" 0`,
+      );
+    });
+
+    it("names the family the SVG declares, not the instance's own", () => {
+      expect(text.getAttribute("font-family")).toBe(
+        getFontFamilyString({ fontFamily: FONT_FAMILY["Shantell Sans"] }),
+      );
+    });
+  });
+
+  describe("when a text in a variable family has no axes", () => {
+    it("writes the regular instance's settings, not the file's default", async () => {
+      const text = await svgText({});
+      expect(text.style.getPropertyValue("font-variation-settings")).toBe(
+        `"wght" 400, "INFM" 0, "BNCE" 0, "SPAC" 0`,
+      );
+    });
+  });
+
+  describe("when a text's family has no axes", () => {
+    it("writes no font-variation-settings", async () => {
+      const text = await svgText({ fontFamily: FONT_FAMILY.Excalifont });
+      expect(text.style.getPropertyValue("font-variation-settings")).toBe("");
     });
   });
 });
