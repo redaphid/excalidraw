@@ -3,6 +3,7 @@ import rough from "roughjs/bin/rough";
 import {
   cancelSettledBitmaps,
   elementWithCanvasCache,
+  renderElement,
   Scene,
 } from "@excalidraw/element";
 
@@ -167,5 +168,47 @@ describe("a frame that needs more new bitmaps than it has time for", () => {
     it("builds the bitmaps the frame left out", () => {
       expect(elements.filter(isBuilt)).toHaveLength(SHAPES);
     });
+  });
+});
+
+describe("an element a host renders outside a static frame", () => {
+  let element: NonDeletedExcalidrawElement;
+
+  beforeEach(() => {
+    paint(denseView());
+    element = denseView()[0];
+    const scene = new Scene([element], { skipValidation: true });
+    const renderer = new Renderer(scene);
+    renderers.push(renderer);
+    const appState = { ...getDefaultAppState(), width: VIEW, height: VIEW };
+    const { elementsMap } = renderer.getRenderableElements({
+      ...appState,
+      offsetLeft: 0,
+      offsetTop: 0,
+      selectedElements: [],
+    });
+    const target = document.createElement("canvas");
+    renderElement(
+      element,
+      elementsMap,
+      scene.getNonDeletedElementsMap(),
+      rough.canvas(target),
+      target.getContext("2d")!,
+      {
+        imageCache: new Map(),
+        renderGrid: false,
+        isExporting: false,
+        canvasBackgroundColor: "#fff",
+        embedsValidationStatus: new Map(),
+        elementsPendingErasure: new Set(),
+        pendingFlowchartNodes: null,
+        theme: "light",
+      },
+      appState as AppState,
+    );
+  });
+
+  it("gets its bitmap, whatever the last frame spent", () => {
+    expect(isBuilt(element)).toBe(true);
   });
 });

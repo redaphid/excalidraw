@@ -959,16 +959,29 @@ const BITMAP_BUILD_BUDGET_MS = 8;
  * always draws from bitmaps, however slow its first frame. */
 const BITMAPS_PER_FRAME = 24;
 
-let bitmapBuildUntil = 0;
-let bitmapsLeft = 0;
-/** what the current frame drew directly for want of time to build bitmaps */
-let deferredBitmaps = new Set<NonDeletedExcalidrawElement>();
+/** The static frame being painted: its time and bitmaps left for building,
+ * and what it drew directly for want of them. Outside a frame (a host
+ * calling renderElement) there is no budget and every bitmap is built. */
+let bitmapBudget: {
+  until: number;
+  left: number;
+  deferred: Set<NonDeletedExcalidrawElement>;
+} | null = null;
 
-/** Starts a static frame's time for building bitmaps. */
+const NOTHING_DEFERRED: ReadonlySet<NonDeletedExcalidrawElement> = new Set();
+
+/** Starts a static frame's budget for building bitmaps. */
 export const startBitmapBuildBudget = () => {
-  bitmapBuildUntil = performance.now() + BITMAP_BUILD_BUDGET_MS;
-  bitmapsLeft = BITMAPS_PER_FRAME;
-  deferredBitmaps = new Set();
+  bitmapBudget = {
+    until: performance.now() + BITMAP_BUILD_BUDGET_MS,
+    left: BITMAPS_PER_FRAME,
+    deferred: new Set(),
+  };
+};
+
+/** Ends the static frame's budget. */
+export const endBitmapBuildBudget = () => {
+  bitmapBudget = null;
 };
 
 /** Whether the element draws directly this frame because its bitmap would
@@ -981,6 +994,7 @@ const defersBitmap = (
   appState: StaticCanvasAppState | InteractiveCanvasAppState,
 ) => {
   if (
+    !bitmapBudget ||
     element.type === "image" ||
     isFrameLikeElement(element) ||
     // while the zoom animates, the rescale budget decides which old bitmaps
@@ -990,11 +1004,11 @@ const defersBitmap = (
   ) {
     return false;
   }
-  if (bitmapsLeft > 0 || performance.now() < bitmapBuildUntil) {
-    bitmapsLeft--;
+  if (bitmapBudget.left > 0 || performance.now() < bitmapBudget.until) {
+    bitmapBudget.left--;
     return false;
   }
-  deferredBitmaps.add(element);
+  bitmapBudget.deferred.add(element);
   return true;
 };
 
@@ -1584,7 +1598,7 @@ export const cacheSettledBitmaps = (
     elementsMap,
     renderConfig,
     appState,
-    deferred: deferredBitmaps,
+    deferred: bitmapBudget?.deferred ?? NOTHING_DEFERRED,
     ahead: {
       candidates,
       cursor:

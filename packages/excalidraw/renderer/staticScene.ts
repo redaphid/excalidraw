@@ -25,6 +25,7 @@ import {
   getRenderElementWithPositionOverride,
   getSettledBitmapCount,
   resolveElementRenderState,
+  endBitmapBuildBudget,
   renderElement,
   startBitmapBuildBudget,
 } from "@excalidraw/element";
@@ -681,7 +682,7 @@ const elementsToPaintOver = (
     : null;
 };
 
-const _renderStaticScene = (config: StaticSceneRenderConfig) => {
+const paintStaticScene = (config: StaticSceneRenderConfig) => {
   const {
     canvas,
     backgroundCanvas,
@@ -699,9 +700,6 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
   }
 
   const { renderGrid = true, isExporting } = renderConfig;
-  if (!isExporting) {
-    startBitmapBuildBudget();
-  }
   // export draws vectors, not cached bitmaps — nothing to keep on the grid
   const appState = isExporting
     ? unsnappedAppState
@@ -839,6 +837,19 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
   );
 
   onPainted?.(unsnappedAppState);
+};
+
+const _renderStaticScene = (config: StaticSceneRenderConfig) => {
+  if (config.renderConfig.isExporting) {
+    paintStaticScene(config);
+    return;
+  }
+  startBitmapBuildBudget();
+  try {
+    paintStaticScene(config);
+  } finally {
+    endBitmapBuildBudget();
+  }
 };
 
 /** throttled to animation framerate */
