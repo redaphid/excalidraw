@@ -151,7 +151,12 @@ export class ShapeCache {
       return cachedShape;
     }
 
-    elementWithCanvasCache.delete(element);
+    // An export caches nothing, so the bitmap the editor drew this element
+    // with is still good. Dropping it made the editor's next render rebuild
+    // every bitmap a host's exports had passed through, in one task.
+    if (!renderConfig?.isExporting) {
+      elementWithCanvasCache.delete(element);
+    }
 
     const shape = generateAtDetailScale(element, (nominal) =>
       _generateElementShape(
