@@ -13,6 +13,7 @@ import { mutateElement, newElementWith } from "../src/mutateElement";
 import { getContainerElement } from "../src/textElement";
 import { isTextElement } from "../src/typeChecks";
 
+import type { ElementsRTreeRebuildWork } from "../src/elementsRTree";
 import type { ElementsMap, ExcalidrawElement } from "../src/types";
 
 const grid = () => {
@@ -44,6 +45,10 @@ const testWindow = () => {
   let now = 0;
   let perfNow = 0;
   let nextId = 1;
+  /** runs before each read of the performance clock */
+  let onRead: (() => void) | null = null;
+  /** a browser may round the performance clock, down to this step */
+  let resolutionMs = 0;
   const timers = new Map<number, { at: number; run: () => void }>();
   const idle = new Map<number, IdleRequestCallback>();
   const window = {
@@ -57,7 +62,14 @@ const testWindow = () => {
       return nextId++;
     },
     cancelIdleCallback: (id: number) => idle.delete(id),
-    performance: { now: () => perfNow },
+    performance: {
+      now: () => {
+        onRead?.();
+        return resolutionMs
+          ? Math.floor(perfNow / resolutionMs) * resolutionMs
+          : perfNow;
+      },
+    },
   } as unknown as Window;
   const tick = (ms: number) => {
     perfNow += ms;
@@ -80,7 +92,11 @@ const testWindow = () => {
     }
     return pending.length;
   };
-  return { window, advance, runIdle, tick, elapsed };
+  const readsAs = (read: (() => void) | null, resolution = 0) => {
+    onRead = read;
+    resolutionMs = resolution;
+  };
+  return { window, advance, runIdle, tick, elapsed, readsAs };
 };
 
 const setup = (
@@ -328,6 +344,78 @@ describe("ElementsRTree", () => {
       expect(Math.max(...taskMs)).toBeLessThanOrEqual(
         REBUILD_SLICE_MS + Math.max(REBUILD_STEP_MS, measureCostMs) + 1e-9,
       );
+    },
+  );
+
+  // what each unit of rebuild work costs on a slow device, charged to the
+  // clock when the index reads it: the id lookup's `Map` work costs a hundred
+  // times a tree write, as it can in a first build
+  const costlyLookups: ElementsRTreeRebuildWork = {
+    measured: 0.002,
+    comparisons: 0.0002,
+    writes: 0.0002,
+    lookupWrites: 0.02,
+  };
+  // tree writes cost enough that 8,192 of them take 16 ms
+  const costlyWrites: ElementsRTreeRebuildWork = {
+    measured: 0.002,
+    comparisons: 0.002,
+    writes: 0.002,
+    lookupWrites: 0.002,
+  };
+  it.each([
+    ["the id lookup costs a hundred times a tree write", costlyLookups, 0],
+    ["8,192 tree writes take 16 ms", costlyWrites, 0],
+    ["the clock moves in 0.1 ms ticks", costlyWrites, 0.1],
+  ])(
+    "keeps each idle task within its slice and a step or two when %s",
+    (_, cost, resolutionMs) => {
+      const elements = grid();
+      const { index, query, clock } = setup(elements, 0);
+      const next = moveCopies(elements, elements.length, 5);
+      query(next);
+      clock.advance(1000);
+
+      // charges each read of the clock with the work done since the last
+      const internals = index as unknown as {
+        rebuildJob: { work: ElementsRTreeRebuildWork } | null;
+      };
+      let charged: ElementsRTreeRebuildWork | null = null;
+      let chargedFor: ElementsRTreeRebuildWork | null = null;
+      clock.readsAs(() => {
+        const work = internals.rebuildJob?.work ?? chargedFor;
+        if (!work) {
+          return;
+        }
+        if (work !== chargedFor) {
+          chargedFor = work;
+          charged = { measured: 0, comparisons: 0, writes: 0, lookupWrites: 0 };
+        }
+        for (const unit of Object.keys(cost) as (keyof typeof cost)[]) {
+          clock.tick((work[unit] - charged![unit]) * cost[unit]);
+          charged![unit] = work[unit];
+        }
+      }, resolutionMs);
+
+      const taskMs: number[] = [];
+      let lookupWrites = 0;
+      observeElementsRTreeRebuildTasks((task) => {
+        taskMs.push(task.ms);
+        lookupWrites += task.lookupWrites;
+      });
+      try {
+        while (clock.runIdle()) {}
+      } finally {
+        observeElementsRTreeRebuildTasks(null);
+      }
+      // a step starts small at each phase and grows at most fourfold, so a
+      // clock that cannot see it yet lets it reach only a few ticks' time
+      expect(Math.max(...taskMs)).toBeLessThanOrEqual(
+        REBUILD_SLICE_MS + 2 * REBUILD_STEP_MS + 4 * resolutionMs,
+      );
+      expect(taskMs.length).toBeGreaterThan(10);
+      expect(lookupWrites).toBe(elements.length);
+      expect(query(next).measured).toBe(0);
     },
   );
 
