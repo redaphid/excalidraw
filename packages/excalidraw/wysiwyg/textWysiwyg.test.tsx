@@ -6,6 +6,7 @@ import {
   getLineHeightInPx,
   getOriginalContainerHeightFromCache,
   newElementWith,
+  newTextElement,
 } from "@excalidraw/element";
 
 import {
@@ -25,6 +26,7 @@ import {
 import type {
   ExcalidrawTextElement,
   ExcalidrawTextElementWithContainer,
+  NonDeleted,
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
 
@@ -3392,6 +3394,47 @@ describe("textWysiwyg", () => {
       Keyboard.undo();
 
       expect(h.elements.filter((el) => !el.isDeleted)).toHaveLength(0);
+    });
+  });
+});
+
+describe("textWysiwyg with font axes", () => {
+  const fontAxes = { wght: 650, BNCE: 40 };
+  let text: NonDeleted<ExcalidrawTextElement>;
+  let editor: HTMLTextAreaElement;
+
+  beforeEach(async () => {
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    text = newTextElement({
+      text: "merged",
+      x: 60,
+      y: 0,
+      fontFamily: FONT_FAMILY["Shantell Sans"],
+      fontAxes,
+    });
+    API.setElements([text]);
+    API.setSelectedElements([text]);
+    UI.clickTool("selection");
+    Keyboard.keyPress(KEYS.ENTER);
+    editor = await getTextEditor();
+  });
+
+  it("shows the text in its instance while it is edited", () => {
+    expect(editor.style.getPropertyValue("font-variation-settings")).toBe(
+      `"wght" 650, "INFM" 0, "BNCE" 40, "SPAC" 0`,
+    );
+  });
+
+  describe("when the edit is saved", () => {
+    beforeEach(() => {
+      updateTextEditor(editor, "merged and edited");
+      Keyboard.exitTextEditor(editor);
+    });
+
+    it("keeps the text's axes", () => {
+      expect((h.elements[0] as ExcalidrawTextElement).fontAxes).toEqual(
+        fontAxes,
+      );
     });
   });
 });
