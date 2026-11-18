@@ -24,23 +24,24 @@ Canvas 2D has no setter for variation axes: `ctx.font` reaches `wght` only, thro
 - `getFontString` and `getFontFamilyString` take `fontAxes`, so every caller that passes a text element measures and draws in its instance. The family itself follows in the list, so text shows in the regular instance until the instance's faces load.
 - `Fonts.loadSceneFonts` and `Fonts.loadElementsFonts` (which `exportToCanvas` awaits) make a `FontFace` per registered face of the family with the `variationSettings` descriptor naming every axis, add them to `document.fonts` and load them. A document keeps the faces of the 64 instances asked for most recently beyond those the last load needed (`RecentlyUsed`, `MAX_INSTANCE_FACES`) and deletes the rest from `document.fonts`.
 
-Measured in Chromium 153: an instance face draws pixel for pixel what a weight-range face draws at the same `wght`, and `measureText` equals the DOM's width under CSS `font-variation-settings` for `wght`, `INFM`, `BNCE` and `SPAC`. A canvas element's own `font-variation-settings` style also reaches its text, but only while the canvas is in the document, which the measuring canvas is not.
+Measured in Chromium 153, on v1.9.0 and again on the rebased branch from its packed tarballs (`"merged"` at 96px: 337 px at `wght` 300, 390 px at `wght` 800, and the same in an exported SVG with its fonts inlined): an instance face draws pixel for pixel what a weight-range face draws at the same `wght`, and `measureText` equals the DOM's width under CSS `font-variation-settings` for `wght`, `INFM`, `BNCE` and `SPAC`. A canvas element's own `font-variation-settings` style also reaches its text, but only while the canvas is in the document, which the measuring canvas is not.
 
 ## Base
 
-The branch `feat/variable-font-axes` is based on `v1.9.0` (230142c2), the release draw pins. `v1.9.1` (65589719) exists on `master` and the branch is not rebased onto it. Two of the files this branch changes also changed in v1.9.1, in the same places:
+The branch `feat/variable-font-axes` was written on `v1.9.0` and is rebased onto `master` at `v1.11.3` (533ba927). The rebase had no conflicts: `getFontRenderScale` (v1.9.1) sits beside `getFontString` in `packages/common/src/utils.ts` and the text drawing block of `packages/element/src/renderElement.ts` still calls `getFontString`, now with `fontAxes`.
 
-- `packages/common/src/utils.ts`: v1.9.1 replaces `getFontSizeUpscale` with `getFontRenderScale`, directly above `getFontString`.
-- `packages/element/src/renderElement.ts`: v1.9.1 rewrites the text drawing block around the `getFontString` call that this branch passes `fontAxes` to.
+## The text editor and SVG export
 
-A rebase keeps both sides in each. v1.9.1 also changes `packages/element/src/textMeasurements.ts` and `packages/excalidraw/wysiwyg/textWysiwyg.tsx`, which this branch does not touch but which measure and edit text, so the checks in this document need running again after it.
+- The text editor (`textWysiwyg`) lays its textarea out in the instance's family and sets its `font-variation-settings`, so a text shows in its instance while it is edited, before the instance's faces have loaded too. Saving an edit keeps `fontAxes`.
+- SVG export names the family itself in `font-family`, which is what `generateFontFaceDeclarations` declares, and writes the instance as `font-variation-settings` in the text's `style`. A text in a variable family without axes gets the regular instance's settings, since the file's own default can differ (Shantell Sans: `wght` 300 in the file, 400 regular).
 
-Local builds of this branch are versioned `1.9.0-fontaxes.N`, so a tarball of it cannot be taken for a release. The version is stamped at build time by draw's `bench/hillclimb/build-fork.mjs` and never committed here.
+## The license
+
+`OFL.txt` sits beside the font in the source tree. `scripts/buildPackage.js` copies every font folder's `OFL*`/`LICENSE*` into `dist/dev/fonts/<family>/` and `dist/prod/fonts/<family>/`, next to the woff2, and `scripts/semver/verify.js` fails a release whose tarball lacks one.
 
 ## Not done yet
 
-- SVG export: `generateFontFaceDeclarations` inlines the family's file but writes no `font-variation-settings`, so an exported SVG shows the regular instance.
-- The text editor (`textWysiwyg`) shows the regular instance while a text is edited.
 - No UI sets `fontAxes`.
-- Shantell Sans ships upright and Latin only (no `ital` axis). Its license, `OFL.txt`, sits beside the font in the source tree and is not copied into `dist`.
+- Shantell Sans ships upright and Latin only (no `ital` axis).
+- Two tabs reconciling an axes change is untested.
 - Firefox and Safari are unverified.
