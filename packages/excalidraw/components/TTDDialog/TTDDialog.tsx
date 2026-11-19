@@ -74,11 +74,11 @@ const TTDDialogBase = withInternalFallback(
       });
 
     useEffect(() => {
-      const fn = async () => {
-        await mermaidToExcalidrawLib.api;
-        setMermaidToExcalidrawLib((prev) => ({ ...prev, loaded: true }));
-      };
-      fn();
+      mermaidToExcalidrawLib.api.then(
+        () => setMermaidToExcalidrawLib((prev) => ({ ...prev, loaded: true })),
+        // each use of the library reports a failed load itself
+        () => {},
+      );
     }, [mermaidToExcalidrawLib.api]);
 
     return (
