@@ -20,7 +20,6 @@ export const RADIAL_TOOLS = [
   "line",
   "freedraw",
   "text",
-  "stickynote",
   "frame",
 ] as const;
 
@@ -207,9 +206,14 @@ export class RadialPaletteController {
     if (!this.enabled) {
       return;
     }
-    const ring = options.ring ?? "tools";
+    const ring =
+      options.ring && RADIAL_RINGS.includes(options.ring)
+        ? options.ring
+        : this.current?.ring ?? "tools";
     if (this.current) {
-      this.update({ ...this.current, ring, index: this.activeIndex(ring) });
+      if (this.current.ring !== ring) {
+        this.update({ ...this.current, ring, index: this.activeIndex(ring) });
+      }
       return;
     }
     // the color in use joins the recent colors when the ring opens
@@ -275,10 +279,10 @@ export class RadialPaletteController {
       return;
     }
     const length = this.items(current.ring).length;
-    this.update({
-      ...current,
-      index: wrap(current.index + Math.trunc(delta), length),
-    });
+    const index = wrap(current.index + Math.trunc(delta), length);
+    if (index !== current.index) {
+      this.update({ ...current, index });
+    }
   };
 
   /** moves the highlight to the next ring out (or in), wrapping */
@@ -323,19 +327,21 @@ export class RadialPaletteController {
   };
 
   private pickTool(type: ToolType) {
-    const { app } = this;
-    if (
-      type !== "eraser" &&
-      type !== "freedraw" &&
-      this.presetOpacity !== null &&
-      app.state.currentItemOpacity === this.presetOpacity
-    ) {
+    this.app.setActiveTool({ type });
+  }
+
+  /** the active tool changed, from the ring or anywhere else: a pen
+   * preset's see-through ink does not carry over to shapes */
+  toolChanged() {
+    const { app, presetOpacity } = this;
+    const { type } = app.state.activeTool;
+    if (presetOpacity === null || type === "freedraw" || type === "eraser") {
+      return;
+    }
+    this.presetOpacity = null;
+    if (app.state.currentItemOpacity === presetOpacity) {
       app.setAppState({ currentItemOpacity: 100 });
     }
-    if (type !== "freedraw") {
-      this.presetOpacity = null;
-    }
-    app.setActiveTool({ type });
   }
 
   private pickPreset(preset: PenPreset) {
@@ -371,6 +377,27 @@ export class RadialPaletteController {
     choose: () => this.choose(),
     close: () => this.close(),
     state: () => this.state(),
-    onChange: (callback) => this.emitter.on(() => callback(this.state())),
+    onChange: (callback) => {
+      // only what `state()` reports: a flick ending or the ring moving is
+      // not a change to a knob
+      let last = this.state();
+      return this.emitter.on(() => {
+        const next = this.state();
+        if (
+          next.open !== last.open ||
+          next.ring !== last.ring ||
+          next.index !== last.index
+        ) {
+          last = next;
+          callback(next);
+        }
+      });
+    },
   };
+
+  /** the editor unmounted: no session, no listeners */
+  destroy() {
+    this.current = null;
+    this.emitter.clear();
+  }
 }

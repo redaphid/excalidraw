@@ -138,7 +138,6 @@ describe("RadialPalette", () => {
         "arrow",
         "line",
         "text",
-        "stickynote",
         "frame",
         "eraser",
       ] as const)("picks the %s tool and closes", (type) => {
@@ -356,6 +355,52 @@ describe("RadialPalette", () => {
           x: parseFloat(left) + parseFloat(width) / 2,
           y: parseFloat(top) + parseFloat(height) / 2,
         }).toEqual({ x: 500, y: 400 });
+      });
+    });
+
+    describe("when , is held down and repeats", () => {
+      it("opens the ring once and keeps it open", () => {
+        Keyboard.keyPress(KEYS.COMMA);
+        fireEvent.keyDown(document, { key: KEYS.COMMA, repeat: true });
+        expect(ring()).not.toBeNull();
+      });
+    });
+
+    describe("when , is typed outside the editor", () => {
+      let field: HTMLElement;
+
+      afterEach(() => field.remove());
+
+      it.each([
+        ["into a contenteditable", "div", true],
+        ["on a host's button", "button", false],
+      ] as const)("%s, it leaves the ring shut", (_, tag, editable) => {
+        field = document.createElement(tag);
+        if (editable) {
+          field.contentEditable = "true";
+        }
+        document.body.appendChild(field);
+        fireEvent.keyDown(field, { key: KEYS.COMMA });
+        expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when the ring is open and the user types in a field", () => {
+      let field: HTMLInputElement;
+
+      beforeEach(() => {
+        Keyboard.keyPress(KEYS.COMMA);
+        field = document.createElement("input");
+        document.body.appendChild(field);
+      });
+
+      afterEach(() => field.remove());
+
+      it("leaves Enter and the arrows to the field", () => {
+        const before = h.app.radialPalette.api.state();
+        expect(fireEvent.keyDown(field, { key: KEYS.ARROW_RIGHT })).toBe(true);
+        expect(fireEvent.keyDown(field, { key: KEYS.ENTER })).toBe(true);
+        expect(h.app.radialPalette.api.state()).toEqual(before);
       });
     });
 

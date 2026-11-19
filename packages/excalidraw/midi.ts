@@ -347,7 +347,8 @@ export type KnobState = {
   /** the value an absolute turn is measured from: the knob's last, or the
    * ring position last sent to it */
   last?: number;
-  /** the value last heard from the knob itself */
+  /** the value last heard from the knob itself, since its ring was last
+   * written */
   heard?: number;
   /** what `auto` settled on */
   detected?: Exclude<MidiEncoding, "auto">;
@@ -390,6 +391,15 @@ const detect = (
   }
   return undefined;
 };
+
+/** the knob's state once the editor has put its ring at `position`. An
+ * absolute knob counts on from there, so its next value can match the last
+ * one heard (65, ring back to 64, 65 again) without the knob being relative:
+ * a repeat only counts when nothing was written between the two */
+export const ringWritten = (
+  state: KnobState | undefined,
+  position: number,
+): KnobState => ({ ...state, last: position, heard: undefined });
 
 /** the detents a value turns by, and the knob's state after it */
 export const decodeTurn = (
@@ -611,17 +621,21 @@ export const paletteKnob = (
   };
 };
 
-/** where on the LED ring (0–127) the highlighted slice of `count` sits; the
- * middle when there is nothing to show */
+/** how far in from either end of the LED ring the end slices sit: an
+ * absolute knob counts on from where its ring is put and stops at 0 and 127,
+ * so a slice at an end could not be turned away from that side */
+const SLICE_MARGIN = 16;
+
+/** where on the LED ring the highlighted slice of `count` sits, spread
+ * between the margins; the middle for one slice or none */
 export const slicePosition = (index: number, count: number) => {
-  if (count < 1) {
+  if (count < 2) {
     return 64;
   }
-  if (count === 1) {
-    return 0;
-  }
   const clamped = Math.max(0, Math.min(count - 1, index));
-  return Math.round((clamped / (count - 1)) * 127);
+  return Math.round(
+    SLICE_MARGIN + (clamped / (count - 1)) * (127 - 2 * SLICE_MARGIN),
+  );
 };
 
 // -----------------------------------------------------------------------------

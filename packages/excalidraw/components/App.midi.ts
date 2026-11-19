@@ -46,6 +46,7 @@ import {
   decodeTurn,
   gatherDetents,
   isPaletteRing,
+  ringWritten,
   MIDI_TARGETS,
   midiTargetStep,
   PALETTE_RINGS,
@@ -1367,7 +1368,7 @@ export class AppMidi {
         continue;
       }
       const key = bindingKey(binding.channel, binding.cc);
-      this.knobs.set(key, { ...this.knobs.get(key), last: position });
+      this.knobs.set(key, ringWritten(this.knobs.get(key), position));
       for (const output of outputs) {
         try {
           output.send(

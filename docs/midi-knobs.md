@@ -19,6 +19,7 @@ The excalidraw app turns it on (`excalidraw-app/midi.ts`); draw.hypnodroid.com d
 - **Search** is fuzzy over each property's name, label and description. Letters may skip ahead within a word (`bg` finds background) but moving to another word lands on its first letter (`bgl` finds background lightness), so a long description doesn't match by scattering letters.
 - **Steps.** Each property's sensitivity (how far one click moves it) is edited in place. A value changed from its default reads bold, about:config style, with ↺ to put it back.
 - **Preferences** (`midi.encoding`, `midi.acceleration`, `midi.feedback`, `midi.toasts`, `midi.switchChannelOffset`) are rows too, filtered by the same search. Double-click a true/false row to flip it.
+- **Export** saves the knobs and preferences as `midi-knobs.json`; **Import** reads one back. The file is `{ "format": "excalidraw-midi", "version": 1, "bindings": [...], "settings": {...} }`. A file from a newer version is refused; knobs bound to properties this editor doesn't know are skipped (the page says how many), and unreadable preferences take their defaults.
 - Bindings and preferences live in `localStorage["excalidraw-midi-bindings"]` and `["excalidraw-midi-settings"]`. Every change reaches open editor tabs at once, so the page can sit in one tab while the drawing answers in another.
 
 ### In another host
@@ -92,7 +93,7 @@ A knob bound to `palette.tools`, `palette.pens` or `palette.colors` works that r
 - **Press after a turn** chooses the highlighted slice, as a tap on it would, and closes the ring.
 - **Press with no turn** since the ring opened just closes it.
 
-Escape, a tap outside and the palette's own gestures work as usual alongside the knob. A Twister's LED ring points at the highlighted slice while its ring is open and returns to the middle when it closes. In view mode, or with the palette off, the knobs do nothing (with the palette off, a toast says so).
+Escape, a tap outside and the palette's own gestures work as usual alongside the knob. A Twister's LED ring points at the highlighted slice while its ring is open and returns to the middle when it closes. The slices sit between 16 and 111 on the ring, so a knob in absolute mode always has clicks to spare on either side of the first and last slice. In view mode, or with the palette off, the knobs do nothing (with the palette off, a toast says so).
 
 ## Encoders and rings
 
@@ -101,7 +102,7 @@ Escape, a tap outside and the palette's own gestures work as usual alongside the
 - `"absolute"`: 0–127, the Twister's default. Read as the change from the knob's last value, never as a position, so moving between shapes never makes a knob jump.
 - `"relative"`: 64 ± n per click, the Twister's "ENC 3FH/41H" mode.
 - `"twosComplement"`: 1… clockwise, 127… counter-clockwise.
-- `"auto"` (default): absolute until a knob repeats a value, which only a relative encoder does, then whichever relative mode the value belongs to.
+- `"auto"` (default): absolute until a knob repeats a value, which only a relative encoder does, then whichever relative mode the value belongs to. A repeat counts only when the editor has not written the knob's ring in between: an absolute knob counts on from where its ring was put, so it can repeat itself after one.
 
 The editor answers each device that has spoken on the output port of the same name: after every turn and selection change it sends each bound knob its target's value (`feedback: false` turns this off). A Twister shows it on the LED ring and adopts it as the knob's own value, so the ring always shows the selected shape's opacity, stroke width, sloppiness, font size or angle, or the view's zoom. Knobs with no gauge (position, size, scale, hue, pan, select) are sent back to the middle after each turn, so they work as jog wheels and never run out of travel.
 
