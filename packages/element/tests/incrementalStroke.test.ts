@@ -2,6 +2,8 @@ import { pointFrom, type LocalPoint } from "@excalidraw/math";
 
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
+import { LaserPointer } from "@excalidraw/laser-pointer";
+
 import { ShapeCache, getFreedrawOutlinePoints } from "../src";
 import {
   IncrementalStroke,
@@ -11,6 +13,7 @@ import {
 import { IncrementalSvgPath } from "../src/shape";
 
 import {
+  getConstantWidthFreedrawOutline,
   getSvgPathFromStroke,
   getVariableWidthFreedrawOutline,
 } from "./fixtures/freedrawReference";
@@ -331,6 +334,136 @@ describe("freedraw elements outlined in turn", () => {
 
     expect(outline).toEqual(getVariableWidthFreedrawOutline(grown));
     expect(outlined).toBeLessThan(150);
+  });
+});
+
+describe("a constant-width freedraw element drawn point by point", () => {
+  const pathOf = (element: ExcalidrawFreeDrawElement) =>
+    (ShapeCache.generateElementShape(element, null) as unknown[]).find(
+      (shape) => typeof shape === "string",
+    );
+
+  const constantElement = (
+    id: string,
+    points: number[][],
+    { strokeWidth = 2, streamline = 0.5, authoringScale = 1 } = {},
+  ): ExcalidrawFreeDrawElement => ({
+    ...(API.createElement({
+      type: "freedraw",
+      id,
+      strokeWidth,
+      strokeOptions: { variability: "constant", streamline },
+      points: points.map(([x, y]) => pointFrom<LocalPoint>(x, y)),
+    }) as ExcalidrawFreeDrawElement),
+    authoringScale,
+  });
+
+  // `speed` 8 moves fast enough for the laser's corner test to change
+  it.each([
+    { streamline: 0.5, authoringScale: 1, speed: 1 },
+    { streamline: 0.2, authoringScale: 1, speed: 1 },
+    { streamline: 0, authoringScale: 1, speed: 1 },
+    { streamline: 0.5, authoringScale: 1, speed: 8 },
+    { streamline: 0.5, authoringScale: 1e-3, speed: 1 },
+    { streamline: 0.25, authoringScale: 1e3, speed: 8 },
+  ])(
+    "is outlined and pathed as before after every move (streamline $streamline, scale $authoringScale, speed $speed)",
+    ({ streamline, authoringScale, speed }) => {
+      const random = seeded(0xc0);
+      const { points } = randomStroke(random, 400, authoringScale * speed);
+      const other = randomStroke(random, 80, authoringScale).points;
+      const id = (API.createElement({ type: "freedraw" }) as { id: string }).id;
+      const options = { streamline, authoringScale };
+
+      const check = (element: ExcalidrawFreeDrawElement) => {
+        const outline = getConstantWidthFreedrawOutline(element);
+        expect(getFreedrawOutlinePoints(element)).toEqual(outline);
+        expect(pathOf(element)).toBe(getSvgPathFromStroke(outline));
+      };
+
+      let drawn = points.slice(0, 1);
+      for (let n = 1; n <= points.length; n++) {
+        drawn = n === 1 ? drawn : [...drawn, points[n - 1]];
+        if (n % 60 === 0) {
+          // another stroke outlined in between
+          check(constantElement(`${id}-other`, other, options));
+        }
+        if (n === 150) {
+          // an earlier point moved, so the outline starts over
+          drawn = drawn.map(([x, y], i) => (i === 40 ? [x + 3, y] : [x, y]));
+        }
+        if (n === 250) {
+          // erased back to fewer points
+          drawn = drawn.slice(0, 200);
+        }
+        check(
+          constantElement(id, drawn, {
+            ...options,
+            strokeWidth: n < 300 ? 2 * authoringScale : 4 * authoringScale,
+          }),
+        );
+      }
+    },
+  );
+
+  it("draws repeated, coincident and tiny moves as before", () => {
+    const id = (API.createElement({ type: "freedraw" }) as { id: string }).id;
+    const moves = [
+      [0, 0],
+      [0, 0],
+      [1e-9, 0],
+      [1e-9, 0],
+      [5, 5],
+      [5, 5],
+      [-0, 10],
+      [3, 10],
+      [3, 10 + 1e-12],
+      [20, -4],
+    ];
+    let drawn: number[][] = [];
+    for (const move of moves) {
+      drawn = [...drawn, move];
+      const element = constantElement(id, drawn);
+      expect(getFreedrawOutlinePoints(element)).toEqual(
+        getConstantWidthFreedrawOutline(element),
+      );
+    }
+  });
+});
+
+describe("a growing constant-width freedraw element", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("outlines only its new points on each move", () => {
+    const random = seeded(0x180);
+    const { points } = randomStroke(random, 1500, 1);
+    const id = (API.createElement({ type: "freedraw" }) as { id: string }).id;
+    const element = (n: number): ExcalidrawFreeDrawElement =>
+      API.createElement({
+        type: "freedraw",
+        id,
+        strokeOptions: { variability: "constant", streamline: 0.5 },
+        points: points.slice(0, n).map(([x, y]) => pointFrom<LocalPoint>(x, y)),
+      }) as ExcalidrawFreeDrawElement;
+
+    for (let n = 1; n < 1500; n++) {
+      getFreedrawOutlinePoints(element(n));
+    }
+
+    // every outlined point measures its corner with atan2
+    const atan2 = vi.spyOn(Math, "atan2");
+    const added = vi.spyOn(LaserPointer.prototype, "addPoint");
+    const grown = element(1500);
+    const outline = getFreedrawOutlinePoints(grown);
+    const outlined = atan2.mock.calls.length;
+    const fed = added.mock.calls.length;
+    vi.restoreAllMocks();
+
+    expect(outline).toEqual(getConstantWidthFreedrawOutline(grown));
+    expect(fed).toBe(1);
+    expect(outlined).toBeLessThan(20);
   });
 });
 
