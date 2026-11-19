@@ -14,6 +14,7 @@ import {
   FONT_METADATA,
   type FontMetadata,
   getFontInstanceFamily,
+  getFontInstanceWeight,
   getFontString,
   getFontVariationSettings,
   PromisePool,
@@ -281,11 +282,15 @@ export class Fonts {
       Fonts.instanceFaces.set(ownerDocument, held);
     }
 
-    for (const [family, { fontFamily, variationSettings }] of instances) {
+    for (const [
+      family,
+      { fontFamily, fontAxes, variationSettings },
+    ] of instances) {
       held.take(family, () => {
+        const weight = getFontInstanceWeight(fontFamily, fontAxes);
         const fontFaces = (
           Fonts.registered.get(fontFamily)?.fontFaces ?? []
-        ).map((face) => face.instance(family, variationSettings));
+        ).map((face) => face.instance(family, variationSettings, weight));
         for (const fontFace of fontFaces) {
           ownerDocument.fonts.add(fontFace);
         }

@@ -50,10 +50,17 @@ export class ExcalidrawFontFace {
    * A face of the same font file and unicode range for one instance of a
    * variable font, under the instance's own family name: canvas text takes
    * its variation axes from the face it names, having no setter for them.
+   * WebKit ignores `variationSettings` but applies the face's `weight` to
+   * `wght`, so the instance's `wght` is also its weight.
    */
-  public instance(family: string, variationSettings: string): FontFace {
+  public instance(
+    family: string,
+    variationSettings: string,
+    weight: number | undefined,
+  ): FontFace {
     const descriptors: FontFaceVariationDescriptors = {
       ...this.descriptors,
+      ...(weight === undefined ? {} : { weight: String(weight) }),
       variationSettings,
     };
     return new FontFace(family, this.sources, descriptors);
