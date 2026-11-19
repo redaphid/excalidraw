@@ -42,7 +42,9 @@ type OutlineProgress = {
   runningLength: number;
 };
 
-const startOutline = (sizeOverride: number | undefined): OutlineProgress => ({
+const emptyOutlineProgress = (
+  sizeOverride: number | undefined,
+): OutlineProgress => ({
   sizeOverride,
   next: 1,
   forwardPoints: [],
@@ -237,7 +239,7 @@ export class LaserPointer {
       this.outlined &&
       Object.is(this.outlined.sizeOverride, sizeOverride)
         ? this.outlined
-        : startOutline(sizeOverride);
+        : emptyOutlineProgress(sizeOverride);
     if (incremental) {
       this.outlined = progress;
     }

@@ -1364,7 +1364,7 @@ const variableStrokes = new Map<
   ExcalidrawFreeDrawElement["id"],
   { options: StrokeOptions; stroke: IncrementalStroke }
 >();
-const VARIABLE_STROKES_KEPT = 4;
+const FREEDRAW_STROKES_KEPT = 4;
 
 const getVariableStroke = (
   id: ExcalidrawFreeDrawElement["id"],
@@ -1376,7 +1376,7 @@ const getVariableStroke = (
     entry = { options, stroke: new IncrementalStroke(options) };
   }
   variableStrokes.set(id, entry);
-  if (variableStrokes.size > VARIABLE_STROKES_KEPT) {
+  if (variableStrokes.size > FREEDRAW_STROKES_KEPT) {
     variableStrokes.delete(variableStrokes.keys().next().value!);
   }
   return entry.stroke;
@@ -1490,7 +1490,7 @@ const getConstantStroke = (
     };
   }
   constantStrokes.set(element.id, entry);
-  if (constantStrokes.size > VARIABLE_STROKES_KEPT) {
+  if (constantStrokes.size > FREEDRAW_STROKES_KEPT) {
     constantStrokes.delete(constantStrokes.keys().next().value!);
   }
   return entry;
@@ -1531,9 +1531,11 @@ const getConstantWidthFreedrawOutline = (
   const { laserOutline: previous, outline: previousOutline } = stroke;
   const count = laserOutline.length;
   const reusable = Math.min(count, previous.length);
+  // the laser pointer keeps its settled points, but rebuilds the caps
   const isKept = (i: number, j: number) =>
-    Object.is(laserOutline[i][0], previous[j][0]) &&
-    Object.is(laserOutline[i][1], previous[j][1]);
+    laserOutline[i] === previous[j] ||
+    (Object.is(laserOutline[i][0], previous[j][0]) &&
+      Object.is(laserOutline[i][1], previous[j][1]));
   let head = 0;
   while (head < reusable && isKept(head, head)) {
     head++;
@@ -1546,6 +1548,7 @@ const getConstantWidthFreedrawOutline = (
     tail++;
   }
   const shift = previous.length - count;
+  const freeze = isDevEnv() || isTestEnv();
   const outline = new Array<[number, number]>(count);
   for (let i = 0; i < count; i++) {
     if (i < head) {
@@ -1555,7 +1558,7 @@ const getConstantWidthFreedrawOutline = (
     } else {
       const [x, y] = laserOutline[i];
       outline[i] = [x * scale, y * scale];
-      if (isDevEnv() || isTestEnv()) {
+      if (freeze) {
         // later outlines share this point, so it must not change in place
         Object.freeze(outline[i]);
       }

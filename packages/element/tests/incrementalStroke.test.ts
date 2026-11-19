@@ -399,12 +399,37 @@ describe("a constant-width freedraw element drawn point by point", () => {
         check(
           constantElement(id, drawn, {
             ...options,
-            strokeWidth: n < 300 ? 2 * authoringScale : 4 * authoringScale,
+            // the width, the line, then the detail scale with the width
+            // (keeping the laser's size) change part way, as edits can
+            strokeWidth: (n < 300 ? 2 : n < 370 ? 4 : 8) * authoringScale,
+            streamline: n < 340 ? streamline : streamline + 0.1,
+            authoringScale: n < 370 ? authoringScale : authoringScale * 2,
           }),
         );
       }
     },
   );
+
+  it("outlines strokes grown in turn, from copied points, as before", () => {
+    const random = seeded(0x5e);
+    // more strokes than are kept, each sent as a fresh copy, as a
+    // collaborator's are
+    const strokes = Array.from({ length: 6 }, (_, k) => ({
+      id: `in-turn-${k}`,
+      points: randomStroke(random, 120, 1).points,
+    }));
+    for (let n = 1; n <= 120; n++) {
+      for (const { id, points } of strokes.slice(0, n % 40 ? 6 : 3)) {
+        const element = constantElement(
+          id,
+          points.slice(0, n).map(([x, y]) => [x, y]),
+        );
+        expect(getFreedrawOutlinePoints(element)).toEqual(
+          getConstantWidthFreedrawOutline(element),
+        );
+      }
+    }
+  });
 
   it("draws repeated, coincident and tiny moves as before", () => {
     const id = (API.createElement({ type: "freedraw" }) as { id: string }).id;
@@ -448,16 +473,21 @@ describe("a growing constant-width freedraw element", () => {
         points: points.slice(0, n).map(([x, y]) => pointFrom<LocalPoint>(x, y)),
       }) as ExcalidrawFreeDrawElement;
 
+    // every outlined point measures its corner with atan2
+    const atan2 = vi.spyOn(Math, "atan2");
+    getConstantWidthFreedrawOutline(element(1500));
+    expect(atan2.mock.calls.length).toBeGreaterThan(1500);
+    vi.restoreAllMocks();
+
     for (let n = 1; n < 1500; n++) {
       getFreedrawOutlinePoints(element(n));
     }
 
-    // every outlined point measures its corner with atan2
-    const atan2 = vi.spyOn(Math, "atan2");
+    vi.spyOn(Math, "atan2");
     const added = vi.spyOn(LaserPointer.prototype, "addPoint");
     const grown = element(1500);
     const outline = getFreedrawOutlinePoints(grown);
-    const outlined = atan2.mock.calls.length;
+    const outlined = vi.mocked(Math.atan2).mock.calls.length;
     const fed = added.mock.calls.length;
     vi.restoreAllMocks();
 
