@@ -27,10 +27,14 @@ import {
   LINE_POLYGON_POINT_MERGE_DISTANCE,
   applyDarkModeFilter,
   DEFAULT_STROKE_STREAMLINE,
+  isDevEnv,
+  isTestEnv,
 } from "@excalidraw/common";
 
 import { RoughGenerator } from "roughjs/bin/generator";
 import { svgPath } from "roughjs/bin/renderer";
+
+import type { Point as LaserPoint } from "@excalidraw/laser-pointer";
 
 import type { GlobalPoint, Polygon } from "@excalidraw/math";
 
@@ -1360,7 +1364,7 @@ const variableStrokes = new Map<
   ExcalidrawFreeDrawElement["id"],
   { options: StrokeOptions; stroke: IncrementalStroke }
 >();
-const VARIABLE_STROKES_KEPT = 4;
+const FREEDRAW_STROKES_KEPT = 4;
 
 const getVariableStroke = (
   id: ExcalidrawFreeDrawElement["id"],
@@ -1372,7 +1376,7 @@ const getVariableStroke = (
     entry = { options, stroke: new IncrementalStroke(options) };
   }
   variableStrokes.set(id, entry);
-  if (variableStrokes.size > VARIABLE_STROKES_KEPT) {
+  if (variableStrokes.size > FREEDRAW_STROKES_KEPT) {
     variableStrokes.delete(variableStrokes.keys().next().value!);
   }
   return entry.stroke;
@@ -1412,6 +1416,86 @@ const getVariableWidthFreedrawOutline = (
   ) as [number, number][];
 };
 
+type ConstantStroke = {
+  size: number;
+  streamline: number;
+  scale: number;
+  laserPointer: LaserPointer;
+  /** the element points added to `laserPointer` */
+  points: ExcalidrawFreeDrawElement["points"];
+  laserOutline: LaserPoint[];
+  outline: [number, number][];
+};
+
+/**
+ * The laser pointers of the constant-width freedraw elements outlined last,
+ * by element id, least recent first, kept as `variableStrokes` are.
+ */
+const constantStrokes = new Map<
+  ExcalidrawFreeDrawElement["id"],
+  ConstantStroke
+>();
+
+// The editor appends to a copy of the previous points, so a kept point is
+// usually the same array; a collaborator's update brings equal copies.
+const isGrownFrom = (
+  points: ExcalidrawFreeDrawElement["points"],
+  previous: ExcalidrawFreeDrawElement["points"],
+) => {
+  if (points.length < previous.length) {
+    return false;
+  }
+  for (let i = 0; i < previous.length; i++) {
+    const point = points[i];
+    const kept = previous[i];
+    if (
+      point !== kept &&
+      !(Object.is(point[0], kept[0]) && Object.is(point[1], kept[1]))
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const getConstantStroke = (
+  element: ExcalidrawFreeDrawElement,
+  size: number,
+  streamline: number,
+  scale: number,
+) => {
+  let entry = constantStrokes.get(element.id);
+  constantStrokes.delete(element.id);
+  if (
+    !entry ||
+    entry.size !== size ||
+    entry.streamline !== streamline ||
+    entry.scale !== scale ||
+    !isGrownFrom(element.points, entry.points)
+  ) {
+    entry = {
+      size,
+      streamline,
+      scale,
+      laserPointer: new LaserPointer({
+        size,
+        streamline,
+        simplify: 0,
+        sizeMapping: (details) => Math.max(0.1, details.pressure),
+        incremental: true,
+      }),
+      points: [],
+      laserOutline: [],
+      outline: [],
+    };
+  }
+  constantStrokes.set(element.id, entry);
+  if (constantStrokes.size > FREEDRAW_STROKES_KEPT) {
+    constantStrokes.delete(constantStrokes.keys().next().value!);
+  }
+  return entry;
+};
+
 /**
  * Uniform (constant width) freedraw outline, rendered with the laser-pointer
  * geometry. Pressure is pinned to 1 so the stroke keeps a constant width.
@@ -1419,24 +1503,70 @@ const getVariableWidthFreedrawOutline = (
  * The laser pointer reads corners from pointer speed in absolute units. The
  * outline is built at the element's size at 1x and scaled back, so a stroke
  * drawn deep in a zoom looks as it does at 1x.
+ *
+ * A growing stroke adds only its new points to the laser pointer, which
+ * outlines only those, and only the outline points that changed are scaled.
  */
 const getConstantWidthFreedrawOutline = (
   element: ExcalidrawFreeDrawElement,
 ): [number, number][] => {
   const scale = getElementDetailScale(element);
-  const laserPointer = new LaserPointer({
-    size: (element.strokeWidth / scale) * CONSTANT_WIDTH_FREEDRAW.SIZE_FACTOR,
-    streamline: getFreedrawStreamline(element),
-    simplify: 0,
-    sizeMapping: (details) => Math.max(0.1, details.pressure),
-  });
-  element.points.forEach(([x, y]) =>
-    laserPointer.addPoint([x / scale, y / scale, 1]),
+  const stroke = getConstantStroke(
+    element,
+    (element.strokeWidth / scale) * CONSTANT_WIDTH_FREEDRAW.SIZE_FACTOR,
+    getFreedrawStreamline(element),
+    scale,
   );
+  const { points } = element;
+  for (let i = stroke.points.length; i < points.length; i++) {
+    stroke.laserPointer.addPoint([
+      points[i][0] / scale,
+      points[i][1] / scale,
+      1,
+    ]);
+  }
+  stroke.points = points;
 
-  return laserPointer
-    .getStrokeOutline()
-    .map(([x, y]) => [x * scale, y * scale] as [number, number]);
+  const laserOutline = stroke.laserPointer.getStrokeOutline();
+  const { laserOutline: previous, outline: previousOutline } = stroke;
+  const count = laserOutline.length;
+  const reusable = Math.min(count, previous.length);
+  // the laser pointer keeps its settled points, but rebuilds the caps
+  const isKept = (i: number, j: number) =>
+    laserOutline[i] === previous[j] ||
+    (Object.is(laserOutline[i][0], previous[j][0]) &&
+      Object.is(laserOutline[i][1], previous[j][1]));
+  let head = 0;
+  while (head < reusable && isKept(head, head)) {
+    head++;
+  }
+  let tail = 0;
+  while (
+    tail < reusable - head &&
+    isKept(count - 1 - tail, previous.length - 1 - tail)
+  ) {
+    tail++;
+  }
+  const shift = previous.length - count;
+  const freeze = isDevEnv() || isTestEnv();
+  const outline = new Array<[number, number]>(count);
+  for (let i = 0; i < count; i++) {
+    if (i < head) {
+      outline[i] = previousOutline[i];
+    } else if (i >= count - tail) {
+      outline[i] = previousOutline[i + shift];
+    } else {
+      const [x, y] = laserOutline[i];
+      outline[i] = [x * scale, y * scale];
+      if (freeze) {
+        // later outlines share this point, so it must not change in place
+        Object.freeze(outline[i]);
+      }
+    }
+  }
+  stroke.laserOutline = laserOutline;
+  stroke.outline = outline;
+  return outline;
 };
 
 export const getFreedrawOutlinePoints = (
