@@ -63,6 +63,7 @@ import {
   isIframeElement,
   isIframeLikeElement,
   isLinearElement,
+  hasLiteralColor,
 } from "./typeChecks";
 import { getCornerRadius, isPathALoop } from "./utils";
 import { headingForPointIsHorizontal } from "./heading";
@@ -865,7 +866,7 @@ const _generateElementShape = (
     theme?: AppState["theme"];
   },
 ): ElementShape => {
-  const isDarkMode = theme === THEME.DARK;
+  const isDarkMode = theme === THEME.DARK && !hasLiteralColor(element);
   switch (element.type) {
     case "rectangle":
     case "iframe":
