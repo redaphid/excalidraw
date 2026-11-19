@@ -47,9 +47,10 @@ const SCENE = {
 };
 
 type Api = {
-  getSceneElements: () => readonly { id: string }[];
+  getSceneElements: () => readonly { id: string; version: number }[];
   updateScene: (scene: {
-    appState: { selectedElementIds: Record<string, true> };
+    elements?: readonly unknown[];
+    appState?: { selectedElementIds: Record<string, true> };
   }) => void;
 };
 
@@ -61,6 +62,41 @@ type Playground = Window & {
     files: null;
   }) => Promise<SVGSVGElement>;
 };
+
+/** a thin text the scene changes or adds to, as a remote edit or a host's patch arrives */
+const CHANGING: Text = {
+  id: "text-id-restless-kettle",
+  y: 300,
+  fontAxes: { wght: 300 },
+};
+
+const THIN_SCENE = {
+  elements: [textElement(THIN), textElement(CHANGING)],
+  appState: SCENE.appState,
+};
+
+/**
+ * Hands the editor the scene with `text` in it, as a remote edit arrives
+ * through `updateScene`: a new version of the element when the scene has it,
+ * else a new element.
+ */
+const sendText = (page: Page, text: Text) =>
+  page.evaluate((text) => {
+    const api = (window as Playground).excalidrawAPI!;
+    const elements = api.getSceneElements();
+    const known = elements.find(({ id }) => id === text.id);
+    // a new text is a copy of the first one, as the editor completed it
+    const base = known ?? { ...elements[0], id: text.id, y: text.y };
+    const sent = {
+      ...base,
+      fontAxes: text.fontAxes,
+      version: base.version + 1,
+      versionNonce: base.version + 7919,
+    };
+    api.updateScene({
+      elements: [...elements.filter(({ id }) => id !== text.id), sent],
+    });
+  }, text);
 
 /** pixels of the static canvas, in a band of CSS pixels from `top`, that differ from the paper */
 const inkInBand = (page: Page, top: number) =>
@@ -215,5 +251,70 @@ test.describe("text with font axes", () => {
     const heavy = await svgInk(page, HEAVY.id);
     report(testInfo.project.name, "svg", [thin, heavy]);
     expect(heavy / thin).toBeGreaterThan(HEAVIER);
+  });
+});
+
+test.describe("when the scene changes a text's axes", () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(
+      !testInfo.project.name.endsWith("desktop"),
+      "measured once per browser",
+    );
+    await page.addInitScript(
+      ([key, scene]) => localStorage.setItem(key, scene),
+      [SCENE_KEY, JSON.stringify(THIN_SCENE)] as const,
+    );
+    await page.goto("/");
+    await page.waitForFunction(
+      () =>
+        (window as Playground).excalidrawAPI?.getSceneElements().length === 2,
+    );
+    // both texts drawn in their instance before the scene changes
+    await expect
+      .poll(async () =>
+        Math.abs(
+          (await inkInBand(page, CHANGING.y)) /
+            (await inkInBand(page, THIN.y)) -
+            1,
+        ),
+      )
+      .toBeLessThan(0.01);
+  });
+
+  test("redraws a shown text whose wght changes", async ({
+    page,
+  }, testInfo) => {
+    await sendText(page, { ...CHANGING, fontAxes: { wght: 800 } });
+    const ratio = async () =>
+      (await inkInBand(page, CHANGING.y)) / (await inkInBand(page, THIN.y));
+    try {
+      await expect.poll(ratio, { timeout: 10_000 }).toBeGreaterThan(HEAVIER);
+    } finally {
+      report(testInfo.project.name, "patched", [
+        await inkInBand(page, THIN.y),
+        await inkInBand(page, CHANGING.y),
+      ]);
+    }
+  });
+
+  test("draws a text that arrives at a new wght in it", async ({
+    page,
+  }, testInfo) => {
+    const arriving: Text = {
+      id: "text-id-late-albatross",
+      y: 500,
+      fontAxes: { wght: 800 },
+    };
+    await sendText(page, arriving);
+    const ratio = async () =>
+      (await inkInBand(page, arriving.y)) / (await inkInBand(page, THIN.y));
+    try {
+      await expect.poll(ratio, { timeout: 10_000 }).toBeGreaterThan(HEAVIER);
+    } finally {
+      report(testInfo.project.name, "arrived", [
+        await inkInBand(page, THIN.y),
+        await inkInBand(page, arriving.y),
+      ]);
+    }
   });
 });
