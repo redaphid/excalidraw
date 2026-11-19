@@ -37,6 +37,9 @@ export const MIDI_TARGET_IDS = [
   "layer",
   "history",
   "gridStep",
+  "tools",
+  "pens",
+  "colors",
 ] as const;
 
 export type MidiTargetId = typeof MIDI_TARGET_IDS[number];
@@ -47,7 +50,8 @@ export type MidiTargetGroup =
   | "colour"
   | "text"
   | "view"
-  | "edit";
+  | "edit"
+  | "palette";
 
 export type MidiTarget = {
   id: MidiTargetId;
@@ -250,6 +254,27 @@ export const MIDI_TARGETS: Readonly<Record<MidiTargetId, MidiTarget>> = {
     ring: { min: 1, max: 100 },
     reset: 5,
   }),
+  tools: target(
+    "tools",
+    "palette",
+    "Tool palette",
+    "Press to open the radial palette's tools, turn to highlight one, press to choose it",
+    { step: 4 },
+  ),
+  pens: target(
+    "pens",
+    "palette",
+    "Pen palette",
+    "Press to open the radial palette's pens, turn to highlight one, press to choose it",
+    { step: 4 },
+  ),
+  colors: target(
+    "colors",
+    "palette",
+    "Colour palette",
+    "Press to open the radial palette's colours, turn to highlight one, press to choose it",
+    { step: 4 },
+  ),
 };
 
 export const isMidiTargetId = (id: unknown): id is MidiTargetId =>
@@ -322,7 +347,8 @@ export type KnobState = {
   /** the value an absolute turn is measured from: the knob's last, or the
    * ring position last sent to it */
   last?: number;
-  /** the value last heard from the knob itself */
+  /** the value last heard from the knob itself, since its ring was last
+   * written */
   heard?: number;
   /** what `auto` settled on */
   detected?: Exclude<MidiEncoding, "auto">;
@@ -365,6 +391,15 @@ const detect = (
   }
   return undefined;
 };
+
+/** the knob's state once the editor has put its ring at `position`. An
+ * absolute knob counts on from there, so its next value can match the last
+ * one heard (65, ring back to 64, 65 again) without the knob being relative:
+ * a repeat only counts when nothing was written between the two */
+export const ringWritten = (
+  state: KnobState | undefined,
+  position: number,
+): KnobState => ({ ...state, last: position, heard: undefined });
 
 /** the detents a value turns by, and the knob's state after it */
 export const decodeTurn = (
@@ -461,7 +496,9 @@ export const withoutBinding = (
 
 export type MidiCommand = {
   target: MidiTargetId;
-  action: "turn" | "reset";
+  /** a press is the knob's switch going down: it resets a value target and
+   * opens, chooses or closes a palette target */
+  action: "turn" | "press";
   /** the knob turned, or the knob whose switch was pressed */
   channel: number;
   cc: number;
@@ -471,7 +508,7 @@ export type MidiCommand = {
  * What a control change asks for. A knob bound on its own channel turns its
  * target; failing that, a press arriving `switchChannelOffset` channels
  * above a bound knob (the Twister's push switches sit one channel above its
- * encoders) resets that knob's target. Releases are ignored.
+ * encoders) presses that knob. Releases are ignored.
  */
 export const resolveCommand = (
   bindings: ReadonlyMap<string, MidiTargetId>,
@@ -486,21 +523,25 @@ export const resolveCommand = (
     const knobChannel = channel - switchChannelOffset;
     const knobTarget = bindings.get(bindingKey(knobChannel, cc));
     if (knobTarget) {
-      return { target: knobTarget, action: "reset", channel: knobChannel, cc };
+      return { target: knobTarget, action: "press", channel: knobChannel, cc };
     }
   }
   return null;
 };
 
 /**
- * The first bank of a Midi Fighter Twister at its factory settings: sixteen
- * encoders sending CC 0–15 on channel 1, read row by row from the top left.
- * Banks 2–4 (CC 16–63) are left free to learn.
+ * A Midi Fighter Twister at its factory settings: knob n of the 64 (16 a
+ * bank, row by row from the top left) sends CC n on channel 1 and its push
+ * switch CC n on channel 2. The first bank, and the first row of the second:
  *
  *   stroke width │ opacity │ sloppiness │ font size
- *   x            │ y       │ width      │ height
+ *   tools        │ pens    │ colours    │ undo / redo
  *   scale        │ angle   │ stroke hue │ background hue
  *   zoom         │ pan ↔   │ pan ↕      │ select
+ *   ─── bank 2 ───
+ *   x            │ y       │ width      │ height
+ *
+ * The rest of bank 2 and banks 3–4 (CC 20–63) are left free to learn.
  */
 export const TWISTER_LAYOUT: readonly MidiBinding[] = (
   [
@@ -508,10 +549,10 @@ export const TWISTER_LAYOUT: readonly MidiBinding[] = (
     "opacity",
     "roughness",
     "fontSize",
-    "x",
-    "y",
-    "width",
-    "height",
+    "tools",
+    "pens",
+    "colors",
+    "history",
     "scale",
     "angle",
     "strokeHue",
@@ -520,5 +561,79 @@ export const TWISTER_LAYOUT: readonly MidiBinding[] = (
     "panX",
     "panY",
     "select",
+    "x",
+    "y",
+    "width",
+    "height",
   ] as const
 ).map((target, cc) => ({ channel: 1, cc, target }));
+
+// -----------------------------------------------------------------------------
+// palette knobs
+// -----------------------------------------------------------------------------
+
+/** the radial palette's rings, one knob target each */
+export const PALETTE_RINGS = ["tools", "pens", "colors"] as const;
+
+export type PaletteRing = typeof PALETTE_RINGS[number];
+
+export const isPaletteRing = (id: MidiTargetId): id is PaletteRing =>
+  (PALETTE_RINGS as readonly string[]).includes(id);
+
+/** what the knob did: its switch went down, or it turned far enough to move
+ * the highlight `moves` slices */
+export type PaletteKnobInput = { press: true } | { moves: number };
+
+export type PaletteKnobOp =
+  | { op: "open"; ring: PaletteRing }
+  | { op: "step"; by: number }
+  | { op: "choose" }
+  | { op: "close" };
+
+/**
+ * A knob bound to a ring of the radial palette: a press opens its ring, a
+ * turn steps the highlight (opening the ring first if it isn't showing), and
+ * a press with the ring open chooses the highlighted slice if the knob has
+ * turned since the ring opened, or just closes it if not. `turned` is
+ * whether this knob has turned since its ring opened; the result says what
+ * to do to the palette and the new `turned`.
+ */
+export const paletteKnob = (
+  view: { open: boolean; ring: string },
+  ring: PaletteRing,
+  input: PaletteKnobInput,
+  turned: boolean,
+): { ops: PaletteKnobOp[]; turned: boolean } => {
+  const showing = view.open && view.ring === ring;
+  if ("press" in input) {
+    if (!showing) {
+      return { ops: [{ op: "open", ring }], turned: false };
+    }
+    return { ops: [{ op: turned ? "choose" : "close" }], turned: false };
+  }
+  if (!input.moves) {
+    return { ops: [], turned: showing && turned };
+  }
+  const step: PaletteKnobOp = { op: "step", by: input.moves };
+  return {
+    ops: showing ? [step] : [{ op: "open", ring }, step],
+    turned: true,
+  };
+};
+
+/** how far in from either end of the LED ring the end slices sit: an
+ * absolute knob counts on from where its ring is put and stops at 0 and 127,
+ * so a slice at an end could not be turned away from that side */
+const SLICE_MARGIN = 16;
+
+/** where on the LED ring the highlighted slice of `count` sits, spread
+ * between the margins; the middle for one slice or none */
+export const slicePosition = (index: number, count: number) => {
+  if (count < 2) {
+    return 64;
+  }
+  const clamped = Math.max(0, Math.min(count - 1, index));
+  return Math.round(
+    SLICE_MARGIN + (clamped / (count - 1)) * (127 - 2 * SLICE_MARGIN),
+  );
+};

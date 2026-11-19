@@ -3,7 +3,7 @@ import { CaptureUpdateAction } from "@excalidraw/element";
 import { radiansToDegrees } from "@excalidraw/math";
 
 import { Excalidraw } from "../index";
-import { TWISTER_LAYOUT } from "../midi";
+import { slicePosition, TWISTER_LAYOUT } from "../midi";
 
 import { API } from "./helpers/api";
 import { Keyboard, UI } from "./helpers/ui";
@@ -22,10 +22,10 @@ const KNOB = {
   opacity: 1,
   roughness: 2,
   fontSize: 3,
-  x: 4,
-  y: 5,
-  width: 6,
-  height: 7,
+  tools: 4,
+  pens: 5,
+  colors: 6,
+  history: 7,
   scale: 8,
   angle: 9,
   strokeHue: 10,
@@ -34,6 +34,10 @@ const KNOB = {
   panX: 13,
   panY: 14,
   select: 15,
+  x: 16,
+  y: 17,
+  width: 18,
+  height: 19,
 } as const;
 
 const send = (bytes: number[], from = TWISTER) =>
@@ -537,5 +541,210 @@ describe("MIDI knobs", () => {
   it("starts from the Twister layout", async () => {
     await renderWithKnobs(true);
     expect(h.app.midi.bindings).toEqual(TWISTER_LAYOUT);
+  });
+});
+
+describe("palette knobs", () => {
+  /** a slice is four clicks of a palette knob */
+  const SLICE = 4;
+
+  const palette = () => h.app.radialPalette.api.state();
+
+  const renderWithPalette = (radialPalette = true, midi = options) =>
+    render(
+      <Excalidraw
+        handleKeyboardGlobally
+        midi={midi}
+        radialPalette={radialPalette}
+      />,
+    );
+
+  afterEach(async () => {
+    await act(async () => {});
+  });
+
+  describe("on the tools knob", () => {
+    beforeEach(async () => {
+      await renderWithPalette();
+    });
+
+    it("opens the tools ring on a press", () => {
+      press(KNOB.tools);
+      expect(palette()).toMatchObject({ open: true, ring: "tools" });
+    });
+
+    it("closes it on a second press with no turn between", () => {
+      press(KNOB.tools);
+      press(KNOB.tools);
+      expect(palette().open).toBe(false);
+      expect(h.state.activeTool.type).toBe("selection");
+    });
+
+    it("chooses the tool turned to, and closes", () => {
+      press(KNOB.tools);
+      turn(KNOB.tools, SLICE);
+      const { items, index } = palette();
+      press(KNOB.tools);
+      expect(h.state.activeTool.type).toBe(items[index].id);
+      expect(h.state.activeTool.type).not.toBe("selection");
+      expect(palette().open).toBe(false);
+    });
+
+    it("opens the ring when turned while it's closed", () => {
+      turn(KNOB.tools, SLICE);
+      expect(palette()).toMatchObject({ open: true, ring: "tools" });
+    });
+
+    it("moves a slice per four clicks", () => {
+      press(KNOB.tools);
+      const start = palette().index;
+      turn(KNOB.tools, SLICE - 1);
+      expect(palette().index).toBe(start);
+      turn(KNOB.tools, 1);
+      expect(palette().index).toBe((start + 1) % palette().items.length);
+    });
+
+    it("leaves a value knob's press as a reset", () => {
+      API.setAppState({ currentItemOpacity: 40 });
+      press(KNOB.opacity);
+      expect(h.state.currentItemOpacity).toBe(100);
+      expect(palette().open).toBe(false);
+    });
+  });
+
+  describe("with acceleration on", () => {
+    beforeEach(async () => {
+      await renderWithPalette(true, { encoding: "relative" });
+    });
+
+    it("moves a slice per four clicks, however quick the hand", () => {
+      press(KNOB.tools);
+      const start = palette().index;
+      turn(KNOB.tools, SLICE);
+      expect(palette().index).toBe((start + 1) % palette().items.length);
+    });
+  });
+
+  describe("on the colours knob", () => {
+    beforeEach(async () => {
+      await renderWithPalette();
+    });
+
+    it("sets the stroke colour turned to", () => {
+      turn(KNOB.colors, SLICE);
+      const { items, index, ring } = palette();
+      expect(ring).toBe("colors");
+      press(KNOB.colors);
+      expect(h.state.currentItemStrokeColor).toBe(items[index].id);
+    });
+
+    it("switches an open tools ring to the colours", () => {
+      press(KNOB.tools);
+      press(KNOB.colors);
+      expect(palette()).toMatchObject({ open: true, ring: "colors" });
+    });
+  });
+
+  describe("with the palette off", () => {
+    beforeEach(async () => {
+      await renderWithPalette(false);
+    });
+
+    it("does nothing but say so", () => {
+      press(KNOB.tools);
+      expect(palette().open).toBe(false);
+      expect(h.state.toast?.message).toBe(
+        "Tool palette: the radial palette is off",
+      );
+    });
+  });
+
+  describe("on a Twister's LED ring", () => {
+    beforeEach(async () => {
+      plugIn();
+      await renderWithPalette();
+      await act(async () => {
+        await h.app.midi.connect();
+      });
+    });
+    afterEach(unplug);
+
+    it("points at the highlighted slice", () => {
+      press(KNOB.tools);
+      turn(KNOB.tools, SLICE);
+      const { index, items } = palette();
+      expect(sent.filter(([, cc]) => cc === KNOB.tools).at(-1)).toEqual([
+        0xb0,
+        KNOB.tools,
+        slicePosition(index, items.length),
+      ]);
+    });
+
+    it("goes back to the middle when the ring closes", () => {
+      press(KNOB.tools);
+      turn(KNOB.tools, SLICE);
+      press(KNOB.tools);
+      expect(sent.filter(([, cc]) => cc === KNOB.tools).at(-1)).toEqual([
+        0xb0,
+        KNOB.tools,
+        64,
+      ]);
+    });
+  });
+
+  describe("on a Twister in its factory absolute mode", () => {
+    /** where each knob last said it was, and how much of `sent` it had
+     * already caught up with */
+    const knobs = new Map<number, { value: number; seen: number }>();
+
+    /** turns a knob the way the Twister does out of the box: it counts on
+     * from wherever the editor last put its ring, and says nothing past
+     * either end */
+    const twist = (cc: number, clicks: number) => {
+      for (let i = 0; i < Math.abs(clicks); i++) {
+        const own = knobs.get(cc);
+        const ring = sent
+          .slice(own?.seen ?? 0)
+          .filter(([status, c]) => status === 0xb0 && c === cc)
+          .at(-1)?.[2];
+        const from = ring ?? own?.value ?? 64;
+        const value = Math.max(0, Math.min(127, from + Math.sign(clicks)));
+        if (value === from) {
+          continue;
+        }
+        knobs.set(cc, { value, seen: sent.length });
+        send([0xb0, cc, value]);
+      }
+    };
+
+    beforeEach(async () => {
+      knobs.clear();
+      plugIn();
+      await renderWithPalette(true, { acceleration: false });
+      await act(async () => {
+        await h.app.midi.connect();
+      });
+    });
+    afterEach(unplug);
+
+    it("still moves a slice per four clicks after its ring came back to where it was", () => {
+      // one click says 65; opening and closing the ring puts it back at 64,
+      // so the next click says 65 again
+      twist(KNOB.tools, 1);
+      press(KNOB.tools);
+      press(KNOB.tools);
+      twist(KNOB.tools, 1);
+      press(KNOB.tools);
+      const start = palette().index;
+      twist(KNOB.tools, SLICE);
+      expect(palette().index).toBe((start + 1) % palette().items.length);
+    });
+
+    it("turns left from the first slice round to the last", () => {
+      press(KNOB.tools);
+      expect(palette().index).toBe(0);
+      twist(KNOB.tools, -SLICE);
+      expect(palette().index).toBe(palette().items.length - 1);
+    });
   });
 });

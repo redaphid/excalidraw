@@ -13,6 +13,12 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Palette knobs (2026-11-19)
+
+- New MIDI targets `palette.tools`, `palette.pens` and `palette.colors` drive the radial palette from a knob: a press opens the knob's ring, a turn steps the highlight a slice per four clicks (opening the ring first if it is closed), and a press after a turn chooses the highlighted slice and closes. A press with no turn since the ring opened just closes it. A press on any other knob still resets its target. A Twister's LED ring points at the highlighted slice. Needs `radialPalette`.
+- `TWISTER_LAYOUT`'s second row is now tools, pens, colours and undo / redo; x, y, width and height move to the first row of bank 2 (CC 16–19). Bindings a browser already saved are kept.
+- `MidiCommand.action` is `"press"` (was `"reset"`): the editor decides what a press does per target.
+
 ### Radial palette (2026-11-19) [#205](https://github.com/redaphid/excalidraw/pull/205)
 
 - `<Excalidraw radialPalette />` adds a puck that opens a ring of shapes and tools (select, rectangle, diamond, ellipse, arrow, line, pen, text, frame), pen presets and the eraser, and the theme's inks with recent colours, a pen-size arc and an opacity arc.

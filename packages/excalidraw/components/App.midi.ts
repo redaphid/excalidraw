@@ -45,11 +45,16 @@ import {
   controlChangeBytes,
   decodeTurn,
   gatherDetents,
+  isPaletteRing,
+  ringWritten,
   MIDI_TARGETS,
   midiTargetStep,
+  PALETTE_RINGS,
+  paletteKnob,
   parseMidiMessage,
   resolveCommand,
   ringPosition,
+  slicePosition,
   TWISTER_LAYOUT,
   withBinding,
 } from "../midi";
@@ -93,6 +98,8 @@ import type {
   MidiEncoding,
   MidiTarget,
   MidiTargetId,
+  PaletteKnobInput,
+  PaletteRing,
 } from "../midi";
 import type { AppState, MidiOptions } from "../types";
 import type App from "./App";
@@ -183,6 +190,9 @@ export class AppMidi {
   private lastSelection = "";
   /** detents toward the next move of a stepped target */
   private carry = new Map<MidiTargetId, number>();
+  /** whether a palette knob has turned since its ring opened */
+  private paletteTurned = false;
+  private unwatchPalette: (() => void) | null = null;
 
   constructor(private app: App) {}
 
@@ -265,6 +275,10 @@ export class AppMidi {
         }
         this.access = access;
         access.onstatechange = () => this.listen();
+        this.unwatchPalette?.();
+        this.unwatchPalette = this.app.radialPalette.api.onChange(() =>
+          this.sendPaletteRings(),
+        );
         const names = this.listen();
         if (!opts.quiet) {
           this.toast(
@@ -296,6 +310,8 @@ export class AppMidi {
     if (this.access) {
       this.access.onstatechange = null;
     }
+    this.unwatchPalette?.();
+    this.unwatchPalette = null;
     this.access = null;
     this.learning = null;
   };
@@ -384,8 +400,12 @@ export class AppMidi {
     if (!command) {
       return;
     }
-    if (command.action === "reset") {
-      this.reset(command.target);
+    if (command.action === "press") {
+      if (isPaletteRing(command.target)) {
+        this.drivePalette(command.target, { press: true });
+      } else {
+        this.reset(command.target);
+      }
       return;
     }
 
@@ -398,7 +418,10 @@ export class AppMidi {
       const since = prev?.at === undefined ? undefined : now - prev.at;
       this.turnTarget(
         command.target,
-        this.options?.acceleration === false ? steps : accelerate(steps, since),
+        // a palette knob steps one slice at a time, however quick the hand
+        this.options?.acceleration === false || isPaletteRing(command.target)
+          ? steps
+          : accelerate(steps, since),
       );
     }
   }
@@ -428,6 +451,18 @@ export class AppMidi {
       return;
     }
     if (state.viewModeEnabled || !this.app.isInteractionEnabled()) {
+      return;
+    }
+    if (isPaletteRing(id)) {
+      const { moves, carry } = gatherDetents(
+        this.carry.get(id) ?? 0,
+        detents,
+        this.stepOf(id),
+      );
+      this.carry.set(id, carry);
+      if (moves) {
+        this.drivePalette(id, { moves });
+      }
       return;
     }
     if (id === "select") {
@@ -1124,6 +1159,65 @@ export class AppMidi {
   }
 
   // ---------------------------------------------------------------------------
+  // the radial palette
+  // ---------------------------------------------------------------------------
+
+  /** a palette knob pressed or turned: opens, steps, chooses or closes its
+   * ring of the radial palette (`paletteKnob`) */
+  private drivePalette(ring: PaletteRing, input: PaletteKnobInput) {
+    if (this.app.state.viewModeEnabled || !this.app.isInteractionEnabled()) {
+      return;
+    }
+    if (!this.app.props.radialPalette) {
+      this.toast(`${MIDI_TARGETS[ring].label}: the radial palette is off`);
+      return;
+    }
+    this.endTurn();
+    if ("press" in input) {
+      this.carry.delete(ring);
+    }
+    const palette = this.app.radialPalette.api;
+    const { ops, turned } = paletteKnob(
+      palette.state(),
+      ring,
+      input,
+      this.paletteTurned,
+    );
+    this.paletteTurned = turned;
+    for (const op of ops) {
+      switch (op.op) {
+        case "open":
+          palette.open({ ring: op.ring });
+          break;
+        case "step":
+          palette.step(op.by);
+          break;
+        case "choose":
+          palette.choose();
+          break;
+        case "close":
+          palette.close();
+          break;
+      }
+    }
+  }
+
+  /** where a palette knob's LED ring points: at the highlighted slice while
+   * its ring is open, the middle otherwise */
+  private palettePosition(ring: PaletteRing) {
+    const state = this.app.radialPalette.api.state();
+    return state.open && state.ring === ring
+      ? slicePosition(state.index, state.items.length)
+      : 64;
+  }
+
+  private sendPaletteRings() {
+    for (const ring of PALETTE_RINGS) {
+      this.sendRing(ring);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // rings and feedback
   // ---------------------------------------------------------------------------
 
@@ -1262,13 +1356,17 @@ export class AppMidi {
     }
     const target: MidiTarget = MIDI_TARGETS[id];
     const value = target.ring ? this.read(id) : null;
-    const position = value === null ? 64 : ringPosition(target, value);
+    const position = isPaletteRing(id)
+      ? this.palettePosition(id)
+      : value === null
+      ? 64
+      : ringPosition(target, value);
     for (const binding of this.bindings) {
       if (binding.target !== id) {
         continue;
       }
       const key = bindingKey(binding.channel, binding.cc);
-      this.knobs.set(key, { ...this.knobs.get(key), last: position });
+      this.knobs.set(key, ringWritten(this.knobs.get(key), position));
       for (const output of outputs) {
         try {
           output.send(
