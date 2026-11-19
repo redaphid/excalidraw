@@ -687,9 +687,11 @@ describe("palette knobs", () => {
       press(KNOB.tools);
       turn(KNOB.tools, SLICE);
       press(KNOB.tools);
-      expect(
-        sent.filter(([, cc]) => cc === KNOB.tools).at(-1),
-      ).toEqual([0xb0, KNOB.tools, 64]);
+      expect(sent.filter(([, cc]) => cc === KNOB.tools).at(-1)).toEqual([
+        0xb0,
+        KNOB.tools,
+        64,
+      ]);
     });
   });
 });
