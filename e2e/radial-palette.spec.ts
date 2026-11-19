@@ -114,21 +114,157 @@ test("picks a tool with one flick from the puck", async ({ page }) => {
   ).toBe("rectangle");
 });
 
-test("gives a drawn rectangle a style role", async ({ page }, testInfo) => {
-  await tap(page, testInfo, "radial-palette-puck");
-  await tap(page, testInfo, "radial-tool-rectangle");
+/** a finger or a pen held on the canvas: real input through CDP in
+ * Chromium, synthetic pointer events elsewhere (which test the editor's
+ * handling, not the browser's own gesture recognition) */
+const contact = async (
+  page: Page,
+  browserName: string,
+  kind: "touch" | "pen",
+) => {
+  const cdp =
+    browserName === "chromium"
+      ? await page.context().newCDPSession(page)
+      : null;
+  const synthetic = (type: string, x: number, y: number, buttons: number) =>
+    page.evaluate(
+      ({ type, x, y, buttons, kind }) => {
+        const canvas = document.querySelector(
+          "canvas.excalidraw__canvas.interactive",
+        )!;
+        const target =
+          type === "pointerdown" ? canvas : document.elementFromPoint(x, y)!;
+        target.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+            pointerId: 41,
+            pointerType: kind,
+            isPrimary: true,
+            clientX: x,
+            clientY: y,
+            button: type === "pointermove" ? -1 : kind === "pen" ? 2 : 0,
+            buttons,
+          }),
+        );
+      },
+      { type, x, y, buttons, kind },
+    );
+  const held = kind === "pen" ? 2 : 1;
+  const mouse = (type: string, x: number, y: number, buttons: number) =>
+    cdp!.send("Input.dispatchMouseEvent", {
+      type,
+      x,
+      y,
+      button: "right",
+      buttons,
+      clickCount: type === "mouseMoved" ? 0 : 1,
+      pointerType: "pen",
+    });
+  return {
+    down: async (x: number, y: number) => {
+      if (!cdp) {
+        return synthetic("pointerdown", x, y, held);
+      }
+      if (kind === "touch") {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchStart",
+          touchPoints: [{ x, y, id: 1 }],
+        });
+      } else {
+        await mouse("mousePressed", x, y, 2);
+      }
+    },
+    move: async (x: number, y: number) => {
+      if (!cdp) {
+        return synthetic("pointermove", x, y, held);
+      }
+      if (kind === "touch") {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x, y, id: 1 }],
+        });
+      } else {
+        await mouse("mouseMoved", x, y, 2);
+      }
+    },
+    up: async (x: number, y: number) => {
+      if (!cdp) {
+        return synthetic("pointerup", x, y, 0);
+      }
+      if (kind === "touch") {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchEnd",
+          touchPoints: [],
+        });
+      } else {
+        await mouse("mouseReleased", x, y, 0);
+      }
+    },
+  };
+};
+
+const ringCenter = async (page: Page) => {
+  const box = (await page.getByTestId("radial-palette").boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+};
+
+const activeTool = (page: Page) =>
+  page.evaluate(
+    () => (window as Playground).excalidrawAPI?.getAppState().activeTool.type,
+  );
+
+test("opens at the pointer on , and closes on Escape", async ({ page }) => {
   const { x, y } = await canvasCenter(page);
   await page.mouse.move(x, y);
-  await page.mouse.down();
-  await page.mouse.move(x + 100, y + 60, { steps: 6 });
-  await page.mouse.up();
+  await page.keyboard.press(",");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  const ring = await ringCenter(page);
+  expect(Math.abs(ring.x - x)).toBeLessThan(2);
+  expect(Math.abs(ring.y - y)).toBeLessThan(2);
+  await expect(page.getByTestId("radial-role-error")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("radial-palette")).toBeHidden();
+});
 
-  await tap(page, testInfo, "radial-palette-puck");
-  await tap(page, testInfo, "radial-role-error");
+test("a finger held still opens the ring under it, and a flick picks a shape", async ({
+  page,
+  browserName,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, "a touch gesture");
+  const { x, y } = await canvasCenter(page);
+  const finger = await contact(page, browserName, "touch");
+  await finger.down(x, y);
+  await finger.move(x + 3, y + 2);
+  await page.waitForTimeout(800);
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  await expect(page.locator(".context-menu")).toHaveCount(0);
+  const ring = await ringCenter(page);
+  expect(Math.abs(ring.x - (x + 3))).toBeLessThan(2);
+  await page.screenshot({ path: testInfo.outputPath("long-press.png") });
 
-  await expect
-    .poll(async () =>
-      (await savedElements(page)).find(({ type }) => type === "rectangle"),
-    )
-    .toMatchObject({ strokeColor: "#9e3a33", backgroundColor: "#ebe4d6" });
+  const ellipse = await center(page, "radial-tool-ellipse");
+  await finger.move((x + ellipse.x) / 2, (y + ellipse.y) / 2);
+  await finger.move(ellipse.x, ellipse.y);
+  await finger.up(ellipse.x, ellipse.y);
+  await expect(page.getByTestId("radial-palette")).toBeHidden();
+  expect(await activeTool(page)).toBe("ellipse");
+  expect(await savedElements(page)).toEqual([]);
+});
+
+test("a pen with its barrel button held opens the ring at the tip", async ({
+  page,
+  browserName,
+}) => {
+  const { x, y } = await canvasCenter(page);
+  const pen = await contact(page, browserName, "pen");
+  await pen.down(x, y);
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  const ring = await ringCenter(page);
+  expect(Math.abs(ring.x - x)).toBeLessThan(2);
+  expect(Math.abs(ring.y - y)).toBeLessThan(2);
+  await pen.up(x, y);
+  await expect(page.locator(".context-menu")).toHaveCount(0);
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
 });

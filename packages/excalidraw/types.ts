@@ -59,6 +59,7 @@ import type { ClipboardData } from "./clipboard";
 import type App from "./components/App";
 import type Library from "./data/library";
 import type { ContextMenuItems } from "./components/ContextMenu";
+import type { RadialPaletteAPI } from "./components/RadialPalette/radialPaletteController";
 import type { SnapLine } from "./snapping";
 import type { ImportedDataState } from "./data/types";
 import type { SetViewportOptions } from "./viewport";
@@ -937,8 +938,10 @@ export interface ExcalidrawProps {
   freedrawStrokeWidth?: number;
   /**
    * Shows the radial palette: a small puck that opens into a ring of
-   * diagram tools, pen presets, style roles, colors, pen size and opacity.
-   * Off by default. While closed, only the puck renders.
+   * shapes, pens, colors, pen size and opacity. `,`, a finger held still,
+   * or a pen's barrel button also open it, at the pointer; the long press
+   * replaces the touch context menu, which the palette's hub opens. Off by
+   * default. While closed, only the puck renders.
    */
   radialPalette?: boolean;
   /**
@@ -1398,6 +1401,7 @@ export type AppClassProperties = {
 
   lastPointerMoveCoords: App["lastPointerMoveCoords"];
   lastPointerMoveEvent: App["lastPointerMoveEvent"];
+  radialPalette: App["radialPalette"];
   bindModeHandler: App["bindModeHandler"];
 
   emitUserFollowIntent: App["emitUserFollowIntent"];
@@ -1525,6 +1529,9 @@ export interface ExcalidrawImperativeAPI {
   history: {
     clear: InstanceType<typeof App>["resetHistory"];
   };
+  /** drives the radial palette (with `props.radialPalette`) without a
+   * pointer, e.g. from a MIDI knob: open, step, choose, close */
+  radialPalette: RadialPaletteAPI;
   /** MIDI knobs, with `props.midi` set: `connect()` from a user gesture asks
    * for access, `learn(target)` binds the next knob turned */
   midi: Pick<

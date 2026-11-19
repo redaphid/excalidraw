@@ -3,6 +3,28 @@
 @forward "./variables.module";
 
 .excalidraw {
+  // Control style tokens: the radial palette's look, for any control that
+  // wants to match it. Each follows the active theme (and dark mode)
+  // through the editor's own variables, so a `css` theme restyles them.
+  --control-surface: var(--island-bg-color);
+  --control-surface-hover: var(--button-hover-bg);
+  --control-surface-active: var(--color-surface-primary-container);
+  --control-ink: var(--icon-fill-color);
+  --control-text: var(--text-primary-color);
+  --control-accent: var(--color-primary);
+  --control-rule: var(--default-border-color);
+  --control-rule-width: 1px;
+  --control-active-width: 1.5px;
+  --control-shadow: var(--shadow-island);
+  --control-radius: var(--border-radius-lg);
+  --control-font: var(--ui-font);
+  --control-label-size: 8px;
+  --control-icon-size: 18px;
+  --control-track-width: 5px;
+  --control-knob-width: 2px;
+  --control-motion-duration: 120ms;
+  --control-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+
   --theme-filter: none;
   --button-destructive-bg-color: #{$color-red-1};
   --button-destructive-color: #{$color-red-9};
