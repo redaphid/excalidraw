@@ -30,6 +30,7 @@ import {
 } from "@excalidraw/common";
 
 import { RoughGenerator } from "roughjs/bin/generator";
+import { svgPath } from "roughjs/bin/renderer";
 
 import type { GlobalPoint, Polygon } from "@excalidraw/math";
 
@@ -272,6 +273,34 @@ export const generateRoughOptions = (
       throw new Error(`Unimplemented type ${element.type}`);
     }
   }
+};
+
+/**
+ * `generator.path`, which first flattens the whole path into the points its
+ * fill uses even when there is no fill. Shapes default to a transparent
+ * background, so most rounded shapes have none, and the flattening was a
+ * third of their rough.js time. A path without a fill takes the same random
+ * draws in the same order here, so it comes out the same.
+ */
+const roughPath = (
+  generator: RoughGenerator,
+  d: string,
+  options: Options,
+): Drawable => {
+  const o = { ...generator.defaultOptions, ...options };
+  const hasFill = o.fill && o.fill !== "transparent" && o.fill !== "none";
+  const simplified = !!(o.simplification && o.simplification < 1);
+  if (!d || hasFill || simplified) {
+    return generator.path(d, options);
+  }
+  // rough.js's own clean-up of `d` (its third replace matches the literal
+  // text "/(ss)/g", which no path holds)
+  d = d.replace(/\n/g, " ").replace(/(-\s)/g, "-");
+  return {
+    shape: "path",
+    sets: o.stroke === "none" ? [] : [svgPath(d, o)],
+    options: o,
+  };
 };
 
 const modifyIframeLikeForRoughOptions = (
@@ -879,7 +908,8 @@ const _generateElementShape = (
         const w = element.width;
         const h = element.height;
         const r = getCornerRadius(Math.min(w, h), element);
-        shape = generator.path(
+        shape = roughPath(
+          generator,
           `M ${r} 0 L ${w - r} 0 Q ${w} 0, ${w} ${r} L ${w} ${
             h - r
           } Q ${w} ${h}, ${w - r} ${h} L ${r} ${h} Q 0 ${h}, 0 ${
@@ -927,7 +957,8 @@ const _generateElementShape = (
           element,
         );
 
-        shape = generator.path(
+        shape = roughPath(
+          generator,
           `M ${topX + verticalRadius} ${topY + horizontalRadius} L ${
             rightX - verticalRadius
           } ${rightY - horizontalRadius}
@@ -997,7 +1028,8 @@ const _generateElementShape = (
           shape = [];
         } else {
           shape = [
-            generator.path(
+            roughPath(
+              generator,
               generateElbowArrowShape(points, 16),
               generateRoughOptions(element, true, isDarkMode),
             ),
