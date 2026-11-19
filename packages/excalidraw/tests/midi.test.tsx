@@ -679,6 +679,9 @@ describe("palette knobs", () => {
     });
 
     it("lights the colours knob with the stroke colour in use", () => {
+      // the editor answers a controller once it has spoken: a knob nothing
+      // is bound to
+      send([0xb0, 40, 64]);
       API.setAppState({ currentItemStrokeColor: "#e03131" });
       expect(sent.at(-1)).toEqual([0xb1, KNOB.colors, 84]);
     });
@@ -701,7 +704,9 @@ describe("palette knobs on another controller", () => {
 
   beforeEach(async () => {
     plugIn(MINI);
-    render(<Excalidraw handleKeyboardGlobally midi={options} radialPalette />);
+    await render(
+      <Excalidraw handleKeyboardGlobally midi={options} radialPalette />,
+    );
     await act(async () => {
       await h.app.midi.connect();
     });
