@@ -701,9 +701,7 @@ describe("palette knobs on another controller", () => {
 
   beforeEach(async () => {
     plugIn(MINI);
-    render(
-      <Excalidraw handleKeyboardGlobally midi={options} radialPalette />,
-    );
+    render(<Excalidraw handleKeyboardGlobally midi={options} radialPalette />);
     await act(async () => {
       await h.app.midi.connect();
     });
