@@ -1,0 +1,85 @@
+name: Playground preview
+
+# Publishes each pull request's playground to
+# https://redaphid.github.io/excalidraw-previews/pr-<number>/ and removes it
+# when the pull request closes. Master's playground (playground.yml) is not
+# touched. Needs the PREVIEWS_DEPLOY_KEY secret: the private half of a deploy
+# key with write access to redaphid/excalidraw-previews. Without it, the job
+# says so and does nothing.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+concurrency:
+  group: playground-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PR: ${{ github.event.pull_request.number }}
+  PREVIEWS_REPO: git@github.com:redaphid/excalidraw-previews.git
+  PREVIEWS_URL: https://redaphid.github.io/excalidraw-previews
+
+jobs:
+  preview:
+    # a fork's pull request gets no secrets
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      DEPLOY_KEY: ${{ secrets.PREVIEWS_DEPLOY_KEY }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check for the deploy key
+        id: key
+        run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::notice::PREVIEWS_DEPLOY_KEY is not set; no preview published."
+            echo "set=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        if: steps.key.outputs.set == 'true' && github.event.action != 'closed'
+      - name: Setup Node.js
+        if: steps.key.outputs.set == 'true' && github.event.action != 'closed'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20.x
+      - name: Build the playground
+        if: steps.key.outputs.set == 'true' && github.event.action != 'closed'
+        run: |
+          yarn install --frozen-lockfile
+          yarn build:playground
+      - name: Publish or remove the preview
+        if: steps.key.outputs.set == 'true'
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/previews
+          chmod 600 ~/.ssh/previews
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/previews -o IdentitiesOnly=yes"
+          git clone --depth 1 --branch gh-pages "$PREVIEWS_REPO" "$RUNNER_TEMP/previews"
+          cd "$RUNNER_TEMP/previews"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf "pr-$PR"
+          if [ "${{ github.event.action }}" != "closed" ]; then
+            cp -r "$GITHUB_WORKSPACE/playground/dist" "pr-$PR"
+          fi
+          git add -A
+          git commit -q -m "pr-$PR: ${{ github.event.action }} ${{ github.event.pull_request.head.sha }}" || exit 0
+          # another pull request may publish at the same moment: merge, retry
+          for attempt in 1 2 3 4 5; do
+            git push -q origin gh-pages && break
+            git fetch -q --depth 20 origin gh-pages
+            git merge -q --no-edit -X ours origin/gh-pages
+          done
+      - name: Link the preview from the pull request
+        if: steps.key.outputs.set == 'true' && github.event.action == 'opened'
+        run: |
+          gh pr comment "$PR" --repo "${{ github.repository }}" --body \
+            "Playground preview: $PREVIEWS_URL/pr-$PR/ (updates on each push; give Pages a minute)"
