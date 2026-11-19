@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { generateThemeCss, removeDarkModeFilter } from "@excalidraw/common";
+import { generateThemeCss } from "@excalidraw/common";
 
 import type { ThemeTokens } from "@excalidraw/common";
 
@@ -9,14 +9,10 @@ import { EMPTY_CSS_THEME, readCssTheme } from "../../cssTheme";
 
 import {
   RECENT_COLOR_SLOTS,
-  STYLE_ROLES,
-  getRoleStyle,
   getThemeColors,
   getThemeInks,
   rememberColor,
 } from "./themeInks";
-
-import type { RoleStyle, StyleRole } from "./themeInks";
 
 const THEMES_DIR = path.resolve(__dirname, "../../themes");
 
@@ -38,99 +34,30 @@ const styleOf = (css: string) => ({
   getPropertyValue: (name: string) => cssValue(css, name.replace(/^--/, "")),
 });
 
-/**
- * draw's `roleStyle` colors (src/roles.ts in redaphid/draw), restated: the
- * reference the palette must agree with
- */
-const drawRoleStyle = (
-  role: StyleRole,
-  css: string,
-  mode: "light" | "dark",
-): RoleStyle => {
-  const stored = (color: string) =>
-    mode === "dark" && color !== "transparent"
-      ? removeDarkModeFilter(color)
-      : color;
-  const value = (name: string) => cssValue(css, name);
-  const palette = value("color-picks-stroke").split(/\s+/).slice(1);
-  const accent = stored(value("color-selection"));
-  const colors = {
-    accent,
-    data: palette[2] ?? accent,
-    note: value("sticky-note-background-color"),
-    error: palette[0] ?? accent,
-    healthy: palette[1] ?? accent,
-    ink: value("element-stroke-color"),
-  };
-  const table = {
-    service: ["accent", "solid"],
-    data: ["data", "solid"],
-    async: ["accent", "dashed"],
-    note: ["note", "solid"],
-    error: ["error", "solid"],
-    healthy: ["healthy", "solid"],
-    assumed: ["ink", "dashed"],
-  } as const;
-  const [color, strokeStyle] = table[role];
-  return {
-    strokeColor:
-      role === "note" ? value("sticky-note-stroke-color") : colors[color],
-    backgroundColor:
-      role === "note" ? colors.note : stored(value("canvas-background")),
-    fillStyle: value("element-fill-style") as RoleStyle["fillStyle"],
-    strokeStyle,
-  };
-};
-
 describe("themeInks", () => {
   describe.each(TOKEN_THEMES)("with the %s theme", (name) => {
     let css: string;
-    let mode: "light" | "dark";
 
     beforeEach(() => {
-      ({ css, mode } = generateThemeCss(loadTokens(name)));
+      ({ css } = generateThemeCss(loadTokens(name)));
     });
 
-    it.each(STYLE_ROLES)("resolves the %s role as draw's agents do", (role) => {
-      const theme = readCssTheme(styleOf(css));
-      const inks = getThemeInks(
-        theme,
-        { viewBackgroundColor: "#ffffff" },
-        theme.canvas.mode ?? "light",
-      );
-      expect(getRoleStyle(role, inks)).toEqual(drawRoleStyle(role, css, mode));
+    it("inks with the theme's stroke color and swatches", () => {
+      const picks = cssValue(css, "color-picks-stroke").split(/\s+/);
+      expect(getThemeInks(readCssTheme(styleOf(css)))).toEqual({
+        ink: cssValue(css, "element-stroke-color") || picks[0],
+        palette: picks.slice(1),
+      });
     });
   });
 
   describe("with no theme", () => {
-    let style: (role: StyleRole) => RoleStyle;
-
-    beforeEach(() => {
-      const inks = getThemeInks(
-        EMPTY_CSS_THEME,
-        { viewBackgroundColor: "#ffffff" },
-        "light",
-      );
-      style = (role) => getRoleStyle(role, inks);
+    it("inks with Excalidraw's own stroke picks", () => {
+      expect(getThemeInks(EMPTY_CSS_THEME)).toEqual({
+        ink: "#1e1e1e",
+        palette: ["#e03131", "#2f9e44", "#1971c2", "#f08c00"],
+      });
     });
-
-    it.each([
-      ["service", "#6965db", "solid"],
-      ["data", "#1971c2", "solid"],
-      ["async", "#6965db", "dashed"],
-      ["error", "#e03131", "solid"],
-      ["healthy", "#2f9e44", "solid"],
-      ["assumed", "#1e1e1e", "dashed"],
-    ] as const)(
-      "gives the %s role Excalidraw's own colors, as draw does",
-      (role, strokeColor, strokeStyle) => {
-        expect(style(role)).toMatchObject({
-          strokeColor,
-          strokeStyle,
-          backgroundColor: "#ffffff",
-        });
-      },
-    );
   });
 
   describe("the ring's colors with the parchment theme", () => {
@@ -140,10 +67,7 @@ describe("themeInks", () => {
       const theme = readCssTheme(
         styleOf(generateThemeCss(loadTokens("architect-parchment")).css),
       );
-      colors = getThemeColors(
-        theme,
-        getThemeInks(theme, { viewBackgroundColor: "#ffffff" }, "light"),
-      );
+      colors = getThemeColors(theme, getThemeInks(theme));
     });
 
     it("are the ink, then the palette, in the theme's order", () => {

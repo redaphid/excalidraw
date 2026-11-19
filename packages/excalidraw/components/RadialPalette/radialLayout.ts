@@ -18,8 +18,6 @@ export const RING_RADIUS = OUTER_BAND.outer;
 
 /** the top half, left to right */
 const TOP = { start: 180, end: 360 };
-/** the bottom half, right to left */
-const BOTTOM = { start: 0, end: 180 };
 
 /** pen size: grows up the left side of the bottom half */
 export const SIZE_SLIDER: Slider = { from: 96, to: 174 };
@@ -48,22 +46,22 @@ export const spread = (
 export type RingLayout = Readonly<{
   tools: readonly Sector[];
   pens: readonly Sector[];
-  roles: readonly Sector[];
   colors: readonly Sector[];
 }>;
 
 export const getRingLayout = (counts: {
   tools: number;
   pens: number;
-  roles: number;
   colors: number;
 }): RingLayout => {
-  // the first tool sits at the top
-  const toolStep = 360 / counts.tools;
+  // the first tool and the first pen sit at the top
+  const around = (count: number) => {
+    const step = 360 / count;
+    return spread(count, -90 - step / 2, 270 - step / 2);
+  };
   return {
-    tools: spread(counts.tools, -90 - toolStep / 2, 270 - toolStep / 2),
-    pens: spread(counts.pens, TOP.start, TOP.end),
-    roles: spread(counts.roles, BOTTOM.start, BOTTOM.end),
+    tools: around(counts.tools),
+    pens: around(counts.pens),
     colors: spread(counts.colors, TOP.start, TOP.end),
   };
 };
@@ -145,7 +143,7 @@ const onSlider = (slider: Slider, angle: number) =>
 
 export type RingHit =
   | Readonly<{ kind: "hub" }>
-  | Readonly<{ kind: "tool" | "pen" | "role" | "color"; index: number }>
+  | Readonly<{ kind: "tool" | "pen" | "color"; index: number }>
   | Readonly<{ kind: "size" | "opacity"; value: number }>;
 
 /** what lies at `dx, dy` from the center, in palette units */
@@ -160,7 +158,7 @@ export const hitTest = (
     return { kind: "hub" };
   }
   const find = (
-    kind: "tool" | "pen" | "role" | "color",
+    kind: "tool" | "pen" | "color",
     sectors: readonly Sector[],
   ): RingHit | null => {
     const index = sectors.findIndex((sector) => inSector(angle, sector));
@@ -170,7 +168,7 @@ export const hitTest = (
     return find("tool", layout.tools);
   }
   if (inBand(radius, MIDDLE_BAND)) {
-    return find("pen", layout.pens) ?? find("role", layout.roles);
+    return find("pen", layout.pens);
   }
   if (inBand(radius, OUTER_BAND)) {
     if (options.size && onSlider(SIZE_SLIDER, angle)) {

@@ -9,10 +9,11 @@ import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
-import { Keyboard, UI } from "../../tests/helpers/ui";
+import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
 import { act, render } from "../../tests/test-utils";
 
 import { getPenPresets } from "./penPresets";
+import { RADIAL_TOOLS } from "./radialPaletteController";
 import {
   TOOLS_BAND,
   getRingLayout,
@@ -92,9 +93,30 @@ describe("RadialPalette", () => {
         expect(puck().getAttribute("aria-expanded")).toBe("true");
       });
 
-      it("closes on the hub", () => {
-        tap("radial-palette-close");
+      it("opens the context menu from the hub, in place of itself", () => {
+        tap("radial-palette-menu");
         expect(ring()).toBeNull();
+        expect(h.state.contextMenu).not.toBeNull();
+      });
+
+      it("offers shapes and pens, and no style roles", () => {
+        const ids = Array.from(
+          ring()!.querySelectorAll("[data-testid]"),
+          (node) => node.getAttribute("data-testid"),
+        );
+        expect(ids.filter((id) => id?.startsWith("radial-tool-"))).toEqual(
+          [...RADIAL_TOOLS, "eraser"].map((type) => `radial-tool-${type}`),
+        );
+        expect(ids.filter((id) => id?.startsWith("radial-pen-"))).toEqual(
+          ["liner", "pencil", "brush", "marker", "wash"].map(
+            (id) => `radial-pen-${id}`,
+          ),
+        );
+        expect(
+          ids.some((id) =>
+            /role|danger|service|healthy|assumed|async|-error|-data/.test(id!),
+          ),
+        ).toBe(false);
       });
 
       it("closes on a press outside it", () => {
@@ -108,6 +130,8 @@ describe("RadialPalette", () => {
       });
 
       it.each([
+        "selection",
+        "freedraw",
         "rectangle",
         "diamond",
         "ellipse",
@@ -221,53 +245,6 @@ describe("RadialPalette", () => {
       });
     });
 
-    describe("when a role is picked with a rectangle selected", () => {
-      let undoDepth: number;
-
-      beforeEach(() => {
-        const rectangle = API.createElement({ type: "rectangle" });
-        API.setElements([rectangle]);
-        API.setSelectedElements([rectangle]);
-        undoDepth = API.getUndoStack().length;
-        openRing();
-        tap("radial-role-error");
-      });
-
-      it("gives it the role's stroke, paper and line", () => {
-        expect(h.elements[0]).toMatchObject({
-          strokeColor: "#9e3a33",
-          backgroundColor: "#ebe4d6",
-          fillStyle: "solid",
-          strokeStyle: "solid",
-        });
-      });
-
-      it("gives new shapes the role too", () => {
-        expect({
-          stroke: h.state.currentItemStrokeColor,
-          background: h.state.currentItemBackgroundColor,
-        }).toEqual({ stroke: "#9e3a33", background: "#ebe4d6" });
-      });
-
-      it("takes one undo step", () => {
-        expect(API.getUndoStack().length).toBe(undoDepth + 1);
-      });
-    });
-
-    describe("when the assumed role is picked", () => {
-      beforeEach(() => {
-        openRing();
-        tap("radial-role-assumed");
-      });
-
-      it("draws new shapes in dashed ink", () => {
-        expect({
-          stroke: h.state.currentItemStrokeColor,
-          line: h.state.currentItemStrokeStyle,
-        }).toEqual({ stroke: "#1b2129", line: "dashed" });
-      });
-    });
-
     describe("when a color is picked", () => {
       beforeEach(() => {
         openRing();
@@ -309,9 +286,8 @@ describe("RadialPalette", () => {
       beforeEach(() => {
         API.setAppState({ width: 1000, height: 800 });
         const layout = getRingLayout({
-          tools: 9,
+          tools: RADIAL_TOOLS.length,
           pens: getPenPresets(h.app.cssTheme).length + 1,
-          roles: 7,
           colors: 12,
         });
         const center = placeRing(
@@ -346,13 +322,50 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when , is pressed with the pointer over the canvas", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        new Pointer("mouse").moveTo(400, 300);
+        Keyboard.keyPress(KEYS.COMMA);
+      });
+
+      it("opens the ring centered on the pointer", () => {
+        const { left, top, width, height } = ring()!.style;
+        expect({
+          x: parseFloat(left) + parseFloat(width) / 2,
+          y: parseFloat(top) + parseFloat(height) / 2,
+        }).toEqual({ x: 400, y: 300 });
+      });
+
+      it("closes it when pressed again", () => {
+        Keyboard.keyPress(KEYS.COMMA);
+        expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when , is pressed before the pointer has moved", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        h.app.lastPointerMoveEvent = null;
+        Keyboard.keyPress(KEYS.COMMA);
+      });
+
+      it("opens the ring in the middle of the editor", () => {
+        const { left, top, width, height } = ring()!.style;
+        expect({
+          x: parseFloat(left) + parseFloat(width) / 2,
+          y: parseFloat(top) + parseFloat(height) / 2,
+        }).toEqual({ x: 500, y: 400 });
+      });
+    });
+
     describe("when W is pressed", () => {
       beforeEach(() => {
         Keyboard.keyPress(KEYS.W);
       });
 
-      it("opens the ring", () => {
-        expect(ring()).not.toBeNull();
+      it("leaves the ring shut: W is not the palette's key", () => {
+        expect(ring()).toBeNull();
       });
     });
   });

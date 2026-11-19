@@ -444,6 +444,8 @@ import { AppFlowchart } from "./App.flowchart";
 import { AppFrameNavigation } from "./App.frameNavigation";
 import { AppMidi } from "./App.midi";
 import { AppPan } from "./App.pan";
+import { AppRadialPaletteGestures } from "./App.radialPalette";
+import { RadialPaletteController } from "./RadialPalette/radialPaletteController";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
 import BraveMeasureTextError from "./BraveMeasureTextError";
@@ -734,6 +736,14 @@ class App extends React.Component<AppProps, AppState> {
     getPointerCount: () => gesture.pointers.size,
     isDraggingScrollBar: () => isDraggingScrollBar,
   });
+  public radialPalette: RadialPaletteController = new RadialPaletteController(
+    this,
+  );
+  private radialPaletteGestures = new AppRadialPaletteGestures(this, {
+    getPointerCount: () => gesture.pointers.size,
+    abandonPress: (pointerId, activeTool) =>
+      this.abandonPress(pointerId, activeTool),
+  });
   public textTool: AppTextTool = new AppTextTool(this);
   public clipboard: AppClipboard = new AppClipboard(this, {
     getContainer: () => this.excalidrawContainerRef.current,
@@ -849,6 +859,7 @@ class App extends React.Component<AppProps, AppState> {
         clear: this.resetHistory,
       },
       midi: this.midi,
+      radialPalette: this.radialPalette.api,
       setViewport: this.viewport.setViewport,
       getViewportOffsets: this.viewport.getOffsets,
       setElementRenderOverrides: this.setElementRenderOverrides,
@@ -3510,6 +3521,7 @@ class App extends React.Component<AppProps, AppState> {
     tappedTwiceTimer = 0;
     App.resetTapTwice();
     this.resetContextMenuTimer();
+    this.radialPaletteGestures.cancel();
 
     this.clipboard.clearPlainPaste();
 
@@ -4163,6 +4175,7 @@ class App extends React.Component<AppProps, AppState> {
     ShapeCache.destroy();
     SnapCache.destroy();
     clearTimeout(touchTimeout);
+    this.radialPaletteGestures.cancel();
     isSomeElementSelected.clearCache();
     selectGroupsForSelectedElements.clearCache();
     touchTimeout = 0;
@@ -4506,6 +4519,12 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
+    if (
+      this.radialPalette.session &&
+      (!this.props.radialPalette || this.state.viewModeEnabled)
+    ) {
+      this.radialPalette.close();
+    }
     this.midi.handleStateChange(prevState);
     if (prevProps.midi && !this.props.midi) {
       this.midi.disconnect();
@@ -7243,6 +7262,9 @@ ${css}
   private handleCanvasPointerMove = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
+    if (this.props.radialPalette) {
+      this.radialPaletteGestures.onPointerMove(event.nativeEvent);
+    }
     if (!this.isInteractionEnabled()) {
       if (this.isToolSupported(this.state.activeTool.type)) {
         // keep broadcasting the pointer (`props.onPointerUpdate`) between
@@ -8111,7 +8133,17 @@ ${css}
     if (selection?.anchorNode) {
       selection.removeAllRanges();
     }
-    this.maybeOpenContextMenuAfterPointerDownOnTouchDevices(event);
+    if (this.props.radialPalette) {
+      // a long press or a pen's barrel button opens the radial palette, in
+      // place of the touch context menu
+      if (this.radialPaletteGestures.onPointerDown(event.nativeEvent)) {
+        gesture.pointers.delete(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+    } else {
+      this.maybeOpenContextMenuAfterPointerDownOnTouchDevices(event);
+    }
 
     //fires only once, if pen is detected, penMode is enabled
     //the user can disable this by toggling the penMode button
@@ -8568,6 +8600,52 @@ ${css}
         }, TOUCH_CTX_MENU_TIMEOUT);
       }
     }
+  };
+
+  /**
+   * Drops the press in progress as if it never happened: the element it
+   * started goes, with no undo step, and its listeners are torn down. The
+   * pointer stays down, now the radial palette's.
+   */
+  private abandonPress = (
+    pointerId: number,
+    activeTool: AppState["activeTool"],
+  ) => {
+    const element = this.state.newElement;
+    if (element) {
+      // applied now: the pointerup replayed below must not see the element
+      flushSync(() =>
+        this.updateScene({
+          elements: this.scene
+            .getElementsIncludingDeleted()
+            .filter((el) => el.id !== element.id),
+          appState: {
+            newElement: null,
+            multiElement: null,
+            editingTextElement: null,
+            suggestedBinding: null,
+            selectedLinearElement:
+              this.state.selectedLinearElement?.elementId === element.id
+                ? null
+                : this.state.selectedLinearElement,
+            selectedElementIds: makeNextSelectedElementIds(
+              Object.fromEntries(
+                Object.entries(this.state.selectedElementIds).filter(
+                  ([id]) => id !== element.id,
+                ),
+              ),
+              this.state,
+            ),
+          },
+          captureUpdate: CaptureUpdateAction.NEVER,
+        }),
+      );
+    }
+    this.bucketFill.cancel();
+    this.textTool.cancel();
+    flushSync(() => this.maybeCleanupAfterMissingPointerUp(null));
+    gesture.pointers.delete(pointerId);
+    this.setState({ activeTool, selectionElement: null, cursorButton: "up" });
   };
 
   private resetContextMenuTimer = () => {
@@ -12719,6 +12797,12 @@ ${css}
   ) => {
     // Always suppress the native menu over the canvas.
     event.preventDefault();
+    if (
+      this.props.radialPalette &&
+      this.radialPaletteGestures.onContextMenu(event.nativeEvent)
+    ) {
+      return;
+    }
     // a secondary-button press is a pan session: this event is not a click
     // when it comes with the press (macOS and Linux fire it on mousedown,
     // and the session opens the menu on release if no drag follows), nor

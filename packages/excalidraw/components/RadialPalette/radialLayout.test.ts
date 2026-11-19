@@ -17,7 +17,7 @@ import {
 
 import type { RingLayout } from "./radialLayout";
 
-const COUNTS = { tools: 9, pens: 6, roles: 7, colors: 12 };
+const COUNTS = { tools: 10, pens: 6, colors: 12 };
 
 const middleOf = (band: { inner: number; outer: number }) =>
   (band.inner + band.outer) / 2;
@@ -47,7 +47,6 @@ describe("radialLayout", () => {
   describe.each([
     ["tool", TOOLS_BAND, "tools"],
     ["pen", MIDDLE_BAND, "pens"],
-    ["role", MIDDLE_BAND, "roles"],
     ["color", OUTER_BAND, "colors"],
   ] as const)(
     "when a pointer lands in the middle of each %s",
@@ -60,6 +59,15 @@ describe("radialLayout", () => {
       });
     },
   );
+
+  describe("when a pointer lands straight below the center in the pens band", () => {
+    it("hits a pen, all the way round", () => {
+      expect(hitTest(layout, 0, middleOf(MIDDLE_BAND))).toEqual({
+        kind: "pen",
+        index: COUNTS.pens / 2,
+      });
+    });
+  });
 
   describe("when a pointer lands past the ring", () => {
     it("hits nothing", () => {
