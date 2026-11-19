@@ -623,3 +623,79 @@ export const slicePosition = (index: number, count: number) => {
   const clamped = Math.max(0, Math.min(count - 1, index));
   return Math.round((clamped / (count - 1)) * 127);
 };
+
+// -----------------------------------------------------------------------------
+// the Twister's RGB LEDs
+// -----------------------------------------------------------------------------
+
+/** a Midi Fighter Twister, by the name the browser gives its port: only it
+ * is sent colours, which another controller could read as anything */
+export const twisterSpeaksRgb = (portName: string) =>
+  /midi fighter twister/i.test(portName);
+
+/**
+ * Where the Twister's colour wheel passes each hue, read off its firmware's
+ * colour map: a control change on a knob's switch channel (channel 2 for
+ * knob n's CC n at factory settings) with a value of 1–125 lights its RGB
+ * LED with that entry, 0 gives the knob its own colour back, and 126–127
+ * light the knob's active colour. The wheel runs from blue (1) through cyan,
+ * green, yellow and red (84) to magenta (107) and back toward blue (125).
+ */
+const TWISTER_HUES: readonly [hue: number, index: number][] = [
+  [240, 1],
+  [180, 22],
+  [120, 43],
+  [60, 64],
+  [0, 84],
+  [-60, 107],
+  [-115, 125],
+];
+
+const hexRgb = (color: string): [number, number, number] | null => {
+  const match = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(
+    color.trim(),
+  );
+  if (!match) {
+    return null;
+  }
+  const hex = match[1];
+  const short = hex.length <= 4;
+  const channel = (i: number) =>
+    parseInt(short ? hex[i] + hex[i] : hex.slice(i * 2, i * 2 + 2), 16) / 255;
+  return [channel(0), channel(1), channel(2)];
+};
+
+/** the Twister colour (1–125) nearest a hex colour's hue, or 0 (the knob's
+ * own colour) for greys, black, white and colours that aren't hex */
+export const twisterColor = (color: string) => {
+  const rgb = hexRgb(color);
+  if (!rgb) {
+    return 0;
+  }
+  const [r, g, b] = rgb;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max < 0.15 || (max - min) / max < 0.2) {
+    return 0;
+  }
+  const delta = max - min;
+  let hue =
+    max === r
+      ? ((g - b) / delta) % 6
+      : max === g
+      ? (b - r) / delta + 2
+      : (r - g) / delta + 4;
+  hue = (hue * 60 + 360) % 360;
+  // the wheel runs down from blue at 240°, so hues past blue come round
+  // below red
+  const along = hue > 240 ? hue - 360 : hue;
+  for (let i = 1; i < TWISTER_HUES.length; i++) {
+    const [fromHue, fromIndex] = TWISTER_HUES[i - 1];
+    const [toHue, toIndex] = TWISTER_HUES[i];
+    if (along <= fromHue && along >= toHue) {
+      const t = (fromHue - along) / (fromHue - toHue);
+      return Math.round(fromIndex + t * (toIndex - fromIndex));
+    }
+  }
+  return TWISTER_HUES[TWISTER_HUES.length - 1][1];
+};
