@@ -2,7 +2,7 @@ import { lazy, StrictMode, Suspense, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { debounce } from "@excalidraw/common";
-import { Excalidraw } from "@excalidraw/excalidraw";
+import { Excalidraw, exportToSvg } from "@excalidraw/excalidraw";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
@@ -22,8 +22,12 @@ declare global {
   interface Window {
     /** for scripted drivers such as scripts/theme-screenshots */
     excalidrawAPI?: ExcalidrawImperativeAPI | null;
+    /** for scripted drivers that check exports, such as e2e/font-axes */
+    exportToSvg?: typeof exportToSvg;
   }
 }
+
+window.exportToSvg = exportToSvg;
 
 const save = debounce(saveScene, 300);
 window.addEventListener("pagehide", save.flush);

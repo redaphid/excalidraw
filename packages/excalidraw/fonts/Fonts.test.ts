@@ -209,4 +209,31 @@ describe("Fonts", () => {
       ).toBe('"wght" 300, "INFM" 0, "BNCE" 100, "SPAC" 0');
     });
   });
+
+  describe("loadElementsFonts", () => {
+    const addedFaces = () =>
+      vi
+        .mocked(document.fonts.add)
+        .mock.calls.map(([face]) => face as FontFace & { descriptors: any })
+        .filter((face) => face.family === "Shantell Sans wght800 SPAC100");
+
+    beforeEach(async () => {
+      vi.mocked(document.fonts.add).mockClear();
+      await Fonts.loadElementsFonts([
+        newTextElement({
+          x: 0,
+          y: 0,
+          text: "merged",
+          fontFamily: SHANTELL,
+          fontAxes: { wght: 800, SPAC: 100 },
+        }),
+      ]);
+    });
+
+    it("gives an instance's faces its wght as their weight, which WebKit draws by", () => {
+      expect(addedFaces().map((face) => face.descriptors.weight)).toEqual([
+        "800",
+      ]);
+    });
+  });
 });

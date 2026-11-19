@@ -108,3 +108,15 @@ export const getFontVariationSettings = (
   instanceOf(fontFamily, axes)
     ?.map(([tag, value]) => `"${tag}" ${value}`)
     .join(", ");
+
+/**
+ * The instance's `wght`, as a CSS font weight: the regular instance's when
+ * the axes leave it out, `undefined` for a family without a `wght` axis.
+ * WebKit ignores a font face's variation settings but applies its weight to
+ * `wght`, so an instance's faces declare it and an SVG text writes it.
+ */
+export const getFontInstanceWeight = (
+  fontFamily: number,
+  axes?: FontAxes | null,
+): number | undefined =>
+  instanceOf(fontFamily, axes)?.find(([tag]) => tag === "wght")?.[1];

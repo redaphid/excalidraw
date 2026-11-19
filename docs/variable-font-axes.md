@@ -22,7 +22,9 @@ Canvas 2D has no setter for variation axes: `ctx.font` reaches `wght` only, thro
 
 - `getFontInstanceFamily` gives the name: the family, then each axis off its default, in the registry's axis order. The regular instance is the family itself.
 - `getFontString` and `getFontFamilyString` take `fontAxes`, so every caller that passes a text element measures and draws in its instance. The family itself follows in the list, so text shows in the regular instance until the instance's faces load.
-- `Fonts.loadSceneFonts` and `Fonts.loadElementsFonts` (which `exportToCanvas` awaits) make a `FontFace` per registered face of the family with the `variationSettings` descriptor naming every axis, add them to `document.fonts` and load them. A document keeps the faces of the 64 instances asked for most recently beyond those the last load needed (`RecentlyUsed`, `MAX_INSTANCE_FACES`) and deletes the rest from `document.fonts`.
+- `Fonts.loadSceneFonts` and `Fonts.loadElementsFonts` (which `exportToCanvas` awaits) make a `FontFace` per registered face of the family with the `variationSettings` descriptor naming every axis and the instance's `wght` as its `weight` (`getFontInstanceWeight`), add them to `document.fonts` and load them. A document keeps the faces of the 64 instances asked for most recently beyond those the last load needed (`RecentlyUsed`, `MAX_INSTANCE_FACES`) and deletes the rest from `document.fonts`.
+
+WebKit ignores the `variationSettings` descriptor (the attribute reads `undefined`, and a CSS `@font-face` `font-variation-settings` is ignored too) but applies a face's `weight` to `wght`, so WebKit draws an instance's `wght` and nothing else: `INFM`, `BNCE` and `SPAC` have no CSS property a face or a canvas font can carry, and WebKit draws and measures them at their defaults (redaphid/excalidraw#192). Chromium and Firefox draw the same pixels with or without the weight, since the descriptor sets `wght` to the same value. `e2e/font-axes.spec.ts` checks in all three that `wght` 800 draws at least 1.5 times the ink of `wght` 300, on the canvas, after an edit and in an exported SVG.
 
 Measured in Chromium 153, on v1.9.0 and again on the rebased branch from its packed tarballs (`"merged"` at 96px: 337 px at `wght` 300, 390 px at `wght` 800, and the same in an exported SVG with its fonts inlined): an instance face draws pixel for pixel what a weight-range face draws at the same `wght`, and `measureText` equals the DOM's width under CSS `font-variation-settings` for `wght`, `INFM`, `BNCE` and `SPAC`. A canvas element's own `font-variation-settings` style also reaches its text, but only while the canvas is in the document, which the measuring canvas is not.
 
@@ -33,7 +35,7 @@ The branch `feat/variable-font-axes` was written on `v1.9.0` and is rebased onto
 ## The text editor and SVG export
 
 - The text editor (`textWysiwyg`) lays its textarea out in the instance's family and sets its `font-variation-settings`, so a text shows in its instance while it is edited, before the instance's faces have loaded too. Saving an edit keeps `fontAxes`.
-- SVG export names the family itself in `font-family`, which is what `generateFontFaceDeclarations` declares, and writes the instance as `font-variation-settings` in the text's `style`. A text in a variable family without axes gets the regular instance's settings, since the file's own default can differ (Shantell Sans: `wght` 300 in the file, 400 regular).
+- SVG export names the family itself in `font-family`, which is what `generateFontFaceDeclarations` declares, and writes the instance as `font-variation-settings` and its `wght` as `font-weight` in the text's `style`, so a renderer that ignores `font-variation-settings` still draws the weight. A text in a variable family without axes gets the regular instance's settings, since the file's own default can differ (Shantell Sans: `wght` 300 in the file, 400 regular). WebKit applies the `font-variation-settings` property, every axis included, so an SVG draws the whole instance there.
 
 ## The license
 
@@ -44,4 +46,4 @@ The branch `feat/variable-font-axes` was written on `v1.9.0` and is rebased onto
 - No UI sets `fontAxes`.
 - Shantell Sans ships upright and Latin only (no `ital` axis).
 - Two tabs reconciling an axes change is untested.
-- Firefox and Safari are unverified.
+- WebKit draws `INFM`, `BNCE` and `SPAC` at their defaults on the canvas (see above).

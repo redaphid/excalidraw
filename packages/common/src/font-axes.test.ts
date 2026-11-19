@@ -2,6 +2,7 @@ import {
   FONT_FAMILY,
   getFontAxisRanges,
   getFontInstanceFamily,
+  getFontInstanceWeight,
   getFontString,
   getFontVariationSettings,
   normalizeFontAxes,
@@ -124,6 +125,28 @@ describe("font axes", () => {
     it("is nothing for a family without axes", () => {
       expect(
         getFontVariationSettings(FONT_FAMILY.Excalifont, { wght: 700 }),
+      ).toBeUndefined();
+    });
+  });
+
+  describe("getFontInstanceWeight", () => {
+    it("is the instance's wght", () => {
+      expect(getFontInstanceWeight(SHANTELL, { wght: 800, SPAC: 100 })).toBe(
+        800,
+      );
+    });
+
+    it("is the regular instance's wght when the axes leave it out", () => {
+      expect(getFontInstanceWeight(SHANTELL, { BNCE: 40 })).toBe(400);
+    });
+
+    it("is clamped to the axis", () => {
+      expect(getFontInstanceWeight(SHANTELL, { wght: 5000 })).toBe(800);
+    });
+
+    it("is nothing for a family without axes", () => {
+      expect(
+        getFontInstanceWeight(FONT_FAMILY.Excalifont, { wght: 700 }),
       ).toBeUndefined();
     });
   });

@@ -925,6 +925,10 @@ describe("exportToSvg with font axes", () => {
       );
     });
 
+    it("writes the instance's wght as its font-weight, for renderers without variation settings", () => {
+      expect(text.style.getPropertyValue("font-weight")).toBe("650");
+    });
+
     it("names the family the SVG declares, not the instance's own", () => {
       expect(text.getAttribute("font-family")).toBe(
         getFontFamilyString({ fontFamily: FONT_FAMILY["Shantell Sans"] }),
@@ -939,12 +943,22 @@ describe("exportToSvg with font axes", () => {
         `"wght" 400, "INFM" 0, "BNCE" 0, "SPAC" 0`,
       );
     });
+
+    it("writes the regular instance's font-weight", async () => {
+      const text = await svgText({});
+      expect(text.style.getPropertyValue("font-weight")).toBe("400");
+    });
   });
 
   describe("when a text's family has no axes", () => {
     it("writes no font-variation-settings", async () => {
       const text = await svgText({ fontFamily: FONT_FAMILY.Excalifont });
       expect(text.style.getPropertyValue("font-variation-settings")).toBe("");
+    });
+
+    it("writes no font-weight", async () => {
+      const text = await svgText({ fontFamily: FONT_FAMILY.Excalifont });
+      expect(text.style.getPropertyValue("font-weight")).toBe("");
     });
   });
 });
