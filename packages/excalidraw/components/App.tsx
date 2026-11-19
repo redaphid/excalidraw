@@ -5252,7 +5252,14 @@ class App extends React.Component<AppProps, AppState> {
       }
 
       if (elements) {
+        const arriving = elements.filter(
+          (element) =>
+            isTextElement(element) &&
+            element.fontAxes &&
+            this.scene.getElement(element.id) !== element,
+        );
         this.scene.replaceAllElements(elements);
+        this.fonts.loadInstances(arriving);
       }
 
       if (collaborators) {
