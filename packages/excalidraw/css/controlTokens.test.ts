@@ -38,8 +38,8 @@ const declaredOnEditor = () => {
 describe("the control style tokens", () => {
   it("declares every token draw reads on the editor root", () => {
     const declared = declaredOnEditor();
-    expect(
-      DRAW_CONTROL_TOKENS.filter((token) => !declared.has(token)),
-    ).toEqual([]);
+    expect(DRAW_CONTROL_TOKENS.filter((token) => !declared.has(token))).toEqual(
+      [],
+    );
   });
 });
