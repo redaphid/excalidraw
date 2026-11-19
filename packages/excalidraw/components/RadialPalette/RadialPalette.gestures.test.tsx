@@ -234,6 +234,77 @@ describe("opening the radial palette from the canvas", () => {
       });
     });
 
+    describe("when a finger drifts a little on a rectangle while it holds", () => {
+      let undoDepth: number;
+
+      beforeEach(() => {
+        const rectangle = API.createElement({
+          type: "rectangle",
+          x: 350,
+          y: 250,
+          width: 100,
+          height: 100,
+        });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        undoDepth = API.getUndoStack().length;
+        down(400, 300);
+        move(404, 303);
+        move(406, 304);
+        wait(LONG_PRESS_DELAY);
+        up(406, 304);
+      });
+
+      it("opens the ring", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      it("leaves the rectangle where it was, with no undo step", () => {
+        expect(h.elements[0]).toMatchObject({ x: 350, y: 250 });
+        expect(API.getUndoStack().length).toBe(undoDepth);
+      });
+    });
+
+    describe("when a long press is made with the eraser on a rectangle", () => {
+      beforeEach(() => {
+        API.setElements([
+          API.createElement({
+            type: "rectangle",
+            x: 350,
+            y: 250,
+            width: 100,
+            height: 100,
+          }),
+        ]);
+        act(() => h.app.setActiveTool({ type: "eraser" }));
+        down(351, 300);
+        move(353, 302);
+        wait(LONG_PRESS_DELAY);
+        up(353, 302);
+      });
+
+      it("erases nothing", () => {
+        expect(ring()).not.toBeNull();
+        expect(h.elements.filter((element) => !element.isDeleted)).toHaveLength(
+          1,
+        );
+      });
+    });
+
+    describe("when the finger rolls a little as it lifts after a long press", () => {
+      it.each([
+        ["in the middle of the editor", 500, 400],
+        ["near its left edge, over a slice", 40, 400],
+      ])("%s, it picks nothing and leaves the ring open", (_, x, y) => {
+        down(x, y);
+        wait(LONG_PRESS_DELAY);
+        move(x + 8, y + 9);
+        up(x + 8, y + 9);
+        expect(ring()).not.toBeNull();
+        expect(h.state.activeTool.type).toBe("selection");
+      });
+    });
+
     describe("when the finger flicks to the rectangle and lifts", () => {
       beforeEach(async () => {
         down(400, 300);

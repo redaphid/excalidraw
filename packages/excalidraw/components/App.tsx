@@ -4121,6 +4121,7 @@ class App extends React.Component<AppProps, AppState> {
 
   public componentWillUnmount() {
     this.midi.disconnect();
+    this.radialPalette.destroy();
     // we're recreating the api object reference so that the
     // <ExcalidrawAPIContext.Provider/> picks up on it
     this.api = { ...this.api, isDestroyed: true };
@@ -8133,7 +8134,7 @@ ${css}
     if (selection?.anchorNode) {
       selection.removeAllRanges();
     }
-    if (this.props.radialPalette) {
+    if (this.props.radialPalette && !this.state.viewModeEnabled) {
       // a long press or a pen's barrel button opens the radial palette, in
       // place of the touch context menu
       if (this.radialPaletteGestures.onPointerDown(event.nativeEvent)) {
@@ -10114,6 +10115,11 @@ ${css}
   ) {
     return withBatchedUpdatesThrottled((event: PointerEvent) => {
       if (this.state.openDialog?.name === "elementLinkSelector") {
+        return;
+      }
+      // a finger held still may yet open the radial palette: its drift
+      // within the tolerance moves nothing
+      if (this.radialPaletteGestures.holds(event.pointerId)) {
         return;
       }
       const pointerCoords = viewportCoordsToSceneCoords(event, this.state);

@@ -81,10 +81,29 @@ describe("the radial palette's controller API", () => {
         expect(highlighted()).toBe("radial-tool-selection");
       });
 
-      it("lists the shapes", () => {
+      it("lists the shapes and tools, and nothing named for a role", () => {
         expect(api.state().items.map(({ id }) => id)).toEqual([
-          ...RADIAL_TOOLS,
+          "selection",
+          "rectangle",
+          "diamond",
+          "ellipse",
+          "arrow",
+          "line",
+          "freedraw",
+          "text",
+          "frame",
         ]);
+      });
+
+      it("keeps the highlight when opened again on the same ring", () => {
+        act(() => api.step(2));
+        act(() => api.open({ ring: "tools" }));
+        expect(api.state().index).toBe(2);
+      });
+
+      it("ignores a ring it does not have", () => {
+        act(() => api.open({ ring: "colour" as "colors" }));
+        expect(api.state()).toMatchObject({ open: true, ring: "tools" });
       });
 
       it("steps forward and back, wrapping both ways", () => {
@@ -176,6 +195,14 @@ describe("the radial palette's controller API", () => {
           { open: true, ring: "tools", index: 2 },
           { open: false, ring: "tools", index: 2 },
         ]);
+      });
+
+      it("hears nothing when nothing changed", () => {
+        act(() => api.open());
+        act(() => api.step(0));
+        act(() => api.step(api.state().items.length));
+        act(() => api.open({ ring: "tools" }));
+        expect(seen).toHaveLength(1);
       });
 
       it("hears nothing after unsubscribing", () => {

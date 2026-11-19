@@ -77,6 +77,12 @@ export class AppRadialPaletteGestures {
     return this.press !== null;
   }
 
+  /** the pointer is a finger being timed for a long press: until it drifts
+   * past the tolerance, the editor must not drag, draw or erase with it */
+  holds(pointerId: number) {
+    return this.press?.pointerId === pointerId;
+  }
+
   /** opens the palette at `point`; with `pointerId`, that pointer is down
    * and lifting it after a drag picks */
   private open(point: Omit<Press, "pointerId">, pointerId: number | null) {
@@ -147,7 +153,8 @@ export class AppRadialPaletteGestures {
     if (!this.enabled) {
       return false;
     }
-    const type = pointerTypeOf(event) ?? (this.press ? "touch" : undefined);
+    // a press being timed is a finger, whatever the browser reports
+    const type = this.press ? "touch" : pointerTypeOf(event);
     if (type === "touch") {
       this.fire();
       return true;
