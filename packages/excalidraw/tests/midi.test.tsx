@@ -3,7 +3,7 @@ import { CaptureUpdateAction } from "@excalidraw/element";
 import { radiansToDegrees } from "@excalidraw/math";
 
 import { Excalidraw } from "../index";
-import { TWISTER_LAYOUT } from "../midi";
+import { slicePosition, TWISTER_LAYOUT } from "../midi";
 
 import { API } from "./helpers/api";
 import { Keyboard, UI } from "./helpers/ui";
@@ -550,11 +550,11 @@ describe("palette knobs", () => {
 
   const palette = () => h.app.radialPalette.api.state();
 
-  const renderWithPalette = (radialPalette = true) =>
+  const renderWithPalette = (radialPalette = true, midi = options) =>
     render(
       <Excalidraw
         handleKeyboardGlobally
-        midi={options}
+        midi={midi}
         radialPalette={radialPalette}
       />,
     );
@@ -595,7 +595,7 @@ describe("palette knobs", () => {
       expect(palette()).toMatchObject({ open: true, ring: "tools" });
     });
 
-    it("moves a slice per four clicks, however quick the hand", () => {
+    it("moves a slice per four clicks", () => {
       press(KNOB.tools);
       const start = palette().index;
       turn(KNOB.tools, SLICE - 1);
@@ -609,6 +609,19 @@ describe("palette knobs", () => {
       press(KNOB.opacity);
       expect(h.state.currentItemOpacity).toBe(100);
       expect(palette().open).toBe(false);
+    });
+  });
+
+  describe("with acceleration on", () => {
+    beforeEach(async () => {
+      await renderWithPalette(true, { encoding: "relative" });
+    });
+
+    it("moves a slice per four clicks, however quick the hand", () => {
+      press(KNOB.tools);
+      const start = palette().index;
+      turn(KNOB.tools, SLICE);
+      expect(palette().index).toBe((start + 1) % palette().items.length);
     });
   });
 
@@ -663,7 +676,7 @@ describe("palette knobs", () => {
       expect(sent.filter(([, cc]) => cc === KNOB.tools).at(-1)).toEqual([
         0xb0,
         KNOB.tools,
-        Math.round((index / (items.length - 1)) * 127),
+        slicePosition(index, items.length),
       ]);
     });
 
@@ -676,6 +689,62 @@ describe("palette knobs", () => {
         KNOB.tools,
         64,
       ]);
+    });
+  });
+
+  describe("on a Twister in its factory absolute mode", () => {
+    /** where each knob last said it was, and how much of `sent` it had
+     * already caught up with */
+    const knobs = new Map<number, { value: number; seen: number }>();
+
+    /** turns a knob the way the Twister does out of the box: it counts on
+     * from wherever the editor last put its ring, and says nothing past
+     * either end */
+    const twist = (cc: number, clicks: number) => {
+      for (let i = 0; i < Math.abs(clicks); i++) {
+        const own = knobs.get(cc);
+        const ring = sent
+          .slice(own?.seen ?? 0)
+          .filter(([status, c]) => status === 0xb0 && c === cc)
+          .at(-1)?.[2];
+        const from = ring ?? own?.value ?? 64;
+        const value = Math.max(0, Math.min(127, from + Math.sign(clicks)));
+        if (value === from) {
+          continue;
+        }
+        knobs.set(cc, { value, seen: sent.length });
+        send([0xb0, cc, value]);
+      }
+    };
+
+    beforeEach(async () => {
+      knobs.clear();
+      plugIn();
+      await renderWithPalette(true, { acceleration: false });
+      await act(async () => {
+        await h.app.midi.connect();
+      });
+    });
+    afterEach(unplug);
+
+    it("still moves a slice per four clicks after its ring came back to where it was", () => {
+      // one click says 65; opening and closing the ring puts it back at 64,
+      // so the next click says 65 again
+      twist(KNOB.tools, 1);
+      press(KNOB.tools);
+      press(KNOB.tools);
+      twist(KNOB.tools, 1);
+      press(KNOB.tools);
+      const start = palette().index;
+      twist(KNOB.tools, SLICE);
+      expect(palette().index).toBe((start + 1) % palette().items.length);
+    });
+
+    it("turns left from the first slice round to the last", () => {
+      press(KNOB.tools);
+      expect(palette().index).toBe(0);
+      twist(KNOB.tools, -SLICE);
+      expect(palette().index).toBe(palette().items.length - 1);
     });
   });
 });

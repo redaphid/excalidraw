@@ -13,6 +13,7 @@ import {
   parseMidiMessage,
   resolveCommand,
   ringPosition,
+  ringWritten,
   slicePosition,
   TWISTER_LAYOUT,
   withBinding,
@@ -125,13 +126,32 @@ describe("decodeTurn", () => {
       let state: KnobState | undefined;
       const steps: number[] = [];
       for (let i = 0; i < 4; i++) {
-        const decoded = decodeTurn({ ...state, last: 64 }, 65, "auto");
+        const decoded = decodeTurn(ringWritten(state, 64), 65, "auto");
         steps.push(decoded.steps);
         state = decoded.state;
       }
       // the knob itself said 65 each time, which a relative knob would —
       // and either reading gives the same +1
       expect(steps).toEqual([1, 1, 1, 1]);
+    });
+
+    it("doesn't take an absolute knob echoing its ring for a relative one", () => {
+      // a Twister's knob counts on from wherever its ring was put: it said
+      // 65, the ring went back to 64, and the next click says 65 again
+      const first = decodeTurn(ringWritten(undefined, 64), 65, "auto");
+      const again = decodeTurn(ringWritten(first.state, 64), 65, "auto");
+      // the palette opens and puts the ring at a slice
+      const then = decodeTurn(ringWritten(again.state, 30), 31, "auto");
+      expect([first.steps, again.steps, then.steps]).toEqual([1, 1, 1]);
+      expect(then.state.detected).toBeUndefined();
+    });
+
+    it("still recognises a relative knob the ring was written under", () => {
+      const { steps, state } = turnThrough([65, 65, 65], "auto", {
+        last: 110,
+      });
+      expect(steps).toEqual([0, 1, 1]);
+      expect(state?.detected).toBe("relative");
     });
   });
 });
@@ -399,13 +419,19 @@ describe("palette knobs", () => {
 
 describe("slicePosition", () => {
   it("spreads a ring's slices round the LED ring", () => {
-    expect(slicePosition(0, 10)).toBe(0);
-    expect(slicePosition(9, 10)).toBe(127);
+    expect(slicePosition(0, 10)).toBe(16);
+    expect(slicePosition(9, 10)).toBe(111);
     expect(slicePosition(3, 7)).toBe(64);
   });
 
-  it("lights the start for a ring of one", () => {
-    expect(slicePosition(0, 1)).toBe(0);
+  it("keeps a slice's worth of clicks free at both ends", () => {
+    const positions = [0, 1, 2, 3].map((index) => slicePosition(index, 4));
+    expect(Math.min(...positions)).toBeGreaterThanOrEqual(16);
+    expect(Math.max(...positions)).toBeLessThanOrEqual(127 - 16);
+  });
+
+  it("centres a ring of one", () => {
+    expect(slicePosition(0, 1)).toBe(64);
   });
 
   it("recentres when there is nothing to show", () => {
