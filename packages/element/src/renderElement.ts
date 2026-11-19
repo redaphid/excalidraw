@@ -955,7 +955,20 @@ const hasStalePhase = (
     return false;
   }
   const phase = bitmapPhase(element, elementsMap, cached.zoomValue);
-  return phase.x !== cached.phaseX || phase.y !== cached.phaseY;
+  return (
+    phaseDistance(phase.x, cached.phaseX) > PHASE_TOLERANCE ||
+    phaseDistance(phase.y, cached.phaseY) > PHASE_TOLERANCE
+  );
+};
+
+/** device pixels two phases may differ by and still place a bitmap alike:
+ * a move by whole device pixels changes the phase only by float noise */
+const PHASE_TOLERANCE = 1e-3;
+
+/** how far apart two phases are, where 0 and 1 are the same place */
+const phaseDistance = (a: number, b: number) => {
+  const d = Math.abs(a - b);
+  return Math.min(d, 1 - d);
 };
 
 const generateElementWithCanvas = (
