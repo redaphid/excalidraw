@@ -1,5 +1,7 @@
 import React from "react";
 
+import { elementWithCanvasCache } from "@excalidraw/element";
+
 import { Excalidraw } from "../index";
 import { snapScrollToDevicePixels } from "../renderer/helpers";
 
@@ -440,6 +442,125 @@ describe("element placement after the snap", () => {
     );
     expect(origin.x).toBeCloseTo((10.37 + snapped.scrollX) * zoom * dpr, 6);
     API.setAppState({ shouldCacheIgnoreZoom: false });
+  });
+
+  /** clears the canvas events, runs `change`, and waits for the next
+   * render's element origins at `zoom` */
+  const originsAfter = async (zoom: number, change: () => void) => {
+    (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+    act(change);
+    return waitFor(() => {
+      const origins = getElementOrigins().filter(
+        (o) => Math.abs(o.scale - zoom) < 1e-9,
+      );
+      expect(origins.length).toBeGreaterThan(0);
+      return origins;
+    });
+  };
+
+  // A move in place (a drag, an arrow nudge) keeps the element's bitmap, and
+  // with it the phase of where the element was.
+  it("lands a shape moved in place within half a device pixel once nothing is dragged", async () => {
+    const dpr = window.devicePixelRatio;
+    const zoom = 1.37;
+    const element = API.createElement({
+      type: "rectangle",
+      x: 10.21,
+      y: 20.61,
+      width: 120,
+      height: 60,
+    });
+    API.setElements([element]);
+    await renderAt(zoom, 3.3, -7.77);
+    let worst = 0;
+    for (const x of [10.37, 10.61, 10.83, 11.02, 11.29, 11.55, 11.9]) {
+      const [origin] = await originsAfter(zoom, () =>
+        window.h.app.scene.mutateElement(element, { x }),
+      );
+      worst = Math.max(worst, Math.abs(origin.x - (x + 3.3) * zoom * dpr));
+    }
+    expect(worst).toBeLessThanOrEqual(0.5 + 1e-6);
+  });
+
+  it("keeps a moved shape's bitmap while the selection is dragged", async () => {
+    const element = API.createElement({
+      type: "rectangle",
+      x: 10.21,
+      y: 20.61,
+      width: 120,
+      height: 60,
+    });
+    API.setElements([element]);
+    await renderAt(1.37, 3.3, -7.77);
+    const bitmap = elementWithCanvasCache.get(element);
+    API.setAppState({ selectedElementsAreBeingDragged: true });
+    await originsAfter(1.37, () =>
+      window.h.app.scene.mutateElement(element, { x: 10.6 }),
+    );
+    expect(elementWithCanvasCache.get(element)).toBe(bitmap);
+  });
+
+  // The container's bitmap is redrawn (resized) while its label's is kept
+  // (moved in place), so their phases date from different places; then both
+  // are dragged.
+  it("keeps a label's offset from its container through a drag after only the container was redrawn", async () => {
+    const zoom = 0.5;
+    const box = API.createElement({
+      type: "rectangle",
+      id: "box",
+      x: 10,
+      y: 10,
+      width: 200,
+      height: 100,
+      boundElements: [{ type: "text", id: "label" }],
+    });
+    const label = API.createElement({
+      type: "text",
+      id: "label",
+      x: 61,
+      y: 30,
+      text: "hi",
+      fontSize: 20,
+      containerId: box.id,
+    });
+    API.setElements([box, label]);
+    await renderAt(zoom, 3.3, -7.77);
+    API.setAppState({ selectedElementsAreBeingDragged: true });
+    await originsAfter(zoom, () => {
+      window.h.app.scene.mutateElement(box, { width: 200.6 });
+      window.h.app.scene.mutateElement(label, { x: 61.3 });
+    });
+    const offsets = new Set<string>();
+    for (const step of [0.13, 0.37, 0.61, 0.89, 1.16, 1.42, 1.77]) {
+      const origins = await originsAfter(zoom, () => {
+        window.h.app.scene.mutateElement(box, { x: 10 + step });
+        window.h.app.scene.mutateElement(label, { x: 61.3 + step });
+      });
+      expect(origins).toHaveLength(2);
+      const [labelAt, boxAt] = [...origins].sort((p, q) => p.width - q.width);
+      offsets.add(
+        `${(labelAt.x - boxAt.x).toFixed(6)},${(labelAt.y - boxAt.y).toFixed(
+          6,
+        )}`,
+      );
+    }
+    expect([...offsets]).toHaveLength(1);
+  });
+
+  // Zoomed far out a bitmap's padding is under two device pixels, too little
+  // for the shift by its phase and the pixel its size floors away.
+  it("draws a bitmap without a phase where its padding has no room for one", async () => {
+    const element = API.createElement({
+      type: "rectangle",
+      x: 10.37,
+      y: 20.61,
+      width: 1200,
+      height: 600,
+    });
+    API.setElements([element]);
+    await renderAt(0.05, 3.3, -7.77);
+    const bitmap = elementWithCanvasCache.get(element)!;
+    expect([bitmap.phaseX, bitmap.phaseY]).toEqual([0, 0]);
   });
 });
 

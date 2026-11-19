@@ -311,7 +311,14 @@ const cappedElementCanvasSize = (
   return { width, height, scale };
 };
 
-const NO_PHASE = { x: 0, y: 0 };
+const NO_PHASE: Readonly<{ x: number; y: number }> = { x: 0, y: 0 };
+
+/**
+ * The device pixels of padding a bitmap needs on its right and bottom to
+ * take the shift by its phase: up to one for the shift, and up to one more
+ * that `cappedElementCanvasSize` floors away.
+ */
+const PHASE_HEADROOM = 2;
 
 /**
  * The fraction of a device pixel past a whole one at which an element's
@@ -322,21 +329,25 @@ const NO_PHASE = { x: 0, y: 0 };
  * to a whole device pixel from where its camera puts it.
  *
  * Only for an unrotated, unmirrored element, whose bitmap pixels run along
- * the device's; the others keep the plain snap.
+ * the device's, and whose padding has room for the shift
+ * (`PHASE_HEADROOM`), so zoomed far out nothing is clipped; the others keep
+ * the plain snap.
  */
 const bitmapPhase = (
   element: ExcalidrawElement,
   elementsMap: ElementsMap,
   zoom: number,
 ) => {
+  const padding = getCanvasPadding(element);
   if (
     element.angle ||
-    ("scale" in element && (element.scale[0] !== 1 || element.scale[1] !== 1))
+    ("scale" in element &&
+      (element.scale[0] !== 1 || element.scale[1] !== 1)) ||
+    padding * zoom < PHASE_HEADROOM
   ) {
     return NO_PHASE;
   }
   const [x1, y1] = getElementAbsoluteCoords(element, elementsMap);
-  const padding = getCanvasPadding(element);
   const x = zoom * (x1 * window.devicePixelRatio - padding);
   const y = zoom * (y1 * window.devicePixelRatio - padding);
   return { x: x - Math.floor(x), y: y - Math.floor(y) };
@@ -384,7 +395,7 @@ const generateElementCanvas = (
     context.translate(canvasOffsetX, canvasOffsetY);
   }
 
-  // a device pixel is zoom ÷ scale bitmap pixels wide
+  // a device pixel is scale ÷ zoom bitmap pixels wide
   const phase = bitmapPhase(element, elementsMap, zoom.value);
 
   context.save();
@@ -922,6 +933,31 @@ const withinRescaleRedrawBudget = (zoom: number) => {
   return now < rescaleRedrawFrame.until;
 };
 
+/**
+ * Whether a bitmap was drawn with the phase of a place its element has since
+ * moved from: a move in place (`mutateElement` of x or y) keeps the bitmap.
+ * Such a bitmap still lands within half a device pixel, so it is kept while
+ * the selection is dragged or the zoom is a gesture, where a frame should
+ * not redraw bitmaps, and redrawn on the first static frame after.
+ */
+const hasStalePhase = (
+  cached: ExcalidrawElementWithCanvas,
+  element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
+  appState: StaticCanvasAppState | InteractiveCanvasAppState,
+) => {
+  if (
+    !("selectedElementsAreBeingDragged" in appState) ||
+    appState.selectedElementsAreBeingDragged ||
+    appState.shouldCacheIgnoreZoom ||
+    cached.zoomValue !== appState.zoom.value
+  ) {
+    return false;
+  }
+  const phase = bitmapPhase(element, elementsMap, cached.zoomValue);
+  return phase.x !== cached.phaseX || phase.y !== cached.phaseY;
+};
+
 const generateElementWithCanvas = (
   element: NonDeletedExcalidrawElement,
   elementsMap: NonDeletedSceneElementsMap,
@@ -949,7 +985,8 @@ const generateElementWithCanvas = (
     prevElementWithCanvas.imageCrop !== imageCrop ||
     prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity ||
     (isStickyNoteElement(element) &&
-      prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme)
+      prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme) ||
+    hasStalePhase(prevElementWithCanvas, element, elementsMap, appState)
   ) {
     const elementWithCanvas = generateElementCanvas(
       element,
@@ -1179,10 +1216,17 @@ const drawElementFromCanvas = (
         anchorPadding;
 
       // the bitmaps were drawn shifted by their phase (`bitmapPhase`), so
-      // what is rounded here is only the rest of the way
-      const anchorPhase =
+      // what is rounded here is only the rest of the way. A label takes the
+      // phase its container's bitmap was drawn with, which may be stale
+      // (`hasStalePhase`), so that both round alike and the label keeps its
+      // offset from the container while the two are dragged.
+      const anchorCanvas =
         anchor === element
-          ? { x: elementWithCanvas.phaseX, y: elementWithCanvas.phaseY }
+          ? elementWithCanvas
+          : elementWithCanvasCache.get(anchor);
+      const anchorPhase =
+        anchorCanvas && anchorCanvas.zoomValue === appState.zoom.value
+          ? { x: anchorCanvas.phaseX, y: anchorCanvas.phaseY }
           : bitmapPhase(anchor, allElementsMap, appState.zoom.value);
 
       // Form the relative vector before introducing the scroll translation.
@@ -1195,7 +1239,9 @@ const drawElementFromCanvas = (
         b,
         c,
         d,
-        Math.round(a * anchorX + c * anchorY + e - anchorPhase.x) +
+        Math.round(
+          a * anchorX + c * anchorY + e - anchorPhase.x + SNAP_TIE_BIAS,
+        ) +
           Math.round(
             a * dx +
               c * dy +
@@ -1203,7 +1249,9 @@ const drawElementFromCanvas = (
               elementWithCanvas.phaseX +
               SNAP_TIE_BIAS,
           ),
-        Math.round(b * anchorX + d * anchorY + f - anchorPhase.y) +
+        Math.round(
+          b * anchorX + d * anchorY + f - anchorPhase.y + SNAP_TIE_BIAS,
+        ) +
           Math.round(
             b * dx +
               d * dy +
