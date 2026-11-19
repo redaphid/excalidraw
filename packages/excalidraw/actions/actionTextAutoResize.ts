@@ -6,6 +6,7 @@ import {
   isNonDeletedElement,
   newElementWith,
   updateBoundElements,
+  withElements,
 } from "@excalidraw/element";
 import { measureText } from "@excalidraw/element";
 
@@ -73,7 +74,9 @@ export const actionTextAutoResize = register({
     // the pre-resize text, hence handing the new one over explicitly.
     if (isNonDeletedElement(resized)) {
       updateBoundElements(resized, app.scene, {
-        changedElements: new Map([[resized.id, resized]]),
+        elementsMap: withElements(app.scene.getNonDeletedElementsMap(), [
+          resized,
+        ]),
       });
     }
 

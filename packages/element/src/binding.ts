@@ -1336,7 +1336,14 @@ export const updateBoundElements = (
   options?: {
     /** see `getSimultaneouslyUpdatedElementIds` for how to pass it */
     simultaneouslyUpdated?: readonly NonDeletedExcalidrawElement[];
-    changedElements?: Map<string, ExcalidrawElement>;
+    /** where to look up bound elements, the scene's non-deleted elements by
+     * default. Callers updating many elements at once should build it once
+     * and share it, as building one costs a pass over the whole scene. */
+    elementsMap?: ElementsMap;
+    /** arrows already re-routed in this pass, skipped and added to as
+     * arrows are re-routed. Re-routing solves both ends of an arrow, so a
+     * pass over several of its bindables only needs to do it once. */
+    updatedArrowIds?: Set<ExcalidrawElement["id"]>;
   },
 ) => {
   if (!isBindableElement(changedElement)) {
@@ -1348,13 +1355,7 @@ export const updateBoundElements = (
     simultaneouslyUpdated,
   );
 
-  let elementsMap: ElementsMap = scene.getNonDeletedElementsMap();
-  if (options?.changedElements) {
-    elementsMap = new Map(elementsMap) as typeof elementsMap;
-    options.changedElements.forEach((element) => {
-      elementsMap.set(element.id, element);
-    });
-  }
+  const elementsMap = options?.elementsMap ?? scene.getNonDeletedElementsMap();
 
   const visitor = (element: ExcalidrawElement | undefined) => {
     // SAFETY: This should never happen, but log it just in case
@@ -1387,6 +1388,13 @@ export const updateBoundElements = (
     // `linearElement` is being moved/scaled already, just update the binding
     if (simultaneouslyUpdatedElementIds.has(element.id)) {
       return;
+    }
+
+    if (options?.updatedArrowIds) {
+      if (options.updatedArrowIds.has(element.id)) {
+        return;
+      }
+      options.updatedArrowIds.add(element.id);
     }
 
     const updates = bindableElementsVisitor(
@@ -1539,9 +1547,23 @@ export const updateBindings = (
   } else {
     updateBoundElements(latestElement, scene, {
       ...options,
-      changedElements: new Map([[latestElement.id, latestElement]]),
+      elementsMap: withElements(scene.getNonDeletedElementsMap(), [
+        latestElement,
+      ]),
     });
   }
+};
+
+/** a copy of `elementsMap` with `elements` put in place of their ids */
+export const withElements = (
+  elementsMap: ElementsMap,
+  elements: Iterable<ExcalidrawElement>,
+): ElementsMap => {
+  const merged = new Map(elementsMap) as ElementsMap;
+  for (const element of elements) {
+    merged.set(element.id, element);
+  }
+  return merged;
 };
 
 const doesNeedUpdate = (

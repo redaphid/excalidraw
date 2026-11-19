@@ -3,14 +3,15 @@ import { arrayToMap } from "@excalidraw/common";
 import { pointFrom } from "@excalidraw/math";
 
 import type { ObservedAppState } from "@excalidraw/excalidraw/types";
-import type { LinearElementEditor } from "@excalidraw/element";
 import type {
+  ExcalidrawElement,
   ExcalidrawTextElement,
   FractionalIndex,
   SceneElementsMap,
 } from "@excalidraw/element/types";
 
 import { AppStateDelta, Delta, ElementsDelta } from "../src/delta";
+import { LinearElementEditor } from "../src/linearElementEditor";
 import { mutateElement, newElementWith } from "../src/mutateElement";
 
 describe("ElementsDelta", () => {
@@ -284,6 +285,69 @@ describe("ElementsDelta", () => {
         newElementWith(arrow, { startBinding: null }),
       ]) as SceneElementsMap;
       expect(apply(before, after)[1]).toBe(true);
+    });
+  });
+
+  describe("bound arrows", () => {
+    // Restoring both ends of an arrow, as undoing the deletion of a diagram
+    // does, re-routes it once per redraw rather than once per restored end:
+    // re-routing solves both ends, and on a large board it is the bulk of
+    // the undo (#159).
+    it("re-routes an arrow once when both of its ends are restored", () => {
+      const start = API.createElement({
+        type: "rectangle",
+        id: "start",
+        index: "a0" as FractionalIndex,
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        boundElements: [{ id: "arrow", type: "arrow" }],
+      });
+      const end = API.createElement({
+        type: "rectangle",
+        id: "end",
+        index: "a1" as FractionalIndex,
+        x: 300,
+        y: 0,
+        width: 100,
+        height: 100,
+        boundElements: [{ id: "arrow", type: "arrow" }],
+      });
+      const arrow = API.createElement({
+        type: "arrow",
+        id: "arrow",
+        index: "a2" as FractionalIndex,
+        x: 100,
+        y: 50,
+        points: [pointFrom(0, 0), pointFrom(200, 0)],
+        startBinding: {
+          elementId: "start",
+          fixedPoint: [1, 0.5],
+          mode: "orbit",
+        },
+        endBinding: { elementId: "end", fixedPoint: [0, 0.5], mode: "orbit" },
+      });
+      const live = arrayToMap([start, end, arrow]) as SceneElementsMap;
+      const deleted = arrayToMap(
+        [start, end, arrow].map((element: ExcalidrawElement) =>
+          newElementWith(element, { isDeleted: true }),
+        ),
+      ) as SceneElementsMap;
+
+      const movePoints = vi.spyOn(LinearElementEditor, "movePoints");
+      try {
+        const [restored] = ElementsDelta.calculate(deleted, live).applyTo(
+          deleted,
+          deleted,
+        );
+        expect(movePoints.mock.calls.map(([element]) => element.id)).toEqual([
+          "arrow",
+        ]);
+        expect(restored.get("arrow")?.isDeleted).toBe(false);
+      } finally {
+        movePoints.mockRestore();
+      }
     });
   });
 
