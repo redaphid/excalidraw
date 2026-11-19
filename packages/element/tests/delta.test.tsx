@@ -3,14 +3,20 @@ import { arrayToMap } from "@excalidraw/common";
 import { pointFrom } from "@excalidraw/math";
 
 import type { ObservedAppState } from "@excalidraw/excalidraw/types";
-import type { LinearElementEditor } from "@excalidraw/element";
 import type {
+  ExcalidrawArrowElement,
+  ExcalidrawElbowArrowElement,
+  ExcalidrawElement,
   ExcalidrawTextElement,
+  NonDeletedExcalidrawElement,
   FractionalIndex,
   SceneElementsMap,
 } from "@excalidraw/element/types";
 
 import { AppStateDelta, Delta, ElementsDelta } from "../src/delta";
+import { updateBoundElements } from "../src/binding";
+import { LinearElementEditor } from "../src/linearElementEditor";
+import { Scene } from "../src/Scene";
 import { mutateElement, newElementWith } from "../src/mutateElement";
 
 describe("ElementsDelta", () => {
@@ -285,6 +291,119 @@ describe("ElementsDelta", () => {
       ]) as SceneElementsMap;
       expect(apply(before, after)[1]).toBe(true);
     });
+  });
+
+  describe("bound arrows", () => {
+    // Undoing the deletion of a diagram restores both ends of its arrows.
+    // Re-routing an arrow solves both of its ends, so the redraw does it once
+    // per arrow rather than once per restored end: on a large board it is the
+    // bulk of the undo (#159).
+    const restoreBothEnds = (
+      arrowProps: Partial<Parameters<typeof API.createElement>[0]> & {
+        fixedSegments?: ExcalidrawElbowArrowElement["fixedSegments"];
+      } = {},
+    ) => {
+      const box = (id: string, x: number, y: number) =>
+        API.createElement({
+          type: "rectangle",
+          id,
+          index: (id === "start" ? "a0" : "a1") as FractionalIndex,
+          x,
+          y,
+          width: 100,
+          height: 100,
+          boundElements: [{ id: "arrow", type: "arrow" }],
+        });
+      const { fixedSegments, ...props } = arrowProps;
+      const arrow = {
+        ...API.createElement({
+          type: "arrow",
+          id: "arrow",
+          index: "a2" as FractionalIndex,
+          x: 100,
+          y: 50,
+          points: [pointFrom(0, 0), pointFrom(200, 200)],
+          startBinding: {
+            elementId: "start",
+            fixedPoint: [1, 0.5],
+            mode: "orbit",
+          },
+          endBinding: {
+            elementId: "end",
+            fixedPoint: [0, 0.5],
+            mode: "orbit",
+          },
+          ...props,
+        }),
+        ...(fixedSegments ? { fixedSegments } : {}),
+      };
+      const elements: ExcalidrawElement[] = [
+        box("start", 0, 0),
+        box("end", 300, 200),
+        arrow,
+      ];
+      const live = arrayToMap(elements) as SceneElementsMap;
+      const deleted = arrayToMap(
+        elements.map((element) => newElementWith(element, { isDeleted: true })),
+      ) as SceneElementsMap;
+      return () => ElementsDelta.calculate(deleted, live).applyTo(deleted)[0];
+    };
+
+    it("re-routes an arrow once when both of its ends are restored", () => {
+      const restore = restoreBothEnds();
+      const movePoints = vi.spyOn(LinearElementEditor, "movePoints");
+      try {
+        restore();
+        expect(movePoints.mock.calls.map(([element]) => element.id)).toEqual([
+          "arrow",
+        ]);
+      } finally {
+        movePoints.mockRestore();
+      }
+    });
+
+    // the skipped re-route from the other end must have changed nothing
+    it.each([
+      ["a straight arrow", {}],
+      [
+        "an arrow with a bend",
+        { points: [pointFrom(0, 0), pointFrom(100, 0), pointFrom(200, 200)] },
+      ],
+      [
+        "an elbow arrow with a moved segment",
+        {
+          elbowed: true,
+          points: [
+            pointFrom(0, 0),
+            pointFrom(120, 0),
+            pointFrom(120, 200),
+            pointFrom(200, 200),
+          ],
+          fixedSegments: [
+            { index: 2, start: pointFrom(120, 0), end: pointFrom(120, 200) },
+          ],
+        },
+      ],
+    ] as const)(
+      "leaves %s where re-routing it again would",
+      (_, arrowProps) => {
+        const restored = restoreBothEnds(
+          arrowProps as Parameters<typeof restoreBothEnds>[0],
+        )();
+        const arrow = restored.get("arrow") as ExcalidrawArrowElement;
+        const once = { x: arrow.x, y: arrow.y, points: arrow.points };
+
+        const scene = new Scene(restored, { skipValidation: true });
+        for (const id of ["start", "end"]) {
+          updateBoundElements(
+            restored.get(id) as NonDeletedExcalidrawElement,
+            scene,
+          );
+        }
+
+        expect({ x: arrow.x, y: arrow.y, points: arrow.points }).toEqual(once);
+      },
+    );
   });
 
   describe("elements delta calculation", () => {
