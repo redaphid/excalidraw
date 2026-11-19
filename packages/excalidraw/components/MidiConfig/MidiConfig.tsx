@@ -198,13 +198,6 @@ const StepInput = ({
   );
 };
 
-/**
- * midi:config — every property a knob can turn, found by fuzzy search and
- * bound by turning the knob: turn it, type a few letters, press Enter. The
- * preferences below it edit in place, about:config style, and every change
- * reaches open editor tabs at once. A whole page: mount it on a route of its
- * own, outside `<Excalidraw>`, with an editor reading `useStoredMidi`.
- */
 const readText = (file: Blob) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -213,6 +206,13 @@ const readText = (file: Blob) =>
     reader.readAsText(file);
   });
 
+/**
+ * midi:config — every property a knob can turn, found by fuzzy search and
+ * bound by turning the knob: turn it, type a few letters, press Enter. The
+ * preferences below it edit in place, about:config style, and every change
+ * reaches open editor tabs at once. A whole page: mount it on a route of its
+ * own, outside `<Excalidraw>`, with an editor reading `useStoredMidi`.
+ */
 export const MidiConfig = ({
   backHref = "/",
   storageKeys = MIDI_STORAGE_KEYS,
@@ -662,7 +662,14 @@ export const MidiConfig = ({
               if (!file) {
                 return;
               }
-              const result = importMidiConfig(await readText(file));
+              let text: string;
+              try {
+                text = await readText(file);
+              } catch {
+                setNotice("This file could not be read");
+                return;
+              }
+              const result = importMidiConfig(text);
               if ("error" in result) {
                 setNotice(result.error);
                 return;

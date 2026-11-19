@@ -8,7 +8,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { isMidiTargetId, MIDI_TARGET_IDS, TWISTER_LAYOUT } from "./midi";
+import {
+  bindingKey,
+  isMidiTargetId,
+  MIDI_TARGET_IDS,
+  TWISTER_LAYOUT,
+} from "./midi";
 
 import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
 import type { MidiOptions } from "./types";
@@ -177,19 +182,36 @@ export const importMidiConfig = (text: string): MidiConfigImport => {
     !config ||
     typeof config !== "object" ||
     config.format !== MIDI_CONFIG_FORMAT ||
-    typeof config.version !== "number"
+    !Number.isInteger(config.version) ||
+    (config.version as number) < 1
   ) {
     return { error: "This isn't a MIDI settings file" };
   }
-  if (config.version > MIDI_CONFIG_VERSION) {
+  if ((config.version as number) > MIDI_CONFIG_VERSION) {
     return { error: "This file is from a newer version of the MIDI settings" };
   }
+  if (config.bindings !== undefined && !Array.isArray(config.bindings)) {
+    return { error: "This isn't a MIDI settings file" };
+  }
   const listed = Array.isArray(config.bindings) ? config.bindings : null;
-  const bindings = listed ? listed.filter(isBinding) : [...TWISTER_LAYOUT];
+  // one target per knob, the last listed winning, as binding on the page
+  // leaves it; only the three fields are kept
+  const byKnob = new Map<string, MidiBinding>();
+  let skipped = 0;
+  for (const binding of listed ?? []) {
+    if (!isBinding(binding)) {
+      skipped++;
+    } else {
+      const { channel, cc, target } = binding;
+      byKnob.delete(bindingKey(channel, cc));
+      byKnob.set(bindingKey(channel, cc), { channel, cc, target });
+    }
+  }
+  const bindings = listed ? [...byKnob.values()] : [...TWISTER_LAYOUT];
   return {
     bindings,
     settings: parseMidiSettings(config.settings),
-    skipped: listed ? listed.length - bindings.length : 0,
+    skipped,
   };
 };
 

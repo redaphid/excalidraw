@@ -92,4 +92,52 @@ describe("importMidiConfig", () => {
     expect(importMidiConfig(JSON.stringify({ elements: [] }))).toEqual(notMidi);
     expect(importMidiConfig("null")).toEqual(notMidi);
   });
+
+  it("refuses a file whose bindings are not a list", () => {
+    for (const bindings of [null, {}, "knobs", 7]) {
+      expect(importMidiConfig(file({ bindings }))).toEqual({
+        error: "This isn't a MIDI settings file",
+      });
+    }
+  });
+
+  it("refuses a version that is not a whole number from 1", () => {
+    for (const version of [0, -3, 0.5]) {
+      expect(importMidiConfig(file({ version, bindings: [] }))).toEqual({
+        error: "This isn't a MIDI settings file",
+      });
+    }
+  });
+
+  it("binds a knob listed twice to the last target, as binding it on the page does", () => {
+    expect(
+      importMidiConfig(
+        file({
+          bindings: [
+            { channel: 1, cc: 0, target: "opacity" },
+            { channel: 1, cc: 0, target: "zoom" },
+          ],
+        }),
+      ),
+    ).toMatchObject({
+      bindings: [{ channel: 1, cc: 0, target: "zoom" }],
+      skipped: 0,
+    });
+  });
+
+  it("keeps only a binding's channel, knob and target", () => {
+    expect(
+      importMidiConfig(
+        file({
+          bindings: [
+            { channel: 1, cc: 0, target: "opacity", note: "x".repeat(64) },
+          ],
+        }),
+      ),
+    ).toEqual({
+      bindings: [{ channel: 1, cc: 0, target: "opacity" }],
+      settings: DEFAULT_MIDI_SETTINGS,
+      skipped: 0,
+    });
+  });
 });
