@@ -5,6 +5,8 @@ import {
   THEME,
   DARK_THEME_FILTER,
   getFontFamilyString,
+  getFontVariationSettings,
+  getFontInstanceWeight,
   getFontRenderScale,
   isRTL,
   isTestEnv,
@@ -871,7 +873,12 @@ const renderElementToSvg = (
             "y",
             `${(i * lineHeightPx + verticalOffset) * fontScale}`,
           );
-          text.setAttribute("font-family", getFontFamilyString(element));
+          // the SVG declares the family, not an instance's own family, and
+          // takes the instance from font-variation-settings
+          text.setAttribute(
+            "font-family",
+            getFontFamilyString({ fontFamily: element.fontFamily }),
+          );
           text.setAttribute("font-size", `${element.fontSize * fontScale}px`);
           text.setAttribute(
             "fill",
@@ -881,7 +888,27 @@ const renderElementToSvg = (
             ),
           );
           text.setAttribute("text-anchor", textAnchor);
-          text.setAttribute("style", "white-space: pre;");
+          // a renderer that ignores font-variation-settings still draws the
+          // instance's wght from font-weight
+          const variationSettings = getFontVariationSettings(
+            element.fontFamily,
+            element.fontAxes,
+          );
+          const weight = getFontInstanceWeight(
+            element.fontFamily,
+            element.fontAxes,
+          );
+          text.setAttribute(
+            "style",
+            [
+              "white-space: pre;",
+              variationSettings &&
+                `font-variation-settings: ${variationSettings};`,
+              weight !== undefined && `font-weight: ${weight};`,
+            ]
+              .filter(Boolean)
+              .join(" "),
+          );
           text.setAttribute("direction", direction);
           text.setAttribute("dominant-baseline", "alphabetic");
           node.appendChild(text);

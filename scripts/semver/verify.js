@@ -191,6 +191,42 @@ const verifyWorkerUrls = (project, channel) => {
   return urls.length;
 };
 
+// Each font license in the source ships beside its font, in both builds.
+const FONTS_SOURCE = path.join(ROOT, "packages/excalidraw/fonts");
+const FONT_LICENSE = /^(OFL|LICENSE)(\.txt|\.md)?$/i;
+
+const fontLicenses = () =>
+  fs
+    .readdirSync(FONTS_SOURCE, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap(({ name: family }) =>
+      fs
+        .readdirSync(path.join(FONTS_SOURCE, family))
+        .filter((file) => FONT_LICENSE.test(file))
+        .map((file) => `fonts/${family}/${file}`),
+    );
+
+const verifyFontLicenses = (project, channel, licenses) => {
+  const dist = path.join(
+    project,
+    "node_modules",
+    sourceName("excalidraw"),
+    "dist",
+  );
+  const missing = ["dev", "prod"].flatMap((mode) =>
+    licenses
+      .map((file) => `${mode}/${file}`)
+      .filter((file) => !fs.existsSync(path.join(dist, file))),
+  );
+  if (missing.length) {
+    throw new Error(
+      `${channel.tarball(
+        "excalidraw",
+      )} ships fonts without their licenses: dist/${missing.join(", dist/")}`,
+    );
+  }
+};
+
 // draw imports the sample themes as text at build time through ./themes/*.
 const themeFiles = () => {
   const { themes } = JSON.parse(fs.readFileSync(THEMES_INDEX, "utf-8"));
@@ -260,6 +296,7 @@ const verifyLoadsInNode = (project, id, channel) => {
 
 const verify = ({ version }) => {
   const themes = themeFiles();
+  const licenses = fontLicenses();
   const work = fs.mkdtempSync(path.join(os.tmpdir(), "semver-verify-"));
   try {
     for (const channel of channels(version)) {
@@ -283,6 +320,10 @@ const verify = ({ version }) => {
         `${channel.label}: the ${workerUrls} worker URLs in ${channel.tarball(
           "excalidraw",
         )} name files it ships`,
+      );
+      verifyFontLicenses(editor, channel, licenses);
+      console.info(
+        `${channel.label}: ${licenses.length} font licenses ship in dist/dev and dist/prod`,
       );
       verifyThemesImport(editor, channel, themes);
       console.info(

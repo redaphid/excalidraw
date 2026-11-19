@@ -155,6 +155,33 @@ const createESMRawBuild = async () => {
   });
 };
 
+// A font's license travels with its file: esbuild copies each woff2 to
+// dist/<mode>/fonts/<family>/, and nothing imports the license, so copy it.
+const FONTS_DIR = path.resolve(process.cwd(), "fonts");
+const FONT_LICENSE = /^(OFL|LICENSE)(\.txt|\.md)?$/i;
+
+const copyFontLicenses = () => {
+  for (const family of fs.readdirSync(FONTS_DIR)) {
+    const source = path.join(FONTS_DIR, family);
+    if (!fs.statSync(source).isDirectory()) {
+      continue;
+    }
+    for (const file of fs.readdirSync(source)) {
+      if (!FONT_LICENSE.test(file)) {
+        continue;
+      }
+      for (const mode of ["dev", "prod"]) {
+        const target = path.join("dist", mode, "fonts", family);
+        fs.mkdirSync(target, { recursive: true });
+        fs.copyFileSync(path.join(source, file), path.join(target, file));
+      }
+    }
+  }
+};
+
 (async () => {
   await createESMRawBuild();
+  if (fs.existsSync(FONTS_DIR)) {
+    copyFontLicenses();
+  }
 })();
