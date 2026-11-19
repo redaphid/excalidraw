@@ -170,3 +170,69 @@ describe("midi:config", () => {
     ).toBe(false);
   });
 });
+
+describe("midi:config files", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const exported = () => {
+    const href = screen.getByText("Export").closest("a")!.getAttribute("href")!;
+    return JSON.parse(decodeURIComponent(href.split(",")[1]));
+  };
+
+  const importFile = (body: string) =>
+    fireEvent.change(screen.getByLabelText("Import"), {
+      target: { files: [new File([body], "booth.json")] },
+    });
+
+  it("exports the knobs and preferences as a file", () => {
+    render(<MidiConfig />);
+    expect(exported()).toMatchObject({
+      format: "excalidraw-midi",
+      version: 1,
+      bindings: [...TWISTER_LAYOUT],
+    });
+  });
+
+  it("names the file for a download", () => {
+    render(<MidiConfig />);
+    expect(
+      screen.getByText("Export").closest("a")!.getAttribute("download"),
+    ).toBe("midi-knobs.json");
+  });
+
+  it("imports knobs from a file", async () => {
+    render(<MidiConfig />);
+    const booth = [{ channel: 1, cc: 7, target: "zoom" }];
+    importFile(
+      JSON.stringify({
+        format: "excalidraw-midi",
+        version: 1,
+        bindings: booth,
+      }),
+    );
+    await waitFor(() => expect(bindings()).toEqual(booth));
+  });
+
+  it("says how many knobs a file bound to properties it doesn't know", async () => {
+    render(<MidiConfig />);
+    importFile(
+      JSON.stringify({
+        format: "excalidraw-midi",
+        version: 1,
+        bindings: [{ channel: 1, cc: 7, target: "tempo" }],
+      }),
+    );
+    await screen.findByText(
+      "Imported. Skipped 1 knob this editor doesn't know",
+    );
+  });
+
+  it("leaves the knobs alone when a file isn't MIDI settings", async () => {
+    render(<MidiConfig />);
+    importFile("{ not json");
+    await screen.findByText("This isn't a MIDI settings file");
+    expect(bindings()).toBeNull();
+  });
+});
