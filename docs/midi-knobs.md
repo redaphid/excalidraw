@@ -19,6 +19,7 @@ draw.hypnodroid.com turns it on. Open the command palette (`Ctrl/Cmd+/`) and run
 - **Search** is fuzzy over each property's name, label and description. Letters may skip ahead within a word (`bg` finds background) but moving to another word lands on its first letter (`bgl` finds background lightness), so a long description doesn't match by scattering letters.
 - **Steps.** Each property's sensitivity (how far one click moves it) is edited in place. A value changed from its default reads bold, about:config style, with ↺ to put it back.
 - **Preferences** (`midi.encoding`, `midi.acceleration`, `midi.feedback`, `midi.toasts`, `midi.switchChannelOffset`) are rows too, filtered by the same search. Double-click a true/false row to flip it.
+- **Export** saves the knobs and preferences as `midi-knobs.json`; **Import** reads one back. The file is `{ "format": "excalidraw-midi", "version": 1, "bindings": [...], "settings": {...} }`. A file from a newer version is refused; knobs bound to properties this editor doesn't know are skipped (the page says how many), and unreadable preferences take their defaults.
 - Bindings and preferences live in `localStorage["excalidraw-midi-bindings"]` and `["excalidraw-midi-settings"]`. Every change reaches open editor tabs at once, so the page can sit in one tab while the drawing answers in another.
 
 ### In another host

@@ -478,6 +478,7 @@ export const SCENARIOS: Scenario[] = [
     ),
     variability: "variable",
   },
+  gesture("freedraw/freedraw-5000", "freedraw", "freedraw", 5000, loops),
   {
     ...gesture(
       "freedraw/freedraw-5000-variable",
