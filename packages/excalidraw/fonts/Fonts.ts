@@ -184,6 +184,20 @@ export class Fonts {
   };
 
   /**
+   * Loads the faces of each font instance the elements draw with, then
+   * redraws text (`onLoaded`), as `loadSceneFonts` does for the scene the
+   * editor starts with. For elements that arrive later, through
+   * `updateScene`: WebKit fires no `loadingdone`, so nothing else would redraw
+   * a text drawn before its instance's faces loaded.
+   */
+  public loadInstances = (elements: readonly ExcalidrawElement[]): void => {
+    if (Fonts.getInstances(elements).size === 0) {
+      return;
+    }
+    Fonts.loadInstanceFaces(elements, this.ownerDocument).then(this.onLoaded);
+  };
+
+  /**
    * Load font faces for a given scene and trigger scene update.
    */
   public loadSceneFonts = async (): Promise<FontFace[]> => {
