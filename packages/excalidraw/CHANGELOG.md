@@ -13,6 +13,12 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Palette knobs (2026-11-19)
+
+- New MIDI targets `palette.tools`, `palette.pens` and `palette.colors` drive the radial palette from a knob: a press opens the knob's ring, a turn steps the highlight a slice per four clicks (opening the ring first if it is closed), and a press after a turn chooses the highlighted slice and closes. A press with no turn since the ring opened just closes it. A press on any other knob still resets its target. A Twister's LED ring points at the highlighted slice. Needs `radialPalette`.
+- `TWISTER_LAYOUT`'s second row is now tools, pens, colours and undo / redo; x, y, width and height move to the first row of bank 2 (CC 16–19). Bindings a browser already saved are kept.
+- `MidiCommand.action` is `"press"` (was `"reset"`): the editor decides what a press does per target.
+
 ### Auto-arrange (2026-11-12) [#59](https://github.com/redaphid/excalidraw/pull/59)
 
 - Select two or more shapes or groups, or a frame, and press `Shift+Alt+A` (or pick "Auto-arrange" in the command palette, the context menu or the selection panel) to lay them out as a graph with [ELK](https://eclipse.dev/elk/). Arrows bound at both ends are the edges. The move is one undo step. With nothing selected the shortcut asks for a selection.

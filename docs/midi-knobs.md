@@ -1,6 +1,6 @@
 # MIDI knobs
 
-A MIDI controller's knobs can turn what the stats panel and the styles panel set by hand: stroke width, opacity, sloppiness, font size, position, size, scale, angle and colour, plus the view's zoom and pan. The default layout is a Midi Fighter Twister's first bank; any knob on any controller can be bound to any target.
+A MIDI controller's knobs can turn what the stats panel and the styles panel set by hand: stroke width, opacity, sloppiness, font size, position, size, scale, angle and colour, plus the view's zoom and pan. With the radial palette on, a knob can also open a ring of the palette, step through its tools, pens or colours and choose one. The default layout is a Midi Fighter Twister's first bank; any knob on any controller can be bound to any target.
 
 ```tsx
 <Excalidraw midi />
@@ -8,7 +8,7 @@ A MIDI controller's knobs can turn what the stats panel and the styles panel set
 <Excalidraw midi={{ bindings, onBindingsChange: setBindings }} />
 ```
 
-draw.hypnodroid.com turns it on. Open the command palette (`Ctrl/Cmd+/`) and run **Connect MIDI controller**, or **MIDI knob settings (midi:config)** to bind knobs.
+The excalidraw app turns it on (`excalidraw-app/midi.ts`); draw.hypnodroid.com does not yet. Open the command palette (`Ctrl/Cmd+/`) and run **Connect MIDI controller**, or **MIDI knob settings (midi:config)** to bind knobs.
 
 ## midi:config
 
@@ -55,21 +55,24 @@ const midi = useMemo(
 | `text` | font size, text align |
 | `view` | zoom, pan ↔, pan ↕, grid size |
 | `edit` | select (steps through shapes), layer (forward and back), undo / redo |
+| `palette` | tools, pens, colours: the radial palette's rings |
 
 Choices (stroke style, fill style, edges, text align) move one option per four clicks by default, so they don't flicker under the hand; layer and undo / redo move one step per two clicks. Each click of undo / redo or layer is its own undo step.
 
 ## The Twister layout
 
-Bank 1 at factory settings: sixteen encoders sending CC 0–15 on channel 1, read row by row from the top left. Banks 2–4 (CC 16–63) start free.
+At factory settings the Twister's knob n (of 64, sixteen a bank, row by row from the top left) sends CC n on channel 1, and its push switch CC n on channel 2. Bank 1:
 
 |              |         |            |                |
 | ------------ | ------- | ---------- | -------------- |
 | stroke width | opacity | sloppiness | font size      |
-| x            | y       | width      | height         |
+| tools        | pens    | colours    | undo / redo    |
 | scale        | angle   | stroke hue | background hue |
 | zoom         | pan ↔   | pan ↕      | select         |
 
-Pressing a knob resets its target: stroke width to medium, opacity to 100%, sloppiness to artist, font size to 20, angle to 0, zoom to 100%, and select lets go of the selection. The Twister sends its push switches one channel above its encoders; `switchChannelOffset` changes that (`null` turns presses off).
+Bank 2's first row is x, y, width and height (CC 16–19). The rest of bank 2 and banks 3–4 (CC 20–63) start free. A browser that saved bindings before the palette knobs keeps them; **Reset** on midi:config (or `resetBindings()`) brings in this layout.
+
+Pressing a palette knob works the palette (below). Pressing any other knob resets its target: stroke width to medium, opacity to 100%, sloppiness to artist, font size to 20, angle to 0, zoom to 100%, and select lets go of the selection. The Twister sends its push switches one channel above its encoders; `switchChannelOffset` changes that (`null` turns presses off).
 
 ## What a turn does
 
@@ -79,6 +82,17 @@ Pressing a knob resets its target: stroke width to medium, opacity to 100%, slop
 - **Undo**: a turn ends after 450 ms without a click, on a selection change, or when another knob is turned, and what it changed becomes one undo step.
 
 Sizes and positions move in screen pixels, so a knob feels the same at any zoom. Stroke width, scale and zoom grow by a ratio per click (6%, 1%, 2%), so a knob covers a hairline and a marker stroke alike. Quick turns count for more (`acceleration: false` turns that off).
+
+## Palette knobs
+
+A knob bound to `palette.tools`, `palette.pens` or `palette.colors` works that ring of the radial palette (`radialPalette` must be on):
+
+- **Press** opens the knob's ring, with the slice in use highlighted. If another ring is open, it switches to this one.
+- **Turn** moves the highlight one slice per four clicks (`steps` changes that), never accelerated. Turned while its ring is closed, the knob opens it first.
+- **Press after a turn** chooses the highlighted slice, as a tap on it would, and closes the ring.
+- **Press with no turn** since the ring opened just closes it.
+
+Escape, a tap outside and the palette's own gestures work as usual alongside the knob. A Twister's LED ring points at the highlighted slice while its ring is open and returns to the middle when it closes. In view mode, or with the palette off, the knobs do nothing (with the palette off, a toast says so).
 
 ## Encoders and rings
 
@@ -100,7 +114,7 @@ The editor answers each device that has spoken on the output port of the same na
 
 ## Where it lives
 
-- `packages/excalidraw/midi.ts`: pure. Message parsing, encoder decoding and detection, acceleration, ring positions, bindings and the Twister layout.
+- `packages/excalidraw/midi.ts`: pure. Message parsing, encoder decoding and detection, acceleration, ring positions, bindings, the Twister layout and the palette knobs' state machine (`paletteKnob`).
 - `packages/excalidraw/components/App.midi.ts`: the editor side. Web MIDI connection, turns, resets, rings, learning.
 - `excalidraw-app/midi.ts`: the editor's knobs and command palette entries.
 - `packages/excalidraw/components/MidiConfig/`: midi:config (`<MidiConfig>`) and its fuzzy matcher.
