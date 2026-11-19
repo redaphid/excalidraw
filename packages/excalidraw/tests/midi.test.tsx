@@ -699,6 +699,14 @@ describe("palette knobs", () => {
       expect(sent.at(-1)).toEqual([0xb1, KNOB.colors, 84]);
     });
 
+    it("leaves the colours knob's ring where it is when the stroke colour changes", () => {
+      // a ring write moves an absolute knob's count; only the light changes
+      send([0xb0, 40, 64]);
+      const before = sent.length;
+      API.setAppState({ currentItemStrokeColor: "#e03131" });
+      expect(sent.slice(before)).toEqual([[0xb1, KNOB.colors, 84]]);
+    });
+
     it("goes back to the middle when the ring closes", () => {
       press(KNOB.tools);
       turn(KNOB.tools, SLICE);

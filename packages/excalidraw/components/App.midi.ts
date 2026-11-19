@@ -1436,7 +1436,8 @@ export class AppMidi {
     if (
       prevState.currentItemStrokeColor !== this.app.state.currentItemStrokeColor
     ) {
-      this.sendRing("colors");
+      // the light only: rewriting the ring would move an absolute knob's count
+      this.sendColorKnobRgb(this.outputs());
     }
     if (prevState.selectedElementIds !== this.app.state.selectedElementIds) {
       const selection = selectionKey(this.app.state);
