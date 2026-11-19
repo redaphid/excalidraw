@@ -86,6 +86,11 @@ export const isButtonElement = <T extends ExcalidrawElement>(
 ): element is T & ExcalidrawButtonElement =>
   element?.type === "rectangle" && element.customData?.isButton === true;
 
+/** An element drawn in its stored colours whatever the theme, such as a
+ * palette swatch: the dark theme does not invert it. */
+export const hasLiteralColor = (element: ExcalidrawElement) =>
+  element.customData?.literalColor === true;
+
 export const isFrameElement = <T extends ExcalidrawElement>(
   element: T | null,
 ): element is T & ExcalidrawFrameElement => {

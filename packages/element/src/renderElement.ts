@@ -68,6 +68,7 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  hasLiteralColor,
   isButtonElement,
   isStickyNoteElement,
 } from "./typeChecks";
@@ -545,7 +546,7 @@ const drawButtonIcon = (
   context.save();
   context.fillStyle = context.strokeStyle = applyDarkModeFilter(
     button.strokeColor,
-    renderConfig.theme === THEME.DARK,
+    renderConfig.theme === THEME.DARK && !hasLiteralColor(button),
   );
   context.lineJoin = "round";
   context.lineWidth = cornerWidth;
@@ -581,7 +582,7 @@ const drawElementOnCanvas = (
         const commands = getStickyNotePathCommands(element);
         context.fillStyle = applyDarkModeFilter(
           element.backgroundColor,
-          renderConfig.theme === THEME.DARK,
+          renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
         );
         fillStickyNoteShape(context, commands);
         if (edge) {
@@ -608,7 +609,7 @@ const drawElementOnCanvas = (
           context.textBaseline = "alphabetic";
           context.fillStyle = applyDarkModeFilter(
             element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+            renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
           );
           context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
           context.fillText(
@@ -658,7 +659,7 @@ const drawElementOnCanvas = (
           if (typeof shape === "string") {
             context.fillStyle = applyDarkModeFilter(
               element.strokeColor,
-              renderConfig.theme === THEME.DARK,
+              renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
             );
             context.fill(getFreeDrawPath2D(element, shape));
           } else {
@@ -803,7 +804,7 @@ const drawElementOnCanvas = (
           });
           context.fillStyle = applyDarkModeFilter(
             element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+            renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
           );
           context.textAlign = element.textAlign as CanvasTextAlign;
 
