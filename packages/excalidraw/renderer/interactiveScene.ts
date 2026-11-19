@@ -55,7 +55,7 @@ import {
   selectGroupsFromGivenElements,
 } from "@excalidraw/element";
 
-import { renderSelectionElement } from "@excalidraw/element";
+import { hasLiteralColor, renderSelectionElement } from "@excalidraw/element";
 
 import { getCommonBounds, getElementAbsoluteCoords } from "@excalidraw/element";
 import {
@@ -1663,7 +1663,11 @@ const renderButtonHighlight = (
   context.rotate(button.angle);
   const isOverDark = isTransparent(button.backgroundColor)
     ? appState.theme === THEME.DARK
-    : isColorDark(getThemedColor(button.backgroundColor, appState.theme));
+    : isColorDark(
+        hasLiteralColor(button)
+          ? button.backgroundColor
+          : getThemedColor(button.backgroundColor, appState.theme),
+      );
   context.fillStyle =
     BUTTON_HIGHLIGHT[isOverDark ? "overDark" : "overLight"][pressed ? 1 : 0];
   context.beginPath();

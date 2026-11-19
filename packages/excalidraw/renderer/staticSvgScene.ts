@@ -716,6 +716,7 @@ const renderElementToSvg = (
 
         if (
           renderConfig.theme === THEME.DARK &&
+          !hasLiteralColor(element) &&
           fileData.mimeType === MIME_TYPES.svg
         ) {
           g.setAttribute("filter", DARK_THEME_FILTER);
@@ -888,7 +889,8 @@ const renderElementToSvg = (
             "fill",
             applyDarkModeFilter(
               element.strokeColor,
-              renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
+              renderConfig.theme === THEME.DARK &&
+                !hasLiteralColor(element, elementsMap),
             ),
           );
           text.setAttribute("text-anchor", textAnchor);

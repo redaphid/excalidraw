@@ -12,6 +12,7 @@ import type { MarkNonNullable } from "@excalidraw/common/utility-types";
 
 import type {
   ExcalidrawButtonElement,
+  ElementsMap,
   ExcalidrawElement,
   ExcalidrawTextElement,
   ExcalidrawEmbeddableElement,
@@ -86,10 +87,21 @@ export const isButtonElement = <T extends ExcalidrawElement>(
 ): element is T & ExcalidrawButtonElement =>
   element?.type === "rectangle" && element.customData?.isButton === true;
 
-/** An element drawn in its stored colours whatever the theme, such as a
- * palette swatch: the dark theme does not invert it. */
-export const hasLiteralColor = (element: ExcalidrawElement) =>
-  element.customData?.literalColor === true;
+/**
+ * An element drawn in its stored colours whatever the theme, such as a
+ * palette swatch: the dark theme does not invert it. A bound label follows
+ * its container, whose stored fill its colour was picked against; pass
+ * `elementsMap` to look the container up.
+ */
+export const hasLiteralColor = (
+  element: ExcalidrawElement,
+  elementsMap?: ElementsMap,
+): boolean =>
+  element.customData?.literalColor === true ||
+  (!!elementsMap &&
+    "containerId" in element &&
+    !!element.containerId &&
+    elementsMap.get(element.containerId)?.customData?.literalColor === true);
 
 export const isFrameElement = <T extends ExcalidrawElement>(
   element: T | null,

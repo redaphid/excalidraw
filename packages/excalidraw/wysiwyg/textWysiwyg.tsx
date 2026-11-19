@@ -544,7 +544,7 @@ export const textWysiwyg = ({
         color: applyDarkModeFilter(
           updatedTextElement.strokeColor,
           app.getCanvasMode() === THEME.DARK &&
-            !hasLiteralColor(updatedTextElement),
+            !hasLiteralColor(updatedTextElement, elementsMap),
         ),
         opacity: updatedTextElement.opacity / 100,
       });

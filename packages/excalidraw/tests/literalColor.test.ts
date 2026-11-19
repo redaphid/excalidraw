@@ -110,6 +110,36 @@ describe("an element whose customData asks for literal colour", () => {
   });
 });
 
+describe("a label without the flag, bound to a container with it", () => {
+  // the label's colour was picked against the container's stored fill
+  const boundPair = () => {
+    const container = {
+      ...chip(true),
+      id: "container-swatch-of-sorrel",
+      boundElements: [{ type: "text", id: "label-of-sorrel" }],
+    } as NonDeleted<ExcalidrawRectangleElement>;
+    const text = {
+      ...label(false),
+      id: "label-of-sorrel",
+      containerId: container.id,
+    } as NonDeleted<ExcalidrawTextElement>;
+    return [container, text] as unknown as NonDeleted<ExcalidrawTextElement>[];
+  };
+
+  describe("when it is exported to a dark SVG", () => {
+    it("fills with the stored colour", async () => {
+      const svg = await darkSvg(boundPair());
+      expect(svg.querySelector("text")?.getAttribute("fill")).toBe(STROKE);
+    });
+  });
+
+  describe("when it is drawn on a dark canvas", () => {
+    it("fills with the stored colour", async () => {
+      expect(await fillStylesOnDarkCanvas(boundPair())).toContain(STROKE);
+    });
+  });
+});
+
 describe("an element without the flag", () => {
   describe("when its shape is drawn on a dark board", () => {
     it("strokes with the dark-mode colour", () => {
