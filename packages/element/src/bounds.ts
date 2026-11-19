@@ -726,7 +726,11 @@ export const getBoundsFromPoints = <P extends GlobalPoint | LocalPoint>(
   let maxX = -Infinity;
   let maxY = -Infinity;
 
-  for (const [x, y] of points) {
+  // By index: a freedraw stroke's bounds are recomputed from every point on
+  // each move, and destructuring a point runs the array iterator for it.
+  for (let i = 0; i < points.length; i++) {
+    const x = points[i][0];
+    const y = points[i][1];
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
     maxX = Math.max(maxX, x);
