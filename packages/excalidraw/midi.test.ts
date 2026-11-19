@@ -15,6 +15,8 @@ import {
   ringPosition,
   ringWritten,
   slicePosition,
+  twisterColor,
+  twisterSpeaksRgb,
   TWISTER_LAYOUT,
   withBinding,
   withoutBinding,
@@ -436,5 +438,61 @@ describe("slicePosition", () => {
 
   it("recentres when there is nothing to show", () => {
     expect(slicePosition(0, 0)).toBe(64);
+  });
+});
+
+describe("twisterColor", () => {
+  it("finds a colour's place on the Twister's colour wheel", () => {
+    expect(twisterColor("#0000ff")).toBe(1);
+    expect(twisterColor("#00ffff")).toBe(22);
+    expect(twisterColor("#00ff00")).toBe(43);
+    expect(twisterColor("#ffff00")).toBe(64);
+    expect(twisterColor("#ff0000")).toBe(84);
+    expect(twisterColor("#ff00ff")).toBe(107);
+  });
+
+  it("reads short and translucent hex", () => {
+    expect(twisterColor("#f00")).toBe(84);
+    expect(twisterColor("#ff000080")).toBe(84);
+  });
+
+  it("stays clear of white and the knob's active colour", () => {
+    // a fully saturated colour at every 5° of hue
+    const channel = (n: number, hue: number) => {
+      const k = (n + hue / 60) % 6;
+      const v = 1 - Math.max(0, Math.min(k, 4 - k, 1));
+      return Math.round(v * 255)
+        .toString(16)
+        .padStart(2, "0");
+    };
+    for (let hue = 0; hue < 360; hue += 5) {
+      const hex = `#${channel(5, hue)}${channel(3, hue)}${channel(1, hue)}`;
+      const index = twisterColor(hex);
+      expect(index).toBeGreaterThanOrEqual(1);
+      expect(index).toBeLessThanOrEqual(125);
+    }
+    expect(twisterColor("#4000ff")).toBeLessThanOrEqual(125);
+  });
+
+  it("hands greys, black, white and anything unreadable back to the knob", () => {
+    expect(twisterColor("#808080")).toBe(0);
+    expect(twisterColor("#000000")).toBe(0);
+    expect(twisterColor("#ffffff")).toBe(0);
+    expect(twisterColor("transparent")).toBe(0);
+    expect(twisterColor("rebeccapurple")).toBe(0);
+  });
+});
+
+describe("twisterSpeaksRgb", () => {
+  it("knows a Twister by its port name", () => {
+    expect(twisterSpeaksRgb("Midi Fighter Twister")).toBe(true);
+    expect(twisterSpeaksRgb("Midi Fighter Twister MIDI 1")).toBe(true);
+    expect(twisterSpeaksRgb("2- Midi Fighter Twister")).toBe(true);
+  });
+
+  it("sends no colours to other controllers", () => {
+    expect(twisterSpeaksRgb("X-TOUCH MINI")).toBe(false);
+    expect(twisterSpeaksRgb("Midi Fighter 3D")).toBe(false);
+    expect(twisterSpeaksRgb("")).toBe(false);
   });
 });

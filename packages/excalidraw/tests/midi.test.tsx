@@ -3,7 +3,7 @@ import { CaptureUpdateAction } from "@excalidraw/element";
 import { radiansToDegrees } from "@excalidraw/math";
 
 import { Excalidraw } from "../index";
-import { slicePosition, TWISTER_LAYOUT } from "../midi";
+import { slicePosition, TWISTER_LAYOUT, twisterColor } from "../midi";
 
 import { API } from "./helpers/api";
 import { Keyboard, UI } from "./helpers/ui";
@@ -67,13 +67,14 @@ const rest = () =>
 const sent: number[][] = [];
 let listener: ((event: { data: Uint8Array }) => void) | null = null;
 
-/** a Twister on the browser's MIDI ports, one input and one output */
-const plugIn = () => {
+/** a Twister (or another controller) on the browser's MIDI ports, one input
+ * and one output */
+const plugIn = (name = TWISTER) => {
   sent.length = 0;
   listener = null;
   const input = {
     id: "in-1",
-    name: TWISTER,
+    name,
     state: "connected",
     addEventListener: (_: string, fn: typeof listener) => {
       listener = fn;
@@ -84,7 +85,7 @@ const plugIn = () => {
   };
   const output = {
     id: "out-1",
-    name: TWISTER,
+    name,
     state: "connected",
     send: (bytes: number[]) => sent.push([...bytes]),
   };
@@ -680,6 +681,32 @@ describe("palette knobs", () => {
       ]);
     });
 
+    it("lights the colours knob with the highlighted colour", () => {
+      turn(KNOB.colors, SLICE);
+      const { items, index } = palette();
+      expect(sent.at(-1)).toEqual([
+        0xb1,
+        KNOB.colors,
+        twisterColor(items[index].id),
+      ]);
+    });
+
+    it("lights the colours knob with the stroke colour in use", () => {
+      // the editor answers a controller once it has spoken: a knob nothing
+      // is bound to
+      send([0xb0, 40, 64]);
+      API.setAppState({ currentItemStrokeColor: "#e03131" });
+      expect(sent.at(-1)).toEqual([0xb1, KNOB.colors, 84]);
+    });
+
+    it("leaves the colours knob's ring where it is when the stroke colour changes", () => {
+      // a ring write moves an absolute knob's count; only the light changes
+      send([0xb0, 40, 64]);
+      const before = sent.length;
+      API.setAppState({ currentItemStrokeColor: "#e03131" });
+      expect(sent.slice(before)).toEqual([[0xb1, KNOB.colors, 84]]);
+    });
+
     it("goes back to the middle when the ring closes", () => {
       press(KNOB.tools);
       turn(KNOB.tools, SLICE);
@@ -746,5 +773,30 @@ describe("palette knobs", () => {
       twist(KNOB.tools, -SLICE);
       expect(palette().index).toBe(palette().items.length - 1);
     });
+  });
+});
+
+describe("palette knobs on another controller", () => {
+  const MINI = "X-TOUCH MINI";
+
+  beforeEach(async () => {
+    plugIn(MINI);
+    await render(
+      <Excalidraw handleKeyboardGlobally midi={options} radialPalette />,
+    );
+    await act(async () => {
+      await h.app.midi.connect();
+    });
+  });
+  afterEach(unplug);
+
+  it("sends it no colours", () => {
+    for (let i = 0; i < 4; i++) {
+      send([0xb0, 6, 65], MINI);
+    }
+    API.setAppState({ currentItemStrokeColor: "#e03131" });
+    // it hears the ring positions, so it is listening
+    expect(sent.some(([status]) => status === 0xb0)).toBe(true);
+    expect(sent.some(([status]) => status === 0xb1)).toBe(false);
   });
 });

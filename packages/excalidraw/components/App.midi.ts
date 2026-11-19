@@ -55,6 +55,8 @@ import {
   resolveCommand,
   ringPosition,
   slicePosition,
+  twisterColor,
+  twisterSpeaksRgb,
   TWISTER_LAYOUT,
   withBinding,
 } from "../midi";
@@ -1377,6 +1379,46 @@ export class AppMidi {
         }
       }
     }
+    if (id === "colors") {
+      this.sendColorKnobRgb(outputs);
+    }
+  }
+
+  /** a Twister's colours knob lights its RGB LED with the colour it would
+   * choose: the highlighted one while its ring is open, else the stroke
+   * colour in use. It goes on the knob's switch channel, which other
+   * controllers could read as anything, so only to Twisters. */
+  private sendColorKnobRgb(outputs: readonly MIDIOutput[]) {
+    const offset =
+      this.options?.switchChannelOffset === undefined
+        ? 1
+        : this.options.switchChannelOffset;
+    const twisters = outputs.filter((output) =>
+      twisterSpeaksRgb(output.name ?? ""),
+    );
+    if (!offset || !twisters.length) {
+      return;
+    }
+    const palette = this.app.radialPalette.api.state();
+    const color =
+      palette.open && palette.ring === "colors"
+        ? palette.items[palette.index]?.id ?? ""
+        : this.app.state.currentItemStrokeColor;
+    const value = twisterColor(color);
+    for (const binding of this.bindings) {
+      if (binding.target !== "colors" || binding.channel + offset > 16) {
+        continue;
+      }
+      for (const output of twisters) {
+        try {
+          output.send(
+            controlChangeBytes(binding.channel + offset, binding.cc, value),
+          );
+        } catch {
+          // a port that went away mid-send
+        }
+      }
+    }
   }
 
   syncRings() {
@@ -1390,6 +1432,12 @@ export class AppMidi {
   handleStateChange(prevState: AppState) {
     if (!this.access) {
       return;
+    }
+    if (
+      prevState.currentItemStrokeColor !== this.app.state.currentItemStrokeColor
+    ) {
+      // the light only: rewriting the ring would move an absolute knob's count
+      this.sendColorKnobRgb(this.outputs());
     }
     if (prevState.selectedElementIds !== this.app.state.selectedElementIds) {
       const selection = selectionKey(this.app.state);
