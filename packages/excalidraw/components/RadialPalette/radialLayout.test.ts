@@ -1,6 +1,7 @@
 import {
   HUB_RADIUS,
   MIDDLE_BAND,
+  MIN_RING_SCALE,
   OPACITY_SLIDER,
   OUTER_BAND,
   RING_RADIUS,
@@ -132,6 +133,14 @@ describe("radialLayout", () => {
           y: 800 - RING_RADIUS - 8,
           scale: 1,
         });
+      });
+    });
+
+    describe("when the editor has no size yet", () => {
+      it("keeps the ring at its smallest usable size", () => {
+        expect(
+          placeRing({ x: 0, y: 0 }, { width: 0, height: 0 }).scale,
+        ).toBe(MIN_RING_SCALE);
       });
     });
 

@@ -409,6 +409,10 @@ const RadialRing = ({
     }
   };
 
+  // the handlers a flick calls, current as of the last render
+  const latest = useRef({ hitAt, previewSlider, commitOpacity, activate, onClose });
+  latest.current = { hitAt, previewSlider, commitOpacity, activate, onClose };
+
   // a flick: press the puck, drag to a segment, lift to pick it
   useEffect(() => {
     if (!flick) {
@@ -427,10 +431,10 @@ const RadialRing = ({
       if (!moved) {
         return;
       }
-      last = hitAt(event.clientX, event.clientY);
+      last = latest.current.hitAt(event.clientX, event.clientY);
       setHover(last);
       if (last?.kind === "size" || last?.kind === "opacity") {
-        previewSlider(last);
+        latest.current.previewSlider(last);
       }
     };
     const onUp = (event: PointerEvent) => {
@@ -443,6 +447,7 @@ const RadialRing = ({
         // a tap: the ring stays open for the next tap
         return;
       }
+      const { commitOpacity, activate, onClose } = latest.current;
       if (last?.kind === "opacity") {
         commitOpacity();
         onClose();
@@ -464,7 +469,7 @@ const RadialRing = ({
       win.removeEventListener("pointerup", onUp);
       win.removeEventListener("pointercancel", onCancel);
     };
-  });
+  }, [app, flick]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

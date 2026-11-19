@@ -26,6 +26,9 @@ export const SIZE_SLIDER: Slider = { from: 96, to: 174 };
 /** opacity: grows up the right side of the bottom half */
 export const OPACITY_SLIDER: Slider = { from: 84, to: 6 };
 
+/** below this the ring would be too small to hit; it overflows instead */
+export const MIN_RING_SCALE = 0.6;
+
 /** a pointer this far from where it went down is a flick, not a tap */
 export const FLICK_DISTANCE = 10;
 
@@ -181,7 +184,8 @@ export const hitTest = (
 
 /**
  * Where the ring goes: centered on `anchor` when it fits, else moved just
- * far enough to fit, and scaled down when the editor is too small for it.
+ * far enough to fit, and scaled down (to `MIN_RING_SCALE` at most) when the
+ * editor is too small for it.
  */
 export const placeRing = (
   anchor: { x: number; y: number },
@@ -190,7 +194,10 @@ export const placeRing = (
 ) => {
   const scale = Math.min(
     1,
-    (Math.min(bounds.width, bounds.height) / 2 - margin) / RING_RADIUS,
+    Math.max(
+      MIN_RING_SCALE,
+      (Math.min(bounds.width, bounds.height) / 2 - margin) / RING_RADIUS,
+    ),
   );
   const reach = RING_RADIUS * scale + margin;
   const fit = (value: number, size: number) =>
