@@ -2,315 +2,348 @@
 
 Status: design. No code yet. Part of #198.
 
-Every pan and zoom should draw from tiles the GPU already holds, instead of redrawing the scene each frame. Draw (redaphid/draw) has this today for wheel and two-finger pinch, in a layer that sits outside the editor (`frontend/src/board/view/`, 2,344 lines plus tests). One-finger hand-tool pans still go through the editor, which redraws every frame. This doc moves the layer into the fork, where it becomes the renderer while the camera moves, and deletes the parts that only existed because it lived outside.
+Every pan and zoom should draw from tiles the GPU already holds, instead of redrawing the scene each frame. Draw (redaphid/draw) has this today for wheel and two-finger pinch, in a layer outside the editor (`frontend/src/board/view/`, 2,344 lines plus tests). One-finger hand-tool pans still go through the editor, which redraws every frame. This doc moves the layer into the fork, where it becomes the renderer while the camera moves, and deletes the parts that only existed because it lived outside.
 
 ## What changes for a person
 
 - One finger with the hand tool, space+drag, middle and right drag, and view mode pan as smoothly as a pinch does now.
-- Wheel, trackpad pinch, two-finger touch and animated flights (`scrollToContent`, frame links) all use the same path.
-- After a gesture, the sharp picture replaces the tiles in one frame, as soon as it is painted. The 1.2 s wait goes.
-- Selection boxes, collaborator cursors and frame names stay on screen while you move. Today draw's layer covers them.
+- Wheel, trackpad pinch, two-finger touch, flights (`scrollToContent`, frame links), snap-back and follow mode all take the same path.
+- After a gesture, the sharp picture replaces the tiles in one frame, once it is painted. Draw's 1.2 s wait goes.
+- Selection, collaborator cursors and frame names stay on screen while moving. Draw's layer covers them today.
 
 ## How it works
 
 ```
-             today                                  after
-1 finger ──► editor redraws each frame     1 finger ─┐
-2 fingers ─► draw view/ (outside)          2 fingers ┤
-wheel ─────► draw view/ (outside)          wheel ────┼─► AppViewport.translate ─► camera in AppState
-flights ───► editor redraws each frame     flights ──┘            │
-                                                         moving ──┼──► compositor: tiles on the GPU
-                                                         still ───┴──► static canvas, sharp
+                              every StaticCanvas render
+                                        │
+                          only the camera moved?
+                         ┌──────────────┴──────────────┐
+                        yes                            no (edit, resize, theme, still)
+                         │                              │
+              compositor draws tiles            renderStaticScene, sharp
+              at the new camera                 (#188 caps new bitmaps)
+                                                        │
+                                       onPainted for the current camera
+                                                        │
+                                              compositor hides, same frame
 ```
 
-All of the fork's navigation already ends in one call: `AppViewport.translate` (11 call sites from `AppPan`, `AppWheel`, two-finger touch and Safari's gesture events), plus `animateToViewport` for flights. So the compositor does not need to know about inputs. It needs to know two things: the camera changed, and whether something still holds the camera.
+The camera stays in `AppState` and every input keeps updating it as now. The fork's inputs (`AppPan`, `AppWheel`, two-finger touch, Safari gesture events) end in `AppViewport.translate`, and flights, snap-back, follow mode and the initial viewport set the camera directly. Every one of them re-renders `StaticCanvas`. So the compositor hooks in at one place, the paint, and needs no wiring per input:
 
-- **Moving.** The camera in `AppState` updates every frame as it does now. The static canvas skips its redraw. The compositor draws the frame from tiles at the new camera. The interactive canvas and the DOM overlays keep following `AppState`, so they stay correct.
-- **Still.** When nothing has held the camera for a settle time, the static canvas draws once, sharp, at the final camera. When `onPainted` reports that frame on screen, the compositor hides in the same frame (#123).
+```ts
+// StaticCanvas effect, before renderStaticScene
+if (compositor?.frame(input) === "composite") return; // the GPU drew this camera
+renderStaticScene(...);
+```
 
-The compositor canvas sits between the static canvas and the interactive canvas. Draw's canvas had to sit on top of everything.
+`frame()` composites when nothing but the camera changed since the last sharp paint, and no element is being created, dragged, resized or edited. Anything else paints, as today. When the camera has been still for `SETTLE_MS`, the compositor asks for a paint. The static canvas paints sharp, and `onPainted` with a matching camera, size, look and scene is the only thing that hides the compositor (#123). No timer or input handler can hide it, so a missed path leaves tiles on screen a little longer, never a wrong picture.
+
+The compositor canvas sits between the static and interactive canvases. Draw's had to cover everything.
 
 ## Modules
 
-New code lives in `packages/excalidraw/renderer/tiles/` and one new App module. Nothing goes in `common`, `element` or `math` except what the tile raster needs from `element`.
-
 | Fork file | From draw | What it does |
 | --- | --- | --- |
-| `renderer/tiles/pyramid.ts` | `tiles.ts`, part of `rect.ts` | Levels, tile rects, wanted tiles by priority, evictions, stale tiles for a dirty box. Pure. |
-| `renderer/tiles/plan.ts` | `frame.ts` | The layers of one frame: best tile available per area, sharper and coarser (#117), fade-in (#118), overscale cap (#119). Pure. |
-| `renderer/tiles/raster.ts` | replaces `export.ts` | Draws one tile in time slices with the static scene's own element loop, drawing elements directly, no per-element bitmaps. |
-| `renderer/tiles/scheduler.ts` | the pump in `view.ts` | Idle-time slices, priority bins, byte budget, cancelling unwanted work, prefetch along the pan (#120). |
-| `renderer/tiles/cache.ts` | tile map in `view.ts` | Tiles by key with texture, bytes, last use and stale flag; invalidation from scene changes. |
-| `renderer/gpu/compositor.ts` | `gl.ts`, `grid.ts` | WebGL2: backdrop, grid, textured quads, context loss. |
-| `components/canvases/CompositorCanvas.tsx` | the `<canvas class="view">` | The canvas element and its size, shared with `StaticCanvas`. |
-| `components/App.navigation.ts` | the rest of `view.ts` | `AppNavigation`: holds, settle, hand-over, owns the compositor, cache and scheduler. |
+| `excalidraw/renderer/compositor/index.ts` | `view.ts` (part) | `createCompositor`: `frame`, `painted`, owns the rest. |
+| `.../compositor/phase.ts` | `view.ts` (part) | Pure state machine: who draws, when to settle, when to hide. |
+| `.../compositor/pyramid.ts` | `tiles.ts`, `rect.ts` | Levels, tile rects, wanted tiles by priority, evictions. Pure. |
+| `.../compositor/plan.ts` | `frame.ts` | Layers of one frame: best available (#117), overscale cap (#119), fade-in (#118). Pure. |
+| `.../compositor/store.ts` | tile map and diff in `view.ts` | Tiles, bytes, staleness, invalidation from the scene. |
+| `.../compositor/scheduler.ts` | idle pump in `view.ts` | Idle slices, priority bins, byte budget, cancelling, prefetch (#120). |
+| `.../compositor/paintTile.ts` | replaces `export.ts` | One tile, the fork's own element renderer, direct draw, in slices. |
+| `.../compositor/gl.ts` | `gl.ts`, `grid.ts` | WebGL2: backdrop, grid, textured quads, context loss. |
+| `excalidraw/components/canvases/StaticCanvas.tsx` |  | Calls `frame()`; sizes the compositor canvas in its own sizing loop. |
+| `excalidraw/components/App.tsx` (two-finger handler) | `camera.ts` pinch | Anchored pinch, ghost-pointer cleanup, `takeOverPinch`. |
+| `element/src/Scene.ts` |  | `repaint(elements)`: fonts and images, which change pixels without a version bump. |
 
 ## Types
 
 ```ts
-// renderer/tiles/pyramid.ts
-export type Level = number & { readonly __level: unique symbol };
-export type TileId = { level: Level; col: number; row: number };
-export type TileKey = string & { readonly __tileKey: unique symbol };
-export type Camera = Pick<AppState, "zoom" | "scrollX" | "scrollY">;
-export type Screen = { width: number; height: number; dpr: number };
+// renderer/compositor/index.ts
+export type Camera = Readonly<{
+  zoom: number;
+  scrollX: number;
+  scrollY: number;
+}>;
+export type Size = Readonly<{ width: number; height: number; dpr: number }>;
+/** Everything a tile's pixels depend on besides its elements. Derived, never stored by callers. */
+export type LookKey = string & { readonly __brand: "LookKey" };
+/** What the static canvas shows. Only onPainted produces one. */
+export type Painted = Readonly<{
+  camera: Camera;
+  size: Size;
+  look: LookKey;
+  nonce: string;
+}>;
 
-export const levelFor = (zoom: number, dpr: number): Level => { throw new Error("not implemented"); };
-export const tileKey = (t: TileId): TileKey => { throw new Error("not implemented"); };
-export const tileBounds = (t: TileId): Bounds => { throw new Error("not implemented"); };
+export type FrameInput = Readonly<{
+  appState: StaticCanvasAppState;
+  renderConfig: StaticCanvasRenderConfig;
+  scale: number;
+  elementsMap: RenderableElementsMap;
+  sceneNonce: string;
+}>;
+export type Decision = "composite" | "paint";
 
-export type Priority = "now" | "soon" | "eventually";
-/** Nearest first: view, floor, rings; cut at `budgetBytes`. */
+export type Compositor = {
+  /** Every StaticCanvas render. Draws on the GPU when it answers "composite". */
+  frame(input: FrameInput): Decision;
+  /** The static canvas finished a paint for `input`. The only thing that hides the compositor. */
+  painted(input: FrameInput): void;
+  /** Asks StaticCanvas for a paint no prop change would cause (settle, context lost). */
+  subscribe(cb: () => void): () => void;
+  isNavigating(): boolean;
+  destroy(): void;
+};
+/** Null without hardware WebGL2: App runs today's path. */
+export const createCompositor = (host: {
+  ownerWindow: Window;
+  scene: Scene;
+}): Compositor | null => {
+  throw new Error("not implemented");
+};
+
+// renderer/compositor/phase.ts (pure; every transition tested without GL)
+export type Phase =
+  | { kind: "idle"; sharp: Painted }
+  | { kind: "covering"; sharp: Painted; shown: Camera; movedAt: number }
+  | { kind: "settling"; shown: Camera }
+  | { kind: "lost"; sharp: Painted | null };
+export type Effect =
+  | { kind: "seed" } // upload the static canvas's last sharp frame as a layer
+  | { kind: "draw"; camera: Camera }
+  | { kind: "show" }
+  | { kind: "hide" }
+  | { kind: "requestPaint" }
+  | { kind: "armSettle"; at: number };
+export const step = (
+  phase: Phase,
+  event:
+    | { kind: "frame"; target: Painted; navigationOnly: boolean; now: number }
+    | { kind: "painted"; painted: Painted }
+    | { kind: "settleDue"; now: number }
+    | { kind: "lost" }
+    | { kind: "restored" },
+): { phase: Phase; decision: Decision; effects: readonly Effect[] } => {
+  // frame: lost, !navigationOnly, or size/look differ from sharp -> paint
+  //        idle, camera unchanged -> paint (the normal edit path)
+  //        idle, camera moved -> covering; seed, draw, show (draw before show)
+  //        covering -> draw; armSettle(now + SETTLE_MS)
+  //        settling, camera moved -> covering
+  // settleDue: covering and still -> settling; requestPaint
+  // painted: matches the target -> idle; hide. Otherwise sharp = painted.
+  throw new Error("not implemented");
+};
+
+// renderer/compositor/pyramid.ts
+export type Tile = Readonly<{ level: number; col: number; row: number }>;
+export type TileKey = string & { readonly __brand: "TileKey" };
+export type Wanted = Readonly<{
+  tile: Tile;
+  priority: "now" | "soon" | "eventually";
+}>;
+/** Nearest first; nothing outside the scene's bounds. */
 export const wantedTiles = (
-  camera: Camera, screen: Screen, velocity: { x: number; y: number }, budgetBytes: number,
-): readonly { id: TileId; priority: Priority }[] => { throw new Error("not implemented"); };
+  c: Camera,
+  size: Size,
+  sceneBounds: Bounds | null,
+  velocity: Camera,
+): readonly Wanted[] => {
+  throw new Error("not implemented");
+};
 
-// renderer/tiles/cache.ts
-export type CachedTile = {
-  id: TileId;
-  /** null: drawn, and nothing reaches into it. */
+// renderer/compositor/store.ts
+export type Seq = number & { readonly __brand: "Seq" };
+export type TileEntry = Readonly<{
+  tile: Tile;
+  /** null: drawn, and nothing reaches into it. Costs no texture. */
   texture: WebGLTexture | null;
   bytes: number;
-  /** When it arrived; -Infinity when it replaced its own older drawing. */
-  at: number;
-  used: number;
+  /** The scene seq its drawing started at. */
+  drawnAt: Seq;
   stale: boolean;
+  used: number;
+  arrived: number;
+}>;
+/** At most once per frame or scheduler tick: if sceneNonce moved, diff versions and repaints into dirty boxes. */
+export const observe = (
+  store: TileStore,
+  scene: Scene,
+  look: LookKey,
+): readonly Bounds[] => {
+  throw new Error("not implemented");
 };
-/** Where an element was and is, grown by its paint extent. */
-export type Dirty = { bounds: Bounds; frame: boolean };
 
-export interface TileCache {
-  get(key: TileKey): CachedTile | undefined;
-  inView(camera: Camera, screen: Screen): readonly CachedTile[];
-  put(id: TileId, texture: WebGLTexture | null, bytes: number): void;
-  /** Marks tiles under `dirty` stale. They keep showing until redrawn. */
-  invalidate(dirty: readonly Dirty[]): void;
-  /** Theme, frame rendering, fonts, context loss: every tile goes. */
-  dropAll(): void;
-  evict(wanted: ReadonlySet<TileKey>, budgetBytes: number): void;
-}
-
-// renderer/tiles/raster.ts
+// renderer/compositor/paintTile.ts
 export type Slice = { left(): number; next(): Promise<void> };
 /**
- * Draws the elements meeting `tile` onto a 512px canvas, at its level's
- * scale, in scene order, stopping whenever `slice` runs out. Null when
- * nothing reaches in. Uses no element bitmaps, so it never evicts the
- * static canvas's (#187).
+ * Draws the elements meeting `tile` on a 512 px canvas in scene order with
+ * the fork's element renderer, drawing each directly: no element bitmaps,
+ * so it never evicts the static canvas's (#187). Stops between elements
+ * when the slice runs out.
  */
-export const rasterTile = (
-  scene: Scene, tile: TileId, look: TileLook, slice: Slice,
-): Promise<HTMLCanvasElement | null> => { throw new Error("not implemented"); };
-/** Everything a tile's pixels depend on besides its elements. */
-export type TileLook = Pick<AppState, "theme" | "frameRendering"> & { canvasTheme: string };
-
-// renderer/tiles/plan.ts
-export type Layer = { key: TileKey | "seed"; rect: Bounds; alpha: number };
-export type Plan = {
-  layers: readonly Layer[];
-  /** Share of the screen no tile covers, 0..1. */
-  uncovered: number;
-  /** Largest magnification of a shown tile. */
-  overscale: number;
-  fading: boolean;
+export const paintTile = (
+  scene: Scene,
+  tile: Tile,
+  look: LookKey,
+  slice: Slice,
+): Promise<HTMLCanvasElement | null> => {
+  throw new Error("not implemented");
 };
-export const planFrame = (
-  camera: Camera, screen: Screen, tiles: readonly CachedTile[], seed: Seed | null, now: number,
-): Plan => { throw new Error("not implemented"); };
-
-// renderer/gpu/compositor.ts
-export type Backdrop = { background: Rgba; grid: GridRows | null };
-export interface Compositor {
-  upload(key: TileKey | "seed", source: TexImageSource): WebGLTexture;
-  drop(key: TileKey | "seed"): void;
-  draw(plan: Plan, size: { width: number; height: number }, backdrop: Backdrop): void;
-  /** Null when lost; tiles are gone and the cache must drop them. */
-  ready(): boolean;
-  dispose(): void;
-}
-/** Null without a GPU (software rendering): navigation stays on the static canvas. */
-export const createCompositor = (
-  canvas: HTMLCanvasElement, onLost: () => void, onRestored: () => void,
-): Compositor | null => { throw new Error("not implemented"); };
-
-// components/App.navigation.ts
-/** Why the camera is held. Each source releases its own hold. */
-export type Hold = "pan" | "wheel" | "touch" | "gesture" | "flight";
-
-export class AppNavigation {
-  constructor(app: App, deps: { getStaticCanvas: () => HTMLCanvasElement | null }) {}
-  /** Called by AppPan, AppWheel, the touch tracker and animateToViewport. Idempotent per hold. */
-  hold(hold: Hold): void { throw new Error("not implemented"); }
-  release(hold: Hold): void { throw new Error("not implemented"); }
-  /** Called from translate and setState of the camera: draw this frame from tiles. */
-  cameraChanged(): void { throw new Error("not implemented"); }
-  /** A pointerdown that is not navigation, a key, an edit: hand over now. */
-  settleNow(): void { throw new Error("not implemented"); }
-  /** The static canvas skips its redraw while this is true. */
-  get compositing(): boolean { throw new Error("not implemented"); }
-  /** StaticCanvas's onPainted: hide the compositor in this frame if the camera matches. */
-  painted(camera: Camera): void { throw new Error("not implemented"); }
-  onScene(changed: readonly ExcalidrawElement[], before: ReadonlyMap<string, Bounds>): void { throw new Error("not implemented"); }
-  destroy(): void { throw new Error("not implemented"); }
-}
 ```
 
-The one public surface for hosts is a prop and an API method:
+Public surface for hosts:
 
 ```tsx
-<Excalidraw gpuNavigation />            // temporary opt-in, removed in the last PR
-api.isNavigating(): boolean              // draw's ink layer asks this instead of view.moving()
+<Excalidraw gpuNavigation />   // opt-in until draw migrates (PR 7), deleted in PR 8
+api.isNavigating(): boolean   // draw's ink layer asks this instead of view.moving()
+api.takeOverPinch(pointers)   // the ink layer hands a pinch's two fingers to the fork
 ```
 
 ## Inputs
 
-Each input holds the camera while it runs and releases it when it ends. The compositor engages on the first camera change under a hold, and on any camera change at all (a programmatic `setState` of the scroll, collab follow) when tiles cover the view.
+No input is wired to the compositor; each only changes the camera, as now. Three input changes come with the move:
 
-| Input | Where | Hold starts | Hold ends |
-| --- | --- | --- | --- |
-| Wheel, ctrl+wheel (trackpad pinch) | `AppWheel` | first tick | `ZOOM_SETTLE_TIMEOUT` after the last tick |
-| Hand tool, space+drag, middle drag, right drag, view mode | `AppPan.start` | session start (right drag: once past the threshold) | session teardown |
-| Two-finger touch | touch tracker (below) | second finger down | fewer than two fingers |
-| Safari `gesturestart`/`gestureend` | `App.onGesture*` | gesturestart | gestureend |
-| `scrollToContent`, `setViewport`, frame navigation, snap-back | `animateToViewport` | animation start | animation end or cancel |
+- **Anchored pinch.** Draw's `pinchStart`/`pinchMove` replace the fork's incremental pinch: the board point under the fingers' centre stays under it. The fork's pinch drifts. Pinch always zooms, pen mode included, as draw's does.
+- **`takeOverPinch`.** Draw's ink layer hides a pinch's fingers from the editor, because the first finger was a stroke. It hands both pointers to the fork's two-finger handler, which then owns them.
+- **Ghost pointers.** The two-finger handler drops a pointer on `pointercancel`, `lostpointercapture`, `blur` and `visibilitychange`, so a missed lift cannot pair with the next finger into a pinch (draw#275).
 
-Two-finger touch moves to a tracker that listens on `app.ownerWindow` in the capture phase, as draw's view layer does. Draw's ink layer stops both fingers of a pinch from reaching the canvas; a window-capture listener still sees them. The tracker drops a pointer on `pointercancel`, `lostpointercapture`, `blur` and `visibilitychange`, so a missed lift cannot leave a ghost finger that turns the next one-finger drag into a pinch (draw#275). It also takes draw's anchored pinch maths (`pinchStart`/`pinchMove` from `camera.ts`): the board point under the fingers' centre stays under it. The fork's incremental pinch drifts. Pinch always zooms, pen mode included, as draw's does.
+| Input | Today in the fork | After |
+| --- | --- | --- |
+| Hand tool, space+drag, middle drag, right drag, view mode | redraws each frame | composites |
+| Wheel, ctrl+wheel (trackpad) | stretched bitmaps, settle redraws (#134) | composites |
+| Two fingers, Safari gesture events | stretched bitmaps | composites, anchored |
+| `scrollToContent`, `setViewport`, frame links, snap-back, follow | redraws each frame | composites |
 
 ## Hand-over
 
-Today draw waits 1.2 s of stillness before the editor rebuilds sharp, because the rebuild used to cost hundreds of ms. Inside the fork:
+1. While moving, the static canvas keeps its last sharp paint. It is uploaded once as the seed layer when moving starts, so the first frames are sharp where no tile is drawn yet.
+2. After `SETTLE_MS` of stillness the phase becomes `settling` and the static canvas paints sharp, with #188's caps (24 new bitmaps or 8 ms, the rest drawn directly).
+3. When `onPainted` reports that camera, the compositor hides in the same frame. No fade: tiles come from the same renderer as the sharp paint, so they match. A fade comes back only if `parity.mjs` shows they do not.
+4. If the camera moves before then, the phase goes back to `covering`.
 
-1. The last hold is released. After `SETTLE_MS` with no camera change, `AppNavigation` clears `compositing` and the static canvas draws at the final camera, with #188's budget (24 new bitmaps or 8 ms, the rest drawn directly).
-2. The compositor stays on screen, unchanged, until `onPainted` reports a frame for that same camera (#123). Then it hides in the same frame. No fade, no timer.
-3. If a hold starts before that, the paint is dropped and the compositor carries on.
-
-`SETTLE_MS` starts at 150 ms for a pan (the static canvas reuses its bitmaps at the same zoom) and is measured, not assumed, for a zoom (#374; draw#112 stalled pans when it handed back too soon). Both draw from one `canvasSize` function and one camera, so the swap cannot shift the board by the camera maths (draw#91). The remaining sub-pixel shift is in the bitmap path (draw#191, fork #182) and is fixed there.
-
-A pointerdown that starts something other than navigation, a key that is not a modifier, or a local edit calls `settleNow()`: the static canvas draws at once and the compositor hides when it is painted.
+`SETTLE_MS` starts at 400 ms and is tuned on the benches (#374). It must exceed `ZOOM_SETTLE_TIMEOUT` (100 ms) plus a frame, so the sharp paint is not a stretched one. Draw#112 handed back early and stalled pans after a zoom; PR 5 measures that case before the value is set. The compositor canvas is sized in StaticCanvas's own sizing loop, so the two cannot disagree by a pixel (draw#91). The rest of the sub-pixel shift is in the bitmap path (draw#191, fork #182) and is fixed there.
 
 ## Tiles
 
-### Drawing a tile
+### Drawing one
 
-`rasterTile` replaces draw's `export.ts`. It runs the static scene's element loop with a tile's viewport (scroll at the tile's corner, zoom `2^level / dpr`, 512 px) and draws every element directly. That removes, compared with draw:
+`paintTile` replaces draw's `export.ts`. It runs the fork's element renderer over the tile's elements with the tile's transform and draws each directly. Gone, compared with draw: `exportToCanvas`, `restoreElements: false`, frameless copies of framed elements, chunk canvases laid over each other, per-element bitmaps for tiles (#187), and frame names on tiles (names are DOM and follow `AppState` live). Frame outlines stay on tiles. Freedraw shapes are cached per element and version, so a stroke is traced once for all tiles and the static canvas; strokes under the floor are shaped between frames when moving starts, as draw's `shapeAhead` does.
 
-- `exportToCanvas`, `restoreElements: false`, frameless copies of framed elements and the per-chunk canvases laid over each other: the loop draws onto one canvas and can stop between any two elements.
-- Per-element bitmaps for tiles, which evicted the static canvas's own (#187).
-- Frame names on tiles (`drawNames`, `nameOpacity`): names are DOM and follow `AppState` live while moving. Frame outlines stay on tiles.
-
-Freedraw shapes are cached per element and version in the fork, so a stroke is traced once for every tile and the static canvas. The scheduler shapes the strokes under the floor between frames when a hold starts, as draw's `shapeAhead` does.
+Draw's `tileElements` ink-overlap test is not ported up front. If `bench/tile-tasks.mjs` shows box culling draws too much, a spatial index over element bounds comes first, which also answers empty tiles without painting.
 
 ### Pyramid
 
-Kept from draw: 512 px tiles at power-of-two densities (levels -8 to 24, deep enough for 1,000,000x on a 2x screen), wanted in rings around the view, a floor 4 levels coarser and 10 views wide. Added:
+Kept from draw: 512 px tiles at power-of-two densities (levels -8 to 24, enough for 1,000,000x on a 2x screen), rings around the view, a floor 4 levels coarser and 10 views wide. Added:
 
-- **Best available (#117).** Where the view's level has no tile, draw loaded tiles up to 3 levels sharper, then coarser ones up to the floor. The floor under the view is pinned and never evicted.
-- **Overscale cap (#119).** A tile is not shown more than 2x magnified while a sharper one is loaded or being drawn; the next sharper level is wanted at `soon` priority.
-- **Fade (#118).** Draw's 150 ms per-tile fade-in moves over. A shader cross-fade with the parent is measured in PR 3, not assumed.
-- **Seed.** When a hold starts, the static canvas's last frame is uploaded as one more layer at its own density, so the first frames are sharp where tiles are not drawn yet. Draw feathered its edges because its snapshot and tiles came from different code and drifted apart. Here both come from the same renderer and camera, so the seed is a plain layer in the best-available order.
+- **Best available (#117).** Where the view's level has no tile, loaded tiles up to 3 levels sharper, then coarser ones down to the floor. The floor under the view is never evicted.
+- **Overscale cap (#119).** No tile shows more than 2x magnified while a sharper one is loaded or drawing; the next sharper level is wanted at `soon`.
+- **Fade-in (#118).** Draw's 150 ms per-tile fade moves over. A shader cross-fade with the parent is measured, not assumed.
+- **Scene bounds.** No tile is wanted outside them. Empty tiles store no texture.
 
-### What shows where no tile is drawn
+### Where no tile is drawn
 
-The compositor paints the board background and grid every frame at the live camera, so an area with no tile shows the empty board, never a hole or a stretched snapshot. With best-available and a pinned floor, that only happens on a cold open. The compositor only engages when tiles and the seed cover at least the view; otherwise the static canvas keeps drawing (with #188's budget) until they do.
+The compositor paints the board background and grid every frame at the live camera. An area with no tile shows the empty board, never a hole. With best available and the pinned floor, that only happens on a cold open.
 
 ### Memory
 
-A tile is 512 x 512 x 4 bytes, 1.33 MiB with mipmaps. The budget is in bytes, not tiles (#120):
-
-- `navigator.deviceMemory <= 4` (most phones): 96 MiB, about 72 tiles.
-- Otherwise: 192 MiB, about 144 tiles.
-
-Evicted least recently used within the lowest priority first. The pinned floor counts against the budget. Draw's budget today is 160 tiles (about 213 MiB) for a 1440x960 screen at 2x, and about 100 tiles on a phone.
+A tile is 512 x 512 x 4 bytes, 1.33 MiB with mipmaps. The budget is bytes, not tiles (#120): 96 MiB where `navigator.deviceMemory <= 4` (about 72 tiles), 192 MiB otherwise (about 144). Least recently used goes first within the lowest priority. Draw keeps about 160 tiles (213 MiB) on a 1440x960 2x screen today, and about 100 (133 MiB) on a phone.
 
 ### Invalidation
 
-Agents write through the MCP and their edits arrive as remote scene updates. These must be cheap and show fast.
+Agents write through the MCP and their edits arrive as remote scene updates, so this path must be cheap and show fast.
 
 | Change | What happens |
 | --- | --- |
-| Local edit, remote edit, agent edit | `Scene.onUpdate`: compare each element's version with the last seen one (one number per element). Changed elements dirty their old and new bounds, grown by paint extent and a frame's name reach. Tiles under them go stale and keep showing until redrawn. Stale tiles in view get `now` priority. |
-| Edit while still | The static canvas already shows it this frame. Tiles redraw in idle time. |
-| Edit while moving | Stale tiles in view redraw between frames in 6 ms slices, so an agent's write appears mid-gesture within a few frames. |
-| Image arrives (`imageCache` filled) | Elements with that `fileId` dirty their bounds. |
-| Fonts finish loading | `dropAll`. |
-| Light/dark, frame rendering, board theme canvas | `dropAll`. The background and grid are drawn by the compositor and change at once. |
-| WebGL context lost | Compositor hides, holds end, static canvas draws. On restore, `dropAll` and refill. |
-
-The version compare is the cost draw pays today on every change: under 0.1 ms for 5,000 elements. A store-delta source would avoid it but does not see every remote path; measure before adding one.
+| Local, remote or agent edit | `observe`: when `sceneNonce` moved, compare each element's version with the last seen (one number per element, under 0.1 ms for 5,000). Changed elements dirty their old and new bounds, grown by paint extent and frame-name reach. Tiles under them go stale and keep showing until redrawn; stale tiles in view get `now`. |
+| Edit while still | The static canvas shows it this frame. Tiles redraw in idle time. |
+| Edit while moving | Stale tiles in view redraw between frames in 6 ms slices. An agent's write appears within a few frames. |
+| Tile finishes after an edit | It uploads anyway. It is stale only if an edit since it started (`drawnAt`) touches it. Draw drops every tile in flight on any change, which starves tiles while agents stream edits. |
+| Font loads, image arrives | Both repaint today without a version bump (`ShapeCache.delete` plus `triggerUpdate`), so draw's tiles miss them. `Scene.repaint(elements)` records them and `observe` dirties their bounds. |
+| Light or dark, frame rendering, board theme | New `LookKey`: every tile goes. Background and grid change at once. |
+| WebGL context lost | Phase `lost`: the static canvas paints. On restore every tile is redrawn. |
 
 ## Without a GPU
 
-`createCompositor` returns null when the context is software-rendered or missing, as draw's does. Then `compositing` is always false and navigation is today's: the static canvas redraws each frame, with stretched bitmaps during zoom and #188's budget at the sharp frame. When the context is lost mid-gesture, the static canvas takes over at the current camera, which is already in `AppState`.
+`createCompositor` returns null for software or missing WebGL2, as draw's does, and App runs exactly today's path: the static canvas redraws, stretched during zoom, with #188's caps. A context lost mid-gesture paints the static canvas at the current camera, which is already in `AppState`.
 
 ## What draw deletes
 
-Everything in `frontend/src/board/view/` goes. The fork owns the camera, so draw no longer mirrors it, hands it back, or waits for it.
+All of `frontend/src/board/view/`.
 
 | Draw | Fate | Why |
 | --- | --- | --- |
-| `camera.ts` wheel maths, `zoomAbout`, `normalizeZoom` | deleted | The fork's own `getViewportForZoom` is the camera. |
-| `camera.ts` anchored pinch | moved | Into the fork's touch tracker. |
+| `camera.ts` wheel maths, `zoomAbout`, `normalizeZoom` | deleted | The fork's camera is the camera. |
+| `camera.ts` anchored pinch | moved | Into the fork's two-finger handler. |
 | `camera.ts` lift guard (`?pinchguard=1`) | deleted | An experiment that never became the default. |
-| `placeSnapshot`, `coverage`, snapshot feather | deleted | The seed is an ordinary layer. |
-| `view.ts` commit, `handBack`, `polish`, `POLISH_MS`, `sharpAt`, `snappedSoft` | deleted | No camera to hand back; hand-over waits for `onPainted`. |
-| `view.ts` window listeners for wheel and touch, `onCanvas` | deleted | `AppWheel` and the touch tracker already take them. |
-| `view.ts` idle pump, `nextTask`, `idleFrom` | moved | Into `scheduler.ts`. |
-| `canvasThemeOf`, `boardPaint`, `boardGrid` | deleted | Copies of the fork's own theme and grid rules ("change them together"). |
-| `export.ts` `tileFrom`, `snapshotFrom`, `drawNames`, `laid`, `chunking` | deleted | `rasterTile` draws in the fork's loop; names are DOM. |
-| `export.ts` `tileElements` overlap test | measured | Only ported if `bench/tile-tasks.mjs` shows box culling draws too much. |
-| `frame.ts`, `tiles.ts`, `gl.ts`, `grid.ts` | moved | Into `plan.ts`, `pyramid.ts`, `compositor.ts`. |
-| `readout.ts` | deleted | The fork's zoom readout follows `AppState`, which now updates live. |
+| `placeSnapshot`, `coverage`, snapshot feather | deleted | The seed is a plain layer from the same renderer. |
+| `view.ts` commit, `handBack`, `polish`, `POLISH_MS`, `sharpAt` | deleted | Nothing to hand back; `onPainted` decides. |
+| `view.ts` window listeners, `onCanvas`, `busy` | deleted | The fork's own inputs move the camera. |
+| `view.ts` idle pump, `nextTask`, `idleFrom` | moved | `scheduler.ts`. |
+| `canvasThemeOf`, `boardPaint`, `boardGrid` | deleted | Copies of the fork's theme and grid rules. |
+| `export.ts` | deleted | `paintTile`; names are DOM. |
+| `frame.ts`, `tiles.ts`, `gl.ts`, `grid.ts` | moved | `plan.ts`, `pyramid.ts`, `gl.ts`. |
+| `readout.ts` | deleted | The zoom readout follows `AppState`, live. |
 
-Callers in draw: `Board.tsx` (attach), the ink layer (`paused`, `pinchable` read `api.isNavigating()` and the compositor's readiness), `bench/harness/main.tsx`, `bench/parity.mjs`, `bench/tile.mjs`, and e2e specs that read view-layer internals (`frame-tiles`, `theme-zoom`, `zoom-colours`). They migrate in the same draw PR that deletes `view/`. No adapter stays behind.
+About 1,100 lines move and 1,250 go (estimate). Draw's callers: `Board.tsx`, the ink layer (`paused` and `pinchable` become `api.isNavigating()` and `takeOverPinch`), `bench/harness/main.tsx`, `bench/parity.mjs`, `bench/tile.mjs`, and e2e specs that read view internals (`frame-tiles`, `theme-zoom`, `zoom-colours`). They migrate in the draw PR that deletes `view/`. No adapter stays.
 
 ## Perf gate
 
-Nothing may get measurably slower. Each PR reports before and after on the same machine with load recorded (`uptime`) and contended runs thrown away, as the tile issues ask.
+Nothing may get measurably slower. Each PR reports before and after on one machine, load recorded (`uptime`), contended runs thrown away.
 
-- **Fork CI `perf` job** (`perf-bench/run.mjs`, `playground/bench/scenarios.ts`): pan and zoom on `mixed`, `freedraw`, `deep`, `big`, `huge`, `file`. Today it is `continue-on-error`. A small CI PR gives it a pass/fail rule (frame p95 and long-task total within noise of master) before any navigation PR lands. `deep/zoom` (#134: 1.3 s frames) should fall sharply once wheel goes through the compositor.
-- **Fork `perf-bench/parity.mjs`**: tile pixels against the static canvas at the same camera.
-- **Draw `bench/pinch.mjs`**: anchor drift, frame jumps, rebuild-shift (under 0.5 CSS px at 1x, 100x, 10,000x; draw#91), frame times, with `--tool hand` for one-finger pans.
-- **Draw `bench/tile-tasks.mjs`**: the longest main-thread task tile drawing causes, cold and warm, phone and desktop, with `--pinch`. Must stay at or under today's.
-- **Draw `bench/flight.mjs`, `bench/dive.mjs`, `bench/zoom-out.mjs`**: flights, 1x to 1,000,000x and back, zoom-out frames.
-- **Real phone.** The owner's phone runs Android Firefox. Emulated touch has passed gestures that failed on it (draw#89). Every PR that changes a gesture (PRs 5 and 6, and 8 in draw) gets a check on that phone before merge: one-finger pan, two-finger pinch, a squeeze out, the hand-over, and draw#275's 20 messy round trips. Draw's `page-zoom` and `phone-pinch` e2e specs run in Firefox and Chromium as well.
+- **Fork CI `perf` job** (`perf-bench/run.mjs`, `playground/bench/scenarios.ts`): pan and zoom on `mixed`, `freedraw`, `deep`, `big`, `huge`, `file`. It is `continue-on-error` today; PR 1 gives it a pass/fail rule. `deep/zoom` (#134, 1.3 s frames) should fall sharply in PR 5.
+- **Fork `perf-bench/parity.mjs`**: tile pixels against the sharp paint.
+- **Draw `bench/pinch.mjs`**: anchor drift, frame jumps, rebuild-shift (under 0.5 CSS px at 1x, 100x and 10,000x), frame times; `--tool hand` for one-finger pans.
+- **Draw `bench/tile-tasks.mjs`**: longest main-thread task from tile drawing, cold and warm, phone and desktop, `--pinch`. At or under today's.
+- **Draw `bench/flight.mjs`, `dive.mjs`, `zoom-out.mjs`**: flights, 1x to 1,000,000x and back, zoom-out frames.
+- **Real phone.** The owner's phone runs Android Firefox, and emulated touch has passed gestures that failed on it (draw#89). PRs 5, 6 and 7 get a check on that phone before merge, on a draw preview build with the fork's tarball: one-finger pan, pinch, a squeeze out, the hand-over, and draw#275's 20 messy round trips. Draw's `page-zoom` and `phone-pinch` e2e specs run in Firefox and Chromium too.
 
 ## PRs
 
-Each merges on its own and leaves master shippable. `gpuNavigation` keeps the fork's compositor off in draw until draw deletes its own layer, so a fork release installed into draw meanwhile (another session's work installs them) never runs two GPU layers and two tile caches at once.
+Each merges on its own and leaves master shippable. Until draw migrates, the fork's compositor stays off in draw (`gpuNavigation` unset), so a fork release installed into draw meanwhile never runs two GPU layers and two tile stores.
 
 | # | Repo | PR | Issues | Gate |
 | --- | --- | --- | --- | --- |
 | 0 | fork | This design | #198 | review |
-| 1 | fork | `ci`: perf job becomes a gate | | perf job red on a planted slowdown |
-| 2 | fork | `pyramid.ts` + `plan.ts`, pure, with draw's tests ported; best available, overscale cap, fade | #117 #118 #119 | unit tests |
-| 3 | fork | `rasterTile`: sliced, direct draw, no element bitmaps | #187 | `parity.mjs`; draw's `tile-tasks.mjs` with draw's `tile()` pointed at it (draw-side one-line swap) |
-| 4 | fork | cache + scheduler: byte budget, bins, cancel, velocity prefetch, invalidation | #120 | unit tests; idle-task bench |
-| 5 | fork | compositor + `AppNavigation` + wheel and trackpad, behind `gpuNavigation`; atomic hand-over | #134 #123 #374 draw#91 | perf job, `pinch.mjs` rebuild-shift, desktop Firefox and Chromium |
-| 6 | fork | `AppPan` holds: hand tool, space, middle and right drag, view mode | | perf job, real phone |
-| 7 | fork | touch tracker on window capture, anchored pinch, ghost-pointer cleanup; Safari gesture holds | draw#275 | `pinch.mjs`, real phone, 20 round trips |
-| 8 | fork | flights: `animateToViewport` holds | | `flight.mjs`, `dive.mjs` |
-| 9 | draw | bump the fork, set `gpuNavigation`, migrate callers, delete `view/` | | every bench above, real phone |
-| 10 | fork | delete the `gpuNavigation` prop; on wherever a GPU is | | perf job |
+| 1 | fork | `ci`: the perf job becomes a gate |  | goes red on a planted slowdown |
+| 2 | fork | `pyramid.ts`, `plan.ts`, `phase.ts`: pure, draw's tests ported | #117 #118 #119 | unit tests |
+| 3 | fork | `paintTile`, sliced, direct draw | #187 | `parity.mjs`; draw's `tile-tasks.mjs` with draw's `tile()` pointed at it |
+| 4 | fork | `store.ts`, `scheduler.ts`, `Scene.repaint` | #120 | unit tests; idle-task bench |
+| 5 | fork | `gl.ts`, `createCompositor`, the StaticCanvas hook, behind `gpuNavigation` | #134 #123 #374 draw#91 | perf job, `pinch.mjs`, `flight.mjs`, real phone |
+| 6 | fork | Two fingers: anchored pinch, ghost-pointer cleanup, `takeOverPinch` | draw#275 | `pinch.mjs`, real phone, 20 round trips |
+| 7 | draw | Bump the fork, set `gpuNavigation`, migrate callers, delete `view/` |  | every bench above, real phone |
+| 8 | fork | Delete the `gpuNavigation` prop: on wherever a GPU is |  | perf job |
 
-Later, each on its own measurements:
+Later, each on its own numbers:
 
-- #122 level of detail for coarse tiles: after PR 4, once the cross-fade is measured.
-- #124 tiles in a Worker on OffscreenCanvas: a spike after PR 3. `rasterTile` takes a scene and a slice so a worker could run it, but fonts, images and text measurement still need the DOM.
-- #125 GPU vector rendering: not in this series. The compositor's `Layer` is where a vector renderer would plug in.
+- #122 level of detail for coarse tiles: after PR 5, once the fade is measured.
+- #124 tiles in a Worker on OffscreenCanvas: a spike after PR 3. `paintTile` takes a scene and a slice, but fonts, images and text measuring still need the DOM.
+- #125 GPU vector rendering: not in this series. A layer in `plan.ts` is where a vector renderer would plug in.
 - draw#53 (a whole-board open does not fit at 100x): not in this series. It is about loading and holding elements, not drawing them.
-- draw#191 and fork #182 (bitmap sub-pixel phase): fixed in the bitmap path, ideally before PR 5 so the hand-over is invisible.
+- draw#191, fork #182 (bitmap sub-pixel phase): fixed in the bitmap path, ideally before PR 5 so the hand-over is invisible.
 
-Draw PR 9 touches `Board.tsx`, the ink layer, the bench harness and e2e specs. Draw's Unify series (#460 to #464) is live in another session and also installs fork releases. PR 9 waits for that series to free `Board.tsx`, or merges `main` into its branch, and is the only draw PR that sets `gpuNavigation`.
+Draw PR 7 touches `Board.tsx`, the ink layer, the bench harness and e2e specs. Draw's Unify series (#460 to #464) is live in another session and also installs fork releases. PR 7 merges draw's `main` in before it lands, and it is the only draw PR that sets `gpuNavigation`. Fork bumps by that session stay safe because the prop is off.
 
 ## Risks
 
-- **Hand-over cost on a phone.** Without the 1.2 s wait, a short pause mid-navigation hands over and redraws. If the redraw at a new zoom costs 100 ms on the phone, resuming feels like a hitch. #188's budget and a measured `SETTLE_MS` are the defence; PR 5 measures it before PR 6 extends it to one-finger pans.
-- **Touch on Android Firefox.** Moving two-finger tracking to window capture changes when the fork sees fingers relative to draw's ink layer. Only the real phone can prove it.
-- **Texture uploads on Firefox.** #124 notes slow paths there. Measure `texImage2D` of a 512 px canvas on the phone in PR 5.
+- **React per frame.** The camera stays in `AppState`, so every moving frame still renders App, LayerUI and the interactive canvas, and computes visible elements. Draw's layer skipped all of that with a camera of its own. The fork pays it today on every pan anyway, so fork pans only get faster; draw's pinch and wheel could get slower on the phone. PR 5 measures `pinch.mjs` frame times on the phone against draw today. If it loses, the fallback is candidate B's frozen camera: the compositor steers its own camera while `covering` and commits to `AppState` once at settle.
+- **Hand-over cost on the phone.** A pause mid-navigation now settles and paints. If that paint at a new zoom costs 100 ms on the phone, resuming hitches. #188's caps and a measured `SETTLE_MS` are the defence.
+- **Touch on Android Firefox.** `takeOverPinch` and the new pointer cleanup change who owns fingers. Only the real phone can prove it.
+- **Texture uploads on Firefox.** #124 reports slow paths there. PR 5 measures `texImage2D` of a 512 px canvas on the phone.
+
+## Design record
+
+Three shapes were sketched.
+
+- **Chosen: the paint decides.** One check in StaticCanvas: only the camera moved, so composite. No input wiring, every camera source covered, `AppState` stays the only camera. Costs a React render per frame.
+- **Hook `translate` and holds per input.** The first sketch. Misses flights, snap-back, follow mode and the initial viewport, which set the camera without `translate`, and needs a hold and release at every input. Lost on coverage and surface.
+- **A controller owns the camera during a gesture** (candidate B). Inputs call the controller, which steers, composites and commits once. No React per frame, which also fixes #134 at its root. Lost on two camera authorities mid-gesture: collab pointers, the zoom readout, `onScrollChange` and follow mode read `AppState` and would be wrong until the commit, and the audit for other readers was not finished. Kept as the fallback for the first risk.
+
+From the candidates: the paint hook, `phase.ts`, per-tile staleness instead of draw's global epoch, `Scene.repaint` and `takeOverPinch` (A); the byte budget by device class and the spatial index for empty tiles (B).
 
 ## Open questions
 
-1. Is 96 MiB of tiles on a phone acceptable, or should it be lower?
-2. Should pinch zoom in pen mode for everyone using the fork (draw's behaviour), or only behind a prop?
+1. Is 96 MiB of tiles on a phone acceptable, or lower?
+2. Should pinch zoom in pen mode for everyone using the fork (draw's behaviour), or behind a prop?
 3. Drop `?pinchguard=1` rather than port it?
-4. Should the fork's own app (excalidraw-app) get GPU navigation from PR 10, or stay on the static path?
+4. Should the fork's own app (excalidraw-app) get GPU navigation from PR 8, or stay on the static path?
