@@ -115,6 +115,7 @@ const Playground = () => {
       }
       authoringUnits="screen"
       radialPalette={params.get("radialPalette") !== "0"}
+      midi={params.get("midi") !== "0"}
       initialData={initialData}
       frameNavigation={frameNavigation}
       onExcalidrawAPI={(api) => {
