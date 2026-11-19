@@ -1337,12 +1337,14 @@ export const updateBoundElements = (
     /** see `getSimultaneouslyUpdatedElementIds` for how to pass it */
     simultaneouslyUpdated?: readonly NonDeletedExcalidrawElement[];
     /** where to look up bound elements, the scene's non-deleted elements by
-     * default. Callers updating many elements at once should build it once
-     * and share it, as building one costs a pass over the whole scene. */
+     * default. It must hold the current instance of every element looked up,
+     * so share one between calls only while no instance is replaced; building
+     * one costs a pass over the whole scene. */
     elementsMap?: ElementsMap;
     /** arrows already re-routed in this pass, skipped and added to as
      * arrows are re-routed. Re-routing solves both ends of an arrow, so a
-     * pass over several of its bindables only needs to do it once. */
+     * pass over several of its bindables only needs to do it once, but only
+     * if every bindable is in its final place before the pass starts. */
     updatedArrowIds?: Set<ExcalidrawElement["id"]>;
   },
 ) => {
