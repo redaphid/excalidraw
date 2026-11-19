@@ -721,8 +721,8 @@ const RadialRing = ({
 
           {[...presets, null].map((preset, index) => {
             const sector = layout.pens[index];
-            const { x, y } = at(MIDDLE_BAND.inner + 20, sector);
-            const label = at(MIDDLE_BAND.outer - 9, sector);
+            const { x, y } = at(MIDDLE_BAND.inner + 24, sector);
+            const label = { x, y: y - 14 };
             if (!preset) {
               return button(
                 "eraser",
@@ -764,8 +764,8 @@ const RadialRing = ({
           {STYLE_ROLES.map((role, index) => {
             const sector = layout.roles[index];
             const style = roleStyles[index];
-            const { x, y } = at(MIDDLE_BAND.inner + 26, sector);
-            const label = at(MIDDLE_BAND.inner + 8, sector);
+            const { x, y } = at(MIDDLE_BAND.inner + 20, sector);
+            const label = { x, y: y + 14 };
             const active =
               appState.currentItemStrokeColor === style.strokeColor &&
               appState.currentItemBackgroundColor === style.backgroundColor &&

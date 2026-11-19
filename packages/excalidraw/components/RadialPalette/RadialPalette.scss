@@ -87,35 +87,34 @@
     cursor: pointer;
     color: var(--icon-fill-color);
     outline: none;
+  }
 
-    &-bg {
-      fill: transparent;
-    }
+  .RadialPalette__segment-bg {
+    fill: transparent;
+  }
 
-    &-content {
-      pointer-events: none;
-    }
+  .RadialPalette__segment-content {
+    pointer-events: none;
+  }
 
-    &:hover &-bg,
-    &--hover &-bg,
-    &:focus-visible &-bg {
-      fill: var(--button-hover-bg);
-    }
+  .RadialPalette__segment:hover .RadialPalette__segment-bg,
+  .RadialPalette__segment--hover .RadialPalette__segment-bg,
+  .RadialPalette__segment:focus-visible .RadialPalette__segment-bg {
+    fill: var(--button-hover-bg);
+  }
 
-    &--active &-bg,
-    &--active:hover &-bg {
-      fill: var(--color-surface-primary-container);
-      stroke: var(--color-primary);
-      stroke-width: 1.5;
-    }
+  .RadialPalette__segment--active .RadialPalette__segment-bg {
+    fill: var(--color-surface-primary-container);
+    stroke: var(--color-primary);
+    stroke-width: 1.5;
+  }
 
-    &--disabled {
-      cursor: default;
+  .RadialPalette__segment--disabled {
+    cursor: default;
+  }
 
-      &:hover .RadialPalette__segment-bg {
-        fill: transparent;
-      }
-    }
+  .RadialPalette__segment--disabled:hover .RadialPalette__segment-bg {
+    fill: transparent;
   }
 
   .RadialPalette__label {
@@ -180,25 +179,25 @@
       stroke-width: 2;
       pointer-events: none;
     }
+  }
 
-    &--active &-knob,
-    &:focus-visible &-knob {
-      fill: var(--color-surface-primary-container);
-    }
+  .RadialPalette__slider--active .RadialPalette__slider-knob,
+  .RadialPalette__slider:focus-visible .RadialPalette__slider-knob {
+    fill: var(--color-surface-primary-container);
   }
 
   .RadialPalette__hub {
     pointer-events: all;
     cursor: pointer;
     outline: none;
+  }
 
-    &-bg {
-      fill: var(--island-bg-color);
-    }
+  .RadialPalette__hub-bg {
+    fill: var(--island-bg-color);
+  }
 
-    &:hover &-bg,
-    &:focus-visible &-bg {
-      fill: var(--button-hover-bg);
-    }
+  .RadialPalette__hub:hover .RadialPalette__hub-bg,
+  .RadialPalette__hub:focus-visible .RadialPalette__hub-bg {
+    fill: var(--button-hover-bg);
   }
 }
