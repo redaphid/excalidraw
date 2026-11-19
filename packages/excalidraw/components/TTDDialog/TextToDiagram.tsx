@@ -68,6 +68,7 @@ const TextToDiagramContent = ({
 
   const { onGenerate, handleAbort } = useTextGeneration({
     onTextSubmit,
+    mermaidToExcalidrawLib,
   });
 
   const {

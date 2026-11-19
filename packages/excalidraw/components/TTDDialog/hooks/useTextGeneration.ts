@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { parseMermaidToExcalidraw } from "@excalidraw/mermaid-to-excalidraw";
 import { isFiniteNumber } from "@excalidraw/math";
 
 import { useAtom } from "../../../editor-jotai";
@@ -18,14 +17,20 @@ import {
   updateAssistantContent,
 } from "../utils/chat";
 
-import type { LLMMessage, TTTDDialog } from "../types";
+import type {
+  LLMMessage,
+  MermaidToExcalidrawLibProps,
+  TTTDDialog,
+} from "../types";
 
 const MIN_PROMPT_LENGTH = 3;
 const MAX_PROMPT_LENGTH = 10000;
 
 export const useTextGeneration = ({
   onTextSubmit,
+  mermaidToExcalidrawLib,
 }: {
+  mermaidToExcalidrawLib: MermaidToExcalidrawLibProps;
   onTextSubmit: (
     props: TTTDDialog.OnTextSubmitProps,
   ) => Promise<TTTDDialog.OnTextSubmitRetValue>;
@@ -38,6 +43,8 @@ export const useTextGeneration = ({
     useChatAgent();
 
   const streamingAbortControllerRef = useRef<AbortController | null>(null);
+  const mermaidToExcalidrawLibRef = useRef(mermaidToExcalidrawLib);
+  mermaidToExcalidrawLibRef.current = mermaidToExcalidrawLib;
 
   const validatePrompt = (prompt: string): boolean => {
     if (
@@ -191,6 +198,8 @@ export const useTextGeneration = ({
       }
 
       try {
+        const { parseMermaidToExcalidraw } = await mermaidToExcalidrawLibRef
+          .current.api;
         await parseMermaidToExcalidraw(generatedResponse ?? "");
         trackEvent("ai", "mermaid parse success", "ttd");
       } catch (error: any) {
