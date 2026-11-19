@@ -13,6 +13,14 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Radial palette (2026-11-19) [#205](https://github.com/redaphid/excalidraw/pull/205)
+
+- `<Excalidraw radialPalette />` adds a puck that opens a ring of shapes and tools (select, rectangle, diamond, ellipse, arrow, line, pen, text, frame), pen presets and the eraser, and the theme's inks with recent colours, a pen-size arc and an opacity arc.
+- It opens at the pointer on `,`, under a finger held still for 500 ms (10 px tolerance), and at the tip of a pen pressed with its barrel button. Escape or a tap outside closes it. While it is on, the touch long press opens the palette instead of the context menu; the ring's hub opens the context menu for that spot. A mouse right-click is unchanged.
+- `excalidrawAPI.radialPalette` drives it without a pointer (e.g. from a MIDI knob): `open({ ring, at })`, `step(delta)`, `choose()`, `close()`, `state()` and `onChange(listener)`.
+- New `--control-*` CSS custom properties on `.excalidraw` carry the palette's look (surface, ink, accent, rule, widths, radius, font, icon size, motion) for other controls to share.
+- A `freedrawStrokeWidth` prop overrides the pen presets' widths and hides the size arc.
+
 ### Auto-arrange (2026-11-12) [#59](https://github.com/redaphid/excalidraw/pull/59)
 
 - Select two or more shapes or groups, or a frame, and press `Shift+Alt+A` (or pick "Auto-arrange" in the command palette, the context menu or the selection panel) to lay them out as a graph with [ELK](https://eclipse.dev/elk/). Arrows bound at both ends are the edges. The move is one undo step. With nothing selected the shortcut asks for a selection.
