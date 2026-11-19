@@ -4,6 +4,8 @@ import {
   TOUCH_CTX_MENU_TIMEOUT,
 } from "@excalidraw/common";
 
+import type { ExcalidrawLinearElement } from "@excalidraw/element/types";
+
 import type { AppState } from "../types";
 import type App from "./App";
 
@@ -17,6 +19,21 @@ export const LONG_PRESS_TOLERANCE = 10;
 const BARREL_BUTTON = 2;
 
 type Press = { pointerId: number; clientX: number; clientY: number };
+
+/** a line being built point by point, as it was before a press */
+export type MultiPointLine = Readonly<{
+  id: string;
+  points: ExcalidrawLinearElement["points"];
+  /** the line editor's state, which knows the last committed point */
+  selectedLinearElement: AppState["selectedLinearElement"];
+}>;
+
+const multiPointLine = (state: AppState): MultiPointLine | null =>
+  state.multiElement && {
+    id: state.multiElement.id,
+    points: state.multiElement.points,
+    selectedLinearElement: state.selectedLinearElement,
+  };
 
 /**
  * The input a `contextmenu` came from. It is a `PointerEvent` in Chromium;
@@ -43,6 +60,7 @@ export class AppRadialPaletteGestures {
   private press:
     | (Press & {
         activeTool: AppState["activeTool"];
+        multiPoint: MultiPointLine | null;
         timer: number;
         detach: () => void;
       })
@@ -59,7 +77,11 @@ export class AppRadialPaletteGestures {
       abandonPress: (
         pointerId: number,
         activeTool: AppState["activeTool"],
+        multiPoint: MultiPointLine | null,
       ) => void;
+      /** ends the press in progress as a lift at `event` would, keeping
+       * what it drew */
+      endPress: (event: PointerEvent) => void;
     },
   ) {}
 
@@ -80,7 +102,13 @@ export class AppRadialPaletteGestures {
   /** the pointer is a finger being timed for a long press: until it drifts
    * past the tolerance, the editor must not drag, draw or erase with it */
   holds(pointerId: number) {
-    return this.press?.pointerId === pointerId;
+    // only where drift moves what is there: drawing tools keep every point,
+    // and a stroke is dropped anyway if the palette opens
+    return (
+      this.press?.pointerId === pointerId &&
+      (this.press.activeTool.type === "selection" ||
+        this.press.activeTool.type === "lasso")
+    );
   }
 
   /** opens the palette at `point`; with `pointerId`, that pointer is down
@@ -139,7 +167,12 @@ export class AppRadialPaletteGestures {
       this.enabled &&
       !this.app.radialPalette.session
     ) {
-      this.open(event, event.buttons & 1 ? event.pointerId : null);
+      const tipDown = !!(event.buttons & 1);
+      if (tipDown) {
+        // mid-stroke: the stroke ends here, and the flick is the palette's
+        this.dependencies.endPress(event);
+      }
+      this.open(event, tipDown ? event.pointerId : null);
     }
     this.barrelHeld = held;
   };
@@ -204,6 +237,7 @@ export class AppRadialPaletteGestures {
       clientY,
       // the press may change it (text falls back to selection on touch)
       activeTool: this.app.state.activeTool,
+      multiPoint: multiPointLine(this.app.state),
       timer: win.setTimeout(this.fire, LONG_PRESS_DELAY),
       detach: () => {
         win.removeEventListener(EVENT.POINTER_MOVE, onMove);
@@ -227,7 +261,11 @@ export class AppRadialPaletteGestures {
     ) {
       return;
     }
-    this.dependencies.abandonPress(press.pointerId, press.activeTool);
+    this.dependencies.abandonPress(
+      press.pointerId,
+      press.activeTool,
+      press.multiPoint,
+    );
     this.open(press, press.pointerId);
   };
 

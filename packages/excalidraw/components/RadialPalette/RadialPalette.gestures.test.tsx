@@ -1,5 +1,12 @@
 import { fireEvent, queryByTestId } from "@testing-library/react";
 
+import { pointFrom } from "@excalidraw/math";
+
+import type {
+  ExcalidrawFreeDrawElement,
+  ExcalidrawLinearElement,
+} from "@excalidraw/element/types";
+
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
 import { GlobalTestState, act, render } from "../../tests/test-utils";
@@ -371,6 +378,85 @@ describe("opening the radial palette from the canvas", () => {
       it("draws nothing and pans nothing", () => {
         expect(h.elements).toEqual([]);
         expect(h.app.pan.isActive()).toBe(false);
+      });
+    });
+
+    describe("when a pen's barrel button is pressed mid-stroke", () => {
+      const pen = { pointerType: "pen", pointerId: 7 } as const;
+      let undoDepth: number;
+
+      beforeEach(() => {
+        act(() => h.app.setActiveTool({ type: "freedraw" }));
+        undoDepth = API.getUndoStack().length;
+        down(250, 200, { ...pen, buttons: 1 });
+        move(270, 210, { ...pen, buttons: 1 });
+        move(290, 220, { ...pen, buttons: 1 });
+        // the barrel goes down
+        move(290, 220, { ...pen, buttons: 3 });
+      });
+
+      it("opens the ring", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      it("keeps the stroke drawn so far, without the flick after it", () => {
+        move(400, 400, { ...pen, buttons: 3 });
+        up(400, 400, { ...pen, buttons: 0 });
+        const strokes = h.elements.filter((element) => !element.isDeleted);
+        expect(strokes).toHaveLength(1);
+        const [stroke] = strokes;
+        expect(stroke.type).toBe("freedraw");
+        expect(stroke.x + stroke.width).toBeLessThanOrEqual(291);
+        expect(stroke.y + stroke.height).toBeLessThanOrEqual(221);
+        expect(API.getUndoStack().length).toBe(undoDepth + 1);
+      });
+    });
+
+    describe("when a finger draws a short stroke and lifts early", () => {
+      beforeEach(() => {
+        act(() => h.app.setActiveTool({ type: "freedraw" }));
+        down(400, 300);
+        move(402, 301);
+        move(404, 303);
+        move(406, 306);
+        up(406, 306);
+      });
+
+      it("keeps every point the finger drew", () => {
+        const [stroke] = h.elements;
+        expect(stroke.type).toBe("freedraw");
+        expect(
+          (stroke as ExcalidrawFreeDrawElement).points.length,
+        ).toBeGreaterThanOrEqual(4);
+        expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when a long press lands while a line is being built", () => {
+      beforeEach(() => {
+        act(() => h.app.setActiveTool({ type: "line" }));
+        // a click starts a line, and a second adds a point to it
+        down(100, 100, { pointerType: "mouse" });
+        up(100, 100, { pointerType: "mouse" });
+        move(200, 100, { pointerType: "mouse", buttons: 0 });
+        down(200, 100, { pointerType: "mouse" });
+        up(200, 100, { pointerType: "mouse" });
+        move(300, 200, { pointerType: "mouse", buttons: 0 });
+        expect(h.state.multiElement).not.toBeNull();
+        down(300, 200);
+        wait(LONG_PRESS_DELAY);
+        up(300, 200);
+      });
+
+      it("opens the ring and keeps the line", () => {
+        expect(ring()).not.toBeNull();
+        const lines = h.elements.filter(
+          (element) => !element.isDeleted && element.type === "line",
+        );
+        expect(lines).toHaveLength(1);
+        const points = (lines[0] as ExcalidrawLinearElement).points;
+        expect(points.length).toBeGreaterThanOrEqual(2);
+        expect(points[1]).toEqual(pointFrom(100, 0));
       });
     });
 

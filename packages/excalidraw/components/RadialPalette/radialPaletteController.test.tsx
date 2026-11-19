@@ -4,7 +4,7 @@ import { KEYS } from "@excalidraw/common";
 
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
-import { Keyboard } from "../../tests/helpers/ui";
+import { Keyboard, UI } from "../../tests/helpers/ui";
 import { act, render } from "../../tests/test-utils";
 
 import { RADIAL_TOOLS } from "./radialPaletteController";
@@ -170,6 +170,22 @@ describe("the radial palette's controller API", () => {
         expect(api.state().items[api.state().index].id).toBe("eraser");
         act(() => api.choose());
         expect(h.state.activeTool.type).toBe("eraser");
+      });
+    });
+
+    describe("when a see-through pen is followed by a shape from the toolbar", () => {
+      beforeEach(() => {
+        act(() => api.open({ ring: "pens" }));
+        const wash = api.state().items.findIndex(({ id }) => id === "wash");
+        act(() => api.step(wash - api.state().index));
+        act(() => api.choose());
+      });
+
+      it("draws the shape opaque", () => {
+        expect(h.state.currentItemOpacity).toBeLessThan(100);
+        UI.clickTool("rectangle");
+        expect(h.state.activeTool.type).toBe("rectangle");
+        expect(h.state.currentItemOpacity).toBe(100);
       });
     });
 

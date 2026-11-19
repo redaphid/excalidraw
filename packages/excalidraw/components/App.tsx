@@ -445,6 +445,7 @@ import { AppFrameNavigation } from "./App.frameNavigation";
 import { AppMidi } from "./App.midi";
 import { AppPan } from "./App.pan";
 import { AppRadialPaletteGestures } from "./App.radialPalette";
+
 import { RadialPaletteController } from "./RadialPalette/radialPaletteController";
 import { AppViewport, RIGHT_SIDEBAR_WIDTH } from "./App.viewport";
 import { AppWheel } from "./App.wheel";
@@ -470,6 +471,8 @@ import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 import { findShapeByKey, TOGGLE_TOOLS } from "./Tools";
 
 import UnlockPopup from "./UnlockPopup";
+
+import type { MultiPointLine } from "./App.radialPalette";
 
 import type { ExcalidrawLibraryIds } from "../data/types";
 
@@ -741,8 +744,12 @@ class App extends React.Component<AppProps, AppState> {
   );
   private radialPaletteGestures = new AppRadialPaletteGestures(this, {
     getPointerCount: () => gesture.pointers.size,
-    abandonPress: (pointerId, activeTool) =>
-      this.abandonPress(pointerId, activeTool),
+    abandonPress: (pointerId, activeTool, multiPoint) =>
+      this.abandonPress(pointerId, activeTool, multiPoint),
+    endPress: (event) => {
+      flushSync(() => this.maybeCleanupAfterMissingPointerUp(event));
+      gesture.pointers.delete(event.pointerId);
+    },
   });
   public textTool: AppTextTool = new AppTextTool(this);
   public clipboard: AppClipboard = new AppClipboard(this, {
@@ -4520,6 +4527,9 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
+    if (prevState.activeTool.type !== this.state.activeTool.type) {
+      this.radialPalette.toolChanged();
+    }
     if (
       this.radialPalette.session &&
       (!this.props.radialPalette || this.state.viewModeEnabled)
@@ -8611,9 +8621,15 @@ ${css}
   private abandonPress = (
     pointerId: number,
     activeTool: AppState["activeTool"],
+    multiPoint: MultiPointLine | null,
   ) => {
     const element = this.state.newElement;
-    if (element) {
+    // a line being built point by point stays, as it was before the press
+    const line =
+      multiPoint && this.state.multiElement?.id === multiPoint.id
+        ? this.state.multiElement
+        : null;
+    if (element && element.id !== line?.id) {
       // applied now: the pointerup replayed below must not see the element
       flushSync(() =>
         this.updateScene({
@@ -8646,6 +8662,22 @@ ${css}
     this.textTool.cancel();
     flushSync(() => this.maybeCleanupAfterMissingPointerUp(null));
     gesture.pointers.delete(pointerId);
+    if (
+      multiPoint &&
+      line &&
+      this.scene.getNonDeletedElementsMap().has(line.id)
+    ) {
+      this.scene.mutateElement(line, { points: multiPoint.points });
+      this.setState({
+        activeTool,
+        selectionElement: null,
+        cursorButton: "up",
+        multiElement: line,
+        newElement: line,
+        selectedLinearElement: multiPoint.selectedLinearElement,
+      });
+      return;
+    }
     this.setState({ activeTool, selectionElement: null, cursorButton: "up" });
   };
 

@@ -327,19 +327,21 @@ export class RadialPaletteController {
   };
 
   private pickTool(type: ToolType) {
-    const { app } = this;
-    if (
-      type !== "eraser" &&
-      type !== "freedraw" &&
-      this.presetOpacity !== null &&
-      app.state.currentItemOpacity === this.presetOpacity
-    ) {
+    this.app.setActiveTool({ type });
+  }
+
+  /** the active tool changed, from the ring or anywhere else: a pen
+   * preset's see-through ink does not carry over to shapes */
+  toolChanged() {
+    const { app, presetOpacity } = this;
+    const { type } = app.state.activeTool;
+    if (presetOpacity === null || type === "freedraw" || type === "eraser") {
+      return;
+    }
+    this.presetOpacity = null;
+    if (app.state.currentItemOpacity === presetOpacity) {
       app.setAppState({ currentItemOpacity: 100 });
     }
-    if (type !== "freedraw") {
-      this.presetOpacity = null;
-    }
-    app.setActiveTool({ type });
   }
 
   private pickPreset(preset: PenPreset) {
