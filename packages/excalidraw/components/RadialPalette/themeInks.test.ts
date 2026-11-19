@@ -91,20 +91,15 @@ describe("themeInks", () => {
       ({ css, mode } = generateThemeCss(loadTokens(name)));
     });
 
-    it.each(STYLE_ROLES)(
-      "resolves the %s role as draw's agents do",
-      (role) => {
-        const theme = readCssTheme(styleOf(css));
-        const inks = getThemeInks(
-          theme,
-          { viewBackgroundColor: "#ffffff" },
-          theme.canvas.mode ?? "light",
-        );
-        expect(getRoleStyle(role, inks)).toEqual(
-          drawRoleStyle(role, css, mode),
-        );
-      },
-    );
+    it.each(STYLE_ROLES)("resolves the %s role as draw's agents do", (role) => {
+      const theme = readCssTheme(styleOf(css));
+      const inks = getThemeInks(
+        theme,
+        { viewBackgroundColor: "#ffffff" },
+        theme.canvas.mode ?? "light",
+      );
+      expect(getRoleStyle(role, inks)).toEqual(drawRoleStyle(role, css, mode));
+    });
   });
 
   describe("with no theme", () => {

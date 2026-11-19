@@ -45,7 +45,12 @@ const tap = async (page: Page, testInfo: TestInfo, testId: string) => {
   }
 };
 
-const drag = async (page: Page, from: { x: number; y: number }, dx: number, dy: number) => {
+const drag = async (
+  page: Page,
+  from: { x: number; y: number },
+  dx: number,
+  dy: number,
+) => {
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x + dx / 2, from.y + dy, { steps: 6 });

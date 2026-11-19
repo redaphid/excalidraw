@@ -92,7 +92,10 @@ const TOOLS: readonly { type: ToolType; icon: Icon }[] = [
 const OPACITY_STEP = 5;
 
 const toOpacity = (value: number) =>
-  Math.max(OPACITY_STEP, Math.round((value * 100) / OPACITY_STEP) * OPACITY_STEP);
+  Math.max(
+    OPACITY_STEP,
+    Math.round((value * 100) / OPACITY_STEP) * OPACITY_STEP,
+  );
 
 const toPenSize = (value: number) =>
   penSizeFromSlider(value * PEN_SIZE_SLIDER_MAX);
@@ -303,7 +306,9 @@ const RadialRing = ({
 
   // the color in use joins the recent colors when the ring opens
   useLayoutEffect(() => {
-    setRecent(rememberColor(recent, appState.currentItemStrokeColor, themeColors));
+    setRecent(
+      rememberColor(recent, appState.currentItemStrokeColor, themeColors),
+    );
     // only on open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -410,7 +415,13 @@ const RadialRing = ({
   };
 
   // the handlers a flick calls, current as of the last render
-  const latest = useRef({ hitAt, previewSlider, commitOpacity, activate, onClose });
+  const latest = useRef({
+    hitAt,
+    previewSlider,
+    commitOpacity,
+    activate,
+    onClose,
+  });
   latest.current = { hitAt, previewSlider, commitOpacity, activate, onClose };
 
   // a flick: press the puck, drag to a segment, lift to pick it
@@ -706,7 +717,10 @@ const RadialRing = ({
 
           {TOOLS.map(({ type, icon }, index) => {
             const sector = layout.tools[index];
-            const { x, y } = at((TOOLS_BAND.inner + TOOLS_BAND.outer) / 2, sector);
+            const { x, y } = at(
+              (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+              sector,
+            );
             return button(
               type,
               t(`toolBar.${type}` as const),
@@ -803,7 +817,10 @@ const RadialRing = ({
 
           {colors.map((color, index) => {
             const sector = layout.colors[index];
-            const { x, y } = at((OUTER_BAND.inner + OUTER_BAND.outer) / 2, sector);
+            const { x, y } = at(
+              (OUTER_BAND.inner + OUTER_BAND.outer) / 2,
+              sector,
+            );
             return button(
               `color-${index}`,
               color ?? t("radialPalette.emptyRecent"),

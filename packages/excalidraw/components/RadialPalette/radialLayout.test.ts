@@ -49,14 +49,17 @@ describe("radialLayout", () => {
     ["pen", MIDDLE_BAND, "pens"],
     ["role", MIDDLE_BAND, "roles"],
     ["color", OUTER_BAND, "colors"],
-  ] as const)("when a pointer lands in the middle of each %s", (kind, band, sectors) => {
-    it("hits that one", () => {
-      layout[sectors].forEach((sector, index) => {
-        const { x, y } = polar(middleOf(band), sectorMiddle(sector));
-        expect(hitTest(layout, x, y)).toEqual({ kind, index });
+  ] as const)(
+    "when a pointer lands in the middle of each %s",
+    (kind, band, sectors) => {
+      it("hits that one", () => {
+        layout[sectors].forEach((sector, index) => {
+          const { x, y } = polar(middleOf(band), sectorMiddle(sector));
+          expect(hitTest(layout, x, y)).toEqual({ kind, index });
+        });
       });
-    });
-  });
+    },
+  );
 
   describe("when a pointer lands past the ring", () => {
     it("hits nothing", () => {
@@ -101,7 +104,10 @@ describe("radialLayout", () => {
 
     it("clamps past its end to 1", () => {
       expect(
-        sliderValue(slider, slider.to + Math.sign(slider.to - slider.from) * 20),
+        sliderValue(
+          slider,
+          slider.to + Math.sign(slider.to - slider.from) * 20,
+        ),
       ).toBe(1);
     });
 
@@ -138,9 +144,9 @@ describe("radialLayout", () => {
 
     describe("when the editor has no size yet", () => {
       it("keeps the ring at its smallest usable size", () => {
-        expect(
-          placeRing({ x: 0, y: 0 }, { width: 0, height: 0 }).scale,
-        ).toBe(MIN_RING_SCALE);
+        expect(placeRing({ x: 0, y: 0 }, { width: 0, height: 0 }).scale).toBe(
+          MIN_RING_SCALE,
+        );
       });
     });
 

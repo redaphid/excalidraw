@@ -116,7 +116,9 @@ export const arcPath = (radius: number, from: number, to: number) => {
   const b = polar(radius, to);
   const sweep = to > from ? 1 : 0;
   const large = Math.abs(to - from) > 180 ? 1 : 0;
-  return `M ${round(a.x)} ${round(a.y)} A ${radius} ${radius} 0 ${large} ${sweep} ${round(b.x)} ${round(b.y)}`;
+  return `M ${round(a.x)} ${round(
+    a.y,
+  )} A ${radius} ${radius} 0 ${large} ${sweep} ${round(b.x)} ${round(b.y)}`;
 };
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -201,7 +203,9 @@ export const placeRing = (
   );
   const reach = RING_RADIUS * scale + margin;
   const fit = (value: number, size: number) =>
-    size < reach * 2 ? size / 2 : Math.min(size - reach, Math.max(reach, value));
+    size < reach * 2
+      ? size / 2
+      : Math.min(size - reach, Math.max(reach, value));
   return {
     x: fit(anchor.x, bounds.width),
     y: fit(anchor.y, bounds.height),

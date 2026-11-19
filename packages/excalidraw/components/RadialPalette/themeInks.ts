@@ -73,7 +73,7 @@ export const STYLE_ROLES = [
   "assumed",
 ] as const;
 
-export type StyleRole = (typeof STYLE_ROLES)[number];
+export type StyleRole = typeof STYLE_ROLES[number];
 
 export type RoleStyle = Readonly<
   Pick<
@@ -162,8 +162,8 @@ export const rememberColor = (
   ) {
     return recent;
   }
-  return [
-    color,
-    ...recent.filter((mine) => mine.toLowerCase() !== key),
-  ].slice(0, RECENT_COLOR_SLOTS);
+  return [color, ...recent.filter((mine) => mine.toLowerCase() !== key)].slice(
+    0,
+    RECENT_COLOR_SLOTS,
+  );
 };

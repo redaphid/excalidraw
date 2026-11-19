@@ -199,13 +199,12 @@ describe("RadialPalette", () => {
         const stroke = drawStroke();
         expect({
           opacity: stroke.opacity,
-          strokeWidth: stroke.strokeWidth,
           strokeOptions: stroke.strokeOptions,
         }).toEqual({
           opacity: expected.opacity,
-          strokeWidth: expect.closeTo(expected.strokeWidth!, 9),
           strokeOptions: expected.strokeOptions,
         });
+        expect(stroke.strokeWidth).toBeCloseTo(expected.strokeWidth!, 9);
       });
     });
 

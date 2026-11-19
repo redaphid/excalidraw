@@ -45,7 +45,13 @@ describe("penPresets", () => {
     it("scales every other pen from the theme's width", () => {
       expect(
         presets.map((preset) => preset.state.currentItemFreedrawStrokeWidth),
-      ).toEqual([0.2, 0.2 * 1.5, 0.2 * 5, 0.2 * 8, FREEDRAW_STROKE_WIDTH_RANGE.max]);
+      ).toEqual([
+        0.2,
+        0.2 * 1.5,
+        0.2 * 5,
+        0.2 * 8,
+        FREEDRAW_STROKE_WIDTH_RANGE.max,
+      ]);
     });
 
     it("gives the pencil a light, wobbly line", () => {
@@ -80,9 +86,9 @@ describe("penPresets", () => {
 
     describe("when the pen matches a preset", () => {
       it("finds that preset", () => {
-        expect(
-          getActivePenPreset(presets, byId(presets, "marker"))?.id,
-        ).toBe("marker");
+        expect(getActivePenPreset(presets, byId(presets, "marker"))?.id).toBe(
+          "marker",
+        );
       });
     });
 

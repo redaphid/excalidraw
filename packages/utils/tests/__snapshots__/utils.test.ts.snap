@@ -18,6 +18,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   "currentItemFontFamily": 1,
   "currentItemFontSize": 20,
   "currentItemOpacity": 100,
+  "currentItemPenOptions": null,
   "currentItemRoughness": 1,
   "currentItemRoundness": "round",
   "currentItemStartArrowhead": null,
