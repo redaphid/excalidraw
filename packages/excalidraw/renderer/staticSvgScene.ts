@@ -6,6 +6,7 @@ import {
   DARK_THEME_FILTER,
   getFontFamilyString,
   getFontVariationSettings,
+  getFontInstanceWeight,
   getFontRenderScale,
   isRTL,
   isTestEnv,
@@ -887,15 +888,26 @@ const renderElementToSvg = (
             ),
           );
           text.setAttribute("text-anchor", textAnchor);
+          // a renderer that ignores font-variation-settings still draws the
+          // instance's wght from font-weight
           const variationSettings = getFontVariationSettings(
+            element.fontFamily,
+            element.fontAxes,
+          );
+          const weight = getFontInstanceWeight(
             element.fontFamily,
             element.fontAxes,
           );
           text.setAttribute(
             "style",
-            variationSettings
-              ? `white-space: pre; font-variation-settings: ${variationSettings};`
-              : "white-space: pre;",
+            [
+              "white-space: pre;",
+              variationSettings &&
+                `font-variation-settings: ${variationSettings};`,
+              weight !== undefined && `font-weight: ${weight};`,
+            ]
+              .filter(Boolean)
+              .join(" "),
           );
           text.setAttribute("direction", direction);
           text.setAttribute("dominant-baseline", "alphabetic");
