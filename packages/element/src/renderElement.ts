@@ -68,6 +68,7 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  hasLiteralColor,
   isButtonElement,
   isStickyNoteElement,
 } from "./typeChecks";
@@ -410,7 +411,7 @@ const generateElementCanvas = (
 
   const rc = rough.canvas(canvas);
 
-  drawElementOnCanvas(element, rc, context, renderConfig);
+  drawElementOnCanvas(element, rc, context, renderConfig, elementsMap);
 
   context.restore();
 
@@ -598,7 +599,7 @@ const drawButtonIcon = (
   context.save();
   context.fillStyle = context.strokeStyle = applyDarkModeFilter(
     button.strokeColor,
-    renderConfig.theme === THEME.DARK,
+    renderConfig.theme === THEME.DARK && !hasLiteralColor(button),
   );
   context.lineJoin = "round";
   context.lineWidth = cornerWidth;
@@ -615,6 +616,7 @@ const drawElementOnCanvas = (
   rc: RoughCanvas,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
+  elementsMap: ElementsMap,
 ) => {
   switch (element.type) {
     case "stickynote": {
@@ -634,7 +636,7 @@ const drawElementOnCanvas = (
         const commands = getStickyNotePathCommands(element);
         context.fillStyle = applyDarkModeFilter(
           element.backgroundColor,
-          renderConfig.theme === THEME.DARK,
+          renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
         );
         fillStickyNoteShape(context, commands);
         if (edge) {
@@ -661,7 +663,7 @@ const drawElementOnCanvas = (
           context.textBaseline = "alphabetic";
           context.fillStyle = applyDarkModeFilter(
             element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+            renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
           );
           context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
           context.fillText(
@@ -711,7 +713,7 @@ const drawElementOnCanvas = (
           if (typeof shape === "string") {
             context.fillStyle = applyDarkModeFilter(
               element.strokeColor,
-              renderConfig.theme === THEME.DARK,
+              renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
             );
             context.fill(getFreeDrawPath2D(element, shape));
           } else {
@@ -758,6 +760,7 @@ const drawElementOnCanvas = (
 
           const shouldInvertImage =
             renderConfig.theme === THEME.DARK &&
+            !hasLiteralColor(element) &&
             cacheEntry?.mimeType === MIME_TYPES.svg;
 
           if (shouldInvertImage && isSafari) {
@@ -856,7 +859,8 @@ const drawElementOnCanvas = (
           });
           context.fillStyle = applyDarkModeFilter(
             element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+            renderConfig.theme === THEME.DARK &&
+              !hasLiteralColor(element, elementsMap),
           );
           context.textAlign = element.textAlign as CanvasTextAlign;
 
@@ -1785,7 +1789,13 @@ const drawElement = (
           context.translate(cx, cy);
           context.rotate(element.angle);
           context.translate(-shiftX, -shiftY);
-          drawElementOnCanvas(element, rc, context, renderConfig);
+          drawElementOnCanvas(
+            element,
+            rc,
+            context,
+            renderConfig,
+            allElementsMap,
+          );
         } finally {
           context.restore();
         }
@@ -1896,7 +1906,13 @@ const drawElement = (
               context.clip("evenodd");
               context.rotate(element.angle);
               context.translate(-shiftX, -shiftY);
-              drawElementOnCanvas(element, rc, context, renderConfig);
+              drawElementOnCanvas(
+                element,
+                rc,
+                context,
+                renderConfig,
+                allElementsMap,
+              );
             } finally {
               context.restore();
             }
@@ -1909,7 +1925,13 @@ const drawElement = (
             }
 
             context.translate(-shiftX, -shiftY);
-            drawElementOnCanvas(element, rc, context, renderConfig);
+            drawElementOnCanvas(
+              element,
+              rc,
+              context,
+              renderConfig,
+              allElementsMap,
+            );
           }
         } finally {
           context.restore();
