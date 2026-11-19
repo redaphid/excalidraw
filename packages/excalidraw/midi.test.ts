@@ -9,9 +9,11 @@ import {
   midiTargetStep,
   MIDI_TARGETS,
   MIDI_TARGET_IDS,
+  paletteKnob,
   parseMidiMessage,
   resolveCommand,
   ringPosition,
+  slicePosition,
   TWISTER_LAYOUT,
   withBinding,
   withoutBinding,
@@ -171,13 +173,23 @@ describe("bindings", () => {
   const twister = bindingsToMap(TWISTER_LAYOUT);
 
   it("lays the Twister's first bank out row by row", () => {
-    expect(TWISTER_LAYOUT).toHaveLength(16);
     expect(twister.get("1:0")).toBe("strokeWidth");
-    expect(twister.get("1:4")).toBe("x");
+    expect(twister.get("1:4")).toBe("tools");
+    expect(twister.get("1:5")).toBe("pens");
+    expect(twister.get("1:6")).toBe("colors");
+    expect(twister.get("1:7")).toBe("history");
     expect(twister.get("1:9")).toBe("angle");
     expect(twister.get("1:12")).toBe("zoom");
     expect(twister.get("1:15")).toBe("select");
-    expect(twister.get("1:16")).toBeUndefined();
+  });
+
+  it("moves position and size to the first row of the second bank", () => {
+    expect(TWISTER_LAYOUT).toHaveLength(20);
+    expect(twister.get("1:16")).toBe("x");
+    expect(twister.get("1:17")).toBe("y");
+    expect(twister.get("1:18")).toBe("width");
+    expect(twister.get("1:19")).toBe("height");
+    expect(twister.get("1:20")).toBeUndefined();
   });
 
   it("knows its targets", () => {
@@ -197,7 +209,7 @@ describe("bindings", () => {
     const map = bindingsToMap(learned);
     expect(map.get("1:0")).toBe("backgroundHue");
     expect(map.get("1:1")).toBe("opacity");
-    expect(learned).toHaveLength(16);
+    expect(learned).toHaveLength(TWISTER_LAYOUT.length);
   });
 
   it("lets several knobs turn one target", () => {
@@ -227,10 +239,10 @@ describe("resolveCommand", () => {
     ).toEqual({ target: "opacity", action: "turn", channel: 1, cc: 1 });
   });
 
-  it("resets a knob's target when its switch is pressed", () => {
+  it("presses a knob when its switch goes down", () => {
     expect(
       resolveCommand(twister, { channel: 2, cc: 1, value: 127 }, 1),
-    ).toEqual({ target: "opacity", action: "reset", channel: 1, cc: 1 });
+    ).toEqual({ target: "opacity", action: "press", channel: 1, cc: 1 });
   });
 
   it("ignores the switch's release", () => {
@@ -299,5 +311,104 @@ describe("config names and steps", () => {
       "roughness",
       "fontSize",
     ]);
+  });
+});
+
+describe("palette knobs", () => {
+  const closed = { open: false, ring: "tools" } as const;
+  const toolsOpen = { open: true, ring: "tools" } as const;
+  const colorsOpen = { open: true, ring: "colors" } as const;
+
+  it("open their ring on a press", () => {
+    expect(paletteKnob(closed, "colors", { press: true }, false)).toEqual({
+      ops: [{ op: "open", ring: "colors" }],
+      turned: false,
+    });
+  });
+
+  it("close the ring on a press with no turn since it opened", () => {
+    expect(paletteKnob(toolsOpen, "tools", { press: true }, false)).toEqual({
+      ops: [{ op: "close" }],
+      turned: false,
+    });
+  });
+
+  it("choose the highlighted slice on a press after a turn", () => {
+    expect(paletteKnob(toolsOpen, "tools", { press: true }, true)).toEqual({
+      ops: [{ op: "choose" }],
+      turned: false,
+    });
+  });
+
+  it("step the highlight as they turn", () => {
+    expect(paletteKnob(toolsOpen, "tools", { moves: -2 }, false)).toEqual({
+      ops: [{ op: "step", by: -2 }],
+      turned: true,
+    });
+  });
+
+  it("open their ring and step when turned while it's closed", () => {
+    expect(paletteKnob(closed, "tools", { moves: 1 }, false)).toEqual({
+      ops: [
+        { op: "open", ring: "tools" },
+        { op: "step", by: 1 },
+      ],
+      turned: true,
+    });
+  });
+
+  it("switch to their own ring when another ring is open", () => {
+    expect(paletteKnob(colorsOpen, "tools", { press: true }, true)).toEqual({
+      ops: [{ op: "open", ring: "tools" }],
+      turned: false,
+    });
+  });
+
+  it("switch to their own ring and step when turned over another ring", () => {
+    expect(paletteKnob(colorsOpen, "tools", { moves: 1 }, true)).toEqual({
+      ops: [
+        { op: "open", ring: "tools" },
+        { op: "step", by: 1 },
+      ],
+      turned: true,
+    });
+  });
+
+  it("forget a turn made before the ring closed", () => {
+    expect(paletteKnob(closed, "tools", { press: true }, true)).toEqual({
+      ops: [{ op: "open", ring: "tools" }],
+      turned: false,
+    });
+  });
+
+  it("do nothing for a turn too small to move a slice", () => {
+    expect(paletteKnob(toolsOpen, "tools", { moves: 0 }, false)).toEqual({
+      ops: [],
+      turned: false,
+    });
+  });
+
+  it("are palette targets with no ring gauge and no reset", () => {
+    for (const id of ["tools", "pens", "colors"] as const) {
+      expect(MIDI_TARGETS[id].group).toBe("palette");
+      expect(MIDI_TARGETS[id].ring).toBeUndefined();
+      expect(MIDI_TARGETS[id].reset).toBeUndefined();
+    }
+  });
+});
+
+describe("slicePosition", () => {
+  it("spreads a ring's slices round the LED ring", () => {
+    expect(slicePosition(0, 10)).toBe(0);
+    expect(slicePosition(9, 10)).toBe(127);
+    expect(slicePosition(3, 7)).toBe(64);
+  });
+
+  it("lights the start for a ring of one", () => {
+    expect(slicePosition(0, 1)).toBe(0);
+  });
+
+  it("recentres when there is nothing to show", () => {
+    expect(slicePosition(0, 0)).toBe(64);
   });
 });
