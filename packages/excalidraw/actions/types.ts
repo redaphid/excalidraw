@@ -64,6 +64,7 @@ export type ActionName =
   | "showHints"
   | "stats"
   | "changeStrokeColor"
+  | "applyStyleRole"
   | "changeBackgroundColor"
   | "changeBucketFillBackgroundColor"
   | "changeFillStyle"

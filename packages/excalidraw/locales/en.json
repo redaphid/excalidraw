@@ -754,6 +754,24 @@
   "quickSearch": {
     "placeholder": "Quick search"
   },
+  "radialPalette": {
+    "open": "Palette",
+    "close": "Close palette",
+    "role": "Style role",
+    "emptyRecent": "Recent color",
+    "pen_liner": "Fine liner",
+    "pen_pencil": "Pencil",
+    "pen_brush": "Ink brush",
+    "pen_marker": "Marker",
+    "pen_wash": "Wash",
+    "role_service": "Service",
+    "role_data": "Data",
+    "role_async": "Async",
+    "role_note": "Note",
+    "role_error": "Error",
+    "role_healthy": "Healthy",
+    "role_assumed": "Assumed"
+  },
   "fontList": {
     "badge": {
       "old": "old"

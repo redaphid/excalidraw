@@ -327,6 +327,15 @@ export type ScrollConstraints = {
   offsets?: Offsets;
 };
 
+/** perfect-freehand options for new freedraw strokes: how much pressure
+ * narrows a variable stroke (-1 to 1), how far its ends taper (in stroke
+ * widths) and how much the pen smooths its input (0 to 1) */
+export type PenOptions = Readonly<{
+  thinning?: number;
+  taper?: number;
+  streamline?: number;
+}>;
+
 export interface AppState {
   contextMenu: {
     items: ContextMenuItems;
@@ -461,6 +470,12 @@ export interface AppState {
   currentItemStrokeStyle: ExcalidrawElement["strokeStyle"];
   currentItemRoughness: number;
   currentItemStrokeVariability: StrokeVariability;
+  /**
+   * perfect-freehand options for new freedraw strokes, layered over the
+   * theme's pen (`--element-freedraw-*`). `null` uses the theme's pen alone.
+   * The radial palette's pen presets set it.
+   */
+  currentItemPenOptions: PenOptions | null;
   currentItemOpacity: number;
   currentItemFontFamily: FontFamilyValues;
   /** in `authoringUnits` */
@@ -920,6 +935,12 @@ export interface ExcalidrawProps {
    * named widths, which are hidden while the tool is out.
    */
   freedrawStrokeWidth?: number;
+  /**
+   * Shows the radial palette: a small puck that opens into a ring of
+   * diagram tools, pen presets, style roles, colors, pen size and opacity.
+   * Off by default. While closed, only the puck renders.
+   */
+  radialPalette?: boolean;
   /**
    * Paints the canvas background and the grid on a canvas of their own,
    * `canvas.excalidraw__canvas.background`, under the static canvas and in

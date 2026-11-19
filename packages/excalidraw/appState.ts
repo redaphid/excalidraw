@@ -39,6 +39,7 @@ export const getDefaultAppState = (): Omit<
     currentItemOpacity: DEFAULT_ELEMENT_PROPS.opacity,
     currentItemRoughness: DEFAULT_ELEMENT_PROPS.roughness,
     currentItemStrokeVariability: "constant",
+    currentItemPenOptions: null,
     currentItemStartArrowhead: null,
     currentItemStrokeColor: DEFAULT_ELEMENT_PROPS.strokeColor,
     currentItemStickynoteStrokeColor: DEFAULT_ELEMENT_PROPS.strokeColor,
@@ -193,6 +194,7 @@ const APP_STATE_STORAGE_CONF = (<
     export: false,
     server: false,
   },
+  currentItemPenOptions: { browser: false, export: false, server: false },
   currentItemStartArrowhead: { browser: true, export: false, server: false },
   currentItemStrokeColor: { browser: true, export: false, server: false },
   currentItemStickynoteStrokeColor: {

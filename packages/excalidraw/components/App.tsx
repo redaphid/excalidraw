@@ -9335,6 +9335,7 @@ ${css}
             ? DEFAULT_STROKE_STREAMLINE_PRECISE
             : DEFAULT_STROKE_STREAMLINE,
         ...this.cssTheme.pen,
+        ...this.state.currentItemPenOptions,
       },
       locked: false,
       frameId: topLayerFrame ? topLayerFrame.id : null,
