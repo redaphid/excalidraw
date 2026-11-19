@@ -89,8 +89,13 @@ export const loadMidiBindings = (
 /** this browser's preferences, each one checked, the rest defaults */
 export const loadMidiSettings = (
   keys: MidiStorageKeys = MIDI_STORAGE_KEYS,
-): MidiSettings => {
-  const saved = (read(keys.settings) ?? {}) as Partial<MidiSettings>;
+): MidiSettings => parseMidiSettings(read(keys.settings));
+
+/** stored or imported preferences, each one checked, the rest defaults */
+const parseMidiSettings = (raw: unknown): MidiSettings => {
+  const saved = (
+    raw && typeof raw === "object" ? raw : {}
+  ) as Partial<MidiSettings>;
   const steps: MidiSettings["steps"] = {};
   for (const id of MIDI_TARGET_IDS) {
     const step = saved.steps?.[id];
@@ -118,6 +123,73 @@ export const loadMidiSettings = (
       (v) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 15,
     ),
     steps,
+  };
+};
+
+// -----------------------------------------------------------------------------
+// files
+// -----------------------------------------------------------------------------
+
+/** the version of the file `exportMidiConfig` writes; `importMidiConfig`
+ * reads this and every version before it */
+export const MIDI_CONFIG_VERSION = 1;
+
+const MIDI_CONFIG_FORMAT = "excalidraw-midi";
+
+/** the bindings and preferences as a file, to keep or to carry to another
+ * browser */
+export const exportMidiConfig = (
+  bindings: readonly MidiBinding[],
+  settings: MidiSettings,
+) =>
+  JSON.stringify(
+    {
+      format: MIDI_CONFIG_FORMAT,
+      version: MIDI_CONFIG_VERSION,
+      bindings,
+      settings,
+    },
+    null,
+    2,
+  );
+
+export type MidiConfigImport =
+  | { bindings: MidiBinding[]; settings: MidiSettings; skipped: number }
+  | { error: string };
+
+/** a file `exportMidiConfig` wrote: its bindings (those this editor can
+ * bind; `skipped` counts the rest, such as targets from a newer editor) and
+ * its preferences, each checked, the rest defaults */
+export const importMidiConfig = (text: string): MidiConfigImport => {
+  let file: unknown;
+  try {
+    file = JSON.parse(text);
+  } catch {
+    file = null;
+  }
+  const config = file as {
+    format?: unknown;
+    version?: unknown;
+    bindings?: unknown;
+    settings?: unknown;
+  } | null;
+  if (
+    !config ||
+    typeof config !== "object" ||
+    config.format !== MIDI_CONFIG_FORMAT ||
+    typeof config.version !== "number"
+  ) {
+    return { error: "This isn't a MIDI settings file" };
+  }
+  if (config.version > MIDI_CONFIG_VERSION) {
+    return { error: "This file is from a newer version of the MIDI settings" };
+  }
+  const listed = Array.isArray(config.bindings) ? config.bindings : null;
+  const bindings = listed ? listed.filter(isBinding) : [...TWISTER_LAYOUT];
+  return {
+    bindings,
+    settings: parseMidiSettings(config.settings),
+    skipped: listed ? listed.length - bindings.length : 0,
   };
 };
 

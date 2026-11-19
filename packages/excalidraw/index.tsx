@@ -613,13 +613,20 @@ export {
 export { MidiConfig } from "./components/MidiConfig/MidiConfig";
 export {
   DEFAULT_MIDI_SETTINGS,
+  exportMidiConfig,
+  importMidiConfig,
+  MIDI_CONFIG_VERSION,
   MIDI_STORAGE_KEYS,
   loadMidiBindings,
   loadMidiSettings,
   midiSettingsToOptions,
   useStoredMidi,
 } from "./midiSettings";
-export type { MidiSettings, MidiStorageKeys } from "./midiSettings";
+export type {
+  MidiConfigImport,
+  MidiSettings,
+  MidiStorageKeys,
+} from "./midiSettings";
 export type {
   MidiBinding,
   MidiControlChange,

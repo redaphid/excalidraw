@@ -14,6 +14,8 @@ import {
 } from "../../midi";
 import {
   DEFAULT_MIDI_SETTINGS,
+  exportMidiConfig,
+  importMidiConfig,
   MIDI_ENCODINGS,
   MIDI_STORAGE_KEYS,
   useStoredMidi,
@@ -203,6 +205,14 @@ const StepInput = ({
  * reaches open editor tabs at once. A whole page: mount it on a route of its
  * own, outside `<Excalidraw>`, with an editor reading `useStoredMidi`.
  */
+const readText = (file: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+
 export const MidiConfig = ({
   backHref = "/",
   storageKeys = MIDI_STORAGE_KEYS,
@@ -632,6 +642,43 @@ export const MidiConfig = ({
       )}
 
       <footer className="midi-config__footer">
+        <a
+          className="midi-config__file"
+          href={`data:application/json,${encodeURIComponent(
+            exportMidiConfig(bindings, settings),
+          )}`}
+          download="midi-knobs.json"
+        >
+          Export
+        </a>
+        <label className="midi-config__file">
+          Import
+          <input
+            type="file"
+            accept="application/json,.json"
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (!file) {
+                return;
+              }
+              const result = importMidiConfig(await readText(file));
+              if ("error" in result) {
+                setNotice(result.error);
+                return;
+              }
+              setBindings(result.bindings);
+              setSettings(result.settings);
+              setNotice(
+                result.skipped
+                  ? `Imported. Skipped ${result.skipped} knob${
+                      result.skipped === 1 ? "" : "s"
+                    } this editor doesn't know`
+                  : "Imported",
+              );
+            }}
+          />
+        </label>
         <button type="button" onClick={() => setBindings([...TWISTER_LAYOUT])}>
           Reset knobs to the Twister layout
         </button>

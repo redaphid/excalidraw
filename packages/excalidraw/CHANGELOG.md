@@ -13,6 +13,10 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### MIDI settings files (2026-11-19)
+
+- midi:config exports the knobs and preferences as `midi-knobs.json` and imports such a file, to keep a setup or carry it to another browser. The file names its format (`excalidraw-midi`) and `version` (1); a newer version is refused, knobs bound to properties this editor doesn't know are skipped and counted, and unreadable preferences fall back to their defaults. `exportMidiConfig` and `importMidiConfig` are exported for hosts.
+
 ### Auto-arrange (2026-11-12) [#59](https://github.com/redaphid/excalidraw/pull/59)
 
 - Select two or more shapes or groups, or a frame, and press `Shift+Alt+A` (or pick "Auto-arrange" in the command palette, the context menu or the selection panel) to lay them out as a graph with [ELK](https://eclipse.dev/elk/). Arrows bound at both ends are the edges. The move is one undo step. With nothing selected the shortcut asks for a selection.
