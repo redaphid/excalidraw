@@ -43,8 +43,6 @@ export const useTextGeneration = ({
     useChatAgent();
 
   const streamingAbortControllerRef = useRef<AbortController | null>(null);
-  const mermaidToExcalidrawLibRef = useRef(mermaidToExcalidrawLib);
-  mermaidToExcalidrawLibRef.current = mermaidToExcalidrawLib;
 
   const validatePrompt = (prompt: string): boolean => {
     if (
@@ -197,10 +195,22 @@ export const useTextGeneration = ({
         return;
       }
 
+      // a library that fails to load is a network error, which offers a retry,
+      // not a parse error, which asks the model to repair a valid definition
+      const api = await mermaidToExcalidrawLib.api.catch((error: Error) => {
+        const _error = new Error(
+          error.message || t("chat.errors.requestFailed"),
+        );
+        setAssistantError(_error.message, "network");
+        setError(_error);
+        return null;
+      });
+      if (!api) {
+        return;
+      }
+
       try {
-        const { parseMermaidToExcalidraw } = await mermaidToExcalidrawLibRef
-          .current.api;
-        await parseMermaidToExcalidraw(generatedResponse ?? "");
+        await api.parseMermaidToExcalidraw(generatedResponse ?? "");
         trackEvent("ai", "mermaid parse success", "ttd");
       } catch (error: any) {
         trackEvent("ai", "mermaid parse failed", "ttd");
