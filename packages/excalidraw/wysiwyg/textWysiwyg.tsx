@@ -25,7 +25,7 @@ import {
 } from "@excalidraw/element";
 
 import { LinearElementEditor } from "@excalidraw/element";
-import { bumpVersion } from "@excalidraw/element";
+import { bumpVersion, hasLiteralColor } from "@excalidraw/element";
 import {
   getBoundTextElementId,
   getContainerElement,
@@ -543,7 +543,8 @@ export const textWysiwyg = ({
         verticalAlign,
         color: applyDarkModeFilter(
           updatedTextElement.strokeColor,
-          app.getCanvasMode() === THEME.DARK,
+          app.getCanvasMode() === THEME.DARK &&
+            !hasLiteralColor(updatedTextElement, elementsMap),
         ),
         opacity: updatedTextElement.opacity / 100,
       });

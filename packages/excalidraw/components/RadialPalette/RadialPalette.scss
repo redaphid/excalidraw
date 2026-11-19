@@ -1,5 +1,5 @@
-// Every color is one of the editor's variables, so a `css` theme restyles the
-// palette with the rest of the UI.
+// Every value is a `--control-*` token (css/theme.scss), so a `css` theme
+// restyles the palette, and other controls can share its look.
 .excalidraw {
   .RadialPalette__puck {
     position: absolute;
@@ -11,21 +11,23 @@
     padding: 0.5rem;
     border: none;
     border-radius: 50%;
-    background: var(--island-bg-color);
-    box-shadow: var(--shadow-island);
-    color: var(--icon-fill-color);
+    background: var(--control-surface);
+    box-shadow: var(--control-shadow);
+    color: var(--control-ink);
     cursor: pointer;
     pointer-events: all;
     // a press on the puck starts a flick, never a scroll or a zoom
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--control-motion-duration)
+      var(--control-motion-easing);
 
     &--phone {
       bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     }
 
     &[aria-expanded="true"] {
-      background: var(--color-surface-primary-container);
+      background: var(--control-surface-active);
     }
 
     svg {
@@ -39,7 +41,7 @@
   .RadialPalette__puck-ring {
     fill: none;
     stroke: currentColor;
-    stroke-width: 1.5;
+    stroke-width: var(--control-active-width);
   }
 
   .RadialPalette__puck-dot {
@@ -60,37 +62,61 @@
     pointer-events: none;
     touch-action: none;
     user-select: none;
-    font-family: var(--ui-font);
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    font-family: var(--control-font);
+    animation: RadialPalette-open var(--control-motion-duration)
+      var(--control-motion-easing);
 
     svg {
+      position: relative;
       display: block;
       overflow: visible;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  @keyframes RadialPalette-open {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
     }
   }
 
   .RadialPalette__disc {
-    fill: var(--island-bg-color);
-    stroke: var(--default-border-color);
-    stroke-width: 1;
-    filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.12));
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--control-surface);
+    border: var(--control-rule-width) solid var(--control-rule);
+    box-shadow: var(--control-shadow);
   }
 
   .RadialPalette__rule {
     fill: none;
-    stroke: var(--default-border-color);
-    stroke-width: 1;
+    stroke: var(--control-rule);
+    stroke-width: var(--control-rule-width);
     pointer-events: none;
   }
 
   .RadialPalette__segment {
     pointer-events: all;
     cursor: pointer;
-    color: var(--icon-fill-color);
+    color: var(--control-ink);
     outline: none;
+  }
+
+  .RadialPalette__icon {
+    color: var(--control-ink);
+    overflow: visible;
   }
 
   .RadialPalette__segment-bg {
     fill: transparent;
+    transition: fill var(--control-motion-duration) var(--control-motion-easing);
   }
 
   .RadialPalette__segment-content {
@@ -98,15 +124,21 @@
   }
 
   .RadialPalette__segment:hover .RadialPalette__segment-bg,
-  .RadialPalette__segment--hover .RadialPalette__segment-bg,
   .RadialPalette__segment:focus-visible .RadialPalette__segment-bg {
-    fill: var(--button-hover-bg);
+    fill: var(--control-surface-hover);
+  }
+
+  // the highlight a flick, a knob or the arrow keys move
+  .RadialPalette__segment--highlight .RadialPalette__segment-bg {
+    fill: var(--control-surface-hover);
+    stroke: var(--control-accent);
+    stroke-width: var(--control-rule-width);
   }
 
   .RadialPalette__segment--active .RadialPalette__segment-bg {
-    fill: var(--color-surface-primary-container);
-    stroke: var(--color-primary);
-    stroke-width: 1.5;
+    fill: var(--control-surface-active);
+    stroke: var(--control-accent);
+    stroke-width: var(--control-active-width);
   }
 
   .RadialPalette__segment--disabled {
@@ -118,8 +150,8 @@
   }
 
   .RadialPalette__label {
-    fill: var(--text-primary-color);
-    font-size: 8px;
+    fill: var(--control-text);
+    font-size: var(--control-label-size);
     text-anchor: middle;
     dominant-baseline: middle;
   }
@@ -130,13 +162,9 @@
     stroke-linejoin: round;
   }
 
-  .RadialPalette__role {
-    stroke-width: 1.5;
-  }
-
   .RadialPalette__swatch {
-    stroke: var(--default-border-color);
-    stroke-width: 1;
+    stroke: var(--control-rule);
+    stroke-width: var(--control-rule-width);
 
     &--empty {
       stroke-dasharray: 3 2;
@@ -156,48 +184,50 @@
     &-value {
       fill: none;
       stroke-linecap: round;
-      stroke-width: 5;
+      stroke-width: var(--control-track-width);
       pointer-events: none;
     }
 
     &-track {
-      stroke: var(--default-border-color);
+      stroke: var(--control-rule);
     }
 
     &-value {
-      stroke: var(--color-primary);
+      stroke: var(--control-accent);
     }
 
     &-end {
-      fill: var(--icon-fill-color);
+      fill: var(--control-ink);
       pointer-events: none;
     }
 
     &-knob {
-      fill: var(--island-bg-color);
-      stroke: var(--color-primary);
-      stroke-width: 2;
+      fill: var(--control-surface);
+      stroke: var(--control-accent);
+      stroke-width: var(--control-knob-width);
       pointer-events: none;
     }
   }
 
   .RadialPalette__slider--active .RadialPalette__slider-knob,
   .RadialPalette__slider:focus-visible .RadialPalette__slider-knob {
-    fill: var(--color-surface-primary-container);
+    fill: var(--control-surface-active);
   }
 
   .RadialPalette__hub {
     pointer-events: all;
     cursor: pointer;
     outline: none;
+    color: var(--control-ink);
   }
 
   .RadialPalette__hub-bg {
-    fill: var(--island-bg-color);
+    fill: var(--control-surface);
+    transition: fill var(--control-motion-duration) var(--control-motion-easing);
   }
 
   .RadialPalette__hub:hover .RadialPalette__hub-bg,
   .RadialPalette__hub:focus-visible .RadialPalette__hub-bg {
-    fill: var(--button-hover-bg);
+    fill: var(--control-surface-hover);
   }
 }

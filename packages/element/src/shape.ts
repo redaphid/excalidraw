@@ -30,6 +30,7 @@ import {
 } from "@excalidraw/common";
 
 import { RoughGenerator } from "roughjs/bin/generator";
+import { svgPath } from "roughjs/bin/renderer";
 
 import type { GlobalPoint, Polygon } from "@excalidraw/math";
 
@@ -63,6 +64,7 @@ import {
   isIframeElement,
   isIframeLikeElement,
   isLinearElement,
+  hasLiteralColor,
 } from "./typeChecks";
 import { getCornerRadius, isPathALoop } from "./utils";
 import { headingForPointIsHorizontal } from "./heading";
@@ -92,8 +94,42 @@ import type {
 import type { Drawable, Options } from "roughjs/bin/core";
 import type { Point as RoughPoint } from "roughjs/bin/geometry";
 
+/**
+ * rough.js's generator, but `path()` skips flattening a path with no fill.
+ * rough.js 4.6.4's `path()` flattens the whole path into the points a fill
+ * uses before it checks for a fill. Rounded rectangles and diamonds and elbow
+ * arrows are paths, and shapes default to a transparent background. With no
+ * fill, this calls the `svgPath` that `path()` would, on the same options, so
+ * it takes the same random draws in the same order and returns the same
+ * drawable. Anything else goes to rough.js's own `path()`.
+ */
+export class ExcalidrawRoughGenerator extends RoughGenerator {
+  path(d: string, options?: Options): Drawable {
+    if (!d || !options) {
+      return super.path(d, options);
+    }
+    const o = { ...this.defaultOptions, ...options };
+    const hasFill = o.fill && o.fill !== "transparent" && o.fill !== "none";
+    // a simplified stroke is drawn from the flattened points
+    const simplified = !!(o.simplification && o.simplification < 1);
+    if (hasFill || simplified) {
+      return super.path(d, options);
+    }
+    // `path()`'s clean-up of `d` (its third replace matches the literal text
+    // "/(ss)/g", which no path holds)
+    const cleaned = d.replace(/\n/g, " ").replace(/(-\s)/g, "-");
+    // drawn even without a stroke, as `path()` does
+    const stroke = svgPath(cleaned, o);
+    return {
+      shape: "path",
+      sets: o.stroke === "none" ? [] : [stroke],
+      options: o,
+    };
+  }
+}
+
 export class ShapeCache {
-  private static rg = new RoughGenerator();
+  private static rg = new ExcalidrawRoughGenerator();
   private static cache = new WeakMap<
     ExcalidrawElement,
     { shape: ElementShape; theme: AppState["theme"] }
@@ -639,7 +675,7 @@ export const generateLinearCollisionShape = (
   op: string;
   data: number[];
 }[] => {
-  const generator = new RoughGenerator();
+  const generator = new ExcalidrawRoughGenerator();
   const options: Options = {
     seed: element.seed,
     disableMultiStroke: true,
@@ -865,7 +901,7 @@ const _generateElementShape = (
     theme?: AppState["theme"];
   },
 ): ElementShape => {
-  const isDarkMode = theme === THEME.DARK;
+  const isDarkMode = theme === THEME.DARK && !hasLiteralColor(element);
   switch (element.type) {
     case "rectangle":
     case "iframe":
