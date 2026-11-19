@@ -564,6 +564,43 @@ export const intersectElementWithLineSegment = (
 
 const CURVE_BOUNDS_EPSILON = 1e-6;
 
+// The curves come from the per-version shape caches in `./utils`, so a new
+// element version brings a new array and the bounds are rebuilt with it. With
+// an offset (the binding gap) each corner is 50 curves, so a rectangle's
+// outline is 200, and computing their bounds on every intersection dominated
+// re-routing bound arrows.
+const curveBoundsCache = new WeakMap<
+  readonly Curve<GlobalPoint>[],
+  Float64Array
+>();
+
+/** `[minX, minY, maxX, maxY]` of each curve, flattened */
+const getCurveBounds = (curves: readonly Curve<GlobalPoint>[]) => {
+  let bounds = curveBoundsCache.get(curves);
+
+  if (!bounds) {
+    bounds = new Float64Array(curves.length * 4);
+    for (let i = 0; i < curves.length; i++) {
+      const [p0, p1, p2, p3] = curves[i];
+      bounds.set(getCubicBezierCurveBound(p0, p1, p2, p3), i * 4);
+    }
+    curveBoundsCache.set(curves, bounds);
+  }
+
+  return bounds;
+};
+
+/** same test as `doBoundsIntersect`, against the cached bounds of curve `i` */
+const curveBoundsIntersect = (
+  curveBounds: Float64Array,
+  i: number,
+  [minX, minY, maxX, maxY]: Bounds,
+) =>
+  curveBounds[i * 4] < maxX &&
+  curveBounds[i * 4 + 2] > minX &&
+  curveBounds[i * 4 + 1] < maxY &&
+  curveBounds[i * 4 + 3] > minY;
+
 const curveIntersections = (
   curves: Curve<GlobalPoint>[],
   segment: LineSegment<GlobalPoint>,
@@ -582,15 +619,15 @@ const curveIntersections = (
     Math.max(segment[0][1], segment[1][1]) + CURVE_BOUNDS_EPSILON,
   ] as Bounds;
 
-  for (const c of curves) {
-    // Optimize by doing a cheap bounding box check first
-    const b1 = getCubicBezierCurveBound(c[0], c[1], c[2], c[3]);
+  const curveBounds = getCurveBounds(curves);
 
-    if (!doBoundsIntersect(b1, b2)) {
+  for (let i = 0; i < curves.length; i++) {
+    // Optimize by doing a cheap bounding box check first
+    if (!curveBoundsIntersect(curveBounds, i, b2)) {
       continue;
     }
 
-    const hits = curveIntersectLineSegment(c, segment);
+    const hits = curveIntersectLineSegment(curves[i], segment);
 
     if (hits.length > 0) {
       for (const j of hits) {
@@ -653,21 +690,21 @@ const intersectLinearOrFreeDrawWithLineSegment = (
     }
   }
 
-  for (const c of curves) {
-    // Optimize by doing a cheap bounding box check first
-    const b1 = getCubicBezierCurveBound(c[0], c[1], c[2], c[3]);
-    const b2 = [
-      Math.min(segment[0][0], segment[1][0]),
-      Math.min(segment[0][1], segment[1][1]),
-      Math.max(segment[0][0], segment[1][0]),
-      Math.max(segment[0][1], segment[1][1]),
-    ] as Bounds;
+  const curveBounds = getCurveBounds(curves);
+  const segmentBounds = [
+    Math.min(segment[0][0], segment[1][0]),
+    Math.min(segment[0][1], segment[1][1]),
+    Math.max(segment[0][0], segment[1][0]),
+    Math.max(segment[0][1], segment[1][1]),
+  ] as Bounds;
 
-    if (!doBoundsIntersect(b1, b2)) {
+  for (let i = 0; i < curves.length; i++) {
+    // Optimize by doing a cheap bounding box check first
+    if (!curveBoundsIntersect(curveBounds, i, segmentBounds)) {
       continue;
     }
 
-    const hits = curveIntersectLineSegment(c, segment, {
+    const hits = curveIntersectLineSegment(curves[i], segment, {
       iterLimit: 10,
     });
 
