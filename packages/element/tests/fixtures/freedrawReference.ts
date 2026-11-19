@@ -1,5 +1,6 @@
 import { DEFAULT_STROKE_STREAMLINE } from "@excalidraw/common";
 
+import { LaserPointer } from "./laserPointerReference";
 import { getStroke } from "./perfectFreehandReference";
 
 import type { ExcalidrawFreeDrawElement } from "../../src/types";
@@ -71,4 +72,23 @@ export const getSvgPathFromStroke = (points: number[][]): string => {
       ["M", points[0], "Q"],
     )
     .join(" ");
+};
+
+/** The constant-width outline from a new laser pointer, as it was built. */
+export const getConstantWidthFreedrawOutline = (
+  element: ExcalidrawFreeDrawElement,
+): [number, number][] => {
+  const scale = element.authoringScale ?? 1;
+  const laserPointer = new LaserPointer({
+    size: (element.strokeWidth / scale) * 1.4,
+    streamline: getFreedrawStreamline(element),
+    simplify: 0,
+    sizeMapping: (details) => Math.max(0.1, details.pressure),
+  });
+  element.points.forEach(([x, y]) =>
+    laserPointer.addPoint([x / scale, y / scale, 1]),
+  );
+  return laserPointer
+    .getStrokeOutline()
+    .map(([x, y]) => [x * scale, y * scale] as [number, number]);
 };

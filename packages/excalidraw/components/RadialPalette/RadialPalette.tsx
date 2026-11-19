@@ -11,7 +11,11 @@ import { KEYS, isWritableElement } from "@excalidraw/common";
 import { actionChangeOpacity } from "../../actions";
 import { useUIAppState } from "../../context/ui-appState";
 import { t } from "../../i18n";
-import { useApp, useExcalidrawSetAppState } from "../App";
+import {
+  useApp,
+  useExcalidrawContainer,
+  useExcalidrawSetAppState,
+} from "../App";
 import {
   ArrowIcon,
   DiamondIcon,
@@ -24,7 +28,6 @@ import {
   SelectionIcon,
   TextIcon,
   frameToolIcon,
-  stickyNoteToolIcon,
 } from "../icons";
 import {
   PEN_SIZE_SLIDER_MAX,
@@ -88,12 +91,20 @@ const TOOL_ICONS: Record<RadialTool, Icon> = {
   line: LineIcon,
   freedraw: FreedrawIcon,
   text: TextIcon,
-  stickynote: stickyNoteToolIcon,
   frame: frameToolIcon,
 };
 
 /** the ring each hit kind's items belong to */
 const RING_OF = { tool: "tools", pen: "pens", color: "colors" } as const;
+
+/** how far a finger travels before it is a flick: a finger rolls by more
+ * than a pen or a mouse drifts as it lifts, in CSS px */
+const TOUCH_FLICK_DISTANCE = 24;
+
+/** whether two hits are on the same slice, slider or empty space */
+const isSameTarget = (a: RingHit | null, b: RingHit | null) =>
+  a?.kind === b?.kind &&
+  (a && "index" in a && b && "index" in b ? a.index === b.index : true);
 
 /** one opacity step on the ring */
 const OPACITY_STEP = 5;
@@ -116,7 +127,17 @@ const sampleWidth = (penSize: number) => {
 const SAMPLE_STROKE = "M -12 3 C -8 -6, -2 -6, 0 0 S 8 6, 12 -3";
 
 const isPaletteKey = (event: KeyboardEvent) =>
-  event.key === KEYS.COMMA && !event.ctrlKey && !event.metaKey && !event.altKey;
+  event.key === KEYS.COMMA &&
+  !event.repeat &&
+  !event.ctrlKey &&
+  !event.metaKey &&
+  !event.altKey;
+
+/** a field the user types in, `contenteditable` included */
+const isTypingTarget = (target: EventTarget | null) =>
+  isWritableElement(target) ||
+  (target instanceof Element &&
+    !!target.closest('[contenteditable]:not([contenteditable="false"])'));
 
 /**
  * The radial palette: a puck that opens into a ring of shapes, pens,
@@ -133,6 +154,7 @@ export const RadialPalette = React.memo(
     phone: boolean;
   }) => {
     const app = useApp();
+    const { container } = useExcalidrawContainer();
     const controller = app.radialPalette;
     const session = useSyncExternalStore(
       controller.subscribe,
@@ -141,9 +163,20 @@ export const RadialPalette = React.memo(
 
     useEffect(() => {
       const onKeyDown = (event: KeyboardEvent) => {
+        const { target } = event;
+        const doc = app.ownerDocument;
+        // like the editor's own shortcuts: from inside the editor, or from
+        // anywhere with `handleKeyboardGlobally`, but never from a host's
+        // focused control while nothing in the editor has focus
+        const fromHost =
+          target instanceof Element &&
+          target !== doc.body &&
+          target !== doc.documentElement &&
+          !container?.contains(target);
         if (
           !isPaletteKey(event) ||
-          isWritableElement(event.target) ||
+          isTypingTarget(target) ||
+          (fromHost && !app.props.handleKeyboardGlobally) ||
           app.state.editingTextElement ||
           app.state.openDialog ||
           app.state.viewModeEnabled
@@ -156,7 +189,7 @@ export const RadialPalette = React.memo(
       const doc = app.ownerDocument;
       doc.addEventListener("keydown", onKeyDown);
       return () => doc.removeEventListener("keydown", onKeyDown);
-    }, [app, controller]);
+    }, [app, controller, container]);
 
     const puckCenter = (target: HTMLElement) => {
       const rect = target.getBoundingClientRect();
@@ -313,21 +346,29 @@ const Ring = ({
       return;
     }
     const win = app.ownerWindow;
+    // what the pointer was over when the ring opened: a finger rolling on
+    // it as it lifts is not a flick, so a long press near an edge, where
+    // the ring opens under the finger, picks nothing by accident
+    const startHit = latest.current.hitAt(flick.start.x, flick.start.y);
     let moved = false;
     let last: RingHit | null = null;
     const onMove = (event: PointerEvent) => {
       if (event.pointerId !== flick.pointerId) {
         return;
       }
+      const hit = latest.current.hitAt(event.clientX, event.clientY);
       moved ||=
         Math.hypot(
           event.clientX - flick.start.x,
           event.clientY - flick.start.y,
-        ) > FLICK_DISTANCE;
+        ) >
+          (event.pointerType === "touch"
+            ? TOUCH_FLICK_DISTANCE
+            : FLICK_DISTANCE) && !isSameTarget(hit, startHit);
       if (!moved) {
         return;
       }
-      last = latest.current.hitAt(event.clientX, event.clientY);
+      last = hit;
       latest.current.follow(last);
       if (last?.kind === "size" || last?.kind === "opacity") {
         latest.current.previewSlider(last);
@@ -376,6 +417,16 @@ const Ring = ({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // typing in a field elsewhere, e.g. while a knob holds the ring open
+      if (
+        isTypingTarget(event.target) &&
+        !(
+          event.target instanceof Node &&
+          ringRef.current?.contains(event.target)
+        )
+      ) {
+        return;
+      }
       if (event.key === KEYS.ESCAPE) {
         event.preventDefault();
         event.stopPropagation();

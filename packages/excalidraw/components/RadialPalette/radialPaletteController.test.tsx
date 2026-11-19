@@ -4,7 +4,7 @@ import { KEYS } from "@excalidraw/common";
 
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
-import { Keyboard } from "../../tests/helpers/ui";
+import { Keyboard, UI } from "../../tests/helpers/ui";
 import { act, render } from "../../tests/test-utils";
 
 import { RADIAL_TOOLS } from "./radialPaletteController";
@@ -81,10 +81,29 @@ describe("the radial palette's controller API", () => {
         expect(highlighted()).toBe("radial-tool-selection");
       });
 
-      it("lists the shapes", () => {
+      it("lists the shapes and tools, and nothing named for a role", () => {
         expect(api.state().items.map(({ id }) => id)).toEqual([
-          ...RADIAL_TOOLS,
+          "selection",
+          "rectangle",
+          "diamond",
+          "ellipse",
+          "arrow",
+          "line",
+          "freedraw",
+          "text",
+          "frame",
         ]);
+      });
+
+      it("keeps the highlight when opened again on the same ring", () => {
+        act(() => api.step(2));
+        act(() => api.open({ ring: "tools" }));
+        expect(api.state().index).toBe(2);
+      });
+
+      it("ignores a ring it does not have", () => {
+        act(() => api.open({ ring: "colour" as "colors" }));
+        expect(api.state()).toMatchObject({ open: true, ring: "tools" });
       });
 
       it("steps forward and back, wrapping both ways", () => {
@@ -154,6 +173,22 @@ describe("the radial palette's controller API", () => {
       });
     });
 
+    describe("when a see-through pen is followed by a shape from the toolbar", () => {
+      beforeEach(() => {
+        act(() => api.open({ ring: "pens" }));
+        const wash = api.state().items.findIndex(({ id }) => id === "wash");
+        act(() => api.step(wash - api.state().index));
+        act(() => api.choose());
+      });
+
+      it("draws the shape opaque", () => {
+        expect(h.state.currentItemOpacity).toBeLessThan(100);
+        UI.clickTool("rectangle");
+        expect(h.state.activeTool.type).toBe("rectangle");
+        expect(h.state.currentItemOpacity).toBe(100);
+      });
+    });
+
     describe("when something subscribes", () => {
       let seen: RadialPaletteState[];
       let unsubscribe: () => void;
@@ -176,6 +211,14 @@ describe("the radial palette's controller API", () => {
           { open: true, ring: "tools", index: 2 },
           { open: false, ring: "tools", index: 2 },
         ]);
+      });
+
+      it("hears nothing when nothing changed", () => {
+        act(() => api.open());
+        act(() => api.step(0));
+        act(() => api.step(api.state().items.length));
+        act(() => api.open({ ring: "tools" }));
+        expect(seen).toHaveLength(1);
       });
 
       it("hears nothing after unsubscribing", () => {

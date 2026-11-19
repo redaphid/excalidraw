@@ -126,6 +126,23 @@ const contact = async (
     browserName === "chromium"
       ? await page.context().newCDPSession(page)
       : null;
+  if (!cdp) {
+    // the browser never saw the synthetic pointer go down, so capturing it
+    // throws NotFoundError (Firefox, WebKit) before the editor handles it
+    await page.evaluate(() => {
+      for (const name of [
+        "setPointerCapture",
+        "releasePointerCapture",
+      ] as const) {
+        const real = Element.prototype[name];
+        Element.prototype[name] = function (this: Element, id: number) {
+          if (id !== 41) {
+            real.call(this, id);
+          }
+        };
+      }
+    });
+  }
   const synthetic = (type: string, x: number, y: number, buttons: number) =>
     page.evaluate(
       ({ type, x, y, buttons, kind }) => {
