@@ -53,7 +53,9 @@ import {
   deconstructRectanguloidElement,
 } from "./utils";
 import { intersectElementWithLineSegment, shouldTestInside } from "./collision";
+import { ElementsRTree } from "./elementsRTree";
 import { elementOverlapsWithFrame, getContainingFrame } from "./frame";
+import { getElementMutationCount } from "./mutateElement";
 
 import type { Drawable, Op } from "roughjs/bin/core";
 import type { Point as RoughPoint } from "roughjs/bin/geometry";
@@ -1405,10 +1407,213 @@ export const boundsContainBounds = (outerBounds: Bounds, innerBounds: Bounds) =>
     pointFrom<GlobalPoint>(innerBounds[2], innerBounds[3]),
   ].every((point) => pointInsideBoundsInclusive(point, outerBounds));
 
+/** `bounds` grown to hold an arrow's label, where it is drawn */
+const growByArrowLabel = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+  bounds: Bounds,
+): Bounds => {
+  const label =
+    isArrowElement(element) && getBoundTextElement(element, elementsMap);
+  if (!label) {
+    return bounds;
+  }
+  const { x, y } = LinearElementEditor.getBoundTextElementPosition(
+    element,
+    label,
+    elementsMap,
+  );
+  return [
+    Math.min(bounds[0], x),
+    Math.min(bounds[1], y),
+    Math.max(bounds[2], x + label.width),
+    Math.max(bounds[3], y + label.height),
+  ];
+};
+
+/**
+ * An element's box grown to everything `elementsOverlappingBBox` tests of it,
+ * its stroke and an arrow's label, before frame clipping, which only shrinks
+ * what is tested. An element whose box misses the queried box cannot match.
+ */
+const measureOverlapBox = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+): Bounds => {
+  const [x1, y1, x2, y2] = getElementBounds(element, elementsMap);
+  const halfStroke = element.strokeWidth / 2;
+  return growByArrowLabel(element, elementsMap, [
+    x1 - halfStroke,
+    y1 - halfStroke,
+    x2 + halfStroke,
+    y2 + halfStroke,
+  ]);
+};
+
+/**
+ * `getElementPaintBounds` grown to hold an arrow's label: a box that holds
+ * everything `elementsOverlappingBBox` tests of the element, since the paint
+ * extent is never less than half the stroke. A tree measured by it can serve
+ * `shareElementsRTree`.
+ */
+export const getElementIndexBounds = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+): Bounds =>
+  growByArrowLabel(
+    element,
+    elementsMap,
+    getElementPaintBounds(element, elementsMap),
+  );
+
+/**
+ * The element whose edits move this one's index or overlap box without
+ * bumping its version: a label's container, or an arrow's label.
+ */
+export const getElementIndexDependency = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+) =>
+  isTextElement(element)
+    ? getContainerElement(element, elementsMap)
+    : isArrowElement(element)
+    ? getBoundTextElement(element, elementsMap)
+    : null;
+
+/**
+ * Trees an owner already keeps over an elements array, by that array. An
+ * editor's renderer keeps one over the scene's non-deleted elements for its
+ * cull and hit tests, so overlap queries over that array read it instead of
+ * building and rebuilding a second tree over the same elements.
+ */
+const sharedTrees = new WeakMap<
+  readonly ExcalidrawElement[],
+  { tree: ElementsRTree<ExcalidrawElement>; elementsMap: ElementsMap }
+>();
+
+/**
+ * Lets `elementsOverlappingBBox` and `elementsTouchingBBox` callers over
+ * `elements` take their candidates from `tree`, which must measure each
+ * element by `getElementIndexBounds` (or a box holding it) and be queried
+ * with `elements` and `elementsMap` by its owner too. The tree keeps its own
+ * rebuild schedule; a query never rebuilds it.
+ */
+export const shareElementsRTree = <T extends ExcalidrawElement>(
+  elements: readonly T[],
+  elementsMap: ElementsMap,
+  tree: ElementsRTree<T>,
+) => {
+  sharedTrees.set(elements, {
+    tree: tree as unknown as ElementsRTree<ExcalidrawElement>,
+    elementsMap,
+  });
+};
+
+/**
+ * A superset of the elements whose overlap box touches `bounds`, in array
+ * order: from a shared tree when the array has one, else exactly those, from
+ * the array's own tree.
+ */
+const overlapCandidates = <T extends ExcalidrawElement>(
+  elements: readonly T[],
+  bounds: Bounds,
+  elementsMap: ElementsMap,
+): readonly T[] => {
+  const shared = sharedTrees.get(elements);
+  if (shared) {
+    // `queryWithSlack` grows boxes by hit slack, which only adds candidates,
+    // and unlike `query` it is not taken for a change of the view's zoom
+    return shared.tree.queryWithSlack(
+      elements,
+      shared.elementsMap,
+      bounds,
+      null,
+    ) as T[];
+  }
+  return elementsTouchingBBox(elements, bounds, elementsMap);
+};
+
+const overlapTrees = new WeakMap<
+  readonly ExcalidrawElement[],
+  ElementsRTree<ExcalidrawElement>
+>();
+const arrayMaps = new WeakMap<readonly ExcalidrawElement[], ElementsMap>();
+const topLevelGroups = new WeakMap<
+  readonly ExcalidrawElement[],
+  { mutationCount: number; members: Map<string, ExcalidrawElement[]> }
+>();
+
+/**
+ * Each top-level group's members in array order, kept per array until an
+ * element mutates in place, since `groupIds` can change that way.
+ */
+const getTopLevelGroups = (elements: readonly ExcalidrawElement[]) => {
+  const mutationCount = getElementMutationCount();
+  let cached = topLevelGroups.get(elements);
+  if (cached?.mutationCount !== mutationCount) {
+    const members = new Map<string, ExcalidrawElement[]>();
+    for (const element of elements) {
+      const groupId = element.groupIds.at(-1);
+      if (groupId) {
+        const group = members.get(groupId);
+        if (group) {
+          group.push(element);
+        } else {
+          members.set(groupId, [element]);
+        }
+      }
+    }
+    cached = { mutationCount, members };
+    topLevelGroups.set(elements, cached);
+  }
+  return cached.members;
+};
+
+/** one map per array, so the tree sees the same map on every call */
+const mapOf = (elements: readonly ExcalidrawElement[]) => {
+  let elementsMap = arrayMaps.get(elements);
+  if (!elementsMap) {
+    elementsMap = arrayToMap(elements) as ElementsMap;
+    arrayMaps.set(elements, elementsMap);
+  }
+  return elementsMap;
+};
+
+/**
+ * The elements whose box, grown by half their stroke and by an arrow's label,
+ * touches `bounds`, borders included, in array order. This is the candidate
+ * set of `elementsOverlappingBBox`, whose tests never reach past that box, and
+ * serves a caller with its own cheap test per element, such as which elements
+ * wholly contain a tile.
+ *
+ * An R-tree is kept per elements array. The first call over an array measures
+ * every element and builds the tree; later calls over the same array and
+ * `elementsMap` read only the elements near the box, so pass the same map
+ * each time, as a scene's are.
+ */
+export const elementsTouchingBBox = <T extends ExcalidrawElement>(
+  elements: readonly T[],
+  bounds: Bounds,
+  elementsMap: ElementsMap = mapOf(elements),
+): T[] => {
+  let tree = overlapTrees.get(elements);
+  if (!tree) {
+    tree = new ElementsRTree(measureOverlapBox, getElementIndexDependency);
+    overlapTrees.set(elements, tree);
+  }
+  const touching = tree.query(elements, elementsMap, bounds, null) as T[];
+  tree.rebuildIfStale();
+  return touching;
+};
+
 /**
  * High level helper to get elements overlapping a bounding box.
  * It can be used to get elements overlapping a selection box, for example.
  *
+ * Candidates come from an R-tree: the one `shareElementsRTree` names for the
+ * array, as an editor's renderer does for its scene, else the array's own
+ * from `elementsTouchingBBox`. A run of calls over one array (export tiles,
+ * a selection drag) tests only the elements near each box.
  */
 export const elementsOverlappingBBox = <T extends ExcalidrawElement>({
   elements,
@@ -1430,7 +1635,7 @@ export const elementsOverlappingBBox = <T extends ExcalidrawElement>({
   shouldIgnoreElementFromSelection?: (element: T) => boolean;
 }) => {
   if (!elementsMap) {
-    elementsMap = arrayToMap(elements) as ElementsMap;
+    elementsMap = sharedTrees.get(elements)?.elementsMap ?? mapOf(elements);
   }
   const selectionBounds = isExcalidrawElement(bounds)
     ? getElementBounds(bounds, elementsMap)
@@ -1458,22 +1663,13 @@ export const elementsOverlappingBBox = <T extends ExcalidrawElement>({
   const framesInSelection = excludeElementsInFrames
     ? new Set<ExcalidrawElement["id"]>()
     : null;
-  const groups: Record<string, T[]> = {};
   const elementsInSelection: Set<T> = new Set();
 
-  for (const element of elements) {
+  const candidates = overlapCandidates(elements, selectionBounds, elementsMap);
+
+  for (const element of candidates) {
     if (shouldIgnoreElementFromSelection?.(element)) {
       continue;
-    }
-
-    // Track only selectable top-level group members, so ignored elements such
-    // as bound text and locked elements don't affect group selection.
-    const groupId = element.groupIds.at(-1);
-    if (groupId) {
-      if (!groups[groupId]) {
-        groups[groupId] = [];
-      }
-      groups[groupId].push(element);
     }
 
     const strokeWidth = element.strokeWidth;
@@ -1663,21 +1859,37 @@ export const elementsOverlappingBBox = <T extends ExcalidrawElement>({
     });
   }
 
+  // An element's top-level group with every selectable member, near the box
+  // or not. Ignored elements such as bound text and locked elements don't
+  // affect group selection.
+  const groupOf = (element: T) => {
+    const groupId = element.groupIds.at(-1);
+    const members = groupId && getTopLevelGroups(elements).get(groupId);
+    return members
+      ? (members as T[]).filter(
+          (member) => !shouldIgnoreElementFromSelection?.(member),
+        )
+      : null;
+  };
+
+  let selectedBeyondCandidates = false;
   if (type === "overlap") {
     Array.from(elementsInSelection).forEach((element) => {
-      const groupId = element.groupIds.at(-1);
-      const group = groupId ? groups[groupId] : null;
+      const group = groupOf(element);
 
-      group?.forEach((groupElement) => elementsInSelection.add(groupElement));
+      group?.forEach((groupElement) => {
+        if (!elementsInSelection.has(groupElement)) {
+          elementsInSelection.add(groupElement);
+          selectedBeyondCandidates = true;
+        }
+      });
     });
   } else if (type === "contain") {
     elementsInSelection.forEach((element) => {
       // note: currently we only support top-level group handling since
       // we don't support box selecting while editing the group/subgroup
       // see https://github.com/excalidraw/excalidraw/pull/11234#issuecomment-4387654451
-      const groupId = element.groupIds.at(-1);
-
-      const group = groupId ? groups[groupId] : null;
+      const group = groupOf(element);
 
       if (
         group &&
@@ -1688,8 +1900,15 @@ export const elementsOverlappingBBox = <T extends ExcalidrawElement>({
     });
   }
 
-  // to maintain original order elements (namely for group selection)
-  return elements.filter((element) => elementsInSelection.has(element));
+  // in array order (namely for group selection), which the candidates keep; a
+  // group member selected from beyond them needs the whole array
+  const result: T[] = [];
+  for (const element of selectedBeyondCandidates ? elements : candidates) {
+    if (elementsInSelection.has(element)) {
+      result.push(element);
+    }
+  }
+  return result;
 };
 
 export const elementCenterPoint = (

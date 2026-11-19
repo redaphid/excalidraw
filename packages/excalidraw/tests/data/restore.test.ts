@@ -229,6 +229,50 @@ describe("restoreElements", () => {
     expect(restoredText.baseFontSize).toBe(null);
   });
 
+  describe("fontAxes", () => {
+    const restoredWith = (fontFamily: number, fontAxes: unknown) => {
+      const textElement: any = API.createElement({
+        type: "text",
+        text: "merged",
+      });
+      textElement.fontFamily = fontFamily;
+      textElement.fontAxes = fontAxes;
+      return restore.restoreElements(
+        [textElement],
+        null,
+      )[0] as ExcalidrawTextElement;
+    };
+
+    it("should keep the axis values of a variable family", () => {
+      expect(
+        restoredWith(FONT_FAMILY["Shantell Sans"], { wght: 650, BNCE: 40 })
+          .fontAxes,
+      ).toEqual({ wght: 650, BNCE: 40 });
+    });
+
+    it("should clamp values to their axes and drop unknown tags", () => {
+      expect(
+        restoredWith(FONT_FAMILY["Shantell Sans"], {
+          wght: 5000,
+          BNCE: -400,
+          slnt: 12,
+        }).fontAxes,
+      ).toEqual({ wght: 800, BNCE: -100 });
+    });
+
+    it("should drop the axes of a family that has none", () => {
+      expect(
+        "fontAxes" in restoredWith(FONT_FAMILY.Excalifont, { wght: 700 }),
+      ).toBe(false);
+    });
+
+    it("should leave a text without axes without the property", () => {
+      expect(
+        "fontAxes" in restoredWith(FONT_FAMILY["Shantell Sans"], undefined),
+      ).toBe(false);
+    });
+  });
+
   it("should clamp restored font ceilings to the sticky note maximum", () => {
     const textElement: any = API.createElement({
       type: "text",

@@ -315,6 +315,129 @@ const drag = (scene: SceneName, steps: number): Scenario => {
   };
 };
 
+/** the scene's corner of the view, in client and scene coordinates */
+const viewMapping = (
+  api: ExcalidrawImperativeAPI,
+  canvas: HTMLCanvasElement,
+) => {
+  const { scrollX, scrollY, zoom, offsetLeft, offsetTop } = api.getAppState();
+  const rect = canvas.getBoundingClientRect();
+  return {
+    rect,
+    toClient: (x: number, y: number) => ({
+      x: (x + scrollX) * zoom.value + offsetLeft,
+      y: (y + scrollY) * zoom.value + offsetTop,
+    }),
+    toScene: (x: number, y: number) => ({
+      x: (x - offsetLeft) / zoom.value - scrollX,
+      y: (y - offsetTop) / zoom.value - scrollY,
+    }),
+  };
+};
+
+/** drag a selection box out from an empty spot near the view's corner */
+const boxSelect = (scene: SceneName, steps: number): Scenario => {
+  let api: ExcalidrawImperativeAPI;
+  let origin = { x: 0, y: 0 };
+  let reach = { x: 0, y: 0 };
+  return {
+    id: `${scene}/boxselect`,
+    scene,
+    steps,
+    tool: "selection",
+    begin: (imperativeApi, canvas) => {
+      api = imperativeApi;
+      const { rect, toScene } = viewMapping(api, canvas);
+      const elements = api.getSceneElements();
+      const isEmpty = (x: number, y: number) => {
+        const at = toScene(x, y);
+        const pad = 8;
+        return !elements.some(
+          (e) =>
+            at.x >= Math.min(e.x, e.x + e.width) - pad &&
+            at.x <= Math.max(e.x, e.x + e.width) + pad &&
+            at.y >= Math.min(e.y, e.y + e.height) - pad &&
+            at.y <= Math.max(e.y, e.y + e.height) + pad,
+        );
+      };
+      let found: { x: number; y: number } | null = null;
+      for (let gy = 0; gy < 20 && !found; gy++) {
+        for (let gx = 0; gx < 20 && !found; gx++) {
+          const x = rect.left + 30 + gx * (rect.width / 40);
+          const y = rect.top + 30 + gy * (rect.height / 40);
+          if (isEmpty(x, y)) {
+            found = { x, y };
+          }
+        }
+      }
+      if (!found) {
+        throw new Error(`${scene}/boxselect found no empty spot`);
+      }
+      origin = found;
+      reach = {
+        x: (rect.left + rect.width * 0.75 - origin.x) / steps,
+        y: (rect.top + rect.height * 0.75 - origin.y) / steps,
+      };
+      api.updateScene({ appState: { selectedElementIds: {} } });
+    },
+    step: (canvas, i) => {
+      if (i === 1) {
+        pointer(canvas, "pointermove", origin.x, origin.y, { buttons: 0 });
+        pointer(canvas, "pointerdown", origin.x, origin.y);
+      } else {
+        pointer(
+          canvas,
+          "pointermove",
+          origin.x + reach.x * i,
+          origin.y + reach.y * i,
+        );
+      }
+    },
+    end: (canvas) => {
+      pointer(
+        canvas,
+        "pointerup",
+        origin.x + reach.x * steps,
+        origin.y + reach.y * steps,
+      );
+      if (!Object.keys(api.getAppState().selectedElementIds).length) {
+        throw new Error(`${scene}/boxselect selected nothing`);
+      }
+    },
+  };
+};
+
+/** select every rectangle near the view's centre and drag them together */
+const dragMany = (scene: SceneName, steps: number): Scenario => {
+  const base = drag(scene, steps);
+  return {
+    ...base,
+    id: `${scene}/dragmany`,
+    begin: (api, canvas) => {
+      base.begin(api, canvas);
+      const { rect, toClient } = viewMapping(api, canvas);
+      const near = api.getSceneElements().filter((candidate) => {
+        const middle = toClient(
+          candidate.x + candidate.width / 2,
+          candidate.y + candidate.height / 2,
+        );
+        return (
+          candidate.type === "rectangle" &&
+          Math.abs(middle.x - (rect.left + rect.width / 2)) < rect.width / 4 &&
+          Math.abs(middle.y - (rect.top + rect.height / 2)) < rect.height / 4
+        );
+      });
+      api.updateScene({
+        appState: {
+          selectedElementIds: Object.fromEntries(
+            near.map((element) => [element.id, true as const]),
+          ),
+        },
+      });
+    },
+  };
+};
+
 const freedraw = (scene: SceneName, steps: number) =>
   gesture(`${scene}/freedraw`, scene, "freedraw", steps, loops);
 
@@ -382,6 +505,10 @@ export const LARGE_BOARD_SCENARIOS: Scenario[] = [
   { ...pan("file", 240), minStepIntervalMs: 16 },
   zoom("file", 60, 120, 3, (_, canvas) => center(canvas)),
   drag("file", 120),
+  boxSelect("huge", 120),
+  boxSelect("big", 120),
+  dragMany("huge", 120),
+  dragMany("big", 120),
 ];
 
 /** gestures for checking that a change paints what master paints: shapes
