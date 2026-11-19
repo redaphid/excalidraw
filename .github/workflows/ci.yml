@@ -71,7 +71,10 @@ jobs:
     # Playwright installs cannot load libicudata.so.74. Pin until
     # Playwright ships a WebKit build for 26.04.
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # `playwright install --with-deps` fetches its system libraries from the
+    # runner's apt mirror, which some runs serve at seconds a package: the
+    # install alone has taken from 20 s to past 10 min.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
