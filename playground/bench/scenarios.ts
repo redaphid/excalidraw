@@ -610,24 +610,31 @@ const centeredAt =
 
 /** a hand-tool pan in a 60 px circle, so the scene stays where it was in
  * view */
-const orbit = (scene: SceneName, zoom: number, steps: number): Scenario => {
+const orbit = (
+  scene: SceneName,
+  zoom: number,
+  steps: number,
+  kind: PointerInit["kind"] = "mouse",
+): Scenario => {
   let origin = { x: 0, y: 0 };
   const at = (i: number) => ({
     x: origin.x + Math.cos((i / steps) * Math.PI * 4) * 60 - 60,
     y: origin.y + Math.sin((i / steps) * Math.PI * 4) * 60,
   });
   return {
-    id: `${scene}/orbit@${zoom}`,
+    id: `${scene}/${kind === "touch" ? "touch-" : ""}orbit@${zoom}`,
     scene,
     steps,
     tool: "hand",
     view: centeredAt(zoom),
     begin: (_, canvas) => {
       origin = center(canvas);
-      pointer(canvas, "pointerdown", at(0).x, at(0).y);
+      pointer(canvas, "pointerdown", at(0).x, at(0).y, { kind });
     },
-    step: (canvas, i) => pointer(canvas, "pointermove", at(i).x, at(i).y),
-    end: (canvas) => pointer(canvas, "pointerup", at(steps).x, at(steps).y),
+    step: (canvas, i) =>
+      pointer(canvas, "pointermove", at(i).x, at(i).y, { kind }),
+    end: (canvas) =>
+      pointer(canvas, "pointerup", at(steps).x, at(steps).y, { kind }),
   };
 };
 
@@ -661,4 +668,6 @@ export const ZOOM_OUT_SCENARIOS: Scenario[] = (
   ...[1, 0.1, 0.001, 0.000_001].map((zoom) => orbit(scene, zoom, 120)),
   zoomOutDeep(scene),
   ...[0.1, 0.02].map((zoom) => gridOrbit(scene, zoom, 120)),
+  // a finger dragging the hand tool on the whole board, as on a phone
+  orbit(scene, 0.03, 60, "touch"),
 ]);

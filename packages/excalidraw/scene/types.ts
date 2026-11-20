@@ -104,6 +104,9 @@ export type StaticSceneRenderConfig = {
   renderConfig: StaticCanvasRenderConfig;
   /** called once the scene has been painted, with the state it shows */
   onPainted?: (appState: StaticCanvasAppState) => void;
+  /** changes whenever the scene does; with it, a pan moves the pixels
+   * already painted and paints only what it uncovers */
+  sceneNonce?: string;
 };
 
 export type InteractiveSceneRenderAnimationState = {

@@ -14,11 +14,7 @@ import {
   isIframeLikeElement,
   isTextElement,
 } from "@excalidraw/element";
-import {
-  elementOverlapsWithFrame,
-  getTargetFrame,
-  shouldApplyFrameClip,
-} from "@excalidraw/element";
+import { getTargetFrame, shouldApplyFrameClip } from "@excalidraw/element";
 
 import {
   cacheSettledBitmaps,
@@ -30,7 +26,10 @@ import {
   startBitmapBuildBudget,
 } from "@excalidraw/element";
 
-import { getElementAbsoluteCoords } from "@excalidraw/element";
+import {
+  getElementAbsoluteCoords,
+  getElementPaintBounds,
+} from "@excalidraw/element";
 
 import type { ElementRenderState } from "@excalidraw/element";
 
@@ -42,6 +41,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import {
+  DEFAULT_LINK_SIZE,
   EXTERNAL_LINK_IMG,
   ELEMENT_LINK_IMG,
   getLinkHandleFromCoords,
@@ -682,60 +682,26 @@ const elementsToPaintOver = (
     : null;
 };
 
-const paintStaticScene = (config: StaticSceneRenderConfig) => {
+/**
+ * Paints the background, grid and `elements` onto the static canvas (and its
+ * background canvas), wherever the context's clip lets it: the whole canvas,
+ * or the strips a pan uncovered.
+ */
+const paintRegion = (
+  config: StaticSceneRenderConfig,
+  appState: StaticCanvasAppState,
+  elements: readonly NonDeletedExcalidrawElement[],
+) => {
   const {
     canvas,
     backgroundCanvas,
     rc,
     elementsMap,
     allElementsMap,
-    visibleElements,
     scale,
-    appState: unsnappedAppState,
     renderConfig,
-    onPainted,
   } = config;
-  if (canvas === null) {
-    return;
-  }
-
   const { renderGrid = true, isExporting } = renderConfig;
-  // export draws vectors, not cached bitmaps — nothing to keep on the grid
-  const appState = isExporting
-    ? unsnappedAppState
-    : snapScrollToDevicePixels(unsnappedAppState, scale);
-
-  const paintOver = elementsToPaintOver(
-    paintedUnderNewElement.get(canvas),
-    config,
-  );
-  recordPaintUnderNewElement(config);
-
-  if (paintOver) {
-    const context = canvas.getContext("2d")!;
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.scale(scale, scale);
-    context.scale(appState.zoom.value, appState.zoom.value);
-    renderSceneElements({
-      context,
-      rc,
-      elements: paintOver,
-      elementsMap,
-      allElementsMap,
-      appState,
-      renderConfig,
-    });
-    cacheSettledBitmaps(
-      canvas,
-      visibleElements,
-      elementsMap,
-      allElementsMap,
-      renderConfig,
-      appState,
-    );
-    onPainted?.(unsnappedAppState);
-    return;
-  }
 
   const [normalizedWidth, normalizedHeight] = getNormalizedCanvasDimensions(
     canvas,
@@ -797,35 +763,310 @@ const paintStaticScene = (config: StaticSceneRenderConfig) => {
     );
   }
 
-  const groupsToBeAddedToFrame = new Set<string>();
-
-  visibleElements.forEach((element) => {
-    if (
-      element.groupIds.length > 0 &&
-      appState.frameToHighlight &&
-      appState.selectedElementIds[element.id] &&
-      (elementOverlapsWithFrame(
-        element,
-        appState.frameToHighlight,
-        elementsMap,
-      ) ||
-        element.groupIds.find((groupId) => groupsToBeAddedToFrame.has(groupId)))
-    ) {
-      element.groupIds.forEach((groupId) =>
-        groupsToBeAddedToFrame.add(groupId),
-      );
-    }
-  });
-
   renderSceneElements({
     context,
     rc,
-    elements: visibleElements,
+    elements,
     elementsMap,
     allElementsMap,
     appState,
     renderConfig,
   });
+};
+
+/** what the static canvas last showed in full, for a pan to move */
+type PaintedView = {
+  sceneNonce: StaticSceneRenderConfig["sceneNonce"];
+  sceneFingerprint: number;
+  scale: number;
+  width: number;
+  height: number;
+  backgroundCanvas: HTMLCanvasElement | null;
+  /** snapped to device pixels, as painted */
+  appState: StaticCanvasAppState;
+  renderConfig: StaticCanvasRenderConfig;
+  loadedImageCount: number;
+  /** a bitmap landing since means an element the canvas shows drawn
+   * directly would now be drawn from it, as a full paint would */
+  settledBitmapCount: number;
+};
+
+const paintedViews = new WeakMap<HTMLCanvasElement, PaintedView>();
+
+/** changes when any element is added, removed or changed, mutated in place
+ * or not */
+const sceneFingerprint = (
+  allElementsMap: StaticSceneRenderConfig["allElementsMap"],
+) => {
+  let hash = allElementsMap.size;
+  for (const element of allElementsMap.values()) {
+    hash = (Math.imul(hash, 31) + element.version) | 0;
+    hash = (Math.imul(hash, 31) + element.versionNonce) | 0;
+  }
+  return hash;
+};
+
+const recordPaintedView = (
+  config: StaticSceneRenderConfig,
+  appState: StaticCanvasAppState,
+  fingerprint: number,
+) => {
+  const { canvas, renderConfig } = config;
+  if (renderConfig.isExporting || config.sceneNonce === undefined) {
+    paintedViews.delete(canvas);
+    return;
+  }
+  paintedViews.set(canvas, {
+    sceneNonce: config.sceneNonce,
+    sceneFingerprint: fingerprint,
+    scale: config.scale,
+    width: canvas.width,
+    height: canvas.height,
+    backgroundCanvas: config.backgroundCanvas ?? null,
+    appState,
+    renderConfig,
+    loadedImageCount: countLoadedImages(renderConfig.imageCache),
+    settledBitmapCount: getSettledBitmapCount(),
+  });
+};
+
+/** device pixels the scene moved by since the last full paint */
+type Shift = { dx: number; dy: number };
+
+/**
+ * When the only thing that changed since the canvas was last painted is the
+ * scroll, by whole device pixels and by less than the canvas, how far the
+ * painted pixels move. A pan then copies what is already on the canvas and
+ * paints only the strips it uncovered, instead of every element in view.
+ */
+const scrollShift = (
+  painted: PaintedView | undefined,
+  next: StaticSceneRenderConfig,
+  appState: StaticCanvasAppState,
+  fingerprint: number,
+): Shift | null => {
+  const { canvas, renderConfig } = next;
+  if (
+    !painted ||
+    next.sceneNonce === undefined ||
+    painted.sceneNonce !== next.sceneNonce ||
+    appState.newElement ||
+    renderConfig.isExporting ||
+    renderConfig.pendingFlowchartNodes?.length ||
+    painted.scale !== next.scale ||
+    painted.width !== canvas.width ||
+    painted.height !== canvas.height ||
+    painted.backgroundCanvas !== (next.backgroundCanvas ?? null) ||
+    !isShallowEqual(
+      getStaticSceneAppState(painted.appState as AppState),
+      getStaticSceneAppState(appState as AppState),
+      { scrollX: () => true, scrollY: () => true },
+    ) ||
+    !isShallowEqual(painted.renderConfig, renderConfig) ||
+    painted.loadedImageCount !== countLoadedImages(renderConfig.imageCache) ||
+    painted.settledBitmapCount !== getSettledBitmapCount() ||
+    painted.sceneFingerprint !== fingerprint
+  ) {
+    return null;
+  }
+  const devicePixels = appState.zoom.value * next.scale;
+  const exactX = (appState.scrollX - painted.appState.scrollX) * devicePixels;
+  const exactY = (appState.scrollY - painted.appState.scrollY) * devicePixels;
+  const dx = Math.round(exactX);
+  const dy = Math.round(exactY);
+  if (
+    (dx === 0 && dy === 0) ||
+    // a fractional move would resample every pixel
+    Math.abs(exactX - dx) > 1e-3 ||
+    Math.abs(exactY - dy) > 1e-3 ||
+    Math.abs(dx) >= canvas.width ||
+    Math.abs(dy) >= canvas.height
+  ) {
+    return null;
+  }
+  return { dx, dy };
+};
+
+/** the device-pixel rectangles a move by `shift` uncovers */
+export const uncoveredStrips = (
+  width: number,
+  height: number,
+  { dx, dy }: Shift,
+) => {
+  const strips: { x: number; y: number; width: number; height: number }[] = [];
+  if (dy) {
+    strips.push({
+      x: 0,
+      y: dy > 0 ? 0 : height + dy,
+      width,
+      height: Math.abs(dy),
+    });
+  }
+  if (dx) {
+    strips.push({
+      x: dx > 0 ? 0 : width + dx,
+      y: dy > 0 ? dy : 0,
+      width: Math.abs(dx),
+      height: height - Math.abs(dy),
+    });
+  }
+  return strips;
+};
+
+/** how far past its paint bounds an element draws its antialiasing, in CSS
+ * pixels */
+const STRIP_MARGIN = 2;
+
+/**
+ * Moves what the canvas shows by `shift` and paints the strips that uncovers,
+ * with only the elements that reach into them.
+ */
+const paintShifted = (
+  config: StaticSceneRenderConfig,
+  appState: StaticCanvasAppState,
+  shift: Shift,
+) => {
+  const { canvas, backgroundCanvas, scale, elementsMap, renderConfig } = config;
+  const strips = uncoveredStrips(canvas.width, canvas.height, shift);
+  const contexts = [
+    canvas,
+    ...(backgroundCanvas ? [backgroundCanvas] : []),
+  ].map((target) => target.getContext("2d")!);
+  for (const context of contexts) {
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    // copies the canvas onto itself, moved, and clears what it leaves
+    context.globalCompositeOperation = "copy";
+    context.drawImage(context.canvas, shift.dx, shift.dy);
+    context.restore();
+    context.save();
+    // the strips are in device pixels
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.beginPath();
+    for (const strip of strips) {
+      context.rect(strip.x, strip.y, strip.width, strip.height);
+    }
+    context.clip();
+  }
+
+  // the strips in scene coordinates
+  const devicePixels = appState.zoom.value * scale;
+  const sceneStrips = strips.map((strip) => ({
+    x1: strip.x / devicePixels - appState.scrollX,
+    y1: strip.y / devicePixels - appState.scrollY,
+    x2: (strip.x + strip.width) / devicePixels - appState.scrollX,
+    y2: (strip.y + strip.height) / devicePixels - appState.scrollY,
+  }));
+  const antialias = STRIP_MARGIN / appState.zoom.value;
+  // a link icon sits off the top right corner, as the `ne` handle does
+  const linkReach =
+    (3 * DEFAULT_LINK_SIZE) / Math.max(1, appState.zoom.value) + antialias;
+  const reaches = (element: NonDeletedExcalidrawElement) => {
+    const { offset } = resolveElementRenderState(
+      element,
+      elementsMap,
+      renderConfig,
+      config.allElementsMap,
+    );
+    let [x1, y1, x2, y2] = getElementPaintBounds(element, elementsMap);
+    // a label is drawn with its container, and can be wider than an arrow
+    const label = getBoundTextElement(element, elementsMap);
+    if (label) {
+      const [lx1, ly1, lx2, ly2] = getElementPaintBounds(label, elementsMap);
+      x1 = Math.min(x1, lx1);
+      y1 = Math.min(y1, ly1);
+      x2 = Math.max(x2, lx2);
+      y2 = Math.max(y2, ly2);
+    }
+    const margin = element.link ? linkReach : antialias;
+    return sceneStrips.some(
+      (strip) =>
+        x1 + offset.x - margin <= strip.x2 &&
+        x2 + offset.x + margin >= strip.x1 &&
+        y1 + offset.y - margin <= strip.y2 &&
+        y2 + offset.y + margin >= strip.y1,
+    );
+  };
+
+  try {
+    paintRegion(config, appState, config.visibleElements.filter(reaches));
+  } finally {
+    for (const context of contexts) {
+      context.restore();
+    }
+  }
+};
+
+const paintStaticScene = (config: StaticSceneRenderConfig) => {
+  const {
+    canvas,
+    rc,
+    elementsMap,
+    allElementsMap,
+    visibleElements,
+    scale,
+    appState: unsnappedAppState,
+    renderConfig,
+    onPainted,
+  } = config;
+  if (canvas === null) {
+    return;
+  }
+
+  const { isExporting } = renderConfig;
+  // export draws vectors, not cached bitmaps — nothing to keep on the grid
+  const appState = isExporting
+    ? unsnappedAppState
+    : snapScrollToDevicePixels(unsnappedAppState, scale);
+
+  const paintOver = elementsToPaintOver(
+    paintedUnderNewElement.get(canvas),
+    config,
+  );
+  recordPaintUnderNewElement(config);
+
+  if (paintOver) {
+    // what is under the new element is not a view a pan can move
+    paintedViews.delete(canvas);
+    const context = canvas.getContext("2d")!;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.scale(scale, scale);
+    context.scale(appState.zoom.value, appState.zoom.value);
+    renderSceneElements({
+      context,
+      rc,
+      elements: paintOver,
+      elementsMap,
+      allElementsMap,
+      appState,
+      renderConfig,
+    });
+    cacheSettledBitmaps(
+      canvas,
+      visibleElements,
+      elementsMap,
+      allElementsMap,
+      renderConfig,
+      appState,
+    );
+    onPainted?.(unsnappedAppState);
+    return;
+  }
+
+  const fingerprint = sceneFingerprint(allElementsMap);
+  const shift = scrollShift(
+    paintedViews.get(canvas),
+    config,
+    appState,
+    fingerprint,
+  );
+
+  if (shift) {
+    paintShifted(config, appState, shift);
+  } else {
+    paintRegion(config, appState, visibleElements);
+  }
+  recordPaintedView(config, appState, fingerprint);
 
   cacheSettledBitmaps(
     canvas,

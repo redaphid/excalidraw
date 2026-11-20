@@ -40,6 +40,8 @@ type ScenarioResult = {
   id: string;
   steps: number;
   frameMs: Stats;
+  /** pointerdown and the work it queues, until the editor is idle */
+  beginMs: number;
   releaseMs: number;
   settleMaxFrameMs: number;
   countersPerFrame?: Counters;
@@ -390,8 +392,10 @@ const runScenario = async (
   await flushTasks();
   reseed(1);
   const stopGestureLongTasks = observeLongTasks();
+  const beginStart = performance.now();
   scenario.begin(api, canvas);
   await flushTasks();
+  const beginMs = performance.now() - beginStart;
   takeCounters(1);
   const stopSampling = sampleFrames();
 
@@ -441,6 +445,7 @@ const runScenario = async (
     id: scenario.id,
     steps: scenario.steps,
     frameMs: stats(frames),
+    beginMs: round(beginMs),
     releaseMs: round(releaseMs),
     settleMaxFrameMs: round(settleMaxFrameMs),
     countersPerFrame,
