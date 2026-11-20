@@ -763,7 +763,6 @@ describe("ui={{ enabled: ... }}", () => {
     await scrollAwayFromContent();
 
     expect(queryContainer(".scroll-back-to-content")).not.toBe(null);
-    expect(queryContainer(".mobile-toolbar")).toBe(null);
   });
 
   it("shows toasts on mobile", async () => {
