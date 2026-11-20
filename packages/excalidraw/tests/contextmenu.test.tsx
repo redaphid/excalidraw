@@ -754,6 +754,18 @@ describe("contextMenu on the empty canvas", () => {
       expect(h.state.openMenu).toBe("canvas");
     });
   });
+
+  describe("when Library is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(
+        UI.queryContextMenu()!.querySelector('li[data-testid="openLibrary"]')!,
+      );
+    });
+
+    it("opens the default sidebar on its library tab", () => {
+      expect(h.state.openSidebar).toEqual({ name: "default", tab: "library" });
+    });
+  });
 });
 describe("contextMenu element with the radial palette", () => {
   beforeEach(async () => {

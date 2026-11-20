@@ -19,7 +19,7 @@ const Footer = ({
   renderWelcomeScreen: boolean;
   defaultUIEnabled: boolean;
 }) => {
-  const { FooterCenterTunnel, WelcomeScreenHelpHintTunnel } = useTunnels();
+  const { FooterCenterTunnel } = useTunnels();
 
   return (
     <footer
@@ -27,20 +27,6 @@ const Footer = ({
       className="layer-ui__wrapper__footer App-menu App-menu_bottom"
     >
       <FooterCenterTunnel.Out />
-      {renderWelcomeScreen && (
-        <div
-          className={clsx(
-            "layer-ui__wrapper__footer-right zen-mode-transition",
-            {
-              "transition-right": appState.zenModeEnabled,
-            },
-          )}
-        >
-          <div style={{ position: "relative" }}>
-            <WelcomeScreenHelpHintTunnel.Out />
-          </div>
-        </div>
-      )}
       {defaultUIEnabled && (
         <ExitZenModeButton
           actionManager={actionManager}

@@ -226,7 +226,6 @@ const LayerUI = ({
         {renderTopLeftUI?.(false, appState)}
         <tunnels.MainMenuTunnel.Out />
       </div>
-      {renderWelcomeScreen && <tunnels.WelcomeScreenMenuHintTunnel.Out />}
     </div>
   );
 
@@ -328,25 +327,6 @@ const LayerUI = ({
       {defaultUIEnabled && (
         <>
           <DefaultMainMenu UIOptions={UIOptions} />
-          <DefaultSidebar.Trigger
-            __fallback
-            icon={sidebarRightIcon}
-            title={capitalizeString(t("toolBar.library"))}
-            onToggle={(open) => {
-              if (open) {
-                trackEvent(
-                  "sidebar",
-                  `${DEFAULT_SIDEBAR.name} (open)`,
-                  `button (${
-                    editorInterface.formFactor === "phone"
-                      ? "mobile"
-                      : "desktop"
-                  })`,
-                );
-              }
-            }}
-            tab={DEFAULT_SIDEBAR.defaultTab}
-          />
         </>
       )}
       {/* Keep supporting surfaces available to host-supplied UI, including

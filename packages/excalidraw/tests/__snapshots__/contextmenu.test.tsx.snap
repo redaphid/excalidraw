@@ -8419,6 +8419,12 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         "viewMode": true,
       },
       {
+        "label": "radialPalette.library",
+        "name": "openLibrary",
+        "perform": [Function],
+        "trackEvent": false,
+      },
+      {
         "label": "radialPalette.mainMenu",
         "name": "openMainMenu",
         "perform": [Function],

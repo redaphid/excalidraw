@@ -1,4 +1,9 @@
-import { KEYS, sceneCoordsToViewportCoords } from "@excalidraw/common";
+import {
+  DEFAULT_SIDEBAR,
+  KEYS,
+  LIBRARY_SIDEBAR_TAB,
+  sceneCoordsToViewportCoords,
+} from "@excalidraw/common";
 
 import { CaptureUpdateAction, getCommonBounds } from "@excalidraw/element";
 
@@ -13,6 +18,19 @@ export const actionOpenMainMenu = register({
   trackEvent: false,
   perform: (_elements, appState) => ({
     appState: { ...appState, openMenu: "canvas", openPopup: null },
+    captureUpdate: CaptureUpdateAction.EVENTUALLY,
+  }),
+});
+
+export const actionOpenLibrary = register({
+  name: "openLibrary",
+  label: "radialPalette.library",
+  trackEvent: false,
+  perform: (_elements, appState) => ({
+    appState: {
+      ...appState,
+      openSidebar: { name: DEFAULT_SIDEBAR.name, tab: LIBRARY_SIDEBAR_TAB },
+    },
     captureUpdate: CaptureUpdateAction.EVENTUALLY,
   }),
 });

@@ -337,6 +337,7 @@ import {
 } from "../actions/actionFrame";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
 import {
+  actionOpenLibrary,
   actionOpenMainMenu,
   actionOpenStyleRing,
   actionShortcuts,
@@ -13352,6 +13353,7 @@ ${css}
         CONTEXT_MENU_SEPARATOR,
         actionZoomToFit,
         actionShortcuts,
+        actionOpenLibrary,
         actionOpenMainMenu,
       ];
     }

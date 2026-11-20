@@ -106,6 +106,7 @@ export type ActionName =
   | "toggleShortcuts"
   | "openMainMenu"
   | "openStyleRing"
+  | "openLibrary"
   | "group"
   | "ungroup"
   | "goToCollaborator"
