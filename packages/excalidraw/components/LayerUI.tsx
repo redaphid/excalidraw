@@ -28,6 +28,7 @@ import {
 } from "../actions/colorTargets";
 
 import { LoadingMessage } from "./LoadingMessage";
+import { ExitViewModeButton } from "./Actions";
 import { MobileMenu } from "./MobileMenu";
 import { PasteChartDialog } from "./PasteChartDialog";
 import Stack from "./Stack";
@@ -264,6 +265,11 @@ const LayerUI = ({
               editorInterface.formFactor === "phone",
               appState,
             )}
+            {defaultUIEnabled &&
+              appState.viewModeEnabled &&
+              app.isInteractionEnabled() && (
+                <ExitViewModeButton actionManager={actionManager} />
+              )}
             {!appState.viewModeEnabled &&
               appState.openDialog?.name !== "elementLinkSelector" &&
               // hide button when sidebar docked

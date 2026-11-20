@@ -188,3 +188,25 @@ describe("view mode", () => {
     );
   });
 });
+
+describe("view mode on a desktop", () => {
+  beforeEach(async () => {
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    API.setAppState({ viewModeEnabled: true });
+  });
+
+  describe("when the exit-view-mode button is clicked", () => {
+    beforeEach(async () => {
+      const button = await waitFor(() => {
+        const found = queryContainer(".disable-view-mode");
+        expect(found).not.toBeNull();
+        return found!;
+      });
+      fireEvent.click(button);
+    });
+
+    it("leaves view mode", () => {
+      expect(h.state.viewModeEnabled).toBe(false);
+    });
+  });
+});
