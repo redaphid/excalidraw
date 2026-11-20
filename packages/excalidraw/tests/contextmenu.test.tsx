@@ -728,3 +728,34 @@ describe("contextMenu on the empty canvas", () => {
     });
   });
 });
+describe("contextMenu element with the radial palette", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    reseed(7);
+    await render(<Excalidraw handleKeyboardGlobally={true} radialPalette />);
+    const rectangle = API.createElement({
+      type: "rectangle",
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+    });
+    API.setElements([rectangle]);
+    API.setSelectedElements([rectangle]);
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 15,
+      clientY: 15,
+    });
+  });
+
+  describe("when Style… is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(queryByText(UI.queryContextMenu()!, "Style…")!);
+    });
+
+    it("opens the radial on the style ring", () => {
+      expect(h.app.radialPalette.session?.ring).toBe("style");
+    });
+  });
+});

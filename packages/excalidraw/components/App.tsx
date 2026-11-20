@@ -336,7 +336,11 @@ import {
   actionWrapSelectionInFrame,
 } from "../actions/actionFrame";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
-import { actionOpenMainMenu, actionShortcuts } from "../actions/actionMenu";
+import {
+  actionOpenMainMenu,
+  actionOpenStyleRing,
+  actionShortcuts,
+} from "../actions/actionMenu";
 import { actionZoomToFit } from "../actions/actionCanvas";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
@@ -13396,6 +13400,7 @@ ${css}
       CONTEXT_MENU_SEPARATOR,
       ...options,
       CONTEXT_MENU_SEPARATOR,
+      actionOpenStyleRing,
       actionCopyStyles,
       actionPasteStyles,
       CONTEXT_MENU_SEPARATOR,

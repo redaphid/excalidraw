@@ -302,6 +302,13 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5252,6 +5259,13 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6544,6 +6558,13 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       "separator",
+      {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
       {
         "icon": <svg
           aria-hidden="true"
@@ -8829,6 +8850,13 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -9891,6 +9919,13 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       "separator",
+      {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
       {
         "icon": <svg
           aria-hidden="true"

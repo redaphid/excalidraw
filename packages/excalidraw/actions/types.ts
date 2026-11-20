@@ -105,6 +105,7 @@ export type ActionName =
   | "toggleFullScreen"
   | "toggleShortcuts"
   | "openMainMenu"
+  | "openStyleRing"
   | "group"
   | "ungroup"
   | "goToCollaborator"

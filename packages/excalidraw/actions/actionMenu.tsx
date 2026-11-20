@@ -1,6 +1,6 @@
-import { KEYS } from "@excalidraw/common";
+import { KEYS, sceneCoordsToViewportCoords } from "@excalidraw/common";
 
-import { CaptureUpdateAction } from "@excalidraw/element";
+import { CaptureUpdateAction, getCommonBounds } from "@excalidraw/element";
 
 import { HelpIconThin } from "../components/icons";
 
@@ -15,6 +15,25 @@ export const actionOpenMainMenu = register({
     appState: { ...appState, openMenu: "canvas", openPopup: null },
     captureUpdate: CaptureUpdateAction.EVENTUALLY,
   }),
+});
+
+export const actionOpenStyleRing = register({
+  name: "openStyleRing",
+  label: "radialPalette.style",
+  trackEvent: false,
+  predicate: (elements, appState, props) =>
+    !!props.radialPalette && elements.length > 0,
+  perform: (_elements, appState, _, app) => {
+    const [minX, minY, maxX, maxY] = getCommonBounds(
+      app.scene.getSelectedElements(appState),
+    );
+    const at = sceneCoordsToViewportCoords(
+      { sceneX: (minX + maxX) / 2, sceneY: (minY + maxY) / 2 },
+      appState,
+    );
+    app.radialPalette.open({ ring: "style", at: { x: at.x, y: at.y } });
+    return { captureUpdate: CaptureUpdateAction.EVENTUALLY };
+  },
 });
 
 export const actionShortcuts = register({
