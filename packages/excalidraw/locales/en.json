@@ -756,6 +756,7 @@
   },
   "radialPalette": {
     "open": "Palette",
+    "expand": "Show the palette",
     "menu": "Menu",
     "emptyRecent": "Recent color",
     "pen_liner": "Fine liner",

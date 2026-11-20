@@ -101,6 +101,9 @@ test("picks a tool with one flick from the puck", async ({ page }) => {
   const puck = await center(page, "radial-palette-puck");
   await page.mouse.move(puck.x, puck.y);
   await page.mouse.down();
+  // the ring opens once the pointer leaves the puck, so a still press can
+  // become a hold that moves it
+  await page.mouse.move(puck.x - 20, puck.y - 20, { steps: 4 });
   await expect(page.getByTestId("radial-palette")).toBeVisible();
   const rectangle = await center(page, "radial-tool-rectangle");
   await page.mouse.move(rectangle.x, rectangle.y, { steps: 8 });
@@ -284,4 +287,39 @@ test("a pen with its barrel button held opens the ring at the tip", async ({
   await pen.up(x, y);
   await expect(page.locator(".context-menu")).toHaveCount(0);
   await expect(page.getByTestId("radial-palette")).toBeVisible();
+});
+
+test("a held puck moves, tucks against a side, comes back, and stays put", async ({
+  page,
+}, testInfo) => {
+  const puck = page.getByTestId("radial-palette-puck");
+  const viewport = page.viewportSize()!;
+  const middle = { x: viewport.width / 2, y: viewport.height / 2 };
+  const centerOf = async () => {
+    const box = (await puck.boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  const holdAndDrag = async (to: { x: number; y: number }) => {
+    const from = await centerOf();
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.waitForTimeout(700);
+    await page.mouse.move(to.x, to.y, { steps: 8 });
+    await page.mouse.up();
+  };
+
+  await holdAndDrag(middle);
+  await expect(page.getByTestId("radial-palette")).toBeHidden();
+  await page.reload();
+  const kept = await centerOf();
+  expect(Math.hypot(kept.x - middle.x, kept.y - middle.y)).toBeLessThan(2);
+
+  await holdAndDrag({ x: viewport.width - 4, y: middle.y });
+  await expect(puck).toHaveClass(/RadialPalette__puck--collapsed/);
+  await page.screenshot({ path: testInfo.outputPath("puck-tucked.png") });
+
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(puck).not.toHaveClass(/RadialPalette__puck--collapsed/);
+  await expect(page.getByTestId("radial-palette")).toBeHidden();
+  await page.screenshot({ path: testInfo.outputPath("puck-back.png") });
 });

@@ -13,6 +13,11 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Movable puck (2026-11-20)
+
+- Hold the radial palette's puck still for the long press (500 ms, 10 px) and it lifts: drag it anywhere and drop it. Dropped within 28 px of the left or right side, it tucks into a dot on that side; a tap on the dot brings the puck back, and a drag moves it. A tap and a flick work as before.
+- The place is kept in this browser (`excalidraw-radial-puck` in `localStorage`) as fractions of the editor, so it survives a reload, a resize and a rotation, and never sits past an edge or under a safe-area inset.
+
 ### Palette knobs (2026-11-19)
 
 - New MIDI targets `palette.tools`, `palette.pens` and `palette.colors` drive the radial palette from a knob: a press opens the knob's ring, a turn steps the highlight a slice per four clicks (opening the ring first if it is closed), and a press after a turn chooses the highlighted slice and closes. A press with no turn since the ring opened just closes it. A press on any other knob still resets its target. A Twister's LED ring points at the highlighted slice. Needs `radialPalette`.
