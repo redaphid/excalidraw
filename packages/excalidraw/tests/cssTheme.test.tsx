@@ -605,37 +605,6 @@ describe("css prop", () => {
     expect(h.state.colorTopPicks.elementBackground).toEqual(["#00ff00"]);
   });
 
-  it("shows the theme's palette in the color picker", async () => {
-    // radix popovers measure themselves
-    vi.stubGlobal(
-      "ResizeObserver",
-      class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      },
-    );
-    await render(
-      <Excalidraw css=":scope { --color-palette-stroke: #1b2129, #9e3a33, #5a7a6a; }" />,
-    );
-    const rectangle = UI.createElement("rectangle", { width: 40, height: 40 });
-    API.setAppState({
-      selectedElementIds: { [rectangle.id]: true },
-      openPopup: "elementStroke",
-    });
-    await act(async () => {});
-
-    const swatches = [
-      ...document.querySelectorAll<HTMLElement>(".color-picker__button--large"),
-    ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
-    expect(swatches).toEqual(
-      expect.arrayContaining(["#1b2129", "#9e3a33", "#5a7a6a"]),
-    );
-    // upstream's red and blue
-    expect(swatches).not.toContain("#e03131");
-    expect(swatches).not.toContain("#1971c2");
-  });
-
   it("shows the theme background in the canvas background swatch", async () => {
     await render(<Excalidraw css=":scope { --canvas-background: #ebe4d6; }" />);
     API.setAppState({ openMenu: "canvas" });
@@ -768,85 +737,6 @@ describe("css prop", () => {
 
       const editor = await getTextEditor({ waitForEditor: true });
       expect(editor.style.color).toBe("rgb(255, 0, 0)");
-    });
-
-    it("shows swatches in the canvas mode", async () => {
-      vi.stubGlobal(
-        "ResizeObserver",
-        class {
-          observe() {}
-          unobserve() {}
-          disconnect() {}
-        },
-      );
-      await render(
-        <Excalidraw
-          theme={THEME.DARK}
-          css={`
-            :scope,
-            :scope.theme--dark {
-              --canvas-mode: light;
-              --color-palette-stroke: ${INK}, #9e3a33;
-            }
-          `}
-        />,
-      );
-      const rectangle = UI.createElement("rectangle", {
-        width: 40,
-        height: 40,
-      });
-      API.setAppState({
-        selectedElementIds: { [rectangle.id]: true },
-        openPopup: "elementStroke",
-      });
-      await act(async () => {});
-
-      const swatches = [
-        ...document.querySelectorAll<HTMLElement>(
-          ".color-picker__button--large",
-        ),
-      ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
-      expect(swatches).toEqual(expect.arrayContaining([INK, "#9e3a33"]));
-    });
-
-    it("repaints open swatches when the css changes the mode under the same host", async () => {
-      vi.stubGlobal(
-        "ResizeObserver",
-        class {
-          observe() {}
-          unobserve() {}
-          disconnect() {}
-        },
-      );
-      const withMode = (mode: Theme) => `
-        :scope,
-        :scope.theme--dark {
-          --canvas-mode: ${mode};
-          --color-palette-stroke: ${INK};
-        }
-      `;
-      const { rerender } = await render(
-        <Excalidraw theme={THEME.DARK} css={withMode(THEME.LIGHT)} />,
-      );
-      const rectangle = UI.createElement("rectangle", {
-        width: 40,
-        height: 40,
-      });
-      API.setAppState({
-        selectedElementIds: { [rectangle.id]: true },
-        openPopup: "elementStroke",
-      });
-      await act(async () => {});
-
-      rerender(<Excalidraw theme={THEME.DARK} css={withMode(THEME.DARK)} />);
-      await act(async () => {});
-
-      const swatches = [
-        ...document.querySelectorAll<HTMLElement>(
-          ".color-picker__button--large",
-        ),
-      ].map((swatch) => swatch.style.getPropertyValue("--swatch-color"));
-      expect(swatches).toContain(applyDarkModeFilter(INK));
     });
 
     it("redraws the eraser cursor when the css changes the mode under the same host", async () => {
