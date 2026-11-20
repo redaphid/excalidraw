@@ -328,3 +328,19 @@ test("a held puck moves, tucks against a side, comes back, and stays put", async
   await expect(page.getByTestId("radial-palette")).toBeHidden();
   await page.screenshot({ path: testInfo.outputPath("puck-back.png") });
 });
+
+test("on a phone, the puck can take the toolbar's place", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !testInfo.project.name.endsWith("phone"),
+    "the toolbar gives way on phones only",
+  );
+  await page.goto("/?theme=architect-parchment&radialPalette=toolbar");
+  await expect(page.getByTestId("radial-palette-puck")).toBeVisible();
+  await expect(page.getByTestId("toolbar-hand")).toBeVisible();
+  for (const tool of ["freedraw", "eraser", "rectangle", "arrow"]) {
+    await expect(page.getByTestId(`toolbar-${tool}`)).toHaveCount(0);
+  }
+  await page.screenshot({ path: testInfo.outputPath("phone-toolbar.png") });
+});

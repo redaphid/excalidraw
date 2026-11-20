@@ -115,9 +115,17 @@ export const MobileToolbar = ({
   const MIN_WIDTH = MIN_TOOLS * WIDTH + (MIN_TOOLS - 1) * GAP;
   const ADDITIONAL_WIDTH = WIDTH + GAP;
 
-  const showTextToolOutside = toolbarWidth >= MIN_WIDTH + 1 * ADDITIONAL_WIDTH;
+  // a host that puts the radial palette in the toolbar's place leaves the
+  // tools its ring offers to the puck; text and frame stay in the menu
+  const ringHasTools =
+    typeof app.props.radialPalette === "object" &&
+    !!app.props.radialPalette.replaceToolbar;
+
+  const showTextToolOutside =
+    !ringHasTools && toolbarWidth >= MIN_WIDTH + 1 * ADDITIONAL_WIDTH;
   const showImageToolOutside = toolbarWidth >= MIN_WIDTH + 2 * ADDITIONAL_WIDTH;
-  const showFrameToolOutside = toolbarWidth >= MIN_WIDTH + 3 * ADDITIONAL_WIDTH;
+  const showFrameToolOutside =
+    !ringHasTools && toolbarWidth >= MIN_WIDTH + 3 * ADDITIONAL_WIDTH;
 
   const extraTools: readonly typeof activeTool.type[] = (
     [
@@ -176,57 +184,62 @@ export const MobileToolbar = ({
       {/* Selection Tool */}
       <SelectionToolPopover {...toolProps} setAppState={setAppState} />
 
-      {/* Free Draw */}
-      <FreedrawToolPopover {...toolProps}>
-        {app.props.freedrawStrokeWidth === undefined &&
-          renderAction("changeFreedrawStrokeWidth")}
-      </FreedrawToolPopover>
+      {!ringHasTools && (
+        <>
+          {/* Free Draw */}
+          <FreedrawToolPopover {...toolProps}>
+            {app.props.freedrawStrokeWidth === undefined &&
+              renderAction("changeFreedrawStrokeWidth")}
+          </FreedrawToolPopover>
 
-      {/* Eraser */}
-      <EraserToolButton {...toolProps} hideShortcut />
+          {/* Eraser */}
+          <EraserToolButton {...toolProps} hideShortcut />
 
-      {/* Rectangle/Diamond/Ellipse */}
-      <ToolPopover
-        app={app}
-        options={SHAPE_TOOLS}
-        activeTool={activeTool}
-        defaultOption={lastActiveGenericShape}
-        data-testid="toolbar-rectangle"
-        onToolChange={(type: string) => {
-          if (
-            type === "rectangle" ||
-            type === "diamond" ||
-            type === "ellipse"
-          ) {
-            setLastActiveGenericShape(type);
-            app.setActiveTool({ type });
-          }
-        }}
-        displayedOption={
-          SHAPE_TOOLS.find((tool) => tool.type === lastActiveGenericShape) ||
-          SHAPE_TOOLS[0]
-        }
-      />
+          {/* Rectangle/Diamond/Ellipse */}
+          <ToolPopover
+            app={app}
+            options={SHAPE_TOOLS}
+            activeTool={activeTool}
+            defaultOption={lastActiveGenericShape}
+            data-testid="toolbar-rectangle"
+            onToolChange={(type: string) => {
+              if (
+                type === "rectangle" ||
+                type === "diamond" ||
+                type === "ellipse"
+              ) {
+                setLastActiveGenericShape(type);
+                app.setActiveTool({ type });
+              }
+            }}
+            displayedOption={
+              SHAPE_TOOLS.find(
+                (tool) => tool.type === lastActiveGenericShape,
+              ) || SHAPE_TOOLS[0]
+            }
+          />
 
-      {/* Arrow/Line */}
-      <ToolPopover
-        app={app}
-        options={LINEAR_ELEMENT_TOOLS}
-        activeTool={activeTool}
-        defaultOption={lastActiveLinearElement}
-        data-testid="toolbar-arrow"
-        onToolChange={(type: string) => {
-          if (type === "arrow" || type === "line") {
-            setLastActiveLinearElement(type);
-            app.setActiveTool({ type });
-          }
-        }}
-        displayedOption={
-          LINEAR_ELEMENT_TOOLS.find(
-            (tool) => tool.type === lastActiveLinearElement,
-          ) || LINEAR_ELEMENT_TOOLS[0]
-        }
-      />
+          {/* Arrow/Line */}
+          <ToolPopover
+            app={app}
+            options={LINEAR_ELEMENT_TOOLS}
+            activeTool={activeTool}
+            defaultOption={lastActiveLinearElement}
+            data-testid="toolbar-arrow"
+            onToolChange={(type: string) => {
+              if (type === "arrow" || type === "line") {
+                setLastActiveLinearElement(type);
+                app.setActiveTool({ type });
+              }
+            }}
+            displayedOption={
+              LINEAR_ELEMENT_TOOLS.find(
+                (tool) => tool.type === lastActiveLinearElement,
+              ) || LINEAR_ELEMENT_TOOLS[0]
+            }
+          />
+        </>
+      )}
 
       {/* Text Tool */}
       {showTextToolOutside && <TextToolButton {...toolProps} hideShortcut />}

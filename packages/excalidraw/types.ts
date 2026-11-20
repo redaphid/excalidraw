@@ -868,6 +868,15 @@ export type ElementRenderOffsets = ReadonlyMap<
 /** See `ExcalidrawProps.authoringUnits`. */
 export type AuthoringUnits = "scene" | "screen";
 
+/** `radialPalette` as an object turns the palette on and sets how it sits
+ * in the editor */
+export type RadialPaletteOptions = Readonly<{
+  /** on a phone, the toolbar drops the buttons whose tools the palette's
+   * ring offers (pens, eraser, shapes, lines, text and frame), leaving
+   * them to the puck; the rest stay. Desktop and tablet are unchanged. */
+  replaceToolbar?: boolean;
+}>;
+
 export interface ExcalidrawProps {
   className?: string;
   /**
@@ -943,7 +952,7 @@ export interface ExcalidrawProps {
    * replaces the touch context menu, which the palette's hub opens. Off by
    * default. While closed, only the puck renders.
    */
-  radialPalette?: boolean;
+  radialPalette?: boolean | RadialPaletteOptions;
   /**
    * Paints the canvas background and the grid on a canvas of their own,
    * `canvas.excalidraw__canvas.background`, under the static canvas and in
