@@ -14,6 +14,7 @@ const {
   sourceName,
   urlManifest,
   urlTarball,
+  packedFilename,
 } = require("./packages");
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -149,10 +150,12 @@ const pack = ({ version }) => {
       path.join(registryStaging, "package.json"),
       registryManifest(packed, id, version, sha, siblings),
     );
-    const [{ filename }] = JSON.parse(
-      execSync(
-        `npm pack ${registryStaging} --pack-destination ${REGISTRY_DIR} --ignore-scripts --json`,
-        { env: ENV, encoding: "utf-8" },
+    const filename = packedFilename(
+      JSON.parse(
+        execSync(
+          `npm pack ${registryStaging} --pack-destination ${REGISTRY_DIR} --ignore-scripts --json`,
+          { env: ENV, encoding: "utf-8" },
+        ),
       ),
     );
     fs.renameSync(
