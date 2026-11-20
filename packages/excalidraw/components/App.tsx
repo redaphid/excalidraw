@@ -5480,14 +5480,19 @@ ${css}
   /**
    * Without `handleKeyboardGlobally` the container's own `onKeyDown` handles
    * the keyboard, which needs the container focused. Nothing focuses it after
-   * a board loads, so a key pressed with nothing focused (on `body`) was lost
-   * and the tool keys did not work beside the radial (#244). Such keys belong
-   * to the editor too; a key on any other element is left to its owner.
+   * a board loads, so a tool key pressed with nothing focused (on `body`) was
+   * lost (#244). Only tool keys are taken from there: every other key (Ctrl+F,
+   * Escape, …) stays the browser's and the host page's, and a key on any other
+   * element is left to its owner.
    */
   private onUnfocusedKeyDown = (event: KeyboardEvent) => {
     if (
-      event.target === this.ownerDocument.body ||
-      event.target === this.ownerDocument.documentElement
+      (event.target === this.ownerDocument.body ||
+        event.target === this.ownerDocument.documentElement) &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      findShapeByKey(event.key, this, event.shiftKey)
     ) {
       this.onKeyDown(event);
     }
