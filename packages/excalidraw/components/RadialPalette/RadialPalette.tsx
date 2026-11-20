@@ -425,7 +425,8 @@ const Ring = ({
   const layout = getRingLayout({
     tools: RADIAL_TOOLS.length,
     pens: presets.length + 1,
-    colors: colors.length,
+    // the fill chip ends the arc
+    colors: colors.length + 1,
   });
 
   const [sliderHover, setSliderHover] = useState<"size" | "opacity" | null>(
@@ -606,7 +607,11 @@ const Ring = ({
     appState.activeTool.type === "freedraw"
       ? getActivePenPreset(presets, appState)
       : null;
-  const strokeColor = appState.currentItemStrokeColor.toLowerCase();
+  const activeColor = (
+    controller.colorsFill
+      ? appState.currentItemBackgroundColor
+      : appState.currentItemStrokeColor
+  ).toLowerCase();
 
   const button = (
     key: string,
@@ -913,7 +918,7 @@ const Ring = ({
               `radial-color-${index}`,
               "colors",
               index,
-              !!color && color.toLowerCase() === strokeColor,
+              !!color && color.toLowerCase() === activeColor,
               sectorPath(OUTER_BAND, sector),
               <circle
                 cx={x}
@@ -927,6 +932,26 @@ const Ring = ({
               !color,
             );
           })}
+
+          {(() => {
+            const sector = layout.colors[colors.length];
+            const { x, y } = at(
+              (OUTER_BAND.inner + OUTER_BAND.outer) / 2,
+              sector,
+            );
+            return button(
+              "color-fill",
+              t("radialPalette.fill"),
+              "radial-color-fill",
+              "colors",
+              controller.items("colors").length - 1,
+              controller.colorsFill,
+              sectorPath(OUTER_BAND, sector),
+              <text x={x} y={y} className="RadialPalette__label">
+                {t("radialPalette.fill")}
+              </text>,
+            );
+          })()}
 
           {showSize &&
             slider(

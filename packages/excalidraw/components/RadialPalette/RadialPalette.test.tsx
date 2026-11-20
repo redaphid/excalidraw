@@ -255,6 +255,29 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when the colors arc is flipped to fill and a color is picked", () => {
+      beforeEach(() => {
+        const rectangle = API.createElement({
+          type: "rectangle",
+          strokeColor: "#1e1e1e",
+          backgroundColor: "transparent",
+        });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        openRing();
+        tap("radial-color-fill");
+        tap("radial-color-1");
+      });
+
+      it("fills the selected rectangle with it", () => {
+        expect(h.elements[0].backgroundColor).toBe("#9e3a33");
+      });
+
+      it("leaves the rectangle's stroke alone", () => {
+        expect(h.elements[0].strokeColor).toBe("#1e1e1e");
+      });
+    });
+
     describe("when the ring opens on a color the theme lacks", () => {
       beforeEach(() => {
         API.setAppState({ currentItemStrokeColor: "#123456" });

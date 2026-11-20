@@ -1,6 +1,9 @@
 import { Emitter } from "@excalidraw/common";
 
-import { actionChangeStrokeColor } from "../../actions/actionProperties";
+import {
+  actionChangeBackgroundColor,
+  actionChangeStrokeColor,
+} from "../../actions/actionProperties";
 import { t } from "../../i18n";
 
 import { getActivePenPreset, getPenPresets } from "./penPresets";
@@ -109,6 +112,8 @@ export class RadialPaletteController {
     index: 0,
   };
   private recent: readonly string[] = [];
+  /** what a color pick paints: the stroke, or the fill after the chip flips it */
+  private colorTarget: "stroke" | "fill" = "stroke";
   /** the opacity a pen preset set, to undo when a shape tool is picked */
   private presetOpacity: number | null = null;
   private readonly emitter = new Emitter<[]>();
@@ -122,6 +127,10 @@ export class RadialPaletteController {
 
   get recentColors() {
     return this.recent;
+  }
+
+  get colorsFill() {
+    return this.colorTarget === "fill";
   }
 
   /** for `useSyncExternalStore` */
@@ -169,7 +178,10 @@ export class RadialPaletteController {
           { id: "eraser", label: t("toolBar.eraser") },
         ];
       case "colors":
-        return this.getColors().map((color) => ({ id: color, label: color }));
+        return [
+          ...this.getColors().map((color) => ({ id: color, label: color })),
+          { id: "fill", label: t("radialPalette.fill") },
+        ];
     }
   }
 
@@ -186,6 +198,8 @@ export class RadialPaletteController {
           : state.activeTool.type === "freedraw"
           ? getActivePenPreset(this.getPresets(), state)?.id
           : undefined
+        : this.colorsFill
+        ? state.currentItemBackgroundColor.toLowerCase()
         : state.currentItemStrokeColor.toLowerCase();
     return Math.max(
       0,
@@ -321,6 +335,13 @@ export class RadialPaletteController {
       } else {
         this.pickTool("eraser");
       }
+    } else if (item.id === "fill") {
+      // the chip flips the arc and leaves the ring open for the pick
+      this.colorTarget = this.colorsFill ? "stroke" : "fill";
+      if (this.current) {
+        this.update({ ...this.current });
+      }
+      return true;
     } else {
       this.pickColor(item.id);
     }
@@ -356,9 +377,11 @@ export class RadialPaletteController {
   }
 
   private pickColor(color: string) {
-    this.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
-      color,
-    });
+    this.app.actionManager.executeAction(
+      this.colorsFill ? actionChangeBackgroundColor : actionChangeStrokeColor,
+      "ui",
+      { color },
+    );
     this.recent = rememberColor(this.recent, color, this.getThemeColors());
   }
 
