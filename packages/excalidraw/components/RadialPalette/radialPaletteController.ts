@@ -14,7 +14,7 @@ import {
   rememberColor,
 } from "./themeInks";
 
-import type { ToolType, UnsubscribeCallback } from "../../types";
+import type { RadialHostPen, ToolType, UnsubscribeCallback } from "../../types";
 import type App from "../App";
 import type { PenPreset } from "./penPresets";
 import { FLICK_DISTANCE } from "./radialLayout";
@@ -164,6 +164,12 @@ export class RadialPaletteController {
     this.emitter.trigger();
   }
 
+  /** the host's own pens, from `radialPalette={{ pens }}` */
+  hostPens(): readonly RadialHostPen[] {
+    const { radialPalette } = this.app.props;
+    return typeof radialPalette === "object" ? radialPalette.pens ?? [] : [];
+  }
+
   getPresets(): readonly PenPreset[] {
     return getPenPresets(this.app.cssTheme);
   }
@@ -197,6 +203,10 @@ export class RadialPaletteController {
           ...this.getPresets().map(({ id }) => ({
             id,
             label: t(`radialPalette.pen_${id}` as const),
+          })),
+          ...this.hostPens().map(({ id, label }) => ({
+            id: `host-${id}`,
+            label,
           })),
           { id: "eraser", label: t("toolBar.eraser") },
         ];
@@ -240,6 +250,8 @@ export class RadialPaletteController {
         : ring === "pens"
         ? state.activeTool.type === "eraser"
           ? "eraser"
+          : this.hostPens().some(({ active }) => active)
+          ? `host-${this.hostPens().find(({ active }) => active)!.id}`
           : state.activeTool.type === "freedraw"
           ? getActivePenPreset(this.getPresets(), state)?.id
           : undefined
@@ -432,8 +444,11 @@ export class RadialPaletteController {
       this.pickTool(item.id as RadialTool, locked);
     } else if (ring === "pens") {
       const preset = this.getPresets().find(({ id }) => id === item.id);
+      const host = this.hostPens().find(({ id }) => `host-${id}` === item.id);
       if (preset) {
         this.pickPreset(preset);
+      } else if (host) {
+        host.onPick();
       } else {
         this.pickTool("eraser");
       }

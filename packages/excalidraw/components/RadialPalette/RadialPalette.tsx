@@ -435,11 +435,12 @@ const Ring = ({
 
   const colors = controller.colorSlots();
   const presets = controller.getPresets();
+  const hostPens = controller.hostPens();
   // a host pen width replaces the user's, so the size arc would do nothing
   const showSize = app.props.freedrawStrokeWidth === undefined;
   const layout = getRingLayout({
     tools: styleRing ? styleItems.length : RADIAL_TOOLS.length,
-    pens: presets.length + 1,
+    pens: presets.length + hostPens.length + 1,
     // the fill chip ends the arc
     colors: colors.length + 1,
   });
@@ -910,15 +911,27 @@ const Ring = ({
               );
             })}
 
-          {[...presets, null].map((preset, index) => {
+          {[...presets, ...hostPens, null].map((preset, index) => {
             const sector = layout.pens[index];
             const sample = at(MIDDLE_BAND.inner + 17, sector);
             const label = at(MIDDLE_BAND.outer - 10, sector);
-            if (!preset) {
-              const icon = at(
-                (MIDDLE_BAND.inner + MIDDLE_BAND.outer) / 2,
-                sector,
+            const icon = at(
+              (MIDDLE_BAND.inner + MIDDLE_BAND.outer) / 2,
+              sector,
+            );
+            if (preset && "onPick" in preset) {
+              return button(
+                `host-${preset.id}`,
+                preset.label,
+                `radial-pen-host-${preset.id}`,
+                "pens",
+                index,
+                !!preset.active,
+                sectorPath(MIDDLE_BAND, sector),
+                placeIcon(preset.icon, icon.x, icon.y),
               );
+            }
+            if (!preset) {
               return button(
                 "eraser",
                 t("toolBar.eraser"),

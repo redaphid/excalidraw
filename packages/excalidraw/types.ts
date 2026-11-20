@@ -68,6 +68,18 @@ import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
 import type React from "react";
+
+/** a pen of the host's own on the radial palette's pens ring, drawn after
+ * the presets and before the eraser */
+export type RadialHostPen = {
+  id: string;
+  label: string;
+  icon: JSX.Element;
+  /** highlighted as the pen in use */
+  active?: boolean;
+  /** called when picked; the ring then closes */
+  onPick: () => void;
+};
 import type { JSX } from "react";
 
 export type { App };
@@ -943,7 +955,7 @@ export interface ExcalidrawProps {
    * replaces the touch context menu, which the palette's hub opens. Off by
    * default. While closed, only the puck renders.
    */
-  radialPalette?: boolean;
+  radialPalette?: boolean | { pens?: readonly RadialHostPen[] };
   /**
    * Paints the canvas background and the grid on a canvas of their own,
    * `canvas.excalidraw__canvas.background`, under the static canvas and in

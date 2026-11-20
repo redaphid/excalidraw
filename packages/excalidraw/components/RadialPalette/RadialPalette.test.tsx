@@ -73,6 +73,71 @@ describe("RadialPalette", () => {
     });
   });
 
+  describe("when the host adds pens of its own", () => {
+    const onPick = vi.fn();
+
+    beforeEach(async () => {
+      onPick.mockReset();
+      await render(
+        <Excalidraw
+          radialPalette={{
+            pens: [
+              {
+                id: "doodle",
+                label: "Doodle",
+                icon: <svg data-testid="host-pen-icon-doodle" />,
+                onPick,
+              },
+              {
+                id: "sketchy",
+                label: "Sketchy",
+                icon: <svg />,
+                active: true,
+                onPick: () => {},
+              },
+            ],
+          }}
+        />,
+      );
+      openRing();
+    });
+
+    it("draws them after the presets and before the eraser", () => {
+      const ids = Array.from(
+        ring()!.querySelectorAll("[data-testid]"),
+        (node) => node.getAttribute("data-testid"),
+      ).filter(
+        (id) => id?.startsWith("radial-pen-") || id === "radial-tool-eraser",
+      );
+      expect(ids).toEqual([
+        ...h.app.radialPalette.getPresets().map(({ id }) => `radial-pen-${id}`),
+        "radial-pen-host-doodle",
+        "radial-pen-host-sketchy",
+        "radial-tool-eraser",
+      ]);
+    });
+
+    it("highlights the one the host says is active", () => {
+      expect(
+        byTestId("radial-pen-host-sketchy")!.getAttribute("aria-pressed"),
+      ).toBe("true");
+    });
+
+    describe("when one is picked", () => {
+      beforeEach(() => {
+        tap("radial-pen-host-doodle");
+      });
+
+      it("calls its onPick", () => {
+        expect(onPick).toHaveBeenCalledTimes(1);
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+    });
+  });
+
   describe("when the host turns it on", () => {
     beforeEach(async () => {
       await render(<Excalidraw radialPalette css={PARCHMENT} />);
