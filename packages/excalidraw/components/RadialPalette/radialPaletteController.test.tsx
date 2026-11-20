@@ -161,6 +161,35 @@ describe("the radial palette's controller API", () => {
           );
         });
 
+        describe("when it steps off the last filled color", () => {
+          beforeEach(() => {
+            const { items, index } = api.state();
+            const lastFilled =
+              items.findIndex(({ id }) => id === "") - 1;
+            act(() => api.step(lastFilled - index));
+            act(() => api.step(1));
+          });
+
+          it("skips the empty recent slots to the fill chip", () => {
+            const { items, index } = api.state();
+            expect(items[index].id).toBe("fill");
+          });
+
+          describe("and steps back from the fill chip", () => {
+            beforeEach(() => {
+              const { items, index } = api.state();
+              const fill = items.findIndex(({ id }) => id === "fill");
+              act(() => api.step(fill - index));
+              act(() => api.step(-1));
+            });
+
+            it("skips the empty recent slots again", () => {
+              const { items, index } = api.state();
+              expect(items[index].id).not.toBe("");
+            });
+          });
+        });
+
         it("inks with the chosen color", () => {
           act(() => api.step(1));
           const { items, index } = api.state();

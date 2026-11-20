@@ -311,8 +311,17 @@ export class RadialPaletteController {
     if (!current || !Number.isFinite(delta)) {
       return;
     }
-    const length = this.items(current.ring).length;
-    const index = wrap(current.index + Math.trunc(delta), length);
+    // whole steps over the items that can be picked: empty recent color
+    // slots are drawn but hold nothing
+    const items = this.items(current.ring);
+    const direction = Math.sign(Math.trunc(delta));
+    let index = current.index;
+    for (let left = Math.abs(Math.trunc(delta)); left > 0; ) {
+      index = wrap(index + direction, items.length);
+      if (items[index].id !== "" || index === current.index) {
+        left--;
+      }
+    }
     if (index !== current.index) {
       this.update({ ...current, index });
     }
