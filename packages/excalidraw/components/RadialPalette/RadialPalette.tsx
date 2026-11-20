@@ -35,7 +35,10 @@ import {
   sliderFromPenSize,
 } from "../penSize";
 
+import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
+
 import { getActivePenPreset } from "./penPresets";
+import { dropPuck, loadPuckPlace, savePuckPlace } from "./puckPlace";
 import {
   FLICK_DISTANCE,
   HUB_RADIUS,
@@ -62,8 +65,10 @@ import { RECENT_COLOR_SLOTS } from "./themeInks";
 import "./RadialPalette.scss";
 
 import type { ActionManager } from "../../actions/manager";
+import type { PuckPlace } from "./puckPlace";
 import type { RingHit, Sector, Slider } from "./radialLayout";
 import type {
+  ClientPoint,
   RadialPaletteController,
   RadialRing,
   RadialSession,
@@ -196,15 +201,146 @@ export const RadialPalette = React.memo(
       return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     };
 
+    const [place, setPlace] = useState<PuckPlace | null>(() =>
+      loadPuckPlace(app.ownerWindow),
+    );
+    /** where a puck being moved is, as fractions of the editor */
+    const [moving, setMoving] = useState<ClientPoint | null>(null);
+    /** ends the press in progress, if any */
+    const endPress = useRef<(() => void) | null>(null);
+    useEffect(() => () => endPress.current?.(), []);
+
+    const keep = (next: PuckPlace) => {
+      setPlace(next);
+      savePuckPlace(app.ownerWindow, next);
+    };
+
+    const inEditor = (clientX: number, clientY: number) => {
+      const { offsetLeft, offsetTop, width, height } = app.state;
+      return {
+        at: { x: clientX - offsetLeft, y: clientY - offsetTop },
+        bounds: { width, height },
+      };
+    };
+
+    const fractionAt = (clientX: number, clientY: number) => {
+      const { at, bounds } = inEditor(clientX, clientY);
+      const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+      return {
+        x: clamp01(at.x / bounds.width),
+        y: clamp01(at.y / bounds.height),
+      };
+    };
+
+    /**
+     * A press opens nothing yet, like Sporefall Station's sticks, which
+     * appear only once the thumb moves. Held still for the long press, it
+     * lifts the puck, which follows the pointer until it is dropped. Moved
+     * first, it opens the ring and hands it the flick. Lifted first, it is a
+     * tap and opens the ring for taps. A dot (a collapsed puck) lifts as soon
+     * as it is dragged, and a tap on it brings the puck back.
+     */
+    const trackPress = (
+      event: React.PointerEvent<HTMLButtonElement>,
+      collapsed: boolean,
+    ) => {
+      endPress.current?.();
+      const win = app.ownerWindow;
+      const { pointerId } = event;
+      const start = { x: event.clientX, y: event.clientY };
+      const center = puckCenter(event.currentTarget);
+      let lifted = false;
+      const liftPuck = () => {
+        lifted = true;
+        controller.close();
+        setMoving(fractionAt(start.x, start.y));
+      };
+      const timer = collapsed
+        ? undefined
+        : win.setTimeout(liftPuck, LONG_PRESS_DELAY);
+      const onMove = (moveEvent: PointerEvent) => {
+        if (moveEvent.pointerId !== pointerId) {
+          return;
+        }
+        if (!lifted) {
+          const travel = Math.hypot(
+            moveEvent.clientX - start.x,
+            moveEvent.clientY - start.y,
+          );
+          if (travel <= LONG_PRESS_TOLERANCE) {
+            return;
+          }
+          if (!collapsed) {
+            end();
+            controller.open({ at: center, flick: { pointerId, start } });
+            return;
+          }
+          liftPuck();
+        }
+        setMoving(fractionAt(moveEvent.clientX, moveEvent.clientY));
+      };
+      const onUp = (upEvent: PointerEvent) => {
+        if (upEvent.pointerId !== pointerId) {
+          return;
+        }
+        end();
+        if (lifted) {
+          const { at, bounds } = inEditor(upEvent.clientX, upEvent.clientY);
+          keep(dropPuck(at, bounds));
+        } else if (collapsed && place) {
+          keep({ ...place, collapsed: false });
+        } else if (!collapsed) {
+          controller.open({ at: center });
+        }
+      };
+      const onCancel = (cancelEvent: PointerEvent) => {
+        if (cancelEvent.pointerId === pointerId) {
+          end();
+        }
+      };
+      const end = () => {
+        win.clearTimeout(timer);
+        win.removeEventListener("pointermove", onMove);
+        win.removeEventListener("pointerup", onUp);
+        win.removeEventListener("pointercancel", onCancel);
+        setMoving(null);
+        endPress.current = null;
+      };
+      endPress.current = end;
+      win.addEventListener("pointermove", onMove);
+      win.addEventListener("pointerup", onUp);
+      win.addEventListener("pointercancel", onCancel);
+    };
+
+    const shown = moving ?? place;
+    const collapsed = !moving && !!place?.collapsed;
+
     return (
       <>
         <button
           type="button"
           className={clsx("RadialPalette__puck", {
             "RadialPalette__puck--phone": phone,
+            "RadialPalette__puck--placed": !!shown,
+            "RadialPalette__puck--moving": !!moving,
+            "RadialPalette__puck--collapsed": collapsed,
           })}
-          aria-label={t("radialPalette.open")}
-          title={`${t("radialPalette.open")} — ,`}
+          style={
+            shown
+              ? ({
+                  "--radial-puck-x": `${shown.x * 100}%`,
+                  "--radial-puck-y": `${shown.y * 100}%`,
+                } as React.CSSProperties)
+              : undefined
+          }
+          aria-label={t(
+            collapsed ? "radialPalette.expand" : "radialPalette.open",
+          )}
+          title={
+            collapsed
+              ? t("radialPalette.expand")
+              : `${t("radialPalette.open")} — ,`
+          }
           aria-expanded={!!session}
           data-testid="radial-palette-puck"
           onPointerDown={(event) => {
@@ -216,22 +352,19 @@ export const RadialPalette = React.memo(
               controller.close();
               return;
             }
-            controller.open({
-              at: puckCenter(event.currentTarget),
-              flick: {
-                pointerId: event.pointerId,
-                start: { x: event.clientX, y: event.clientY },
-              },
-            });
+            trackPress(event, collapsed);
           }}
           onClick={(event) => {
             // a keyboard press; pointers open it on pointerdown
-            if (event.detail === 0) {
-              if (session) {
-                controller.close();
-              } else {
-                controller.open({ at: puckCenter(event.currentTarget) });
-              }
+            if (event.detail !== 0) {
+              return;
+            }
+            if (collapsed && place) {
+              keep({ ...place, collapsed: false });
+            } else if (session) {
+              controller.close();
+            } else {
+              controller.open({ at: puckCenter(event.currentTarget) });
             }
           }}
         >

@@ -308,6 +308,12 @@ describe("RadialPalette", () => {
           clientX: 0,
           clientY: 0,
         });
+        // the ring opens once the pointer leaves the puck
+        fireEvent.pointerMove(window, {
+          pointerId: 1,
+          clientX: 20,
+          clientY: 20,
+        });
         fireEvent.pointerMove(window, at);
         fireEvent.pointerUp(window, at);
       });

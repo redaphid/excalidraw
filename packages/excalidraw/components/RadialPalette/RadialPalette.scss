@@ -26,6 +26,55 @@
       bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     }
 
+    // moved by a hold and a drag: centered on a place kept as fractions of
+    // the editor, and never past its edges
+    &--placed {
+      --radial-puck-radius: 1.375rem;
+      right: auto;
+      bottom: auto;
+      left: clamp(
+        calc(var(--radial-puck-radius) + env(safe-area-inset-left, 0px)),
+        var(--radial-puck-x),
+        calc(100% - var(--radial-puck-radius) - env(safe-area-inset-right, 0px))
+      );
+      top: clamp(
+        calc(var(--radial-puck-radius) + env(safe-area-inset-top, 0px)),
+        var(--radial-puck-y),
+        calc(
+          100% - var(--radial-puck-radius) - env(safe-area-inset-bottom, 0px)
+        )
+      );
+      transform: translate(-50%, -50%);
+    }
+
+    &--moving {
+      cursor: grabbing;
+      transform: translate(-50%, -50%) scale(1.15);
+      box-shadow: var(--control-shadow), var(--control-shadow);
+    }
+
+    // tucked against a side: a dot that brings the puck back on a tap
+    // the hit box stays a thumb wide and hangs off the side, so the dot
+    // hugs it
+    &--collapsed {
+      --radial-puck-radius: 0.625rem;
+      background: none;
+      box-shadow: none;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0.75rem;
+        border-radius: 50%;
+        background: var(--control-surface);
+        box-shadow: var(--control-shadow);
+      }
+
+      svg {
+        display: none;
+      }
+    }
+
     &[aria-expanded="true"] {
       background: var(--control-surface-active);
     }
