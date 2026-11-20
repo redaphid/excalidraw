@@ -1,8 +1,10 @@
+import { act } from "@testing-library/react";
 import { ARROW_TYPE } from "@excalidraw/common";
 import { pointFrom } from "@excalidraw/math";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import { actionSelectAll } from "@excalidraw/excalidraw/actions";
 import { actionDuplicateSelection } from "@excalidraw/excalidraw/actions/actionDuplicateSelection";
+import { actionChangeArrowType } from "@excalidraw/excalidraw/actions/actionProperties";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 import { Pointer, UI } from "@excalidraw/excalidraw/tests/helpers/ui";
 import {
@@ -54,7 +56,9 @@ describe("elbow arrow segment move", () => {
     });
 
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
 
     mouse.reset();
     mouse.moveTo(0, 0);
@@ -96,7 +100,9 @@ describe("elbow arrow segment move", () => {
 
   it("can move the second segment of an unconnected elbow arrow", () => {
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
 
     mouse.reset();
     mouse.moveTo(0, 0);
@@ -253,7 +259,9 @@ describe("elbow arrow ui", () => {
     });
 
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
 
     expect(h.state.currentItemArrowType).toBe(ARROW_TYPE.elbow);
 
@@ -292,7 +300,9 @@ describe("elbow arrow ui", () => {
     });
 
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
 
     mouse.reset();
     mouse.moveTo(-53, -99);
@@ -336,7 +346,9 @@ describe("elbow arrow ui", () => {
     });
 
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
 
     mouse.reset();
     mouse.moveTo(-53, -99);
@@ -394,7 +406,9 @@ describe("elbow arrow ui", () => {
     });
 
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
 
     mouse.reset();
     mouse.moveTo(-53, -99);

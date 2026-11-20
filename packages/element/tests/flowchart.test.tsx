@@ -1,7 +1,9 @@
+import { act } from "@testing-library/react";
 import { KEYS, reseed } from "@excalidraw/common";
 
 import { Excalidraw } from "@excalidraw/excalidraw";
 
+import { actionChangeSloppiness } from "@excalidraw/excalidraw/actions/actionProperties";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 import { UI, Keyboard, Pointer } from "@excalidraw/excalidraw/tests/helpers/ui";
 import {
@@ -28,7 +30,9 @@ beforeEach(async () => {
   // The bounds of hand-drawn linear elements may change after flipping, so
   // removing this style for testing
   UI.clickTool("arrow");
-  UI.clickByTitle("Architect");
+  act(() => {
+    h.app.actionManager.executeAction(actionChangeSloppiness, "ui", 0);
+  });
   UI.clickTool("selection");
 });
 

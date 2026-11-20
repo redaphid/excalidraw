@@ -14,6 +14,7 @@ import {
 import { Excalidraw } from "@excalidraw/excalidraw";
 import * as InteractiveCanvas from "@excalidraw/excalidraw/renderer/interactiveScene";
 import * as StaticScene from "@excalidraw/excalidraw/renderer/staticScene";
+import { actionChangeRoundness } from "@excalidraw/excalidraw/actions/actionProperties";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
 import { Keyboard, Pointer, UI } from "@excalidraw/excalidraw/tests/helpers/ui";
@@ -544,7 +545,9 @@ describe("Test Linear Elements", () => {
       );
 
       // update roundness
-      fireEvent.click(screen.getByTitle("Round"));
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeRoundness, "ui", "round");
+      });
 
       expect(renderInteractiveScene.mock.calls.length).toMatchInlineSnapshot(
         `11`,

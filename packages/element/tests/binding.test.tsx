@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import { KEYS, ROUNDNESS, arrayToMap } from "@excalidraw/common";
 
 import { pointFrom } from "@excalidraw/math";
@@ -6,6 +7,7 @@ import { actionWrapTextInContainer } from "@excalidraw/excalidraw/actions/action
 
 import { Excalidraw, isLinearElement } from "@excalidraw/excalidraw";
 
+import { actionChangeArrowType } from "@excalidraw/excalidraw/actions/actionProperties";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 import { UI, Pointer, Keyboard } from "@excalidraw/excalidraw/tests/helpers/ui";
 import {
@@ -330,7 +332,9 @@ describe("binding for simple arrows", () => {
 
     it("keeps an elbow arrow drawn inside the frame where it was drawn", () => {
       UI.clickTool("arrow");
-      UI.clickOnTestId("elbow-arrow");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+      });
       mouse.reset();
       mouse.downAt(250, 250);
       mouse.moveTo(400, 450);
@@ -405,7 +409,13 @@ describe("binding for simple arrows", () => {
 
           UI.clickTool("arrow");
           if (elbowed) {
-            UI.clickOnTestId("elbow-arrow");
+            act(() => {
+              h.app.actionManager.executeAction(
+                actionChangeArrowType,
+                "ui",
+                "elbow",
+              );
+            });
           }
           mouse.reset();
           mouse.downAt(-200, left[1]);
@@ -443,7 +453,13 @@ describe("binding for simple arrows", () => {
         const [, , , top] = getAllMidpoints(diamond, arrayToMap([diamond]));
 
         UI.clickTool("arrow");
-        UI.clickOnTestId("elbow-arrow");
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeArrowType,
+            "ui",
+            "elbow",
+          );
+        });
         mouse.reset();
         mouse.downAt(top[0] - 300, top[1] - 100);
         mouse.moveTo(top[0] - 50, top[1] - 50);
@@ -479,7 +495,9 @@ describe("binding for simple arrows", () => {
       const [right] = getAllMidpoints(diamond, arrayToMap([diamond]));
 
       UI.clickTool("arrow");
-      UI.clickOnTestId("elbow-arrow");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+      });
       mouse.reset();
       mouse.downAt(right[0] + 300, right[1] + 300);
       mouse.moveTo(right[0] + 50, right[1] + 50);
@@ -510,7 +528,9 @@ describe("binding for simple arrows", () => {
       const edgeMidpoint = [150, -50] as const;
 
       UI.clickTool("arrow");
-      UI.clickOnTestId("elbow-arrow");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+      });
       mouse.reset();
       mouse.downAt(-200, -50);
       mouse.moveTo(100, -60);
