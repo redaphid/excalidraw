@@ -25,7 +25,9 @@ import {
   getRenderElementWithPositionOverride,
   getSettledBitmapCount,
   resolveElementRenderState,
+  endBitmapBuildBudget,
   renderElement,
+  startBitmapBuildBudget,
 } from "@excalidraw/element";
 
 import { getElementAbsoluteCoords } from "@excalidraw/element";
@@ -680,7 +682,7 @@ const elementsToPaintOver = (
     : null;
 };
 
-const _renderStaticScene = (config: StaticSceneRenderConfig) => {
+const paintStaticScene = (config: StaticSceneRenderConfig) => {
   const {
     canvas,
     backgroundCanvas,
@@ -835,6 +837,19 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
   );
 
   onPainted?.(unsnappedAppState);
+};
+
+const _renderStaticScene = (config: StaticSceneRenderConfig) => {
+  if (config.renderConfig.isExporting) {
+    paintStaticScene(config);
+    return;
+  }
+  startBitmapBuildBudget();
+  try {
+    paintStaticScene(config);
+  } finally {
+    endBitmapBuildBudget();
+  }
 };
 
 /** throttled to animation framerate */
