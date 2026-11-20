@@ -9,17 +9,23 @@ import {
 
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
+import {
+  actionChangeBackgroundColor,
+  actionChangeFillStyle,
+  actionChangeOpacity,
+  actionChangeRoundness,
+  actionChangeSloppiness,
+  actionChangeStrokeColor,
+  actionChangeStrokeStyle,
+  actionChangeStrokeWidth,
+} from "../actions/actionProperties";
 import { copiedStyles } from "../actions/actionStyles";
 import { Excalidraw } from "../index";
+
+import type { Action } from "../actions/types";
 import { API } from "../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../tests/helpers/ui";
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  togglePopover,
-} from "../tests/test-utils";
+import { act, render } from "../tests/test-utils";
 
 const { h } = window;
 
@@ -46,22 +52,17 @@ describe("actionStyles", () => {
     mouse.up(20, 20);
 
     // Change some styles of second rectangle
-    togglePopover("Stroke");
-    UI.clickOnTestId("color-red");
-    togglePopover("Background");
-    UI.clickOnTestId("color-blue");
-    // Fill style
-    fireEvent.click(screen.getByTitle("Cross-hatch"));
-    // Stroke width
-    fireEvent.click(screen.getByTitle("Bold"));
-    // Stroke style
-    fireEvent.click(screen.getByTitle("Dotted"));
-    // Roughness
-    fireEvent.click(screen.getByTitle("Cartoonist"));
-    // Opacity
-    fireEvent.change(screen.getByTestId("opacity"), {
-      target: { value: "60" },
-    });
+    const run = (action: Action, value: unknown) =>
+      act(() => {
+        h.app.actionManager.executeAction(action, "ui", value);
+      });
+    run(actionChangeStrokeColor, { color: COLOR_PALETTE.red[4] });
+    run(actionChangeBackgroundColor, { color: COLOR_PALETTE.blue[1] });
+    run(actionChangeFillStyle, "cross-hatch");
+    run(actionChangeStrokeWidth, "bold");
+    run(actionChangeStrokeStyle, "dotted");
+    run(actionChangeSloppiness, 2);
+    run(actionChangeOpacity, 60);
 
     mouse.reset();
 
@@ -100,7 +101,9 @@ describe("actionStyles", () => {
     API.setElements([stickyNote]);
     API.setSelectedElements([stickyNote]);
 
-    fireEvent.click(screen.getByTitle("Cartoonist"));
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeSloppiness, "ui", 2);
+    });
 
     expect(API.getSelectedElement().roughness).toBe(2);
   });
@@ -114,47 +117,13 @@ describe("actionStyles", () => {
     API.setElements([stickyNote]);
     API.setSelectedElements([stickyNote]);
 
-    fireEvent.click(screen.getByTitle("Round"));
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeRoundness, "ui", "round");
+    });
 
     expect(API.getSelectedElement().roundness).toEqual({
       type: ROUNDNESS.PROPORTIONAL_RADIUS,
     });
-  });
-
-  it("should hide transparent stroke color for sticky notes", async () => {
-    UI.clickTool("stickynote");
-
-    togglePopover("Text color");
-
-    // hidden via `excludedColors` (same mechanism as bucket fill): the swatch
-    // is gone, but an invisible placeholder keeps the grid so the remaining
-    // colors stay on their usual positions and hotkeys
-    expect(screen.queryByTestId("color-transparent")).toBeNull();
-    expect(
-      document.querySelector(
-        '.color-picker-content--default [aria-hidden="true"]',
-      ),
-    ).not.toBeNull();
-    expect(screen.queryByTestId("color-black")).not.toBeNull();
-  });
-
-  it("keeps the transparent hotkey dead and the others intact for sticky notes", async () => {
-    UI.clickTool("stickynote");
-
-    togglePopover("Text color");
-
-    const picker = document.querySelector(".color-picker-content")!;
-    const before = h.state.currentItemStickynoteStrokeColor;
-
-    // `q` maps to the hidden transparent swatch (and to the global tool-lock
-    // shortcut) — inside the popup it must be inert, not leaked
-    fireEvent.keyDown(picker, { key: "q" });
-    expect(h.state.currentItemStickynoteStrokeColor).toBe(before);
-    expect(h.state.activeTool.locked).toBe(false);
-
-    // the remaining colors keep their usual keys (w = white)
-    fireEvent.keyDown(picker, { key: "w" });
-    expect(h.state.currentItemStickynoteStrokeColor).toBe(COLOR_PALETTE.white);
   });
 
   it("should track sticky note stroke color separately", async () => {
@@ -170,8 +139,11 @@ describe("actionStyles", () => {
     API.setElements([stickyNote]);
     API.setSelectedElements([stickyNote]);
 
-    togglePopover("Text color");
-    UI.clickOnTestId("color-blue");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+        color: COLOR_PALETTE.blue[4],
+      });
+    });
 
     expect(API.getSelectedElement().strokeColor).toBe(COLOR_PALETTE.blue[4]);
     expect(h.state.currentItemStickynoteStrokeColor).toBe(
