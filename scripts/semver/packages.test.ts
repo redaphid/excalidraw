@@ -4,6 +4,7 @@ const require = createRequire(import.meta.url);
 const {
   declarationTarget,
   GITHUB_REGISTRY,
+  packedFilename,
   registryManifest,
   siblingClosure,
   urlManifest,
@@ -209,5 +210,29 @@ describe("declarationTarget", () => {
     expect(declarationTarget("@excalidraw/excalidraw", "excalidraw")).toBe(
       "excalidraw/index",
     );
+  });
+});
+
+describe("packedFilename", () => {
+  it("reads the tarball's name from npm 11's array", () => {
+    expect(
+      packedFilename([{ id: "zz-wren@1.0.0", filename: "zz-wren-1.0.0.tgz" }]),
+    ).toBe("zz-wren-1.0.0.tgz");
+  });
+
+  it("reads the tarball's name from npm 12's object keyed by package", () => {
+    // Defect: destructuring the object as an array throws, so pack.js
+    // stops a release before it packs anything.
+    expect(
+      packedFilename({
+        "zz-wren": { id: "zz-wren@1.0.0", filename: "zz-wren-1.0.0.tgz" },
+      }),
+    ).toBe("zz-wren-1.0.0.tgz");
+  });
+
+  it.each([[[]], [{}]])("refuses npm output that names no tarball", (json) => {
+    // Defect: a silent undefined renames nothing and fails later, far from
+    // its cause.
+    expect(() => packedFilename(json)).toThrow("one tarball");
   });
 });

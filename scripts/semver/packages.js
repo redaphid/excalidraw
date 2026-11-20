@@ -128,11 +128,24 @@ const declarationTarget = (specifier, id) => {
   return `${target === "excalidraw" ? target : `${target}/src`}${subpath}`;
 };
 
+// What `npm pack --json` reports packing: an array up to npm 11, an object
+// keyed by package name from npm 12.
+const packedFilename = (json) => {
+  const packed = Array.isArray(json) ? json : Object.values(json);
+  if (packed.length !== 1) {
+    throw new Error(
+      `Expected npm pack to report one tarball, got ${packed.length}.`,
+    );
+  }
+  return packed[0].filename;
+};
+
 module.exports = {
   atVersion,
   declarationTarget,
   GITHUB_REGISTRY,
   LOCKSTEP,
+  packedFilename,
   PUBLISH_ORDER,
   REPOSITORY,
   registryManifest,
