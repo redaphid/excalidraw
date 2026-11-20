@@ -6,6 +6,10 @@ import {
   TEXT_MAX_WRAP_WIDTH,
 } from "@excalidraw/common";
 import {
+  actionChangeStrokeWidth,
+  actionChangeFontSize,
+} from "../actions/actionProperties";
+import {
   elementWithCanvasCache,
   getBoundTextMaxWidth,
   getCornerRadius,
@@ -324,7 +328,9 @@ describe("authoringUnits: screen", () => {
         width: 120,
         height: 80,
       });
-      UI.clickOnTestId("strokeWidth-bold");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeStrokeWidth, "ui", 2);
+      });
       return { strokeWidth: rectangle.get().strokeWidth * zoom };
     });
     expect(h.elements[0].strokeWidth * 10_000).toBeCloseTo(4, 9);
@@ -335,7 +341,9 @@ describe("authoringUnits: screen", () => {
       atZoom(zoom);
       const text = await createText(100, 100, "hello");
       API.setSelectedElements([text as NonDeletedExcalidrawElement]);
-      UI.clickOnTestId("fontSize-large");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeFontSize, "ui", 28);
+      });
       const resized = h.elements.find(
         (element) => element.id === text.id,
       ) as ExcalidrawTextElement;

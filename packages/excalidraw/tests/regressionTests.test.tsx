@@ -1,4 +1,9 @@
 import React from "react";
+import {
+  actionChangeBackgroundColor,
+  actionChangeStrokeColor,
+} from "../actions/actionProperties";
+import { act } from "@testing-library/react";
 import { vi } from "vitest";
 
 import {
@@ -169,12 +174,15 @@ describe("regression tests", () => {
 
     mouse.down(10, 10);
     mouse.up(10, 10);
-    togglePopover("Background");
-    UI.clickOnTestId("color-yellow");
-    UI.clickOnTestId("color-red");
-
-    togglePopover("Stroke");
-    UI.clickOnTestId("color-blue");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#ffec99" });
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#ffc9c9" });
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { currentItemStrokeColor: "#1971c2" });
+    });
     expect(API.getSelectedElement().backgroundColor).toBe("#ffc9c9");
     expect(API.getSelectedElement().strokeColor).toBe("#1971c2");
   });
@@ -981,8 +989,9 @@ describe("regression tests", () => {
       UI.clickTool("rectangle");
       // change background color since default is transparent
       // and transparent elements can't be selected by clicking inside of them
-      togglePopover("Background");
-      UI.clickOnTestId("color-red");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#ffc9c9" });
+      });
       mouse.down();
       mouse.up(1000, 1000);
 

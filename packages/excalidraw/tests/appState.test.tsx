@@ -1,4 +1,8 @@
 import React from "react";
+import {
+  actionChangeFontSize,
+} from "../actions/actionProperties";
+import { act } from "@testing-library/react";
 
 import { EXPORT_DATA_TYPES, MIME_TYPES } from "@excalidraw/common";
 
@@ -76,7 +80,9 @@ describe("appState", () => {
     UI.clickTool("text");
 
     expect(h.state.currentItemFontSize).toBe(30);
-    fireEvent.click(queryByTestId(container, "fontSize-small")!);
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeFontSize, "ui", 16);
+    });
     expect(h.state.currentItemFontSize).toBe(16);
 
     const mouse = new Pointer("mouse");

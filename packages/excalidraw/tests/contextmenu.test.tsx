@@ -1,4 +1,9 @@
 import React from "react";
+import {
+  actionChangeStrokeColor,
+  actionChangeBackgroundColor,
+} from "../actions/actionProperties";
+import { act } from "@testing-library/react";
 import { vi } from "vitest";
 
 import { KEYS, STROKE_WIDTH, reseed } from "@excalidraw/common";
@@ -331,10 +336,12 @@ describe("contextMenu element", () => {
     mouse.up(20, 20);
 
     // Change some styles of second rectangle
-    togglePopover("Stroke");
-    UI.clickOnTestId("color-red");
-    togglePopover("Background");
-    UI.clickOnTestId("color-blue");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { currentItemStrokeColor: "#e03131" });
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#a5d8ff" });
+    });
     // Fill style
     fireEvent.click(screen.getByTitle("Cross-hatch"));
     // Stroke width
