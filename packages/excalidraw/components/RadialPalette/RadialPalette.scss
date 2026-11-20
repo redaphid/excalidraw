@@ -18,6 +18,10 @@
     pointer-events: all;
     // a press on the puck starts a flick, never a scroll or a zoom
     touch-action: none;
+    // and a hold on it moves it: no callout, magnifier or text selection
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
     transition: background-color var(--control-motion-duration)
       var(--control-motion-easing);
@@ -125,6 +129,14 @@
 
     @media (prefers-reduced-motion: reduce) {
       animation: none;
+    }
+  }
+
+  .RadialPalette--moving {
+    cursor: grabbing;
+
+    .RadialPalette__hub {
+      cursor: grabbing;
     }
   }
 
