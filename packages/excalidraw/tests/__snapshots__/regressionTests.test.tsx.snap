@@ -2991,7 +2991,7 @@ exports[`regression tests > change the properties of a shape > [end of test] app
   "offsetTop": 0,
   "openDialog": null,
   "openMenu": null,
-  "openPopup": "elementStroke",
+  "openPopup": null,
   "openSidebar": null,
   "originSnapOffset": null,
   "penDetected": false,
