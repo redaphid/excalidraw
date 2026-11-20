@@ -68,6 +68,7 @@ import {
   isMagicFrameElement,
   isFrameLikeElement,
   isImageElement,
+  hasLiteralColor,
   isButtonElement,
   isStickyNoteElement,
 } from "./typeChecks";
@@ -239,6 +240,9 @@ export interface ExcalidrawElementWithCanvas {
   zoomValue: AppState["zoom"]["value"];
   canvasOffsetX: number;
   canvasOffsetY: number;
+  /** see `bitmapPhase`, in device pixels */
+  phaseX: number;
+  phaseY: number;
   imageCrop: ExcalidrawImageElement["crop"] | null;
   containingFrameOpacity: number;
   /** the theme a sticky note's shadow and edge were drawn with */
@@ -308,6 +312,48 @@ const cappedElementCanvasSize = (
   return { width, height, scale };
 };
 
+const NO_PHASE: Readonly<{ x: number; y: number }> = { x: 0, y: 0 };
+
+/**
+ * The device pixels of padding a bitmap needs on its right and bottom to
+ * take the shift by its phase: up to one for the shift, and up to one more
+ * that `cappedElementCanvasSize` floors away.
+ */
+const PHASE_HEADROOM = 2;
+
+/**
+ * The fraction of a device pixel past a whole one at which an element's
+ * bitmap origin lands, leaving out the scroll, which the renderers round to
+ * whole device pixels (`snapScrollToDevicePixels`). The bitmap is drawn
+ * shifted by it, so snapping the blit to whole device pixels rounds only
+ * what is left: rounding both the scroll and the blit moved an element up
+ * to a whole device pixel from where its camera puts it.
+ *
+ * Only for an unrotated, unmirrored element, whose bitmap pixels run along
+ * the device's, and whose padding has room for the shift
+ * (`PHASE_HEADROOM`), so zoomed far out nothing is clipped; the others keep
+ * the plain snap.
+ */
+const bitmapPhase = (
+  element: ExcalidrawElement,
+  elementsMap: ElementsMap,
+  zoom: number,
+) => {
+  const padding = getCanvasPadding(element);
+  if (
+    element.angle ||
+    ("scale" in element &&
+      (element.scale[0] !== 1 || element.scale[1] !== 1)) ||
+    padding * zoom < PHASE_HEADROOM
+  ) {
+    return NO_PHASE;
+  }
+  const [x1, y1] = getElementAbsoluteCoords(element, elementsMap);
+  const x = zoom * (x1 * window.devicePixelRatio - padding);
+  const y = zoom * (y1 * window.devicePixelRatio - padding);
+  return { x: x - Math.floor(x), y: y - Math.floor(y) };
+};
+
 const generateElementCanvas = (
   element: NonDeletedExcalidrawElement,
   elementsMap: NonDeletedSceneElementsMap,
@@ -350,8 +396,14 @@ const generateElementCanvas = (
     context.translate(canvasOffsetX, canvasOffsetY);
   }
 
+  // a device pixel is scale ÷ zoom bitmap pixels wide
+  const phase = bitmapPhase(element, elementsMap, zoom.value);
+
   context.save();
-  context.translate(padding * scale, padding * scale);
+  context.translate(
+    (padding + phase.x / zoom.value) * scale,
+    (padding + phase.y / zoom.value) * scale,
+  );
   context.scale(
     window.devicePixelRatio * scale,
     window.devicePixelRatio * scale,
@@ -359,7 +411,7 @@ const generateElementCanvas = (
 
   const rc = rough.canvas(canvas);
 
-  drawElementOnCanvas(element, rc, context, renderConfig);
+  drawElementOnCanvas(element, rc, context, renderConfig, elementsMap);
 
   context.restore();
 
@@ -371,6 +423,8 @@ const generateElementCanvas = (
     zoomValue: zoom.value,
     canvasOffsetX,
     canvasOffsetY,
+    phaseX: phase.x,
+    phaseY: phase.y,
     containingFrameOpacity:
       getContainingFrame(element, elementsMap)?.opacity || 100,
     imageCrop: isImageElement(element) ? element.crop : null,
@@ -545,7 +599,7 @@ const drawButtonIcon = (
   context.save();
   context.fillStyle = context.strokeStyle = applyDarkModeFilter(
     button.strokeColor,
-    renderConfig.theme === THEME.DARK,
+    renderConfig.theme === THEME.DARK && !hasLiteralColor(button),
   );
   context.lineJoin = "round";
   context.lineWidth = cornerWidth;
@@ -562,6 +616,7 @@ const drawElementOnCanvas = (
   rc: RoughCanvas,
   context: CanvasRenderingContext2D,
   renderConfig: StaticCanvasRenderConfig,
+  elementsMap: ElementsMap,
 ) => {
   switch (element.type) {
     case "stickynote": {
@@ -581,7 +636,7 @@ const drawElementOnCanvas = (
         const commands = getStickyNotePathCommands(element);
         context.fillStyle = applyDarkModeFilter(
           element.backgroundColor,
-          renderConfig.theme === THEME.DARK,
+          renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
         );
         fillStickyNoteShape(context, commands);
         if (edge) {
@@ -608,7 +663,7 @@ const drawElementOnCanvas = (
           context.textBaseline = "alphabetic";
           context.fillStyle = applyDarkModeFilter(
             element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+            renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
           );
           context.globalAlpha *= STICKY_NOTE_FOOTER.opacity;
           context.fillText(
@@ -658,7 +713,7 @@ const drawElementOnCanvas = (
           if (typeof shape === "string") {
             context.fillStyle = applyDarkModeFilter(
               element.strokeColor,
-              renderConfig.theme === THEME.DARK,
+              renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
             );
             context.fill(getFreeDrawPath2D(element, shape));
           } else {
@@ -705,6 +760,7 @@ const drawElementOnCanvas = (
 
           const shouldInvertImage =
             renderConfig.theme === THEME.DARK &&
+            !hasLiteralColor(element) &&
             cacheEntry?.mimeType === MIME_TYPES.svg;
 
           if (shouldInvertImage && isSafari) {
@@ -803,7 +859,8 @@ const drawElementOnCanvas = (
           });
           context.fillStyle = applyDarkModeFilter(
             element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+            renderConfig.theme === THEME.DARK &&
+              !hasLiteralColor(element, elementsMap),
           );
           context.textAlign = element.textAlign as CanvasTextAlign;
 
@@ -880,6 +937,44 @@ const withinRescaleRedrawBudget = (zoom: number) => {
   return now < rescaleRedrawFrame.until;
 };
 
+/**
+ * Whether a bitmap was drawn with the phase of a place its element has since
+ * moved from: a move in place (`mutateElement` of x or y) keeps the bitmap.
+ * Such a bitmap still lands within half a device pixel, so it is kept while
+ * the selection is dragged or the zoom is a gesture, where a frame should
+ * not redraw bitmaps, and redrawn on the first static frame after.
+ */
+const hasStalePhase = (
+  cached: ExcalidrawElementWithCanvas,
+  element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
+  appState: StaticCanvasAppState | InteractiveCanvasAppState,
+) => {
+  if (
+    !("selectedElementsAreBeingDragged" in appState) ||
+    appState.selectedElementsAreBeingDragged ||
+    appState.shouldCacheIgnoreZoom ||
+    cached.zoomValue !== appState.zoom.value
+  ) {
+    return false;
+  }
+  const phase = bitmapPhase(element, elementsMap, cached.zoomValue);
+  return (
+    phaseDistance(phase.x, cached.phaseX) > PHASE_TOLERANCE ||
+    phaseDistance(phase.y, cached.phaseY) > PHASE_TOLERANCE
+  );
+};
+
+/** device pixels two phases may differ by and still place a bitmap alike:
+ * a move by whole device pixels changes the phase only by float noise */
+const PHASE_TOLERANCE = 1e-3;
+
+/** how far apart two phases are, where 0 and 1 are the same place */
+const phaseDistance = (a: number, b: number) => {
+  const d = Math.abs(a - b);
+  return Math.min(d, 1 - d);
+};
+
 const generateElementWithCanvas = (
   element: NonDeletedExcalidrawElement,
   elementsMap: NonDeletedSceneElementsMap,
@@ -907,7 +1002,8 @@ const generateElementWithCanvas = (
     prevElementWithCanvas.imageCrop !== imageCrop ||
     prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity ||
     (isStickyNoteElement(element) &&
-      prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme)
+      prevElementWithCanvas.canvasTheme !== renderConfig.canvasTheme) ||
+    hasStalePhase(prevElementWithCanvas, element, elementsMap, appState)
   ) {
     const elementWithCanvas = generateElementCanvas(
       element,
@@ -1136,6 +1232,20 @@ const drawElementFromCanvas = (
           devicePixelRatio -
         anchorPadding;
 
+      // the bitmaps were drawn shifted by their phase (`bitmapPhase`), so
+      // what is rounded here is only the rest of the way. A label takes the
+      // phase its container's bitmap was drawn with, which may be stale
+      // (`hasStalePhase`), so that both round alike and the label keeps its
+      // offset from the container while the two are dragged.
+      const anchorCanvas =
+        anchor === element
+          ? elementWithCanvas
+          : elementWithCanvasCache.get(anchor);
+      const anchorPhase =
+        anchorCanvas && anchorCanvas.zoomValue === appState.zoom.value
+          ? { x: anchorCanvas.phaseX, y: anchorCanvas.phaseY }
+          : bitmapPhase(anchor, allElementsMap, appState.zoom.value);
+
       // Form the relative vector before introducing the scroll translation.
       const dx =
         (x1 - anchorSceneX) * devicePixelRatio + anchorPadding - padding;
@@ -1146,13 +1256,34 @@ const drawElementFromCanvas = (
         b,
         c,
         d,
-        Math.round(a * anchorX + c * anchorY + e) +
-          Math.round(a * dx + c * dy + SNAP_TIE_BIAS),
-        Math.round(b * anchorX + d * anchorY + f) +
-          Math.round(b * dx + d * dy + SNAP_TIE_BIAS),
+        Math.round(
+          a * anchorX + c * anchorY + e - anchorPhase.x + SNAP_TIE_BIAS,
+        ) +
+          Math.round(
+            a * dx +
+              c * dy +
+              anchorPhase.x -
+              elementWithCanvas.phaseX +
+              SNAP_TIE_BIAS,
+          ),
+        Math.round(
+          b * anchorX + d * anchorY + f - anchorPhase.y + SNAP_TIE_BIAS,
+        ) +
+          Math.round(
+            b * dx +
+              d * dy +
+              anchorPhase.y -
+              elementWithCanvas.phaseY +
+              SNAP_TIE_BIAS,
+          ),
       );
       drawX = 0;
       drawY = 0;
+    } else if (elementWithCanvas.phaseX || elementWithCanvas.phaseY) {
+      // unsnapped, the bitmap goes where it belongs less its phase, which
+      // is stretched with it: a device pixel at the zoom it was drawn at
+      drawX -= elementWithCanvas.phaseX / elementWithCanvas.zoomValue;
+      drawY -= elementWithCanvas.phaseY / elementWithCanvas.zoomValue;
     }
 
     const visible = visibleBitmapRect(
@@ -1658,7 +1789,13 @@ const drawElement = (
           context.translate(cx, cy);
           context.rotate(element.angle);
           context.translate(-shiftX, -shiftY);
-          drawElementOnCanvas(element, rc, context, renderConfig);
+          drawElementOnCanvas(
+            element,
+            rc,
+            context,
+            renderConfig,
+            allElementsMap,
+          );
         } finally {
           context.restore();
         }
@@ -1769,7 +1906,13 @@ const drawElement = (
               context.clip("evenodd");
               context.rotate(element.angle);
               context.translate(-shiftX, -shiftY);
-              drawElementOnCanvas(element, rc, context, renderConfig);
+              drawElementOnCanvas(
+                element,
+                rc,
+                context,
+                renderConfig,
+                allElementsMap,
+              );
             } finally {
               context.restore();
             }
@@ -1782,7 +1925,13 @@ const drawElement = (
             }
 
             context.translate(-shiftX, -shiftY);
-            drawElementOnCanvas(element, rc, context, renderConfig);
+            drawElementOnCanvas(
+              element,
+              rc,
+              context,
+              renderConfig,
+              allElementsMap,
+            );
           }
         } finally {
           context.restore();

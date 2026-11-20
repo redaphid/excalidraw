@@ -9,6 +9,7 @@ import {
 } from "@excalidraw/common";
 
 import type {
+  ElementsMap,
   ExcalidrawElement,
   ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
@@ -41,6 +42,7 @@ import {
   BindableElement,
   bindingProperties,
   updateBoundElements,
+  withElements,
 } from "./binding";
 import { LinearElementEditor } from "./linearElementEditor";
 import { mutateElement, newElementWith } from "./mutateElement";
@@ -2112,15 +2114,21 @@ export class ElementsDelta implements DeltaContainer<SceneElementsMap> {
     scene: Scene,
     changed: Map<string, OrderedExcalidrawElement>,
   ) {
+    // one lookup for the whole pass, built on first use: building it per
+    // element made undo of a large delete quadratic in the scene size (#159)
+    let elementsMap: ElementsMap | undefined;
+    const updatedArrowIds = new Set<string>();
     for (const element of changed.values()) {
       if (!element.isDeleted && isBindableElement(element)) {
+        elementsMap ??= withElements(
+          scene.getNonDeletedElementsMap(),
+          changed.values(),
+        );
         // TODO: with precise bindings this is quite expensive, so consider optimisation so it's only triggered when the arrow does not intersect (imprecise) element bounds
         updateBoundElements(
           element as NonDeletedExcalidrawElement, // NOTE: Assumed correct, no runtime check for isDeleted due to performance reasons
           scene,
-          {
-            changedElements: changed,
-          },
+          { elementsMap, updatedArrowIds },
         );
       }
     }

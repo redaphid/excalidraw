@@ -18,7 +18,7 @@ import type {
 } from "@excalidraw/element/types";
 import type { StrokeWidthKey } from "@excalidraw/common";
 
-import type { AppState, StaticCanvasAppState } from "./types";
+import type { AppState, PenOptions, StaticCanvasAppState } from "./types";
 
 /**
  * Colors the editor paints on its canvases around the user's elements. Each
@@ -99,7 +99,7 @@ export type CssTheme = Readonly<{
   canvas: CanvasTheme;
   appState: CssThemeAppState;
   /** perfect-freehand options for new variable-width freedraw strokes */
-  pen: Readonly<{ thinning?: number; taper?: number; streamline?: number }>;
+  pen: PenOptions;
   /** replace the color picker's palette grid */
   palettes: Readonly<{
     elementStroke?: ColorPaletteCustom;

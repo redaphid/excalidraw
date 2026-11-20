@@ -20,6 +20,7 @@ import { render } from "@excalidraw/excalidraw/tests/test-utils";
 import type { Zoom } from "@excalidraw/excalidraw/types";
 
 import * as distance from "../src/distance";
+import * as boundsModule from "../src/bounds";
 import { getElementBounds } from "../src/bounds";
 import {
   getAllHoveredElementAtPoint,
@@ -944,5 +945,110 @@ describe("intersectElementWithLineSegment", () => {
     expect(hits.length).toBeGreaterThan(0);
     expect(hits[0][0]).toBeCloseTo(left[0] - 6, 0);
     expect(hits[0][1]).toBeCloseTo(left[1]);
+  });
+
+  describe("corner curve bounds", () => {
+    // from the center of a 100x100 shape at (x, 0) out through a corner, so
+    // the hit is on a corner curve rather than a side: the top-left corner of
+    // a rectangle, the left vertex of a diamond
+    const throughCorner = (type: "rectangle" | "diamond", x: number) =>
+      lineSegment(
+        pointFrom<GlobalPoint>(x + 50, 50),
+        pointFrom<GlobalPoint>(x - 50, type === "rectangle" ? -50 : 50),
+      );
+
+    it.each([
+      ["rectangle", ROUNDNESS.ADAPTIVE_RADIUS],
+      ["rectangle", null],
+      ["diamond", ROUNDNESS.PROPORTIONAL_RADIUS],
+    ] as const)(
+      "are computed once per version of a %s (roundness %s)",
+      (type, roundness) => {
+        const element = API.createElement({
+          type,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+          roundness: roundness ? { type: roundness } : null,
+        });
+        const elementsMap = arrayToMap([element]);
+        const curveBound = jest.spyOn(boundsModule, "getCubicBezierCurveBound");
+
+        try {
+          const hits = intersectElementWithLineSegment(
+            element,
+            elementsMap,
+            throughCorner(type, 0),
+            6,
+          );
+          const curveCount = curveBound.mock.calls.length;
+          expect(hits.length).toBeGreaterThan(0);
+          expect(curveCount).toBeGreaterThan(0);
+
+          // the same version reuses them
+          expect(
+            intersectElementWithLineSegment(
+              element,
+              elementsMap,
+              throughCorner(type, 0),
+              6,
+            ),
+          ).toEqual(hits);
+          expect(curveBound).toHaveBeenCalledTimes(curveCount);
+
+          // a new version is intersected where it now is
+          mutateElement(element, elementsMap, { x: 300 });
+          const movedHits = intersectElementWithLineSegment(
+            element,
+            elementsMap,
+            throughCorner(type, 300),
+            6,
+          );
+          expect(curveBound).toHaveBeenCalledTimes(curveCount * 2);
+          expect(movedHits.length).toBe(hits.length);
+          movedHits.forEach((hit, i) => {
+            expect(hit[0]).toBeCloseTo(hits[i][0] + 300);
+            expect(hit[1]).toBeCloseTo(hits[i][1]);
+          });
+        } finally {
+          curveBound.mockRestore();
+        }
+      },
+    );
+
+    it("are computed once per version of a curved line", () => {
+      const line = API.createElement({
+        type: "line",
+        x: 0,
+        y: 0,
+        roundness: { type: ROUNDNESS.PROPORTIONAL_RADIUS },
+        points: [
+          pointFrom<LocalPoint>(0, 0),
+          pointFrom<LocalPoint>(100, 100),
+          pointFrom<LocalPoint>(200, 0),
+        ],
+      });
+      const elementsMap = arrayToMap([line]);
+      const across = lineSegment(
+        pointFrom<GlobalPoint>(0, 40),
+        pointFrom<GlobalPoint>(200, 40),
+      );
+      const curveBound = jest.spyOn(boundsModule, "getCubicBezierCurveBound");
+
+      try {
+        const hits = intersectElementWithLineSegment(line, elementsMap, across);
+        const curveCount = curveBound.mock.calls.length;
+        expect(hits.length).toBe(2);
+        expect(curveCount).toBeGreaterThan(0);
+
+        expect(
+          intersectElementWithLineSegment(line, elementsMap, across),
+        ).toEqual(hits);
+        expect(curveBound).toHaveBeenCalledTimes(curveCount);
+      } finally {
+        curveBound.mockRestore();
+      }
+    });
   });
 });

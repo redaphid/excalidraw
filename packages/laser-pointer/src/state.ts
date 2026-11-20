@@ -21,7 +21,38 @@ export type LaserPointerOptions = {
   keepHead: boolean;
 
   sizeMapping: (details: SizeMappingDetails) => number;
+
+  /**
+   * Keep the outline around the points already outlined, so each outline
+   * only adds the points since the last. Only for a `sizeMapping` that does
+   * not read `totalLength`, which changes with every point. Ignored when the
+   * input is simplified.
+   */
+  incremental: boolean;
 };
+
+/** The outline of `points[1..next - 1]` and the state to carry it on. */
+type OutlineProgress = {
+  sizeOverride: number | undefined;
+  next: number;
+  forwardPoints: Point[];
+  backwardPoints: Point[];
+  prevSpeed: number;
+  visibleStartIndex: number;
+  runningLength: number;
+};
+
+const emptyOutlineProgress = (
+  sizeOverride: number | undefined,
+): OutlineProgress => ({
+  sizeOverride,
+  next: 1,
+  forwardPoints: [],
+  backwardPoints: [],
+  prevSpeed: 0,
+  visibleStartIndex: 0,
+  runningLength: 0,
+});
 
 export class LaserPointer {
   static defaults: LaserPointerOptions = {
@@ -32,6 +63,7 @@ export class LaserPointer {
     keepHead: false,
 
     sizeMapping: () => 1,
+    incremental: false,
   };
 
   static constants = {
@@ -51,6 +83,8 @@ export class LaserPointer {
   private tailPoints: Point[] = [];
 
   private isFresh = true;
+
+  private outlined: OutlineProgress | null = null;
 
   private get lastPoint(): Point {
     return (
@@ -197,16 +231,107 @@ export class LaserPointer {
       return ps;
     }
 
-    const forwardPoints: Point[] = [];
-    const backwardPoints: Point[] = [];
+    const incremental =
+      this.options.incremental &&
+      !(this.options.simplify > 0 && this.options.simplifyPhase === "input");
+    const progress =
+      incremental &&
+      this.outlined &&
+      Object.is(this.outlined.sizeOverride, sizeOverride)
+        ? this.outlined
+        : emptyOutlineProgress(sizeOverride);
+    if (incremental) {
+      this.outlined = progress;
+    }
+    this.outlineUpTo(progress, points, sizeOverride);
+    const { forwardPoints, backwardPoints, visibleStartIndex, runningLength } =
+      progress;
 
-    let speed = 0;
-    let prevSpeed = 0;
+    if (visibleStartIndex >= len - 2) {
+      if (this.options.keepHead) {
+        const c = points[len - 1];
 
-    let visibleStartIndex = 0;
-    let runningLength = 0;
+        const ps: Point[] = [];
 
-    for (let i = 1; i < len - 1; i++) {
+        for (let theta = 0; theta <= Math.PI * 2; theta += Math.PI / 16) {
+          ps.push(
+            m.add(
+              c,
+              m.smul(m.rot([1, 0, 0] as Point, theta), this.options.size),
+            ),
+          );
+        }
+
+        ps.push(m.add(c, m.smul([1, 0, 0] as Point, this.options.size)));
+
+        return ps;
+      }
+
+      return [];
+    }
+
+    const first = points[visibleStartIndex];
+    const second = points[visibleStartIndex + 1];
+    const penultimate = points[len - 2];
+    const ultimate = points[len - 1];
+
+    const dirFS = m.norm(m.sub(second, first));
+    const dirPU = m.norm(m.sub(penultimate, ultimate));
+
+    const ppdirFS = m.rot(dirFS, -Math.PI / 2);
+    const ppdirPU = m.rot(dirPU, Math.PI / 2);
+
+    const startCapSize = this.getSize(sizeOverride, first[2], 0, len, 0);
+    const startCap: Point[] = [];
+
+    const endCapSize = this.options.keepHead
+      ? this.options.size
+      : this.getSize(sizeOverride, penultimate[2], len - 2, len, runningLength);
+
+    const endCap: Point[] = [];
+
+    if (startCapSize > 0) {
+      for (let theta = 0; theta <= Math.PI; theta += Math.PI / 16) {
+        startCap.unshift(
+          m.add(first, m.rot(m.smul(ppdirFS, startCapSize), -theta)),
+        );
+      }
+
+      startCap.unshift(m.add(first, m.smul(ppdirFS, -startCapSize)));
+    } else {
+      startCap.push(first);
+    }
+
+    for (let theta = 0; theta <= Math.PI * 3; theta += Math.PI / 16) {
+      endCap.push(m.add(ultimate, m.rot(m.smul(ppdirPU, -endCapSize), -theta)));
+    }
+
+    const strokeOutline = [...startCap, ...forwardPoints, ...endCap.reverse()];
+    for (let i = backwardPoints.length - 1; i >= 0; i--) {
+      strokeOutline.push(backwardPoints[i]);
+    }
+
+    if (startCap.length > 0) {
+      strokeOutline.push(startCap[0]);
+    }
+
+    if (this.options.simplify > 0 && this.options.simplifyPhase === "output") {
+      return douglasPeucker(strokeOutline, this.options.simplify);
+    }
+
+    return strokeOutline;
+  }
+
+  /** Outlines `points[progress.next..len - 2]`, each around its neighbours. */
+  private outlineUpTo(
+    progress: OutlineProgress,
+    points: Point[],
+    sizeOverride: number | undefined,
+  ) {
+    const { forwardPoints, backwardPoints } = progress;
+    const len = points.length;
+
+    for (let i = progress.next; i < len - 1; i++) {
       const p = points[i - 1];
       const c = points[i];
       const n = points[i + 1];
@@ -214,13 +339,19 @@ export class LaserPointer {
       const pressure = c[2];
 
       const d = m.dist(p, c);
-      runningLength += d;
-      speed = prevSpeed + (d - prevSpeed) * 0.2;
+      progress.runningLength += d;
+      const speed = progress.prevSpeed + (d - progress.prevSpeed) * 0.2;
 
-      const cSize = this.getSize(sizeOverride, pressure, i, len, runningLength);
+      const cSize = this.getSize(
+        sizeOverride,
+        pressure,
+        i,
+        len,
+        progress.runningLength,
+      );
 
       if (cSize === 0) {
-        visibleStartIndex = i + 1;
+        progress.visibleStartIndex = i + 1;
         continue;
       }
 
@@ -294,83 +425,8 @@ export class LaserPointer {
         backwardPoints.push(paNC);
       }
 
-      prevSpeed = speed;
+      progress.prevSpeed = speed;
     }
-
-    if (visibleStartIndex >= len - 2) {
-      if (this.options.keepHead) {
-        const c = points[len - 1];
-
-        const ps: Point[] = [];
-
-        for (let theta = 0; theta <= Math.PI * 2; theta += Math.PI / 16) {
-          ps.push(
-            m.add(
-              c,
-              m.smul(m.rot([1, 0, 0] as Point, theta), this.options.size),
-            ),
-          );
-        }
-
-        ps.push(m.add(c, m.smul([1, 0, 0] as Point, this.options.size)));
-
-        return ps;
-      }
-
-      return [];
-    }
-
-    const first = points[visibleStartIndex];
-    const second = points[visibleStartIndex + 1];
-    const penultimate = points[len - 2];
-    const ultimate = points[len - 1];
-
-    const dirFS = m.norm(m.sub(second, first));
-    const dirPU = m.norm(m.sub(penultimate, ultimate));
-
-    const ppdirFS = m.rot(dirFS, -Math.PI / 2);
-    const ppdirPU = m.rot(dirPU, Math.PI / 2);
-
-    const startCapSize = this.getSize(sizeOverride, first[2], 0, len, 0);
-    const startCap: Point[] = [];
-
-    const endCapSize = this.options.keepHead
-      ? this.options.size
-      : this.getSize(sizeOverride, penultimate[2], len - 2, len, runningLength);
-
-    const endCap: Point[] = [];
-
-    if (startCapSize > 0) {
-      for (let theta = 0; theta <= Math.PI; theta += Math.PI / 16) {
-        startCap.unshift(
-          m.add(first, m.rot(m.smul(ppdirFS, startCapSize), -theta)),
-        );
-      }
-
-      startCap.unshift(m.add(first, m.smul(ppdirFS, -startCapSize)));
-    } else {
-      startCap.push(first);
-    }
-
-    for (let theta = 0; theta <= Math.PI * 3; theta += Math.PI / 16) {
-      endCap.push(m.add(ultimate, m.rot(m.smul(ppdirPU, -endCapSize), -theta)));
-    }
-
-    const strokeOutline = [
-      ...startCap,
-      ...forwardPoints,
-      ...endCap.reverse(),
-      ...backwardPoints.reverse(),
-    ];
-
-    if (startCap.length > 0) {
-      strokeOutline.push(startCap[0]);
-    }
-
-    if (this.options.simplify > 0 && this.options.simplifyPhase === "output") {
-      return douglasPeucker(strokeOutline, this.options.simplify);
-    }
-
-    return strokeOutline;
+    progress.next = Math.max(progress.next, len - 1);
   }
 }
