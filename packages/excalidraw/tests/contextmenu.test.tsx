@@ -696,6 +696,28 @@ describe("contextMenu on the empty canvas", () => {
     ).toEqual([true, true, true, true, true]);
   });
 
+  it("lists the laser pointer and insert image", () => {
+    const contextMenu = UI.queryContextMenu();
+
+    expect(
+      ["setLaserTool", "insertImage"].map(
+        (name) => contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
+      ),
+    ).toEqual([true, true]);
+  });
+
+  describe("when the laser pointer is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(
+        UI.queryContextMenu()!.querySelector('li[data-testid="setLaserTool"]')!,
+      );
+    });
+
+    it("picks the laser tool", () => {
+      expect(h.state.activeTool.type).toBe("laser");
+    });
+  });
+
   describe("when Menu… is picked", () => {
     beforeEach(() => {
       fireEvent.click(queryByText(UI.queryContextMenu()!, "Menu…")!);

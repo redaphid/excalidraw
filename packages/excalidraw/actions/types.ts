@@ -58,6 +58,8 @@ export type ActionName =
   | "pasteStyles"
   | "gridMode"
   | "zenMode"
+  | "setLaserTool"
+  | "insertImage"
   | "objectsSnapMode"
   | "arrowBinding"
   | "midpointSnapping"

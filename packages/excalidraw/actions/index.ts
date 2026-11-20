@@ -82,6 +82,8 @@ export {
 
 export { actionToggleGridMode } from "./actionToggleGridMode";
 export { actionToggleZenMode } from "./actionToggleZenMode";
+export { actionSetLaserTool } from "./actionSetLaserTool";
+export { actionInsertImage } from "./actionInsertImage";
 export { actionToggleObjectsSnapMode } from "./actionToggleObjectsSnapMode";
 export { actionToggleArrowBinding } from "./actionToggleArrowBinding";
 export { actionToggleMidpointSnapping } from "./actionToggleMidpointSnapping";
