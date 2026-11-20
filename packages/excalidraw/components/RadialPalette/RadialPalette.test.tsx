@@ -12,6 +12,8 @@ import { API } from "../../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
 import { act, render } from "../../tests/test-utils";
 
+import { LONG_PRESS_DELAY } from "../App.radialPalette";
+
 import { getPenPresets } from "./penPresets";
 import { RADIAL_TOOLS } from "./radialPaletteController";
 import {
@@ -144,6 +146,40 @@ describe("RadialPalette", () => {
         tap(`radial-tool-${type}`);
         expect(h.state.activeTool.type).toBe(type);
         expect(ring()).toBeNull();
+      });
+
+      describe("when a tool is locked and another is tapped", () => {
+        beforeEach(() => {
+          act(() => h.app.setActiveTool({ type: "ellipse", locked: true }));
+          tap("radial-tool-rectangle");
+        });
+
+        it("picks it unlocked", () => {
+          expect(h.state.activeTool.locked).toBe(false);
+        });
+      });
+
+      describe("when a tool is held", () => {
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          fireEvent.pointerDown(byTestId("radial-tool-rectangle")!, {
+            button: 0,
+          });
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("picks it locked, as Q does", () => {
+          expect(h.state.activeTool).toMatchObject({
+            type: "rectangle",
+            locked: true,
+          });
+        });
       });
     });
 

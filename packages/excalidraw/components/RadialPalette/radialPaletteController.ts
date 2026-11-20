@@ -346,14 +346,34 @@ export class RadialPaletteController {
     }
   };
 
+  private holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** a press held still on a tool for `delay` picks it locked, as Q does */
+  hold = (ring: RadialRing, index: number, delay: number) => {
+    this.release();
+    if (ring === "tools") {
+      this.holdTimer = setTimeout(() => {
+        this.holdTimer = null;
+        this.pick(ring, index, true);
+      }, delay);
+    }
+  };
+
+  release = () => {
+    if (this.holdTimer !== null) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = null;
+    }
+  };
+
   /** does what the item does, then closes; false when there is no item */
-  pick = (ring: RadialRing, index: number): boolean => {
+  pick = (ring: RadialRing, index: number, locked = false): boolean => {
     const item = this.items(ring)[index];
     if (!this.enabled || !item?.id) {
       return false;
     }
     if (ring === "tools") {
-      this.pickTool(item.id as RadialTool);
+      this.pickTool(item.id as RadialTool, locked);
     } else if (ring === "pens") {
       const preset = this.getPresets().find(({ id }) => id === item.id);
       if (preset) {
@@ -375,8 +395,8 @@ export class RadialPaletteController {
     return true;
   };
 
-  private pickTool(type: ToolType) {
-    this.app.setActiveTool({ type });
+  private pickTool(type: ToolType, locked = false) {
+    this.app.setActiveTool({ type, locked });
   }
 
   /** the active tool changed, from the ring or anywhere else: a pen

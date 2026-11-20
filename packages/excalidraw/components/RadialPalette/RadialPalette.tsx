@@ -629,6 +629,12 @@ const Ring = ({
           !disabled && isHighlighted(ring, index),
         "RadialPalette__segment--disabled": disabled,
       })}
+      onPointerDown={() =>
+        !disabled && controller.hold(ring, index, LONG_PRESS_DELAY)
+      }
+      onPointerUp={controller.release}
+      onPointerLeave={controller.release}
+      onPointerCancel={controller.release}
       onClick={() => !disabled && controller.pick(ring, index)}
       onKeyDown={(event) => {
         if (!disabled && (event.key === KEYS.ENTER || event.key === " ")) {
