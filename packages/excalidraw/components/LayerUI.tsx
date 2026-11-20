@@ -4,7 +4,6 @@ import React from "react";
 import {
   CLASSES,
   DEFAULT_SIDEBAR,
-  TOOL_TYPE,
   arrayToMap,
   capitalizeString,
   isShallowEqual,
@@ -59,9 +58,7 @@ import { HelpDialog } from "./HelpDialog";
 import { ImageExportDialog } from "./ImageExportDialog";
 import { Island } from "./Island";
 import { JSONExportDialog } from "./JSONExportDialog";
-import { LaserPointerButton } from "./LaserPointerButton";
 import { Toast } from "./Toast";
-import { Toolbar } from "./Toolbar";
 import { RadialPalette } from "./RadialPalette/RadialPalette";
 import {
   ViewportStatusBadge,
@@ -180,19 +177,13 @@ const LayerUI = ({
   const spacing = isCompactStylesPanel
     ? {
         menuTopGap: 4,
-        toolbarColGap: 4,
-        toolbarRowGap: 1,
         toolbarInnerRowGap: 0.5,
         islandPadding: 1,
-        collabMarginLeft: 8,
       }
     : {
         menuTopGap: 6,
-        toolbarColGap: 4,
-        toolbarRowGap: 1,
         toolbarInnerRowGap: 1,
         islandPadding: 1,
-        collabMarginLeft: 8,
       };
 
   const TunnelsJotaiProvider = tunnels.tunnelsJotai.Provider;
@@ -348,58 +339,6 @@ const LayerUI = ({
                 />
               )}
           </Stack.Col>
-          {defaultUIEnabled &&
-            !appState.viewModeEnabled &&
-            appState.openDialog?.name !== "elementLinkSelector" && (
-              <Section heading="shapes" className="shapes-section">
-                {(heading: React.ReactNode) => (
-                  <div style={{ position: "relative" }}>
-                    {renderWelcomeScreen && (
-                      <tunnels.WelcomeScreenToolbarHintTunnel.Out />
-                    )}
-                    <Stack.Col gap={spacing.toolbarColGap} align="start">
-                      <Stack.Row
-                        gap={spacing.toolbarRowGap}
-                        className={clsx("App-toolbar-container", {
-                          "zen-mode": appState.zenModeEnabled,
-                        })}
-                      >
-                        <Toolbar
-                          app={app}
-                          appState={appState}
-                          setAppState={setAppState}
-                          UIOptions={UIOptions}
-                          onPenModeToggle={onPenModeToggle}
-                          onLockToggle={onLockToggle}
-                          heading={heading}
-                          renderAction={actionManager.renderAction}
-                        />
-                        {isCollaborating && (
-                          <Island
-                            style={{
-                              marginLeft: spacing.collabMarginLeft,
-                              alignSelf: "center",
-                              height: "fit-content",
-                            }}
-                          >
-                            <LaserPointerButton
-                              title={t("toolBar.laser")}
-                              checked={
-                                appState.activeTool.type === TOOL_TYPE.laser
-                              }
-                              onChange={() =>
-                                app.setActiveTool({ type: TOOL_TYPE.laser })
-                              }
-                              isMobile
-                            />
-                          </Island>
-                        )}
-                      </Stack.Row>
-                    </Stack.Col>
-                  </div>
-                )}
-              </Section>
-            )}
           <div
             className={clsx(
               "layer-ui__wrapper__top-right zen-mode-transition",
@@ -706,7 +645,7 @@ const LayerUI = ({
           {renderSidebars()}
         </>
       )}
-      {appProps.radialPalette && !appState.viewModeEnabled && (
+      {!appState.viewModeEnabled && (
         <RadialPalette
           actionManager={actionManager}
           phone={editorInterface.formFactor === "phone"}
