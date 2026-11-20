@@ -4538,10 +4538,7 @@ class App extends React.Component<AppProps, AppState> {
     if (prevState.activeTool.type !== this.state.activeTool.type) {
       this.radialPalette.toolChanged();
     }
-    if (
-      this.radialPalette.session &&
-      (!this.props.radialPalette || this.state.viewModeEnabled)
-    ) {
+    if (this.radialPalette.session && this.state.viewModeEnabled) {
       this.radialPalette.close();
     }
     this.midi.handleStateChange(prevState);
@@ -7281,9 +7278,7 @@ ${css}
   private handleCanvasPointerMove = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
-    if (this.props.radialPalette) {
-      this.radialPaletteGestures.onPointerMove(event.nativeEvent);
-    }
+    this.radialPaletteGestures.onPointerMove(event.nativeEvent);
     if (!this.isInteractionEnabled()) {
       if (this.isToolSupported(this.state.activeTool.type)) {
         // keep broadcasting the pointer (`props.onPointerUpdate`) between
@@ -8152,7 +8147,7 @@ ${css}
     if (selection?.anchorNode) {
       selection.removeAllRanges();
     }
-    if (this.props.radialPalette && !this.state.viewModeEnabled) {
+    if (!this.state.viewModeEnabled) {
       // a long press or a pen's barrel button opens the radial palette, in
       // place of the touch context menu
       if (this.radialPaletteGestures.onPointerDown(event.nativeEvent)) {
@@ -12843,10 +12838,7 @@ ${css}
   ) => {
     // Always suppress the native menu over the canvas.
     event.preventDefault();
-    if (
-      this.props.radialPalette &&
-      this.radialPaletteGestures.onContextMenu(event.nativeEvent)
-    ) {
+    if (this.radialPaletteGestures.onContextMenu(event.nativeEvent)) {
       return;
     }
     // a secondary-button press is a pan session: this event is not a click

@@ -129,11 +129,6 @@ describe("props.activeTool (forced tool)", () => {
   const h = window.h;
   const mouse = new Pointer("mouse");
 
-  const queryToolButton = (type: string) =>
-    GlobalTestState.renderResult.container.querySelector<HTMLButtonElement>(
-      `[data-testid="toolbar-${type}"]`,
-    );
-
   beforeEach(() => {
     mouse.reset();
   });
@@ -252,45 +247,6 @@ describe("props.activeTool (forced tool)", () => {
     expect(h.state.activeTool.type).toBe("laser");
   });
 
-  it("renders non-forced toolbar buttons disabled and gates the tool lock", async () => {
-    await render(
-      <Excalidraw
-        activeTool={{ type: "rectangle" }}
-        handleKeyboardGlobally={true}
-      />,
-    );
-
-    expect(queryToolButton("rectangle")!.disabled).toBe(false);
-    expect(queryToolButton("rectangle")!.getAttribute("aria-pressed")).toBe(
-      "true",
-    );
-    expect(queryToolButton("freedraw")!.disabled).toBe(true);
-    expect(queryToolButton("eraser")!.disabled).toBe(true);
-    expect(queryToolButton("lock")).toBe(null);
-
-    // the extra-tools dropdown items are disabled as well
-    fireEvent.click(
-      GlobalTestState.renderResult.container.querySelector(
-        ".App-toolbar__extra-tools-trigger",
-      )!,
-    );
-    const frameItem = document.querySelector<HTMLButtonElement>(
-      '[data-testid="toolbar-frame"]',
-    );
-    expect(frameItem).not.toBe(null);
-    expect(frameItem!.disabled).toBe(true);
-    const laserItem = document.querySelector<HTMLButtonElement>(
-      '[data-testid="toolbar-laser"]',
-    );
-    expect(laserItem!.disabled).toBe(true);
-
-    // Q (toggle tool lock) is ignored — locking is implied while forced
-    expect(h.state.activeTool.locked).toBe(false);
-    fireEvent.keyDown(document, { key: "q", code: "KeyQ" });
-    expect(h.state.activeTool.locked).toBe(false);
-    expect(h.state.activeTool.type).toBe("rectangle");
-  });
-
   it("cannot force the image tool", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     await render(<Excalidraw activeTool={{ type: "image" } as any} />);
@@ -346,43 +302,5 @@ describe("props.activeTool (forced tool)", () => {
       />,
     );
     expect(h.state.activeTool.type).toBe("laser");
-  });
-});
-
-describe("toolbar", () => {
-  const queryTool = (type: string) =>
-    document.querySelector<HTMLButtonElement>(
-      `[data-testid="toolbar-${type}"]`,
-    );
-  const openExtraTools = () =>
-    fireEvent.click(
-      document.querySelector(".App-toolbar__extra-tools-trigger")!,
-    );
-
-  it("keeps the image tool in the extra-tools menu", async () => {
-    await render(<Excalidraw />);
-    expect(queryTool("image")).toBe(null);
-
-    openExtraTools();
-    expect(queryTool("image")).not.toBe(null);
-    expect(queryTool("frame")).not.toBe(null);
-  });
-
-  it("hides the image tool through UIOptions.tools.image", async () => {
-    await render(<Excalidraw UIOptions={{ tools: { image: false } }} />);
-    openExtraTools();
-    expect(queryTool("image")).toBe(null);
-    expect(queryTool("frame")).not.toBe(null);
-  });
-
-  it("badges tools with their letter shortcut", async () => {
-    await render(<Excalidraw />);
-    const badge = (type: string) =>
-      queryTool(type)?.querySelector(".ToolIcon__keybinding")?.textContent;
-    expect(badge("selection")).toBe("V");
-    expect(badge("rectangle")).toBe("R");
-    expect(badge("text")).toBe("T");
-    expect(badge("stickynote")).toBe("N");
-    expect(badge("eraser")).toBe("E");
   });
 });

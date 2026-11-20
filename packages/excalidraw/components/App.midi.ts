@@ -1170,10 +1170,6 @@ export class AppMidi {
     if (this.app.state.viewModeEnabled || !this.app.isInteractionEnabled()) {
       return;
     }
-    if (!this.app.props.radialPalette) {
-      this.toast(`${MIDI_TARGETS[ring].label}: the radial palette is off`);
-      return;
-    }
     this.endTurn();
     if ("press" in input) {
       this.carry.delete(ring);

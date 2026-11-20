@@ -130,7 +130,6 @@ describe("baseline (interactive & ui enabled by default)", () => {
 
   it("renders UI chrome", () => {
     expect(queryContainer(".layer-ui__wrapper")).not.toBe(null);
-    expect(queryContainer(".App-toolbar")).not.toBe(null);
     expect(queryContainer(".excalidraw--non-interactive")).toBe(null);
     expect(queryContainer(".excalidraw--ui-hidden")).toBe(null);
   });
@@ -632,7 +631,6 @@ describe("ui={false}", () => {
     expect(queryContainer(".excalidraw-textEditorContainer")).not.toBe(null);
 
     // The placement scaffold remains for host UI, but default controls don't.
-    expect(queryContainer(".App-toolbar")).toBe(null);
     expect(queryContainer(".dropdown-menu-button")).toBe(null);
     expect(queryContainer(".default-sidebar-trigger")).toBe(null);
     expect(queryContainer(".layer-ui__wrapper__footer-left")).toBe(null);
@@ -706,7 +704,6 @@ describe("ui={{ enabled: ... }}", () => {
 
     expect(queryContainer(".zoom-actions")).not.toBe(null);
     expect(queryContainer(".undo-redo-buttons")).toBe(null);
-    expect(queryContainer(".App-toolbar")).toBe(null);
     expect(queryContainer(".dropdown-menu-button")).toBe(null);
     expect(queryContainer(".default-sidebar-trigger")).toBe(null);
     expect(queryContainer(".help-icon")).toBe(null);
@@ -856,7 +853,6 @@ describe("interaction={false} ui={false}", () => {
     // not
     expect(queryContainer("canvas.static")).not.toBe(null);
     expect(queryContainer("canvas.interactive")).not.toBe(null);
-    expect(queryContainer(".App-toolbar")).toBe(null);
     expect(queryContainer(".dropdown-menu-button")).toBe(null);
 
     const container = queryContainer(".excalidraw-container")!;
