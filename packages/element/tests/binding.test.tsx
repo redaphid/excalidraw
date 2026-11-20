@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import { KEYS, ROUNDNESS, arrayToMap } from "@excalidraw/common";
 
 import { pointFrom } from "@excalidraw/math";

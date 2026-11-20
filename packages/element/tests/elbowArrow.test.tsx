@@ -1,4 +1,3 @@
-import { act } from "@testing-library/react";
 import { ARROW_TYPE } from "@excalidraw/common";
 import { pointFrom } from "@excalidraw/math";
 import { Excalidraw } from "@excalidraw/excalidraw";
