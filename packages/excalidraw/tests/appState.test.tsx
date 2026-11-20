@@ -1,19 +1,19 @@
 import React from "react";
-import {
-  actionChangeFontSize,
-} from "../actions/actionProperties";
+
 import { act } from "@testing-library/react";
 
 import { EXPORT_DATA_TYPES, MIME_TYPES } from "@excalidraw/common";
 
 import type { ExcalidrawTextElement } from "@excalidraw/element/types";
 
+import { actionChangeFontSize } from "../actions/actionProperties";
+
 import { getDefaultAppState } from "../appState";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
 import { Pointer, UI } from "./helpers/ui";
-import { fireEvent, queryByTestId, render, waitFor } from "./test-utils";
+import { render, waitFor } from "./test-utils";
 
 const { h } = window;
 
@@ -67,7 +67,7 @@ describe("appState", () => {
   });
 
   it("changing fontSize with text tool selected (no element created yet)", async () => {
-    const { container } = await render(
+    await render(
       <Excalidraw
         initialData={{
           appState: {

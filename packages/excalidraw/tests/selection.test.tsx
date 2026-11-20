@@ -1211,17 +1211,15 @@ describe("select single element on the scene", () => {
       <Excalidraw handleKeyboardGlobally={true} />,
     );
     const canvas = container.querySelector("canvas.interactive")!;
-    {
-      // create element
-      UI.clickTool("rectangle");
-      fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
-      fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
-      fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
-      fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, {
-        key: KEYS.ESCAPE,
-      });
-    }
+    // create element
+    UI.clickTool("rectangle");
+    fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
+    fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
+    fireEvent.pointerUp(canvas);
+    fireEvent.keyDown(document, {
+      key: KEYS.ESCAPE,
+    });
 
     UI.clickTool("selection");
     // click on a line on the rectangle
@@ -1242,17 +1240,15 @@ describe("select single element on the scene", () => {
       <Excalidraw handleKeyboardGlobally={true} />,
     );
     const canvas = container.querySelector("canvas.interactive")!;
-    {
-      // create element
-      UI.clickTool("diamond");
-      fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
-      fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
-      fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
-      fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, {
-        key: KEYS.ESCAPE,
-      });
-    }
+    // create element
+    UI.clickTool("diamond");
+    fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
+    fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
+    fireEvent.pointerUp(canvas);
+    fireEvent.keyDown(document, {
+      key: KEYS.ESCAPE,
+    });
 
     UI.clickTool("selection");
     // click on a line on the rectangle
@@ -1273,17 +1269,15 @@ describe("select single element on the scene", () => {
       <Excalidraw handleKeyboardGlobally={true} />,
     );
     const canvas = container.querySelector("canvas.interactive")!;
-    {
-      // create element
-      UI.clickTool("ellipse");
-      fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
-      fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
-      fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
-      fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, {
-        key: KEYS.ESCAPE,
-      });
-    }
+    // create element
+    UI.clickTool("ellipse");
+    fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
+    fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
+    fireEvent.pointerUp(canvas);
+    fireEvent.keyDown(document, {
+      key: KEYS.ESCAPE,
+    });
 
     UI.clickTool("selection");
     // click on a line on the rectangle
@@ -1304,17 +1298,15 @@ describe("select single element on the scene", () => {
       <Excalidraw handleKeyboardGlobally={true} />,
     );
     const canvas = container.querySelector("canvas.interactive")!;
-    {
-      // create element
-      UI.clickTool("arrow");
-      fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
-      fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
-      fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
-      fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, {
-        key: KEYS.ESCAPE,
-      });
-    }
+    // create element
+    UI.clickTool("arrow");
+    fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
+    fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
+    fireEvent.pointerUp(canvas);
+    fireEvent.keyDown(document, {
+      key: KEYS.ESCAPE,
+    });
 
     /*
         1 2 3 4 5 6 7 8 9
@@ -1347,17 +1339,15 @@ describe("select single element on the scene", () => {
       <Excalidraw handleKeyboardGlobally={true} />,
     );
     const canvas = container.querySelector("canvas.interactive")!;
-    {
-      // create element
-      UI.clickTool("line");
-      fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
-      fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
-      fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
-      fireEvent.pointerUp(canvas);
-      fireEvent.keyDown(document, {
-        key: KEYS.ESCAPE,
-      });
-    }
+    // create element
+    UI.clickTool("line");
+    fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
+    fireEvent.pointerMove(canvas, { clientX: -1000, clientY: -1000 });
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
+    fireEvent.pointerUp(canvas);
+    fireEvent.keyDown(document, {
+      key: KEYS.ESCAPE,
+    });
 
     /*
         1 2 3 4 5 6 7 8 9

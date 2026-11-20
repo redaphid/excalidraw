@@ -14,15 +14,17 @@ import {
   rememberColor,
 } from "./themeInks";
 
-import type { RadialHostPen, ToolType, UnsubscribeCallback } from "../../types";
-import type App from "../App";
-import type { PenPreset } from "./penPresets";
 import { FLICK_DISTANCE } from "./radialLayout";
+
 import {
   STYLE_PROPERTIES,
   getStyleProperty,
   styleOptionId,
 } from "./styleProperties";
+
+import type { RadialHostPen, ToolType, UnsubscribeCallback } from "../../types";
+import type App from "../App";
+import type { PenPreset } from "./penPresets";
 
 import type { StylePropertyId } from "./styleProperties";
 

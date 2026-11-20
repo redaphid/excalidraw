@@ -42,25 +42,21 @@ describe("move element", () => {
     const { container } = await render(<Excalidraw />);
     const canvas = container.querySelector("canvas.interactive")!;
 
-    {
-      // create element
-      UI.clickTool("rectangle");
-      fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
-      fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
-      fireEvent.pointerUp(canvas);
+    // create element
+    UI.clickTool("rectangle");
+    fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
+    fireEvent.pointerUp(canvas);
 
-      expect(renderInteractiveScene.mock.calls.length).toMatchInlineSnapshot(
-        `5`,
-      );
-      expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`5`);
-      expect(h.state.selectionElement).toBeNull();
-      expect(h.elements.length).toEqual(1);
-      expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
-      expect([h.elements[0].x, h.elements[0].y]).toEqual([30, 20]);
+    expect(renderInteractiveScene.mock.calls.length).toMatchInlineSnapshot(`5`);
+    expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`5`);
+    expect(h.state.selectionElement).toBeNull();
+    expect(h.elements.length).toEqual(1);
+    expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
+    expect([h.elements[0].x, h.elements[0].y]).toEqual([30, 20]);
 
-      renderInteractiveScene.mockClear();
-      renderStaticScene.mockClear();
-    }
+    renderInteractiveScene.mockClear();
+    renderStaticScene.mockClear();
 
     fireEvent.pointerDown(canvas, { clientX: 50, clientY: 20 });
     fireEvent.pointerMove(canvas, { clientX: 20, clientY: 40 });
@@ -152,25 +148,21 @@ describe("duplicate element on move when ALT is clicked", () => {
     const { container } = await render(<Excalidraw />);
     const canvas = container.querySelector("canvas.interactive")!;
 
-    {
-      // create element
-      UI.clickTool("rectangle");
-      fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
-      fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
-      fireEvent.pointerUp(canvas);
+    // create element
+    UI.clickTool("rectangle");
+    fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
+    fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
+    fireEvent.pointerUp(canvas);
 
-      expect(renderInteractiveScene.mock.calls.length).toMatchInlineSnapshot(
-        `5`,
-      );
-      expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`5`);
-      expect(h.state.selectionElement).toBeNull();
-      expect(h.elements.length).toEqual(1);
-      expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
-      expect([h.elements[0].x, h.elements[0].y]).toEqual([30, 20]);
+    expect(renderInteractiveScene.mock.calls.length).toMatchInlineSnapshot(`5`);
+    expect(renderStaticScene.mock.calls.length).toMatchInlineSnapshot(`5`);
+    expect(h.state.selectionElement).toBeNull();
+    expect(h.elements.length).toEqual(1);
+    expect(h.state.selectedElementIds[h.elements[0].id]).toBeTruthy();
+    expect([h.elements[0].x, h.elements[0].y]).toEqual([30, 20]);
 
-      renderInteractiveScene.mockClear();
-      renderStaticScene.mockClear();
-    }
+    renderInteractiveScene.mockClear();
+    renderStaticScene.mockClear();
 
     fireEvent.pointerDown(canvas, { clientX: 50, clientY: 20 });
     fireEvent.pointerMove(canvas, { clientX: 20, clientY: 40, altKey: true });

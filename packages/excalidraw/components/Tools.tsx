@@ -1,8 +1,6 @@
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 
-import { Popover } from "radix-ui";
-
 import { KEYS, capitalizeString } from "@excalidraw/common";
 
 import type { PointerType } from "@excalidraw/element/types";
@@ -11,7 +9,6 @@ import { trackEvent } from "../analytics";
 import { t } from "../i18n";
 import { getShortcutKey } from "../shortcut";
 
-import { useExcalidrawContainer } from "./App";
 import { IconButton } from "./IconButton";
 import { ToolPopover } from "./ToolPopover";
 import {
@@ -35,7 +32,6 @@ import {
   stickyNoteToolIcon,
 } from "./icons";
 
-import type { ActionManager } from "../actions/manager";
 import type {
   AppClassProperties,
   AppState,
@@ -337,20 +333,6 @@ export const ArrowToolButton = createToolButton("arrow");
 export const LineToolButton = createToolButton("line");
 export const FreedrawToolButton = createToolButton("freedraw");
 export const TextToolButton = createToolButton("text");
-
-const PenToolButton = createToolButton("freedraw", {
-  onSelect: (app) => {
-    if (app.state.activeTool.type !== "freedraw") {
-      trackEvent("toolbar", "freedraw", "ui");
-      app.setActiveTool({ type: "freedraw" });
-      app.setAppState({ openPopup: "penSize" });
-      return;
-    }
-    app.setAppState({
-      openPopup: app.state.openPopup === "penSize" ? null : "penSize",
-    });
-  },
-});
 
 export const StickyNoteToolButton = createToolButton("stickynote");
 export const ImageToolButton = createToolButton("image");

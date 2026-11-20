@@ -34,7 +34,6 @@ import {
   fireEvent,
   GlobalTestState,
   render,
-  screen,
   unmountComponent,
   waitFor,
 } from "./test-utils";

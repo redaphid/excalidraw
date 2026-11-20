@@ -1,14 +1,6 @@
 import React from "react";
-import {
-  actionChangeBackgroundColor,
-  actionChangeStrokeColor,
-} from "../actions/actionProperties";
-import {
-  queryByText,
-  fireEvent,
-  queryByTestId,
-  waitFor,
-} from "@testing-library/react";
+
+import { queryByText, fireEvent, waitFor } from "@testing-library/react";
 import { vi } from "vitest";
 import { pointFrom } from "@excalidraw/math";
 
@@ -54,8 +46,11 @@ import {
   actionBringForward,
   actionSendToBack,
 } from "../actions";
+import {
+  actionChangeBackgroundColor,
+  actionChangeStrokeColor,
+} from "../actions/actionProperties";
 import { createUndoAction, createRedoAction } from "../actions/actionHistory";
-import { actionToggleViewMode } from "../actions/actionToggleViewMode";
 import * as StaticScene from "../renderer/staticScene";
 import { getDefaultAppState } from "../appState";
 import { Excalidraw } from "../index";
@@ -75,7 +70,6 @@ import {
   act,
   assertSelectedElements,
   render,
-  togglePopover,
   getCloneByOrigId,
   checkpointHistory,
   unmountComponent,
@@ -345,10 +339,14 @@ describe("history", () => {
 
       const rect = UI.createElement("rectangle", { x: 10 });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#ffc9c9",
+        });
       });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#a5d8ff" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#a5d8ff",
+        });
       });
       expect(API.getUndoStack().length).toBe(3);
       expect(API.getRedoStack().length).toBe(0);
@@ -1288,7 +1286,9 @@ describe("history", () => {
       ]);
 
       act(() => {
-        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { color: "#e03131" });
+        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+          color: "#e03131",
+        });
       });
       mouse.reset();
       mouse.down(40, -20);
@@ -1991,7 +1991,6 @@ describe("history", () => {
         );
       });
     });
-
   });
 
   describe("multiplayer undo/redo", () => {
@@ -2011,7 +2010,9 @@ describe("history", () => {
     it("should not override remote changes on different elements", async () => {
       UI.createElement("rectangle", { x: 10 });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#ffc9c9",
+        });
       });
       expect(API.getUndoStack().length).toBe(2);
 
@@ -2055,7 +2056,9 @@ describe("history", () => {
     it("should not override remote changes on different properties", async () => {
       UI.createElement("rectangle", { x: 10 });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#ffc9c9",
+        });
       });
       expect(API.getUndoStack().length).toBe(2);
 
@@ -2091,10 +2094,14 @@ describe("history", () => {
     it("should update history entries after remote changes on the same properties", async () => {
       UI.createElement("rectangle", { x: 10 });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#ffc9c9",
+        });
       });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#a5d8ff" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#a5d8ff",
+        });
       });
       // At this point we have all the history entries created, no new entries will be created, only existing entries will get inversed and updated
       expect(API.getUndoStack().length).toBe(3);
@@ -2472,7 +2479,9 @@ describe("history", () => {
     it("should iterate through the history when when element change relates to remotely deleted element", async () => {
       UI.createElement("rectangle", { x: 10 });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#ffc9c9",
+        });
       });
       expect(API.getUndoStack().length).toBe(2);
 
@@ -2528,7 +2537,9 @@ describe("history", () => {
 
       const rect2 = UI.createElement("rectangle", { x: 20 });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#ffc9c9",
+        });
       });
       const rect3 = UI.createElement("rectangle", { x: 30, y: 30 });
 

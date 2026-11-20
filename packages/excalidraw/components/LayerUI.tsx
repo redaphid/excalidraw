@@ -2,7 +2,6 @@ import clsx from "clsx";
 import React from "react";
 
 import {
-  CLASSES,
   DEFAULT_SIDEBAR,
   arrayToMap,
   capitalizeString,
@@ -10,7 +9,6 @@ import {
 } from "@excalidraw/common";
 
 import { getColorUpdate, mutateElement } from "@excalidraw/element";
-
 
 import { ShapeCache } from "@excalidraw/element";
 

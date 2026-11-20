@@ -16,13 +16,7 @@ import { editorJotaiStore } from "../editor-jotai";
 
 import { API } from "./helpers/api";
 import { Keyboard, Pointer } from "./helpers/ui";
-import {
-  act,
-  fireEvent,
-  GlobalTestState,
-  render,
-  waitFor,
-} from "./test-utils";
+import { act, fireEvent, GlobalTestState, render, waitFor } from "./test-utils";
 
 const { h } = window;
 

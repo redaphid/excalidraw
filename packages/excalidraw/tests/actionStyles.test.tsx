@@ -22,10 +22,11 @@ import {
 import { copiedStyles } from "../actions/actionStyles";
 import { Excalidraw } from "../index";
 
-import type { Action } from "../actions/types";
 import { API } from "../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../tests/helpers/ui";
 import { act, render } from "../tests/test-utils";
+
+import type { Action } from "../actions/types";
 
 const { h } = window;
 

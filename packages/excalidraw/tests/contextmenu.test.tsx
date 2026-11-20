@@ -1,4 +1,12 @@
 import React from "react";
+
+import { act } from "@testing-library/react";
+import { vi } from "vitest";
+
+import { KEYS, STROKE_WIDTH, reseed } from "@excalidraw/common";
+
+import { setDateTimeForTests } from "@excalidraw/common";
+
 import {
   actionChangeStrokeColor,
   actionChangeBackgroundColor,
@@ -8,12 +16,6 @@ import {
   actionChangeStrokeStyle,
   actionChangeStrokeWidth,
 } from "../actions/actionProperties";
-import { act } from "@testing-library/react";
-import { vi } from "vitest";
-
-import { KEYS, STROKE_WIDTH, reseed } from "@excalidraw/common";
-
-import { setDateTimeForTests } from "@excalidraw/common";
 
 import { copiedStyles } from "../actions/actionStyles";
 import { Excalidraw } from "../index";
@@ -27,11 +29,9 @@ import {
   mockBoundingClientRect,
   restoreOriginalGetBoundingClientRect,
   GlobalTestState,
-  screen,
   queryByText,
   queryAllByText,
   waitFor,
-  togglePopover,
   unmountComponent,
   checkpointHistory,
 } from "./test-utils";
@@ -342,19 +342,31 @@ describe("contextMenu element", () => {
 
     // Change some styles of second rectangle
     act(() => {
-      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { color: "#e03131" });
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+        color: "#e03131",
+      });
     });
     act(() => {
-      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#a5d8ff" });
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+        color: "#a5d8ff",
+      });
     });
     act(() => {
-      h.app.actionManager.executeAction(actionChangeFillStyle, "ui", "cross-hatch");
+      h.app.actionManager.executeAction(
+        actionChangeFillStyle,
+        "ui",
+        "cross-hatch",
+      );
     });
     act(() => {
       h.app.actionManager.executeAction(actionChangeStrokeWidth, "ui", "bold");
     });
     act(() => {
-      h.app.actionManager.executeAction(actionChangeStrokeStyle, "ui", "dotted");
+      h.app.actionManager.executeAction(
+        actionChangeStrokeStyle,
+        "ui",
+        "dotted",
+      );
     });
     act(() => {
       h.app.actionManager.executeAction(actionChangeSloppiness, "ui", 2);
@@ -704,7 +716,8 @@ describe("contextMenu on the empty canvas", () => {
 
     expect(
       ["undo", "redo", "zoomToFit", "toggleShortcuts", "openMainMenu"].map(
-        (name) => contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
+        (name) =>
+          contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
       ),
     ).toEqual([true, true, true, true, true]);
   });
@@ -714,7 +727,8 @@ describe("contextMenu on the empty canvas", () => {
 
     expect(
       ["setLaserTool", "insertImage"].map(
-        (name) => contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
+        (name) =>
+          contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
       ),
     ).toEqual([true, true]);
   });

@@ -5,10 +5,7 @@ import {
   KEYS,
   TEXT_MAX_WRAP_WIDTH,
 } from "@excalidraw/common";
-import {
-  actionChangeStrokeWidth,
-  actionChangeFontSize,
-} from "../actions/actionProperties";
+
 import {
   elementWithCanvasCache,
   getBoundTextMaxWidth,
@@ -32,6 +29,11 @@ import type {
   NonDeleted,
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
+
+import {
+  actionChangeStrokeWidth,
+  actionChangeFontSize,
+} from "../actions/actionProperties";
 
 import { Excalidraw } from "../index";
 import { serializeAsJSON } from "../data/json";
@@ -329,7 +331,11 @@ describe("authoringUnits: screen", () => {
         height: 80,
       });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeStrokeWidth, "ui", "bold");
+        h.app.actionManager.executeAction(
+          actionChangeStrokeWidth,
+          "ui",
+          "bold",
+        );
       });
       return { strokeWidth: rectangle.get().strokeWidth * zoom };
     });

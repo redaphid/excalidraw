@@ -68,6 +68,7 @@ import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
 import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
 import type React from "react";
+import type { JSX } from "react";
 
 /** a pen of the host's own on the radial palette's pens ring, drawn after
  * the presets and before the eraser */
@@ -80,7 +81,6 @@ export type RadialHostPen = {
   /** called when picked; the ring then closes */
   onPick: () => void;
 };
-import type { JSX } from "react";
 
 export type { App };
 

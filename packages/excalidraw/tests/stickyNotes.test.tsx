@@ -328,7 +328,9 @@ describe("sticky notes", () => {
       const shapeDefault = h.state.currentItemStrokeColor;
 
       act(() => {
-        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { color: RED });
+        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+          color: RED,
+        });
       });
 
       expect(h.state.currentItemStickynoteStrokeColor).toBe(RED);
@@ -354,7 +356,9 @@ describe("sticky notes", () => {
       API.setSelectedElements([getElement(note.id), getElement(rectangle.id)]);
 
       act(() => {
-        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { color: RED });
+        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+          color: RED,
+        });
       });
 
       expect(getElement(rectangle.id).strokeColor).toBe(RED);
@@ -605,7 +609,9 @@ describe("sticky notes", () => {
       mouse.doubleClickAt(note.x + note.width / 2, note.y + note.height / 2);
       await getTextEditor();
       act(() => {
-        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { color: RED });
+        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+          color: RED,
+        });
       });
 
       expect(getElement(label.id).strokeColor).toBe(RED);

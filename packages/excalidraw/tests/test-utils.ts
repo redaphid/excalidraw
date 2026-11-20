@@ -1,12 +1,6 @@
 import "pepjs";
 import { act } from "@testing-library/react";
-import {
-  render,
-  queries,
-  waitFor,
-  fireEvent,
-  cleanup,
-} from "@testing-library/react";
+import { render, queries, waitFor, cleanup } from "@testing-library/react";
 import ansi from "ansicolor";
 
 import { ORIG_ID, arrayToMap } from "@excalidraw/common";

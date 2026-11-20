@@ -546,7 +546,10 @@ const Ring = ({
         (hit?.kind === "tool" ||
           hit?.kind === "pen" ||
           hit?.kind === "color") &&
-        controller.pick(ringOf(hit.kind), hit.index);
+        controller.pick(
+          hit.kind === "tool" ? toolsRing : RING_OF[hit.kind],
+          hit.index,
+        );
       if (!picked) {
         controller.close();
       }
@@ -565,7 +568,7 @@ const Ring = ({
       win.removeEventListener("pointerup", onUp);
       win.removeEventListener("pointercancel", onCancel);
     };
-  }, [app, controller, flick]);
+  }, [app, controller, flick, toolsRing]);
 
   const ringRef = useRef<HTMLDivElement>(null);
   // a long press opens the ring under the finger, and the browser's click

@@ -41,7 +41,11 @@ describe("freedraw mode action", () => {
     API.setSelectedElements([element.get()] as NonDeletedExcalidrawElement[]);
 
     act(() => {
-      h.app.actionManager.executeAction(actionChangeFreedrawMode, "ui", "variable");
+      h.app.actionManager.executeAction(
+        actionChangeFreedrawMode,
+        "ui",
+        "variable",
+      );
     });
     expect(
       (h.elements[0] as ExcalidrawFreeDrawElement).strokeOptions?.variability,
@@ -52,7 +56,11 @@ describe("freedraw mode action", () => {
     expect(h.state.currentItemStrokeVariability).toBe("variable");
 
     act(() => {
-      h.app.actionManager.executeAction(actionChangeFreedrawMode, "ui", "constant");
+      h.app.actionManager.executeAction(
+        actionChangeFreedrawMode,
+        "ui",
+        "constant",
+      );
     });
     expect(
       (h.elements[0] as ExcalidrawFreeDrawElement).strokeOptions?.variability,
