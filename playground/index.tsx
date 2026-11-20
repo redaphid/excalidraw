@@ -114,7 +114,11 @@ const Playground = () => {
           : undefined
       }
       authoringUnits="screen"
-      radialPalette={params.get("radialPalette") !== "0"}
+      radialPalette={
+        params.get("radialPalette") === "toolbar"
+          ? { replaceToolbar: true }
+          : params.get("radialPalette") !== "0"
+      }
       midi={params.get("midi") !== "0"}
       initialData={initialData}
       frameNavigation={frameNavigation}

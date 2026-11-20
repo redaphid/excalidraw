@@ -13,6 +13,10 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### The puck in the toolbar's place (2026-11-20)
+
+- `radialPalette` also takes `{ replaceToolbar: true }`. On a phone, the toolbar then drops the buttons whose tools the ring offers (pens, eraser, shapes, lines, and text and frame, which stay in its menu), and the puck picks them. Hand, selection (with lasso), image and the other tools stay. Desktop and tablet are unchanged. `radialPalette={true}` works as before.
+
 ### The puck as a joystick (2026-11-20)
 
 - A pull on the radial palette's puck works like a virtual stick (after Sporefall Station's): the ring opens above the puck, the pull's direction aims at a tool, and pulling past the rim (60 px) picks it. A release inside the rim picks nothing. Only the direction counts, so every slice is 40° wide at any reach. This replaces the flick from the puck; a tap still opens the ring for taps, and the long press still moves the puck.
