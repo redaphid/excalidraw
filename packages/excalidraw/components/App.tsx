@@ -2596,10 +2596,6 @@ class App extends React.Component<AppProps, AppState> {
             "excalidraw--allow-browser-zoom":
               !this.isInteractionEnabled() && this.isBrowserZoomEnabled(),
             "excalidraw--ui-hidden": !this.isDefaultUIEnabled(),
-            "excalidraw--mobile-toolbar":
-              this.editorInterface.formFactor === "phone" &&
-              this.isDefaultUIEnabled() &&
-              !this.state.viewModeEnabled,
             "excalidraw--viewport-status-border":
               !!this.props.viewportStatusFrame?.border,
             "excalidraw--viewport-status-label":
@@ -2665,7 +2661,6 @@ class App extends React.Component<AppProps, AppState> {
                             actionManager={this.actionManager}
                             elements={this.scene.getNonDeletedElements()}
                             onLockToggle={this.toggleLock}
-                            onPenModeToggle={this.togglePenMode}
                             langCode={getLanguage().code}
                             renderTopLeftUI={renderTopLeftUI}
                             renderTopRightUI={renderTopRightUI}

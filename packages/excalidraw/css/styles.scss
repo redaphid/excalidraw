@@ -618,11 +618,8 @@ body.excalidraw-cursor-resize * {
     }
   }
 
-  // on mobile, when the default bottom toolbar renders, the stack is a
-  // normal (in-flow) row above MobileShapeActions/the toolbar Island inside
-  // .App-bottom-bar instead of being independently viewport-positioned —
-  // self-sizing regardless of whether MobileShapeActions is showing, with
-  // no magic-number height math needed to clear the toolbar.
+  // inside .App-bottom-bar the stack is a normal (in-flow) row instead of
+  // being independently viewport-positioned.
   .App-bottom-bar > .floating-status-stack {
     position: static;
     left: auto;
