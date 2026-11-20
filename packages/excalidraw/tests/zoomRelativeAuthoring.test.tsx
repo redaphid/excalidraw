@@ -5,6 +5,7 @@ import {
   KEYS,
   TEXT_MAX_WRAP_WIDTH,
 } from "@excalidraw/common";
+
 import {
   elementWithCanvasCache,
   getBoundTextMaxWidth,
@@ -28,6 +29,11 @@ import type {
   NonDeleted,
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
+
+import {
+  actionChangeStrokeWidth,
+  actionChangeFontSize,
+} from "../actions/actionProperties";
 
 import { Excalidraw } from "../index";
 import { serializeAsJSON } from "../data/json";
@@ -324,7 +330,13 @@ describe("authoringUnits: screen", () => {
         width: 120,
         height: 80,
       });
-      UI.clickOnTestId("strokeWidth-bold");
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeStrokeWidth,
+          "ui",
+          "bold",
+        );
+      });
       return { strokeWidth: rectangle.get().strokeWidth * zoom };
     });
     expect(h.elements[0].strokeWidth * 10_000).toBeCloseTo(4, 9);
@@ -335,7 +347,9 @@ describe("authoringUnits: screen", () => {
       atZoom(zoom);
       const text = await createText(100, 100, "hello");
       API.setSelectedElements([text as NonDeletedExcalidrawElement]);
-      UI.clickOnTestId("fontSize-large");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeFontSize, "ui", 28);
+      });
       const resized = h.elements.find(
         (element) => element.id === text.id,
       ) as ExcalidrawTextElement;

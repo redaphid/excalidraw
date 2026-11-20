@@ -12,7 +12,6 @@ import { pointFrom } from "@excalidraw/math";
 
 import {
   getStickyNoteLayout,
-  getTransformHandles,
   getBaseFontSize,
   resizeMultipleElements,
   resizeSingleElement,
@@ -32,6 +31,7 @@ import {
   actionChangeBackgroundColor,
   actionChangeFontSize,
   actionChangeRoundness,
+  actionChangeStrokeColor,
   actionIncreaseFontSize,
 } from "../actions/actionProperties";
 import { actionCopyStyles, actionPasteStyles } from "../actions/actionStyles";
@@ -327,7 +327,11 @@ describe("sticky notes", () => {
       UI.clickTool("stickynote");
       const shapeDefault = h.state.currentItemStrokeColor;
 
-      UI.clickOnTestId(`color-top-pick-${RED}`);
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+          color: RED,
+        });
+      });
 
       expect(h.state.currentItemStickynoteStrokeColor).toBe(RED);
       expect(h.state.currentItemStrokeColor).toBe(shapeDefault);
@@ -351,7 +355,11 @@ describe("sticky notes", () => {
       layoutNotes(note.id);
       API.setSelectedElements([getElement(note.id), getElement(rectangle.id)]);
 
-      UI.clickOnTestId(`color-top-pick-${RED}`);
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+          color: RED,
+        });
+      });
 
       expect(getElement(rectangle.id).strokeColor).toBe(RED);
       expect(getElement(note.id).strokeColor).toBe(RED);
@@ -600,7 +608,11 @@ describe("sticky notes", () => {
 
       mouse.doubleClickAt(note.x + note.width / 2, note.y + note.height / 2);
       await getTextEditor();
-      UI.clickOnTestId(`color-top-pick-${RED}`);
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+          color: RED,
+        });
+      });
 
       expect(getElement(label.id).strokeColor).toBe(RED);
       // one ink: the note (and so its footer) follows the label
@@ -619,13 +631,12 @@ describe("sticky notes", () => {
       API.setElements([note, label]);
       layoutNotes(note.id);
       const shapeDefault = h.state.currentItemBackgroundColor;
-      const noteBackground = getElement(note.id).backgroundColor;
 
       mouse.doubleClickAt(note.x + note.width / 2, note.y + note.height / 2);
       await getTextEditor();
 
-      // the label is the styles panel's target and has no fill of its own,
-      // yet the background picker stays available and shows the note's fill
+      // the label is the styles target and has no fill of its own,
+      // yet the background picker stays available
       const elementsMap = h.app.scene.getNonDeletedElementsMap();
       expect(
         getShapeActionPredicates(
@@ -635,15 +646,6 @@ describe("sticky notes", () => {
           h.app,
         ).backgroundColor,
       ).toBe(true);
-      const backgroundPicker = document.querySelector(
-        ".color-picker__top-picks .color-picker__button.active[title]",
-      );
-      const activeSwatches = Array.from(
-        document.querySelectorAll(".color-picker__top-picks .active"),
-      ).map((button) => button.getAttribute("title"));
-      expect(backgroundPicker).not.toBeNull();
-      expect(activeSwatches).toContain(noteBackground);
-
       act(() => {
         h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
           color: COLOR_PALETTE.pink[1],
@@ -1035,36 +1037,6 @@ describe("sticky notes", () => {
       expect(resizedLabel.angle).toBe(0);
       expect(resizedLabel.x).toBeGreaterThan(resized.x);
       expect(resizedLabel.y).toBeGreaterThan(resized.y);
-    });
-
-    const hintWhileDragging = (
-      note: ExcalidrawStickyNoteElement,
-      handle: "se" | "e",
-    ) => {
-      const [x, y, width, height] = getTransformHandles(
-        note,
-        h.state.zoom,
-        h.app.scene.getNonDeletedElementsMap(),
-        "mouse",
-        {},
-      )[handle]!;
-      mouse.reset();
-      mouse.downAt(x + width / 2, y + height / 2);
-      mouse.moveTo(x + width / 2 + 30, y + height / 2 + 30);
-      const hint =
-        h.app.ownerDocument.querySelector(".HintViewer")?.textContent ?? "";
-      mouse.up();
-      return hint;
-    };
-
-    it("hints that a corner is proportional and Shift frees it", () => {
-      const { note } = setup();
-      expect(hintWhileDragging(note, "se")).toContain("resize freely");
-    });
-
-    it("hints that an edge is free and Shift constrains it", () => {
-      const { note } = setup();
-      expect(hintWhileDragging(note, "e")).toContain("constrain proportions");
     });
 
     it("constrains an edge with Shift and scales the ceiling", () => {

@@ -563,21 +563,4 @@ describe("opening the radial palette from the canvas", () => {
       });
     });
   });
-
-  describe("with the palette off", () => {
-    beforeEach(async () => {
-      await render(<Excalidraw />);
-    });
-
-    describe("when a finger holds still", () => {
-      beforeEach(() => {
-        down(400, 300);
-        wait(LONG_PRESS_DELAY);
-      });
-
-      it("opens the context menu, as Excalidraw always has", () => {
-        expect(h.state.contextMenu).not.toBeNull();
-      });
-    });
-  });
 });

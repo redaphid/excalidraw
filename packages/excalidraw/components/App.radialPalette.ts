@@ -87,11 +87,7 @@ export class AppRadialPaletteGestures {
 
   private get enabled() {
     const { app } = this;
-    return (
-      !!app.props.radialPalette &&
-      !app.state.viewModeEnabled &&
-      app.isInteractionEnabled()
-    );
+    return !app.state.viewModeEnabled && app.isInteractionEnabled();
   }
 
   /** a long press is being timed */

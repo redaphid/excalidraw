@@ -3,11 +3,12 @@ import type {
   NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
 
+import { actionChangeFreedrawMode } from "../actions/actionProperties";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
 import { UI } from "./helpers/ui";
-import { act, fireEvent, render, screen } from "./test-utils";
+import { act, render } from "./test-utils";
 
 const { h } = window;
 
@@ -35,11 +36,17 @@ describe("freedraw mode action", () => {
     ).toBe(0.5);
   });
 
-  it("toggling the radio updates both the selected element and the default", () => {
+  it("changing the freedraw mode updates both the selected element and the default", () => {
     const element = UI.createElement("freedraw", { x: 0, y: 0 });
     API.setSelectedElements([element.get()] as NonDeletedExcalidrawElement[]);
 
-    fireEvent.click(screen.getByTitle("Variable"));
+    act(() => {
+      h.app.actionManager.executeAction(
+        actionChangeFreedrawMode,
+        "ui",
+        "variable",
+      );
+    });
     expect(
       (h.elements[0] as ExcalidrawFreeDrawElement).strokeOptions?.variability,
     ).toBe("variable");
@@ -48,7 +55,13 @@ describe("freedraw mode action", () => {
     ).toBe(0.5);
     expect(h.state.currentItemStrokeVariability).toBe("variable");
 
-    fireEvent.click(screen.getByTitle("Constant"));
+    act(() => {
+      h.app.actionManager.executeAction(
+        actionChangeFreedrawMode,
+        "ui",
+        "constant",
+      );
+    });
     expect(
       (h.elements[0] as ExcalidrawFreeDrawElement).strokeOptions?.variability,
     ).toBe("constant");

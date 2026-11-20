@@ -130,7 +130,6 @@ describe("baseline (interactive & ui enabled by default)", () => {
 
   it("renders UI chrome", () => {
     expect(queryContainer(".layer-ui__wrapper")).not.toBe(null);
-    expect(queryContainer(".App-toolbar")).not.toBe(null);
     expect(queryContainer(".excalidraw--non-interactive")).toBe(null);
     expect(queryContainer(".excalidraw--ui-hidden")).toBe(null);
   });
@@ -632,7 +631,6 @@ describe("ui={false}", () => {
     expect(queryContainer(".excalidraw-textEditorContainer")).not.toBe(null);
 
     // The placement scaffold remains for host UI, but default controls don't.
-    expect(queryContainer(".App-toolbar")).toBe(null);
     expect(queryContainer(".dropdown-menu-button")).toBe(null);
     expect(queryContainer(".default-sidebar-trigger")).toBe(null);
     expect(queryContainer(".layer-ui__wrapper__footer-left")).toBe(null);
@@ -701,22 +699,6 @@ describe("ui={{ enabled: ... }}", () => {
     await waitFor(() => expect(h.state.scrolledOutside).toBe(true));
   };
 
-  it("renders opted-in zoom controls while the rest of the default UI stays hidden", async () => {
-    await render(<Excalidraw ui={{ enabled: { zoom: true } }} />);
-
-    expect(queryContainer(".zoom-actions")).not.toBe(null);
-    expect(queryContainer(".undo-redo-buttons")).toBe(null);
-    expect(queryContainer(".App-toolbar")).toBe(null);
-    expect(queryContainer(".dropdown-menu-button")).toBe(null);
-    expect(queryContainer(".default-sidebar-trigger")).toBe(null);
-    expect(queryContainer(".help-icon")).toBe(null);
-    expect(
-      queryContainer(".excalidraw-container")!.classList.contains(
-        "excalidraw--ui-hidden",
-      ),
-    ).toBe(true);
-  });
-
   it("renders an opted-in scroll-back-to-content control", async () => {
     await render(
       <Excalidraw
@@ -766,7 +748,6 @@ describe("ui={{ enabled: ... }}", () => {
     await scrollAwayFromContent();
 
     expect(queryContainer(".scroll-back-to-content")).not.toBe(null);
-    expect(queryContainer(".mobile-toolbar")).toBe(null);
   });
 
   it("shows toasts on mobile", async () => {
@@ -808,7 +789,9 @@ describe("ui={false} with host UI", () => {
     expect(queryContainer("[data-testid='host-footer']")).not.toBe(null);
     expect(queryContainer("[aria-label='host sidebar']")).not.toBe(null);
 
-    fireEvent.click(container.querySelector(".dropdown-menu-button")!);
+    act(() => {
+      h.app.setState({ openMenu: "canvas" });
+    });
     expect(container.textContent).toContain("host menu item");
     // The internal fallback menu must not be composed.
     expect(queryContainer("[data-testid='load-button']")).toBe(null);
@@ -856,7 +839,6 @@ describe("interaction={false} ui={false}", () => {
     // not
     expect(queryContainer("canvas.static")).not.toBe(null);
     expect(queryContainer("canvas.interactive")).not.toBe(null);
-    expect(queryContainer(".App-toolbar")).toBe(null);
     expect(queryContainer(".dropdown-menu-button")).toBe(null);
 
     const container = queryContainer(".excalidraw-container")!;

@@ -5,16 +5,11 @@ import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 import { useTunnels } from "../context/tunnels";
 import { t } from "../i18n";
 import { getScrollToContentState } from "../scene";
-import { SCROLLBAR_WIDTH, SCROLLBAR_MARGIN } from "../scene/scrollbars";
 
-import { ExitViewModeButton, MobileShapeActions } from "./Actions";
-import { MobileToolbar } from "./MobileToolbar";
+import { ExitViewModeButton } from "./Actions";
 import { FixedSideContainer } from "./FixedSideContainer";
 import { FrameBreadcrumb } from "./FrameBreadcrumb";
 
-import { Island } from "./Island";
-
-import { PenModeButton } from "./PenModeButton";
 import { Toast } from "./Toast";
 import { ViewportStatusBadge } from "./ViewportStatusFrame/ViewportStatusFrame";
 
@@ -29,7 +24,6 @@ type MobileMenuProps = {
   renderImageExportDialog: () => React.ReactNode;
   setAppState: React.Component<any, AppState>["setState"];
   elements: readonly NonDeletedExcalidrawElement[];
-  onPenModeToggle: AppClassProperties["togglePenMode"];
 
   renderTopRightUI?: (
     isMobile: boolean,
@@ -58,7 +52,6 @@ export const MobileMenu = ({
   defaultUIEnabled,
   scrollBackToContentUIEnabled,
   app,
-  onPenModeToggle,
 }: MobileMenuProps) => {
   const {
     WelcomeScreenCenterTunnel,
@@ -73,20 +66,7 @@ export const MobileMenu = ({
     const topRightUI = (
       <div className="excalidraw-ui-top-right">
         {renderTopRightUI?.(true, appState) ??
-          (!appState.viewModeEnabled && (
-            <>
-              {defaultUIEnabled && (
-                <PenModeButton
-                  checked={appState.penMode}
-                  onChange={() => onPenModeToggle(null)}
-                  title={t("toolBar.penMode")}
-                  isMobile
-                  penDetected={appState.penDetected}
-                />
-              )}
-              <DefaultSidebarTriggerTunnel.Out />
-            </>
-          ))}
+          (!appState.viewModeEnabled && <DefaultSidebarTriggerTunnel.Out />)}
         {defaultUIEnabled &&
           appState.viewModeEnabled &&
           app.isInteractionEnabled() && (
@@ -117,20 +97,8 @@ export const MobileMenu = ({
     );
   };
 
-  const renderToolbar = () => {
-    return (
-      <MobileToolbar
-        app={app}
-        setAppState={setAppState}
-        renderAction={actionManager.renderAction}
-      />
-    );
-  };
-
   const shouldRenderScrollBackToContent =
     scrollBackToContentUIEnabled && appState.scrolledOutside;
-  const shouldRenderDefaultBottomBar =
-    defaultUIEnabled && !appState.viewModeEnabled;
   const scrollBackToContentButton =
     shouldRenderScrollBackToContent &&
     !appState.openMenu &&
@@ -172,43 +140,13 @@ export const MobileMenu = ({
   return (
     <>
       {renderSidebars()}
-      {/* welcome screen, bottom bar, and top bar all have the same z-index */}
+      {/* welcome screen and top bar have the same z-index */}
       {/* ordered in this reverse order so that top bar is on top */}
       <div className="App-welcome-screen">
         {renderWelcomeScreen && <WelcomeScreenCenterTunnel.Out />}
       </div>
 
-      {shouldRenderDefaultBottomBar && (
-        <div
-          className="App-bottom-bar"
-          style={{
-            marginBottom: SCROLLBAR_WIDTH + SCROLLBAR_MARGIN,
-          }}
-          data-viewport-ui="bottom"
-        >
-          {(floatingStatus || breadcrumb) && (
-            <div className="floating-status-stack">
-              {floatingStatus}
-              {breadcrumb}
-            </div>
-          )}
-
-          <MobileShapeActions
-            appState={appState}
-            elementsMap={app.scene.getNonDeletedElementsMap()}
-            renderAction={actionManager.renderAction}
-            app={app}
-            setAppState={setAppState}
-          />
-
-          <Island className="App-toolbar">
-            {appState.openDialog?.name !== "elementLinkSelector" &&
-              renderToolbar()}
-          </Island>
-        </div>
-      )}
-
-      {!shouldRenderDefaultBottomBar && (floatingStatus || breadcrumb) && (
+      {(floatingStatus || breadcrumb) && (
         <div className="floating-status-stack">
           {floatingStatus}
           {breadcrumb}

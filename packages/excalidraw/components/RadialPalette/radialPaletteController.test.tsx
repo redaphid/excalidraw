@@ -21,6 +21,24 @@ const highlighted = () =>
     ?.querySelector(".RadialPalette__segment--highlight")
     ?.getAttribute("data-testid");
 
+describe("the tools ring", () => {
+  it("holds the eleven tools, hand and sticky note among them", () => {
+    expect(RADIAL_TOOLS).toEqual([
+      "selection",
+      "hand",
+      "rectangle",
+      "diamond",
+      "ellipse",
+      "arrow",
+      "line",
+      "freedraw",
+      "text",
+      "stickynote",
+      "frame",
+    ]);
+  });
+});
+
 describe("the radial palette's controller API", () => {
   let api: ExcalidrawImperativeAPI["radialPalette"];
 
@@ -83,15 +101,7 @@ describe("the radial palette's controller API", () => {
 
       it("lists the shapes and tools, and nothing named for a role", () => {
         expect(api.state().items.map(({ id }) => id)).toEqual([
-          "selection",
-          "rectangle",
-          "diamond",
-          "ellipse",
-          "arrow",
-          "line",
-          "freedraw",
-          "text",
-          "frame",
+          ...RADIAL_TOOLS,
         ]);
       });
 
@@ -110,8 +120,7 @@ describe("the radial palette's controller API", () => {
         act(() => api.step(-1));
         expect(api.state().index).toBe(RADIAL_TOOLS.length - 1);
         act(() => api.step(2));
-        expect(api.state().index).toBe(1);
-        expect(highlighted()).toBe("radial-tool-rectangle");
+        expect(highlighted()).toBe("radial-tool-hand");
       });
 
       it("chooses the highlighted shape and closes", () => {
@@ -141,6 +150,43 @@ describe("the radial palette's controller API", () => {
             h.state.currentItemStrokeColor.toLowerCase(),
           );
           expect(ring()).not.toBeNull();
+        });
+
+        it("gives the fill chip the index the ring draws it at, past empty recent slots", () => {
+          const drawn = document.body.querySelectorAll(
+            '[data-testid^="radial-color-"]:not([data-testid="radial-color-fill"])',
+          ).length;
+          expect(api.state().items.findIndex(({ id }) => id === "fill")).toBe(
+            drawn,
+          );
+        });
+
+        describe("when it steps off the last filled color", () => {
+          beforeEach(() => {
+            const { items, index } = api.state();
+            const lastFilled = items.findIndex(({ id }) => id === "") - 1;
+            act(() => api.step(lastFilled - index));
+            act(() => api.step(1));
+          });
+
+          it("skips the empty recent slots to the fill chip", () => {
+            const { items, index } = api.state();
+            expect(items[index].id).toBe("fill");
+          });
+
+          describe("and steps back from the fill chip", () => {
+            beforeEach(() => {
+              const { items, index } = api.state();
+              const fill = items.findIndex(({ id }) => id === "fill");
+              act(() => api.step(fill - index));
+              act(() => api.step(-1));
+            });
+
+            it("skips the empty recent slots again", () => {
+              const { items, index } = api.state();
+              expect(items[index].id).not.toBe("");
+            });
+          });
         });
 
         it("inks with the chosen color", () => {
@@ -240,7 +286,7 @@ describe("the radial palette's controller API", () => {
 
       it("chooses with Enter", () => {
         Keyboard.keyPress(KEYS.ENTER);
-        expect(h.state.activeTool.type).toBe("rectangle");
+        expect(h.state.activeTool.type).toBe("hand");
         expect(ring()).toBeNull();
       });
 
@@ -251,16 +297,47 @@ describe("the radial palette's controller API", () => {
     });
   });
 
-  describe("with the palette off", () => {
+  describe("without the radialPalette prop", () => {
     beforeEach(async () => {
       await render(<Excalidraw />);
       api = h.app.radialPalette.api;
+      act(() => api.open());
     });
 
-    it("does nothing", () => {
-      act(() => api.open());
-      expect(api.state().open).toBe(false);
-      expect(ring()).toBeNull();
+    it("still opens", () => {
+      expect(api.state().open).toBe(true);
+    });
+  });
+});
+describe("the style ring", () => {
+  let controller: typeof h.app.radialPalette;
+  const ids = () => controller.state().items.map(({ id }) => id);
+
+  beforeEach(async () => {
+    await render(<Excalidraw radialPalette />);
+    const rectangle = API.createElement({ type: "rectangle" });
+    API.setElements([rectangle]);
+    API.setSelectedElements([rectangle]);
+    controller = h.app.radialPalette;
+    act(() => controller.open({ ring: "style" }));
+  });
+
+  it("lists the stroke style for a selected rectangle", () => {
+    expect(ids()).toContain("strokeStyle");
+  });
+
+  it("leaves out the font family for a selected rectangle", () => {
+    expect(ids()).not.toContain("fontFamily");
+  });
+
+  describe("when the stroke style and then dashed are chosen", () => {
+    beforeEach(() => {
+      act(() => controller.pick("style", ids().indexOf("strokeStyle")));
+      act(() => controller.pick("style", ids().indexOf("dashed")));
+    });
+
+    it("makes the rectangle dashed", () => {
+      expect(h.elements[0].strokeStyle).toBe("dashed");
     });
   });
 });

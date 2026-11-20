@@ -14,6 +14,12 @@ import {
   arrayToMap,
 } from "@excalidraw/common";
 
+import {
+  actionChangeArrowType,
+  actionChangeFontSize,
+  actionChangeRoundness,
+  actionChangeSloppiness,
+} from "@excalidraw/excalidraw/actions/actionProperties";
 import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 import { UI, Keyboard, Pointer } from "@excalidraw/excalidraw/tests/helpers/ui";
 import {
@@ -77,7 +83,9 @@ beforeEach(async () => {
   // The bounds of hand-drawn linear elements may change after flipping, so
   // removing this style for testing
   UI.clickTool("arrow");
-  UI.clickByTitle("Architect");
+  act(() => {
+    h.app.actionManager.executeAction(actionChangeSloppiness, "ui", 0);
+  });
   UI.clickTool("selection");
 });
 
@@ -670,7 +678,9 @@ describe("arrow element", () => {
       height: 100,
     });
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
     mouse.reset();
     mouse.moveTo(-5, 0);
     mouse.click();
@@ -698,7 +708,9 @@ describe("arrow element", () => {
       height: 100,
     });
     UI.clickTool("arrow");
-    UI.clickOnTestId("elbow-arrow");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeArrowType, "ui", "elbow");
+    });
     mouse.reset();
     mouse.moveTo(-5, 0);
     mouse.click();
@@ -1092,7 +1104,9 @@ describe("multiple selection", () => {
 
   it("resizes with linear elements > 2 points", async () => {
     UI.clickTool("line");
-    UI.clickByTitle("Sharp");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeRoundness, "ui", "sharp");
+    });
 
     const line = UI.createElement("line", {
       x: 60,
@@ -1277,7 +1291,9 @@ describe("multiple selection", () => {
     const topArrowLabel = await UI.editText(topArrow.get(), "lorem ipsum");
 
     UI.clickTool("text");
-    UI.clickByTitle("Large");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeFontSize, "ui", 28);
+    });
     const bottomArrow = UI.createElement("arrow", {
       x: 0,
       y: 80,
@@ -1348,7 +1364,9 @@ describe("multiple selection", () => {
     await UI.editText(topText, "lorem ipsum");
 
     UI.clickTool("text");
-    UI.clickByTitle("Large");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeFontSize, "ui", 28);
+    });
     const bottomText = UI.createElement("text", { position: 40 });
     await UI.editText(bottomText, "dolor\nsit amet");
 

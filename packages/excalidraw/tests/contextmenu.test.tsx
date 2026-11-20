@@ -1,9 +1,21 @@
 import React from "react";
+
+import { act } from "@testing-library/react";
 import { vi } from "vitest";
 
 import { KEYS, STROKE_WIDTH, reseed } from "@excalidraw/common";
 
 import { setDateTimeForTests } from "@excalidraw/common";
+
+import {
+  actionChangeStrokeColor,
+  actionChangeBackgroundColor,
+  actionChangeFillStyle,
+  actionChangeOpacity,
+  actionChangeSloppiness,
+  actionChangeStrokeStyle,
+  actionChangeStrokeWidth,
+} from "../actions/actionProperties";
 
 import { copiedStyles } from "../actions/actionStyles";
 import { Excalidraw } from "../index";
@@ -17,11 +29,9 @@ import {
   mockBoundingClientRect,
   restoreOriginalGetBoundingClientRect,
   GlobalTestState,
-  screen,
   queryByText,
   queryAllByText,
   waitFor,
-  togglePopover,
   unmountComponent,
   checkpointHistory,
 } from "./test-utils";
@@ -123,6 +133,7 @@ describe("contextMenu element", () => {
       "copy",
       "paste",
       "wrapSelectionInFrame",
+      "openStyleRing",
       "copyStyles",
       "pasteStyles",
       "deleteSelectedElements",
@@ -212,11 +223,12 @@ describe("contextMenu element", () => {
     const contextMenu = UI.queryContextMenu();
     const contextMenuOptions =
       contextMenu?.querySelectorAll(".context-menu li");
-    const expectedShortcutNames: ShortcutName[] = [
+    const expectedShortcutNames: (ShortcutName | ActionName)[] = [
       "cut",
       "copy",
       "paste",
       "wrapSelectionInFrame",
+      "openStyleRing",
       "copyStyles",
       "pasteStyles",
       "deleteSelectedElements",
@@ -275,6 +287,7 @@ describe("contextMenu element", () => {
       "copy",
       "paste",
       "wrapSelectionInFrame",
+      "openStyleRing",
       "copyStyles",
       "pasteStyles",
       "deleteSelectedElements",
@@ -328,27 +341,39 @@ describe("contextMenu element", () => {
     mouse.up(20, 20);
 
     // Change some styles of second rectangle
-    togglePopover("Stroke");
-    UI.clickOnTestId("color-red");
-    togglePopover("Background");
-    UI.clickOnTestId("color-blue");
-    // Fill style
-    fireEvent.click(screen.getByTitle("Cross-hatch"));
-    // Stroke width
-    fireEvent.click(screen.getByTitle("Bold"));
-    // Stroke style
-    fireEvent.click(screen.getByTitle("Dotted"));
-    // Roughness
-    fireEvent.click(screen.getByTitle("Cartoonist"));
-    // Opacity
-    fireEvent.change(screen.getByTestId("opacity"), {
-      target: { value: "60" },
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+        color: "#e03131",
+      });
     });
-
-    // closing the background popover as this blocks
-    // context menu from rendering after we started focussing
-    // the popover once rendered :/
-    togglePopover("Background");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+        color: "#a5d8ff",
+      });
+    });
+    act(() => {
+      h.app.actionManager.executeAction(
+        actionChangeFillStyle,
+        "ui",
+        "cross-hatch",
+      );
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeWidth, "ui", "bold");
+    });
+    act(() => {
+      h.app.actionManager.executeAction(
+        actionChangeStrokeStyle,
+        "ui",
+        "dotted",
+      );
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeSloppiness, "ui", 2);
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeOpacity, "ui", 60);
+    });
 
     mouse.reset();
 
@@ -625,5 +650,151 @@ describe("contextMenu element", () => {
       expect.objectContaining({ id: rectangle1.id }),
       expect.objectContaining({ id: rectangle2.id }),
     ]);
+  });
+});
+
+describe("contextMenu on a phone", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    reseed(7);
+    await render(
+      <Excalidraw
+        handleKeyboardGlobally={true}
+        UIOptions={{ getFormFactor: () => "phone" }}
+      />,
+    );
+  });
+
+  beforeAll(() => {
+    mockBoundingClientRect();
+  });
+
+  afterAll(() => {
+    restoreOriginalGetBoundingClientRect();
+  });
+
+  it("lists the z-index actions for an element", () => {
+    const rectangle = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rectangle]);
+    API.setSelectedElements([rectangle]);
+
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 50,
+      clientY: 50,
+    });
+    const contextMenu = UI.queryContextMenu();
+
+    expect(
+      ["Bring forward", "Send backward"].map(
+        (label) => queryByText(contextMenu!, label) !== null,
+      ),
+    ).toEqual([true, true]);
+  });
+});
+
+describe("contextMenu on the empty canvas", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    reseed(7);
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 1,
+      clientY: 1,
+    });
+  });
+
+  it("lists undo, redo, zoom to fit, help and the main menu", () => {
+    const contextMenu = UI.queryContextMenu();
+
+    expect(
+      ["undo", "redo", "zoomToFit", "toggleShortcuts", "openMainMenu"].map(
+        (name) =>
+          contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
+      ),
+    ).toEqual([true, true, true, true, true]);
+  });
+
+  it("lists the laser pointer and insert image", () => {
+    const contextMenu = UI.queryContextMenu();
+
+    expect(
+      ["setLaserTool", "insertImage"].map(
+        (name) =>
+          contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
+      ),
+    ).toEqual([true, true]);
+  });
+
+  describe("when the laser pointer is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(
+        UI.queryContextMenu()!.querySelector('li[data-testid="setLaserTool"]')!,
+      );
+    });
+
+    it("picks the laser tool", () => {
+      expect(h.state.activeTool.type).toBe("laser");
+    });
+  });
+
+  describe("when Menu… is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(queryByText(UI.queryContextMenu()!, "Menu…")!);
+    });
+
+    it("opens the main menu", () => {
+      expect(h.state.openMenu).toBe("canvas");
+    });
+  });
+
+  describe("when Library is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(
+        UI.queryContextMenu()!.querySelector('li[data-testid="openLibrary"]')!,
+      );
+    });
+
+    it("opens the default sidebar on its library tab", () => {
+      expect(h.state.openSidebar).toEqual({ name: "default", tab: "library" });
+    });
+  });
+});
+describe("contextMenu element with the radial palette", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    reseed(7);
+    await render(<Excalidraw handleKeyboardGlobally={true} radialPalette />);
+    const rectangle = API.createElement({
+      type: "rectangle",
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+    });
+    API.setElements([rectangle]);
+    API.setSelectedElements([rectangle]);
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 15,
+      clientY: 15,
+    });
+  });
+
+  describe("when Style… is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(queryByText(UI.queryContextMenu()!, "Style…")!);
+    });
+
+    it("opens the radial on the style ring", () => {
+      expect(h.app.radialPalette.session?.ring).toBe("style");
+    });
   });
 });

@@ -302,6 +302,13 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5252,6 +5259,13 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6545,6 +6559,13 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
+      {
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7613,6 +7634,61 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
   "contextMenu": {
     "items": [
       {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          viewBox="0 0 20 20"
+        >
+          <path
+            d="M7.5 10.833 4.167 7.5 7.5 4.167M4.167 7.5h9.166a3.333 3.333 0 0 1 0 6.667H12.5"
+            strokeWidth="1.25"
+          />
+        </svg>,
+        "keyTest": [Function],
+        "label": "buttons.undo",
+        "name": "undo",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "history",
+        },
+        "viewMode": false,
+      },
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          viewBox="0 0 20 20"
+        >
+          <path
+            d="M12.5 10.833 15.833 7.5 12.5 4.167M15.833 7.5H6.667a3.333 3.333 0 1 0 0 6.667H7.5"
+            strokeWidth="1.25"
+          />
+        </svg>,
+        "keyTest": [Function],
+        "label": "buttons.redo",
+        "name": "redo",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "history",
+        },
+        "viewMode": false,
+      },
+      "separator",
+      {
         "keyTest": undefined,
         "label": "labels.paste",
         "name": "paste",
@@ -7737,6 +7813,75 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         "predicate": [Function],
         "trackEvent": {
           "category": "element",
+        },
+      },
+      "separator",
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          focusable="false"
+          role="img"
+          viewBox="0 0 20 20"
+        >
+          <g
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.25"
+            transform="rotate(90 10 10)"
+          >
+            <path
+              clipRule="evenodd"
+              d="m9.644 13.69 7.774-7.773a2.357 2.357 0 0 0-3.334-3.334l-7.773 7.774L8 12l1.643 1.69Z"
+            />
+            <path
+              d="m13.25 3.417 3.333 3.333M10 10l2-2M5 15l3-3M2.156 17.894l1-1M5.453 19.029l-.144-1.407M2.377 11.887l.866 1.118M8.354 17.273l-1.194-.758M.953 14.652l1.408.13"
+            />
+          </g>
+        </svg>,
+        "label": "toolBar.laser",
+        "name": "setLaserTool",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "toolbar",
+        },
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          viewBox="0 0 20 20"
+        >
+          <g
+            strokeWidth="1.25"
+          >
+            <path
+              d="M12.5 6.667h.01"
+            />
+            <path
+              d="M4.91 2.625h10.18a2.284 2.284 0 0 1 2.285 2.284v10.182a2.284 2.284 0 0 1-2.284 2.284H4.909a2.284 2.284 0 0 1-2.284-2.284V4.909a2.284 2.284 0 0 1 2.284-2.284Z"
+            />
+            <path
+              d="m3.333 12.5 3.334-3.333c.773-.745 1.726-.745 2.5 0l4.166 4.166"
+            />
+            <path
+              d="m11.667 11.667.833-.834c.774-.744 1.726-.744 2.5 0l1.667 1.667"
+            />
+          </g>
+        </svg>,
+        "label": "toolBar.image",
+        "name": "insertImage",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "toolbar",
         },
       },
       "separator",
@@ -8170,6 +8315,122 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         },
         "viewMode": true,
       },
+      "separator",
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.25000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M15 15m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"
+            />
+            <path
+              d="M22 22l-3 -3"
+            />
+            <path
+              d="M6 18h-1a2 2 0 0 1 -2 -2v-1"
+            />
+            <path
+              d="M3 11v-1"
+            />
+            <path
+              d="M3 6v-1a2 2 0 0 1 2 -2h1"
+            />
+            <path
+              d="M10 3h1"
+            />
+            <path
+              d="M15 3h1a2 2 0 0 1 2 2v1"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "helpDialog.zoomToFit",
+        "name": "zoomToFit",
+        "navigation": true,
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": true,
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth="1.25"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+            />
+            <line
+              x1="12"
+              x2="12"
+              y1="17"
+              y2="17.01"
+            />
+            <path
+              d="M12 13.5a1.5 1.5 0 0 1 1 -1.5a2.6 2.6 0 1 0 -3 -4"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "welcomeScreen.defaults.helpHint",
+        "name": "toggleShortcuts",
+        "perform": [Function],
+        "trackEvent": {
+          "action": "toggleHelpDialog",
+          "category": "menu",
+        },
+        "viewMode": true,
+      },
+      {
+        "label": "radialPalette.library",
+        "name": "openLibrary",
+        "perform": [Function],
+        "trackEvent": false,
+      },
+      {
+        "label": "radialPalette.mainMenu",
+        "name": "openMainMenu",
+        "perform": [Function],
+        "trackEvent": false,
+        "viewMode": true,
+      },
     ],
     "left": -19,
     "top": -9,
@@ -8594,6 +8855,13 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       "separator",
+      {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
       {
         "icon": <svg
           aria-hidden="true"
@@ -9657,6 +9925,13 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       "separator",
+      {
+        "label": "radialPalette.style",
+        "name": "openStyleRing",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": false,
+      },
       {
         "icon": <svg
           aria-hidden="true"

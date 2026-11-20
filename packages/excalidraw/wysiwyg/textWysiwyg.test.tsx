@@ -15,6 +15,7 @@ import {
   CURSOR_TYPE,
   KEYS,
   FONT_FAMILY,
+  FONT_SIZES,
   TEXT_ALIGN,
   THEME,
   VERTICAL_ALIGN,
@@ -38,7 +39,6 @@ import {
   GlobalTestState,
   act,
   render,
-  screen,
   unmountComponent,
 } from "../tests/test-utils";
 import {
@@ -49,6 +49,12 @@ import {
 } from "../tests/test-utils";
 import * as dataModule from "../data";
 import { actionBindText } from "../actions";
+import {
+  actionChangeFontFamily,
+  actionChangeFontSize,
+  actionChangeTextAlign,
+  actionChangeVerticalAlign,
+} from "../actions/actionProperties";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { getTextAutoResizeHandle } from "../textAutoResizeHandle";
 
@@ -1117,9 +1123,8 @@ describe("textWysiwyg", () => {
         "Excalidraw is an opensource virtual collaborative whiteboard for sketching hand-drawn like diagrams!";
 
       /**
-       * Types `text` as a new text started at (x, y), with the styles panel
-       * at the view's left, up to 216px, and the stats panel from 500px,
-       * over the view's top `statsHeight`.
+       * Types `text` as a new text started at (x, y), with the stats panel
+       * from 500px, over the view's top `statsHeight`.
        */
       const typeAt = async (
         x: number,
@@ -1134,7 +1139,6 @@ describe("textWysiwyg", () => {
           document.querySelector<HTMLElement>(
             `[data-viewport-ui="side"][data-viewport-ui-name="${name}"]`,
           )!;
-        panel("stylesPanel").getBoundingClientRect = domRect(16, 200);
         panel("stats").getBoundingClientRect = () =>
           ({
             ...domRect(500, 204)(),
@@ -1148,18 +1152,6 @@ describe("textWysiwyg", () => {
           h.state.editingTextElement!.id,
         ) as ExcalidrawTextElement;
       };
-
-      it("should keep a text being edited clear of the full styles panel and the stats panel", async () => {
-        // starts under the styles panel's right edge
-        const text = await typeAt(100, 300, long);
-        expect(text.autoResize).toBe(false);
-        // it wraps at the canvas between the panels, less the room, and is
-        // brought in between them
-        expect(text.width).toBe(500 - 216 - 2 * TEXT_VIEWPORT_PADDING);
-        expect(text.x + h.state.scrollX).toBeCloseTo(
-          216 + TEXT_VIEWPORT_PADDING,
-        );
-      });
 
       it("should keep a text being edited clear of the stats panel only beside it", async () => {
         // below it, the text runs on past it
@@ -1748,7 +1740,12 @@ describe("textWysiwyg", () => {
 
       expect(text.fontFamily).toEqual(FONT_FAMILY.Excalifont);
 
-      fireEvent.click(screen.getByTitle(/code/i));
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeFontFamily, "ui", {
+          currentItemFontFamily: FONT_FAMILY["Comic Shanns"],
+          currentHoveredFontFamily: null,
+        });
+      });
 
       expect(
         (h.elements[1] as ExcalidrawTextElementWithContainer).fontFamily,
@@ -1898,8 +1895,20 @@ describe("textWysiwyg", () => {
 
       editor.select();
 
-      fireEvent.click(screen.getByTitle("Left"));
-      fireEvent.click(screen.getByTitle("Align bottom"));
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeTextAlign,
+          "ui",
+          TEXT_ALIGN.LEFT,
+        );
+      });
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeVerticalAlign,
+          "ui",
+          VERTICAL_ALIGN.BOTTOM,
+        );
+      });
       Keyboard.exitTextEditor(editor);
 
       // should left align horizontally and bottom vertically after resize
@@ -1917,8 +1926,20 @@ describe("textWysiwyg", () => {
 
       editor.select();
 
-      fireEvent.click(screen.getByTitle("Right"));
-      fireEvent.click(screen.getByTitle("Align top"));
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeTextAlign,
+          "ui",
+          TEXT_ALIGN.RIGHT,
+        );
+      });
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeVerticalAlign,
+          "ui",
+          VERTICAL_ALIGN.TOP,
+        );
+      });
 
       Keyboard.exitTextEditor(editor);
 
@@ -2172,14 +2193,25 @@ describe("textWysiwyg", () => {
       mouse.select(rectangle);
       Keyboard.keyPress(KEYS.ENTER);
 
-      fireEvent.click(screen.getByTitle(/code/i));
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeFontFamily, "ui", {
+          currentItemFontFamily: FONT_FAMILY["Comic Shanns"],
+          currentHoveredFontFamily: null,
+        });
+      });
 
       expect(
         (h.elements[1] as ExcalidrawTextElementWithContainer).fontFamily,
       ).toEqual(FONT_FAMILY["Comic Shanns"]);
       expect(getOriginalContainerHeightFromCache(rectangle.id)).toBe(75);
 
-      fireEvent.click(screen.getByTitle(/Very large/i));
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeFontSize,
+          "ui",
+          FONT_SIZES.xl,
+        );
+      });
       expect(
         (h.elements[1] as ExcalidrawTextElementWithContainer).fontSize,
       ).toEqual(36);
@@ -2200,7 +2232,12 @@ describe("textWysiwyg", () => {
       mouse.select(rectangle);
       Keyboard.keyPress(KEYS.ENTER);
 
-      fireEvent.click(screen.getByTitle(/code/i));
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeFontFamily, "ui", {
+          currentItemFontFamily: FONT_FAMILY["Comic Shanns"],
+          currentHoveredFontFamily: null,
+        });
+      });
       expect(
         (h.elements[1] as ExcalidrawTextElementWithContainer).fontFamily,
       ).toEqual(FONT_FAMILY["Comic Shanns"]);
@@ -2208,7 +2245,12 @@ describe("textWysiwyg", () => {
         (h.elements[1] as ExcalidrawTextElementWithContainer).lineHeight,
       ).toEqual(1.25);
 
-      fireEvent.click(screen.getByTitle(/normal/i));
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeFontFamily, "ui", {
+          currentItemFontFamily: FONT_FAMILY.Nunito,
+          currentHoveredFontFamily: null,
+        });
+      });
       expect(
         (h.elements[1] as ExcalidrawTextElementWithContainer).fontFamily,
       ).toEqual(FONT_FAMILY.Nunito);
@@ -2232,8 +2274,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when top left", async () => {
-        fireEvent.click(screen.getByTitle("Left"));
-        fireEvent.click(screen.getByTitle("Align top"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.LEFT,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.TOP,
+          );
+        });
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
             15,
@@ -2243,8 +2297,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when top center", async () => {
-        fireEvent.click(screen.getByTitle("Center"));
-        fireEvent.click(screen.getByTitle("Align top"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.CENTER,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.TOP,
+          );
+        });
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
             30,
@@ -2254,8 +2320,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when top right", async () => {
-        fireEvent.click(screen.getByTitle("Right"));
-        fireEvent.click(screen.getByTitle("Align top"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.RIGHT,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.TOP,
+          );
+        });
 
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
@@ -2266,8 +2344,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when center left", async () => {
-        fireEvent.click(screen.getByTitle("Center vertically"));
-        fireEvent.click(screen.getByTitle("Left"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.MIDDLE,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.LEFT,
+          );
+        });
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
             15,
@@ -2277,8 +2367,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when center center", async () => {
-        fireEvent.click(screen.getByTitle("Center"));
-        fireEvent.click(screen.getByTitle("Center vertically"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.CENTER,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.MIDDLE,
+          );
+        });
 
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
@@ -2289,8 +2391,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when center right", async () => {
-        fireEvent.click(screen.getByTitle("Right"));
-        fireEvent.click(screen.getByTitle("Center vertically"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.RIGHT,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.MIDDLE,
+          );
+        });
 
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
@@ -2301,8 +2415,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when bottom left", async () => {
-        fireEvent.click(screen.getByTitle("Left"));
-        fireEvent.click(screen.getByTitle("Align bottom"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.LEFT,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.BOTTOM,
+          );
+        });
 
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
@@ -2313,8 +2439,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when bottom center", async () => {
-        fireEvent.click(screen.getByTitle("Center"));
-        fireEvent.click(screen.getByTitle("Align bottom"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.CENTER,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.BOTTOM,
+          );
+        });
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
             30,
@@ -2324,8 +2462,20 @@ describe("textWysiwyg", () => {
       });
 
       it("when bottom right", async () => {
-        fireEvent.click(screen.getByTitle("Right"));
-        fireEvent.click(screen.getByTitle("Align bottom"));
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeTextAlign,
+            "ui",
+            TEXT_ALIGN.RIGHT,
+          );
+        });
+        act(() => {
+          h.app.actionManager.executeAction(
+            actionChangeVerticalAlign,
+            "ui",
+            VERTICAL_ALIGN.BOTTOM,
+          );
+        });
         expect([h.elements[1].x, h.elements[1].y]).toMatchInlineSnapshot(`
           [
             45,
@@ -2346,7 +2496,13 @@ describe("textWysiwyg", () => {
       );
 
       editor.select();
-      fireEvent.click(screen.getByTitle("Left"));
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeTextAlign,
+          "ui",
+          TEXT_ALIGN.LEFT,
+        );
+      });
 
       Keyboard.exitTextEditor(editor);
 
@@ -2428,7 +2584,13 @@ describe("textWysiwyg", () => {
         (h.elements[1] as ExcalidrawTextElementWithContainer).verticalAlign,
       ).toBe(VERTICAL_ALIGN.MIDDLE);
 
-      fireEvent.click(screen.getByTitle("Align bottom"));
+      act(() => {
+        h.app.actionManager.executeAction(
+          actionChangeVerticalAlign,
+          "ui",
+          VERTICAL_ALIGN.BOTTOM,
+        );
+      });
 
       Keyboard.exitTextEditor(editor);
 

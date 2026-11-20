@@ -35,6 +35,7 @@ import {
 } from "../tests/test-utils";
 
 import App from "./App";
+import { RADIAL_TOOLS } from "./RadialPalette/radialPaletteController";
 import { CommandPalette } from "./CommandPalette/CommandPalette";
 
 import type { MockInstance } from "vitest";
@@ -707,8 +708,15 @@ describe("the frame tool", () => {
     fireEvent.pointerUp(GlobalTestState.interactiveCanvas, pen);
   };
 
+  /** opens the ring at a point and taps its frame slice */
+  const pickFrameFromRadial = () =>
+    act(() => {
+      h.app.radialPalette.open({ ring: "tools", at: { x: 200, y: 200 } });
+      h.app.radialPalette.pick("tools", RADIAL_TOOLS.indexOf("frame"));
+    });
+
   describe.each([
-    ["from the toolbar", () => UI.clickExtraTool("frame")],
+    ["from the radial", pickFrameFromRadial],
     ["with F", () => Keyboard.keyPress("f")],
   ])("when it is picked %s", (_, pick) => {
     let focused: Element | null;
@@ -821,10 +829,10 @@ describe("the frame tool", () => {
     ["E then F", keys("e", "f"), drawer],
     ["H then F", keys("h", "f"), drawer],
     [
-      "H then the toolbar's frame tool",
+      "H then the radial's frame tool",
       () => {
         Keyboard.keyPress("h");
-        UI.clickExtraTool("frame");
+        pickFrameFromRadial();
       },
       drawer,
     ],

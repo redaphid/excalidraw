@@ -1,12 +1,6 @@
 import "pepjs";
 import { act } from "@testing-library/react";
-import {
-  render,
-  queries,
-  waitFor,
-  fireEvent,
-  cleanup,
-} from "@testing-library/react";
+import { render, queries, waitFor, cleanup } from "@testing-library/react";
 import ansi from "ansicolor";
 
 import { ORIG_ID, arrayToMap } from "@excalidraw/common";
@@ -18,6 +12,8 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 import type { AllPossibleKeys } from "@excalidraw/common/utility-types";
 
 import { STORAGE_KEYS } from "../../../excalidraw-app/app_constants";
+
+import { actionOpenMainMenu } from "../actions/actionMenu";
 
 import { Pointer, UI } from "./helpers/ui";
 import * as toolQueries from "./queries/toolQueries";
@@ -230,9 +226,16 @@ export const assertSelectedElements = (
   expect(selectedElementIds).toEqual(expect.arrayContaining(ids));
 };
 
-export const toggleMenu = (container: HTMLElement) => {
-  // open menu
-  fireEvent.click(container.querySelector(".dropdown-menu-button")!);
+/** opens the main menu, or closes it when it is open */
+export const toggleMenu = (_container: HTMLElement) => {
+  act(() => {
+    const { app } = window.h;
+    if (app.state.openMenu === "canvas") {
+      app.setState({ openMenu: null });
+    } else {
+      app.actionManager.executeAction(actionOpenMainMenu);
+    }
+  });
 };
 
 export const togglePopover = (label: string) => {

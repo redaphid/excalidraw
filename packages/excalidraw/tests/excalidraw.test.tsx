@@ -6,6 +6,7 @@ import { THEME } from "@excalidraw/common";
 import { t } from "../i18n";
 import { Excalidraw, Footer, MainMenu } from "../index";
 import { actionExportWithDarkMode } from "../actions/actionExport";
+import { actionOpenMainMenu } from "../actions/actionMenu";
 
 import {
   act,
@@ -145,8 +146,9 @@ describe("<Excalidraw/>", () => {
         const { container } = await render(
           <Excalidraw UIOptions={undefined} />,
         );
-        //open menu
-        toggleMenu(container);
+        act(() => {
+          window.h.app.actionManager.executeAction(actionOpenMainMenu);
+        });
         expect(queryByTestId(container, "dropdown-menu")).toMatchSnapshot();
       });
 
@@ -425,8 +427,9 @@ describe("<Excalidraw/>", () => {
           </MainMenu>
         </Excalidraw>,
       );
-      //open menu
-      toggleMenu(container);
+      act(() => {
+        window.h.app.actionManager.executeAction(actionOpenMainMenu);
+      });
       expect(queryByTestId(container, "dropdown-menu")).toMatchSnapshot();
     });
 

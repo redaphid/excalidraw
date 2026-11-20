@@ -12,6 +12,8 @@ import { API } from "../../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
 import { act, render } from "../../tests/test-utils";
 
+import { LONG_PRESS_DELAY } from "../App.radialPalette";
+
 import { getPenPresets } from "./penPresets";
 import { RADIAL_TOOLS } from "./radialPaletteController";
 import {
@@ -20,6 +22,7 @@ import {
   placeRing,
   polar,
   sectorMiddle,
+  FLICK_DISTANCE,
 } from "./radialLayout";
 
 import type { PenPresetId } from "./penPresets";
@@ -60,13 +63,68 @@ describe("RadialPalette", () => {
     await act(async () => {});
   });
 
-  describe("when the host leaves it off", () => {
+  describe("when the host adds pens of its own", () => {
+    const onPick = vi.fn();
+
     beforeEach(async () => {
-      await render(<Excalidraw />);
+      onPick.mockReset();
+      await render(
+        <Excalidraw
+          radialPalette={{
+            pens: [
+              {
+                id: "doodle",
+                label: "Doodle",
+                icon: <svg data-testid="host-pen-icon-doodle" />,
+                onPick,
+              },
+              {
+                id: "sketchy",
+                label: "Sketchy",
+                icon: <svg />,
+                active: true,
+                onPick: () => {},
+              },
+            ],
+          }}
+        />,
+      );
+      openRing();
     });
 
-    it("renders no puck", () => {
-      expect(byTestId("radial-palette-puck")).toBeNull();
+    it("draws them after the presets and before the eraser", () => {
+      const ids = Array.from(
+        ring()!.querySelectorAll("[data-testid]"),
+        (node) => node.getAttribute("data-testid"),
+      ).filter(
+        (id) => id?.startsWith("radial-pen-") || id === "radial-tool-eraser",
+      );
+      expect(ids).toEqual([
+        ...h.app.radialPalette.getPresets().map(({ id }) => `radial-pen-${id}`),
+        "radial-pen-host-doodle",
+        "radial-pen-host-sketchy",
+        "radial-tool-eraser",
+      ]);
+    });
+
+    it("highlights the one the host says is active", () => {
+      expect(
+        byTestId("radial-pen-host-sketchy")!.getAttribute("aria-pressed"),
+      ).toBe("true");
+    });
+
+    describe("when one is picked", () => {
+      beforeEach(() => {
+        tap("radial-pen-host-doodle");
+      });
+
+      it("calls its onPick", () => {
+        expect(onPick).toHaveBeenCalledTimes(1);
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
     });
   });
 
@@ -144,6 +202,67 @@ describe("RadialPalette", () => {
         tap(`radial-tool-${type}`);
         expect(h.state.activeTool.type).toBe(type);
         expect(ring()).toBeNull();
+      });
+
+      describe("when a tool is locked and another is tapped", () => {
+        beforeEach(() => {
+          act(() => h.app.setActiveTool({ type: "ellipse", locked: true }));
+          tap("radial-tool-rectangle");
+        });
+
+        it("picks it unlocked", () => {
+          expect(h.state.activeTool.locked).toBe(false);
+        });
+      });
+
+      describe("when a tool is held", () => {
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          fireEvent.pointerDown(byTestId("radial-tool-rectangle")!, {
+            button: 0,
+          });
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("picks it locked, as Q does", () => {
+          expect(h.state.activeTool).toMatchObject({
+            type: "rectangle",
+            locked: true,
+          });
+        });
+      });
+
+      describe("when a held tool drifts past the flick distance", () => {
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          const slice = byTestId("radial-tool-rectangle")!;
+          fireEvent.pointerDown(slice, {
+            button: 0,
+            clientX: 100,
+            clientY: 100,
+          });
+          fireEvent.pointerMove(slice, {
+            clientX: 100 + FLICK_DISTANCE + 1,
+            clientY: 100,
+          });
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("cancels the hold", () => {
+          expect(h.state.activeTool.locked).toBe(false);
+        });
       });
     });
 
@@ -255,6 +374,53 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when the colors arc is flipped to fill and a color is picked", () => {
+      beforeEach(() => {
+        const rectangle = API.createElement({
+          type: "rectangle",
+          strokeColor: "#1e1e1e",
+          backgroundColor: "transparent",
+        });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        openRing();
+        tap("radial-color-fill");
+        tap("radial-color-1");
+      });
+
+      it("fills the selected rectangle with it", () => {
+        expect(h.elements[0].backgroundColor).toBe("#9e3a33");
+      });
+
+      it("leaves the rectangle's stroke alone", () => {
+        expect(h.elements[0].strokeColor).toBe("#1e1e1e");
+      });
+    });
+
+    describe("when the style ring opens on a selected rectangle and dashed is picked", () => {
+      beforeEach(() => {
+        const rectangle = API.createElement({
+          type: "rectangle",
+          strokeStyle: "solid",
+        });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        act(() => {
+          h.app.radialPalette.api.open({ ring: "style" });
+        });
+        tap("radial-style-strokeStyle");
+        tap("radial-style-option-1");
+      });
+
+      it("dashes the rectangle", () => {
+        expect(h.elements[0].strokeStyle).toBe("dashed");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+    });
+
     describe("when the ring opens on a color the theme lacks", () => {
       beforeEach(() => {
         API.setAppState({ currentItemStrokeColor: "#123456" });
@@ -295,7 +461,7 @@ describe("RadialPalette", () => {
         );
         const target = polar(
           (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
-          sectorMiddle(layout.tools[1]),
+          sectorMiddle(layout.tools[RADIAL_TOOLS.indexOf("rectangle")]),
         );
         const at = {
           pointerId: 1,

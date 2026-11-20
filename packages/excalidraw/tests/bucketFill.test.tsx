@@ -16,14 +16,7 @@ import { editorJotaiStore } from "../editor-jotai";
 
 import { API } from "./helpers/api";
 import { Keyboard, Pointer } from "./helpers/ui";
-import {
-  act,
-  fireEvent,
-  GlobalTestState,
-  render,
-  togglePopover,
-  waitFor,
-} from "./test-utils";
+import { act, fireEvent, GlobalTestState, render, waitFor } from "./test-utils";
 
 const { h } = window;
 
@@ -452,21 +445,6 @@ describe("bucket fill tool", () => {
     expect(h.state.activeTool.type).toBe("bucketfill");
   });
 
-  it("shows fill color, fill style and opacity in the panel when the tool is active", () => {
-    seedRectangle();
-    selectBucketFill();
-
-    const panel = document.querySelector(".selected-shape-actions");
-    expect(panel).not.toBeNull();
-    // the fill (background) color picker is shown...
-    expect(panel!.querySelector('[aria-label="Background"]')).not.toBeNull();
-    // ...along with the fill style + opacity controls for the created fills...
-    expect(panel!.querySelector('[data-testid="fill-hachure"]')).not.toBeNull();
-    expect(panel!.querySelector('[data-testid="opacity"]')).not.toBeNull();
-    // ...and nothing else from the generic shape panel (e.g. stroke)
-    expect(panel!.querySelector('[aria-label="Stroke"]')).toBeNull();
-  });
-
   it("uses the current fill style and opacity for created fills", () => {
     seedRectangle();
     act(() => {
@@ -498,31 +476,6 @@ describe("bucket fill tool", () => {
     selectBucketFill();
     Keyboard.keyPress(KEYS.G);
     expect(h.state.openPopup).toBe("elementBackground");
-  });
-
-  it("swallows the hidden transparent entry's hotkey (q) inside the picker", () => {
-    // regression: the hidden transparent entry's `q` returned "unhandled",
-    // so the picker didn't stop propagation and App.onKeyDown toggled the
-    // global tool lock while the color dialog was open
-    seedRectangle();
-    selectBucketFill();
-    togglePopover("Background");
-
-    const picker = document.querySelector(".color-picker-content")!;
-    expect(picker).not.toBeNull();
-    expect(h.state.activeTool.locked).toBe(false);
-    const before = h.state.currentItemBackgroundColor;
-
-    // `q` maps to the hidden transparent swatch AND to the global tool-lock
-    // shortcut — inside the modal it must be dead, not leaked
-    fireEvent.keyDown(picker, { key: "q" });
-    expect(h.state.activeTool.locked).toBe(false);
-    expect(h.state.currentItemBackgroundColor).toBe(before);
-
-    // the other hotkeys keep working on their usual keys (w = white)
-    fireEvent.keyDown(picker, { key: "w" });
-    expect(h.state.currentItemBackgroundColor).not.toBe(before);
-    expect(h.state.currentItemBackgroundColor).not.toBe("transparent");
   });
 
   it("shift+f opens the font popup instead of switching to bucket fill", () => {

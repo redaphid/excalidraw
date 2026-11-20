@@ -28,6 +28,8 @@ import {
   SelectionIcon,
   TextIcon,
   frameToolIcon,
+  handIcon,
+  stickyNoteToolIcon,
 } from "../icons";
 import {
   PEN_SIZE_SLIDER_MAX,
@@ -60,7 +62,7 @@ import {
   toPolar,
 } from "./radialLayout";
 import { RADIAL_TOOLS } from "./radialPaletteController";
-import { RECENT_COLOR_SLOTS } from "./themeInks";
+import { getStyleProperty } from "./styleProperties";
 
 import "./RadialPalette.scss";
 
@@ -89,6 +91,7 @@ const placeIcon = (icon: Icon, x: number, y: number) =>
 
 const TOOL_ICONS: Record<RadialTool, Icon> = {
   selection: SelectionIcon,
+  hand: handIcon,
   rectangle: RectangleIcon,
   diamond: DiamondIcon,
   ellipse: EllipseIcon,
@@ -96,6 +99,7 @@ const TOOL_ICONS: Record<RadialTool, Icon> = {
   line: LineIcon,
   freedraw: FreedrawIcon,
   text: TextIcon,
+  stickynote: stickyNoteToolIcon,
   frame: frameToolIcon,
 };
 
@@ -406,22 +410,39 @@ const Ring = ({
     { width, height },
   );
 
-  const themeColors = controller.getThemeColors();
-  const recent = controller.recentColors;
-  const colors: readonly (string | null)[] = [
-    ...themeColors,
-    ...Array.from(
-      { length: RECENT_COLOR_SLOTS },
-      (_, index) => recent[index] ?? null,
-    ),
-  ];
+  // the style ring shows its properties, or one's options, in the tools band
+  const styleRing = session.ring === "style";
+  const toolsRing: RadialRing = styleRing ? "style" : "tools";
+  const ringOf = (kind: keyof typeof RING_OF): RadialRing =>
+    kind === "tool" ? toolsRing : RING_OF[kind];
+  const styleItems = styleRing ? controller.items("style") : [];
+  const styleProperty = session.style && getStyleProperty(session.style);
+  const selected = app.scene.getSelectedElements(appState);
+  const styleIcon = (index: number): Icon | null => {
+    if (styleProperty) {
+      return (styleProperty.options[index]?.icon as Icon) ?? null;
+    }
+    const property = getStyleProperty(styleItems[index].id);
+    if (!property) {
+      return null;
+    }
+    const current = property.current(selected, app.state);
+    return (
+      property.options.find((option) => option.value === current) ??
+      property.options[0]
+    )?.icon as Icon;
+  };
+
+  const colors = controller.colorSlots();
   const presets = controller.getPresets();
+  const hostPens = controller.hostPens();
   // a host pen width replaces the user's, so the size arc would do nothing
   const showSize = app.props.freedrawStrokeWidth === undefined;
   const layout = getRingLayout({
-    tools: RADIAL_TOOLS.length,
-    pens: presets.length + 1,
-    colors: colors.length,
+    tools: styleRing ? styleItems.length : RADIAL_TOOLS.length,
+    pens: presets.length + hostPens.length + 1,
+    // the fill chip ends the arc
+    colors: colors.length + 1,
   });
 
   const [sliderHover, setSliderHover] = useState<"size" | "opacity" | null>(
@@ -445,7 +466,7 @@ const Ring = ({
       hit?.kind === "size" || hit?.kind === "opacity" ? hit.kind : null,
     );
     if (hit && (hit.kind === "tool" || hit.kind === "pen")) {
-      controller.highlight(RING_OF[hit.kind], hit.index);
+      controller.highlight(ringOf(hit.kind), hit.index);
     } else if (hit?.kind === "color" && colors[hit.index]) {
       controller.highlight("colors", hit.index);
     }
@@ -525,7 +546,10 @@ const Ring = ({
         (hit?.kind === "tool" ||
           hit?.kind === "pen" ||
           hit?.kind === "color") &&
-        controller.pick(RING_OF[hit.kind], hit.index);
+        controller.pick(
+          hit.kind === "tool" ? toolsRing : RING_OF[hit.kind],
+          hit.index,
+        );
       if (!picked) {
         controller.close();
       }
@@ -544,7 +568,7 @@ const Ring = ({
       win.removeEventListener("pointerup", onUp);
       win.removeEventListener("pointercancel", onCancel);
     };
-  }, [app, controller, flick]);
+  }, [app, controller, flick, toolsRing]);
 
   const ringRef = useRef<HTMLDivElement>(null);
   // a long press opens the ring under the finger, and the browser's click
@@ -602,7 +626,11 @@ const Ring = ({
     appState.activeTool.type === "freedraw"
       ? getActivePenPreset(presets, appState)
       : null;
-  const strokeColor = appState.currentItemStrokeColor.toLowerCase();
+  const activeColor = (
+    controller.colorsFill
+      ? appState.currentItemBackgroundColor
+      : appState.currentItemStrokeColor
+  ).toLowerCase();
 
   const button = (
     key: string,
@@ -629,6 +657,19 @@ const Ring = ({
           !disabled && isHighlighted(ring, index),
         "RadialPalette__segment--disabled": disabled,
       })}
+      onPointerDown={(event) =>
+        !disabled &&
+        controller.hold(ring, index, LONG_PRESS_DELAY, {
+          x: event.clientX,
+          y: event.clientY,
+        })
+      }
+      onPointerMove={(event) =>
+        controller.drift({ x: event.clientX, y: event.clientY })
+      }
+      onPointerUp={controller.release}
+      onPointerLeave={controller.release}
+      onPointerCancel={controller.release}
       onClick={() => !disabled && controller.pick(ring, index)}
       onKeyDown={(event) => {
         if (!disabled && (event.key === KEYS.ENTER || event.key === " ")) {
@@ -833,33 +874,67 @@ const Ring = ({
           <circle r={TOOLS_BAND.outer + 1} className="RadialPalette__rule" />
           <circle r={HUB_RADIUS + 1} className="RadialPalette__rule" />
 
-          {RADIAL_TOOLS.map((type, index) => {
-            const sector = layout.tools[index];
-            const { x, y } = at(
-              (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
-              sector,
-            );
-            return button(
-              type,
-              t(`toolBar.${type}` as const),
-              `radial-tool-${type}`,
-              "tools",
-              index,
-              appState.activeTool.type === type,
-              sectorPath(TOOLS_BAND, sector),
-              placeIcon(TOOL_ICONS[type], x, y),
-            );
-          })}
+          {styleRing &&
+            styleItems.map((item, index) => {
+              const sector = layout.tools[index];
+              const { x, y } = at(
+                (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+                sector,
+              );
+              return button(
+                `style-${index}`,
+                item.label,
+                styleProperty
+                  ? `radial-style-option-${index}`
+                  : `radial-style-${item.id}`,
+                "style",
+                index,
+                false,
+                sectorPath(TOOLS_BAND, sector),
+                styleIcon(index) && placeIcon(styleIcon(index)!, x, y),
+              );
+            })}
 
-          {[...presets, null].map((preset, index) => {
+          {!styleRing &&
+            RADIAL_TOOLS.map((type, index) => {
+              const sector = layout.tools[index];
+              const { x, y } = at(
+                (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+                sector,
+              );
+              return button(
+                type,
+                t(`toolBar.${type}` as const),
+                `radial-tool-${type}`,
+                "tools",
+                index,
+                appState.activeTool.type === type,
+                sectorPath(TOOLS_BAND, sector),
+                placeIcon(TOOL_ICONS[type], x, y),
+              );
+            })}
+
+          {[...presets, ...hostPens, null].map((preset, index) => {
             const sector = layout.pens[index];
             const sample = at(MIDDLE_BAND.inner + 17, sector);
             const label = at(MIDDLE_BAND.outer - 10, sector);
-            if (!preset) {
-              const icon = at(
-                (MIDDLE_BAND.inner + MIDDLE_BAND.outer) / 2,
-                sector,
+            const icon = at(
+              (MIDDLE_BAND.inner + MIDDLE_BAND.outer) / 2,
+              sector,
+            );
+            if (preset && "onPick" in preset) {
+              return button(
+                `host-${preset.id}`,
+                preset.label,
+                `radial-pen-host-${preset.id}`,
+                "pens",
+                index,
+                !!preset.active,
+                sectorPath(MIDDLE_BAND, sector),
+                placeIcon(preset.icon, icon.x, icon.y),
               );
+            }
+            if (!preset) {
               return button(
                 "eraser",
                 t("toolBar.eraser"),
@@ -909,7 +984,7 @@ const Ring = ({
               `radial-color-${index}`,
               "colors",
               index,
-              !!color && color.toLowerCase() === strokeColor,
+              !!color && color.toLowerCase() === activeColor,
               sectorPath(OUTER_BAND, sector),
               <circle
                 cx={x}
@@ -923,6 +998,26 @@ const Ring = ({
               !color,
             );
           })}
+
+          {(() => {
+            const sector = layout.colors[colors.length];
+            const { x, y } = at(
+              (OUTER_BAND.inner + OUTER_BAND.outer) / 2,
+              sector,
+            );
+            return button(
+              "color-fill",
+              t("radialPalette.fill"),
+              "radial-color-fill",
+              "colors",
+              controller.items("colors").length - 1,
+              controller.colorsFill,
+              sectorPath(OUTER_BAND, sector),
+              <text x={x} y={y} className="RadialPalette__label">
+                {t("radialPalette.fill")}
+              </text>,
+            );
+          })()}
 
           {showSize &&
             slider(

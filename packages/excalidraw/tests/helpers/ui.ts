@@ -447,15 +447,20 @@ type Element<T extends DrawingToolName> = T extends "line" | "freedraw"
   : ExcalidrawElement;
 
 export class UI {
+  /** picks a tool through the app, as the toolbar would, without its DOM */
   static clickTool = (toolName: ToolType | "lock") => {
-    fireEvent.click(GlobalTestState.renderResult.getByToolName(toolName));
+    act(() => {
+      if (toolName === "lock") {
+        h.app.toggleLock();
+      } else {
+        h.app.setActiveTool({ type: toolName } as Parameters<
+          typeof h.app.setActiveTool
+        >[0]);
+      }
+    });
   };
 
-  /** clicks a tool that lives in the extra-tools dropdown, opening it first */
   static clickExtraTool = (toolName: ToolType) => {
-    fireEvent.click(
-      document.querySelector(".App-toolbar__extra-tools-trigger")!,
-    );
     UI.clickTool(toolName);
   };
 

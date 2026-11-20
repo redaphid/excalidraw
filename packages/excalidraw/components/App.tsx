@@ -312,6 +312,8 @@ import {
   actionToggleGridMode,
   actionToggleStats,
   actionToggleZenMode,
+  actionSetLaserTool,
+  actionInsertImage,
   actionUnbindText,
   actionBindText,
   actionUngroup,
@@ -334,6 +336,13 @@ import {
   actionWrapSelectionInFrame,
 } from "../actions/actionFrame";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
+import {
+  actionOpenLibrary,
+  actionOpenMainMenu,
+  actionOpenStyleRing,
+  actionShortcuts,
+} from "../actions/actionMenu";
+import { actionZoomToFit } from "../actions/actionCanvas";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
 import { ActionManager } from "../actions/manager";
@@ -2588,10 +2597,6 @@ class App extends React.Component<AppProps, AppState> {
             "excalidraw--allow-browser-zoom":
               !this.isInteractionEnabled() && this.isBrowserZoomEnabled(),
             "excalidraw--ui-hidden": !this.isDefaultUIEnabled(),
-            "excalidraw--mobile-toolbar":
-              this.editorInterface.formFactor === "phone" &&
-              this.isDefaultUIEnabled() &&
-              !this.state.viewModeEnabled,
             "excalidraw--viewport-status-border":
               !!this.props.viewportStatusFrame?.border,
             "excalidraw--viewport-status-label":
@@ -2657,7 +2662,6 @@ class App extends React.Component<AppProps, AppState> {
                             actionManager={this.actionManager}
                             elements={this.scene.getNonDeletedElements()}
                             onLockToggle={this.toggleLock}
-                            onPenModeToggle={this.togglePenMode}
                             langCode={getLanguage().code}
                             renderTopLeftUI={renderTopLeftUI}
                             renderTopRightUI={renderTopRightUI}
@@ -4530,10 +4534,7 @@ class App extends React.Component<AppProps, AppState> {
     if (prevState.activeTool.type !== this.state.activeTool.type) {
       this.radialPalette.toolChanged();
     }
-    if (
-      this.radialPalette.session &&
-      (!this.props.radialPalette || this.state.viewModeEnabled)
-    ) {
+    if (this.radialPalette.session && this.state.viewModeEnabled) {
       this.radialPalette.close();
     }
     this.midi.handleStateChange(prevState);
@@ -7294,9 +7295,7 @@ ${css}
   private handleCanvasPointerMove = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
-    if (this.props.radialPalette) {
-      this.radialPaletteGestures.onPointerMove(event.nativeEvent);
-    }
+    this.radialPaletteGestures.onPointerMove(event.nativeEvent);
     if (!this.isInteractionEnabled()) {
       if (this.isToolSupported(this.state.activeTool.type)) {
         // keep broadcasting the pointer (`props.onPointerUpdate`) between
@@ -8165,7 +8164,7 @@ ${css}
     if (selection?.anchorNode) {
       selection.removeAllRanges();
     }
-    if (this.props.radialPalette && !this.state.viewModeEnabled) {
+    if (!this.state.viewModeEnabled) {
       // a long press or a pen's barrel button opens the radial palette, in
       // place of the touch context menu
       if (this.radialPaletteGestures.onPointerDown(event.nativeEvent)) {
@@ -12856,10 +12855,7 @@ ${css}
   ) => {
     // Always suppress the native menu over the canvas.
     event.preventDefault();
-    if (
-      this.props.radialPalette &&
-      this.radialPaletteGestures.onContextMenu(event.nativeEvent)
-    ) {
+    if (this.radialPaletteGestures.onContextMenu(event.nativeEvent)) {
       return;
     }
     // a secondary-button press is a pan session: this event is not a click
@@ -13353,11 +13349,17 @@ ${css}
       }
 
       return [
+        this.actionManager.actions.undo,
+        this.actionManager.actions.redo,
+        CONTEXT_MENU_SEPARATOR,
         actionPaste,
         CONTEXT_MENU_SEPARATOR,
         actionCopyAsPng,
         actionCopyAsSvg,
         copyText,
+        CONTEXT_MENU_SEPARATOR,
+        actionSetLaserTool,
+        actionInsertImage,
         CONTEXT_MENU_SEPARATOR,
         actionSelectAll,
         actionUnlockAllElements,
@@ -13369,6 +13371,11 @@ ${css}
         actionToggleZenMode,
         actionToggleViewMode,
         actionToggleStats,
+        CONTEXT_MENU_SEPARATOR,
+        actionZoomToFit,
+        actionShortcuts,
+        actionOpenLibrary,
+        actionOpenMainMenu,
       ];
     }
 
@@ -13381,16 +13388,13 @@ ${css}
       return [actionCopy, ...options];
     }
 
-    const zIndexActions: ContextMenuItems =
-      this.editorInterface.formFactor === "desktop"
-        ? [
-            CONTEXT_MENU_SEPARATOR,
-            actionSendBackward,
-            actionBringForward,
-            actionSendToBack,
-            actionBringToFront,
-          ]
-        : [];
+    const zIndexActions: ContextMenuItems = [
+      CONTEXT_MENU_SEPARATOR,
+      actionSendBackward,
+      actionBringForward,
+      actionSendToBack,
+      actionBringToFront,
+    ];
 
     return [
       CONTEXT_MENU_SEPARATOR,
@@ -13406,6 +13410,7 @@ ${css}
       CONTEXT_MENU_SEPARATOR,
       ...options,
       CONTEXT_MENU_SEPARATOR,
+      actionOpenStyleRing,
       actionCopyStyles,
       actionPasteStyles,
       CONTEXT_MENU_SEPARATOR,

@@ -70,6 +70,18 @@ import type { isOverScrollBars } from "./scene/scrollbars";
 import type React from "react";
 import type { JSX } from "react";
 
+/** a pen of the host's own on the radial palette's pens ring, drawn after
+ * the presets and before the eraser */
+export type RadialHostPen = {
+  id: string;
+  label: string;
+  icon: JSX.Element;
+  /** highlighted as the pen in use */
+  active?: boolean;
+  /** called when picked; the ring then closes */
+  onPick: () => void;
+};
+
 export type { App };
 
 export type SocketId = string & { _brand: "SocketId" };
@@ -943,7 +955,7 @@ export interface ExcalidrawProps {
    * replaces the touch context menu, which the palette's hub opens. Off by
    * default. While closed, only the puck renders.
    */
-  radialPalette?: boolean;
+  radialPalette?: boolean | { pens?: readonly RadialHostPen[] };
   /**
    * Paints the canvas background and the grid on a canvas of their own,
    * `canvas.excalidraw__canvas.background`, under the static canvas and in
@@ -1529,7 +1541,7 @@ export interface ExcalidrawImperativeAPI {
   history: {
     clear: InstanceType<typeof App>["resetHistory"];
   };
-  /** drives the radial palette (with `props.radialPalette`) without a
+  /** drives the radial palette without a
    * pointer, e.g. from a MIDI knob: open, step, choose, close */
   radialPalette: RadialPaletteAPI;
   /** MIDI knobs, with `props.midi` set: `connect()` from a user gesture asks

@@ -1,4 +1,6 @@
 import React from "react";
+
+import { act } from "@testing-library/react";
 import { vi } from "vitest";
 
 import {
@@ -13,6 +15,12 @@ import { setDateTimeForTests } from "@excalidraw/common";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
+import {
+  actionChangeBackgroundColor,
+  actionChangeFontFamily,
+  actionChangeStrokeColor,
+} from "../actions/actionProperties";
+
 import { Excalidraw } from "../index";
 import * as StaticScene from "../renderer/staticScene";
 
@@ -23,8 +31,6 @@ import {
   checkpointHistory,
   fireEvent,
   render,
-  screen,
-  togglePopover,
   unmountComponent,
 } from "./test-utils";
 
@@ -169,12 +175,21 @@ describe("regression tests", () => {
 
     mouse.down(10, 10);
     mouse.up(10, 10);
-    togglePopover("Background");
-    UI.clickOnTestId("color-yellow");
-    UI.clickOnTestId("color-red");
-
-    togglePopover("Stroke");
-    UI.clickOnTestId("color-blue");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+        color: "#ffec99",
+      });
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+        color: "#ffc9c9",
+      });
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
+        color: "#1971c2",
+      });
+    });
     expect(API.getSelectedElement().backgroundColor).toBe("#ffc9c9");
     expect(API.getSelectedElement().strokeColor).toBe("#1971c2");
   });
@@ -658,7 +673,12 @@ describe("regression tests", () => {
   it("updates fontSize & fontFamily appState", () => {
     UI.clickTool("text");
     expect(h.state.currentItemFontFamily).toEqual(FONT_FAMILY.Excalifont);
-    fireEvent.click(screen.getByTitle(/code/i));
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeFontFamily, "ui", {
+        currentItemFontFamily: FONT_FAMILY["Comic Shanns"],
+        currentHoveredFontFamily: null,
+      });
+    });
     expect(h.state.currentItemFontFamily).toEqual(FONT_FAMILY["Comic Shanns"]);
   });
 
@@ -981,8 +1001,11 @@ describe("regression tests", () => {
       UI.clickTool("rectangle");
       // change background color since default is transparent
       // and transparent elements can't be selected by clicking inside of them
-      togglePopover("Background");
-      UI.clickOnTestId("color-red");
+      act(() => {
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", {
+          color: "#ffc9c9",
+        });
+      });
       mouse.down();
       mouse.up(1000, 1000);
 

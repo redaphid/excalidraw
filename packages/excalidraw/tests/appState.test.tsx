@@ -1,15 +1,19 @@
 import React from "react";
 
+import { act } from "@testing-library/react";
+
 import { EXPORT_DATA_TYPES, MIME_TYPES } from "@excalidraw/common";
 
 import type { ExcalidrawTextElement } from "@excalidraw/element/types";
+
+import { actionChangeFontSize } from "../actions/actionProperties";
 
 import { getDefaultAppState } from "../appState";
 import { Excalidraw } from "../index";
 
 import { API } from "./helpers/api";
 import { Pointer, UI } from "./helpers/ui";
-import { fireEvent, queryByTestId, render, waitFor } from "./test-utils";
+import { render, waitFor } from "./test-utils";
 
 const { h } = window;
 
@@ -63,7 +67,7 @@ describe("appState", () => {
   });
 
   it("changing fontSize with text tool selected (no element created yet)", async () => {
-    const { container } = await render(
+    await render(
       <Excalidraw
         initialData={{
           appState: {
@@ -76,7 +80,9 @@ describe("appState", () => {
     UI.clickTool("text");
 
     expect(h.state.currentItemFontSize).toBe(30);
-    fireEvent.click(queryByTestId(container, "fontSize-small")!);
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeFontSize, "ui", 16);
+    });
     expect(h.state.currentItemFontSize).toBe(16);
 
     const mouse = new Pointer("mouse");

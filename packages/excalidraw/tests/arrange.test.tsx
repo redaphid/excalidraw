@@ -1146,14 +1146,6 @@ describe("arranging with the pointer alone", () => {
     expect(ids.every((id) => h.state.selectedElementIds[id])).toBe(true);
   });
 
-  it("should arrange the picked shapes from the Auto-arrange button", async () => {
-    await arrangeByClicking(() => UI.clickLabeledElement("Auto-arrange"));
-
-    const after = snapshot();
-    expect(moved(before, after, ids)).not.toEqual([]);
-    expect(overlaps(after, ids)).toEqual([]);
-  });
-
   it("should arrange the picked shapes from a shape's context menu", async () => {
     const alpha = before.get("shape-id-alpha")!;
     mouse.rightClickAt(alpha.x + alpha.width / 2, alpha.y + alpha.height / 2);
@@ -1686,16 +1678,15 @@ describe("pressing Shift+Alt+A with nothing selected", () => {
   });
 });
 
-describe("the Auto-arrange button in the styles panel", () => {
+describe("Auto-arrange in the element context menu", () => {
   const scenario = scenarioNamed(
     "a chain of three inside a frame that holds them",
   );
-  const button = () =>
-    document.querySelector<HTMLButtonElement>(
-      'button[aria-label="Auto-arrange"]',
-    );
-  const legend = () =>
-    button()?.closest("fieldset")?.querySelector("legend")?.textContent;
+  const listedOnRightClick = (id: string) => {
+    const element = h.elements.find((element) => element.id === id)!;
+    mouse.rightClickAt(element.x + 1, element.y + element.height / 2);
+    return queryByTestId(UI.queryContextMenu()!, "arrangeElements");
+  };
 
   beforeEach(async () => {
     await load(scenario);
@@ -1716,18 +1707,17 @@ describe("the Auto-arrange button in the styles panel", () => {
 
   it("should show for two shapes", () => {
     select(["shape-id-anvil", "shape-id-bellows"]);
-    expect(button()).not.toBeNull();
+    expect(listedOnRightClick("shape-id-anvil")).not.toBeNull();
   });
 
   it("should not show for one shape and a loose text", () => {
     select(["shape-id-anvil", "text-id-loose"]);
-    expect(button()).toBeNull();
+    expect(listedOnRightClick("shape-id-anvil")).toBeNull();
   });
 
-  it("should show under its own legend for a frame alone", () => {
+  it("should show for a frame alone", () => {
     select(["frame-id-workshop"]);
-    expect(button()).not.toBeNull();
-    expect(legend()).toBe("Arrange");
+    expect(listedOnRightClick("frame-id-workshop")).not.toBeNull();
   });
 });
 

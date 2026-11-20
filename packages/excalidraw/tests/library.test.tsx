@@ -11,6 +11,7 @@ import type {
   NonDeleted,
 } from "@excalidraw/element/types";
 
+import { actionOpenLibrary } from "../actions/actionMenu";
 import { parseLibraryJSON } from "../data/blob";
 import { serializeLibraryAsJSON } from "../data/json";
 import { distributeLibraryItemsOnSquareGrid } from "../data/library";
@@ -249,9 +250,9 @@ describe("library menu", () => {
     const latestLibrary = await h.app.library.getLatestLibrary();
     expect(latestLibrary.length).toBe(0);
 
-    const libraryButton = container.querySelector(".sidebar-trigger");
-
-    fireEvent.click(libraryButton!);
+    act(() => {
+      h.app.actionManager.executeAction(actionOpenLibrary, "ui");
+    });
     fireEvent.click(
       queryByTestId(
         container.querySelector(".layer-ui__library")!,

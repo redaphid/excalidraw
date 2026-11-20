@@ -34,6 +34,7 @@ import {
   TEXT_EDITOR_SELECTOR,
   updateTextEditor,
 } from "./queries/dom";
+import { UI } from "./helpers/ui";
 
 unmountComponent();
 
@@ -55,10 +56,9 @@ const { h } = window;
 describe("Test dragCreate", () => {
   describe("add element to the scene when pointer dragging long enough", () => {
     it("rectangle", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("rectangle");
-      fireEvent.click(tool);
+      UI.clickTool("rectangle");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -89,10 +89,9 @@ describe("Test dragCreate", () => {
     });
 
     it("ellipse", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("ellipse");
-      fireEvent.click(tool);
+      UI.clickTool("ellipse");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -124,10 +123,9 @@ describe("Test dragCreate", () => {
     });
 
     it("diamond", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("diamond");
-      fireEvent.click(tool);
+      UI.clickTool("diamond");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -158,10 +156,9 @@ describe("Test dragCreate", () => {
     });
 
     it("arrow", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("arrow");
-      fireEvent.click(tool);
+      UI.clickTool("arrow");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -196,10 +193,9 @@ describe("Test dragCreate", () => {
     });
 
     it("line", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("line");
-      fireEvent.click(tool);
+      UI.clickTool("line");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -240,9 +236,9 @@ describe("Test dragCreate", () => {
     };
 
     it("places a clicked note on the grid", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       API.setAppState({ gridModeEnabled: true, gridSize: 20 });
-      fireEvent.click(getByToolName("stickynote"));
+      UI.clickTool("stickynote");
 
       createDefaultStickyNote(container.querySelector("canvas.interactive")!);
       await getTextEditor();
@@ -253,8 +249,8 @@ describe("Test dragCreate", () => {
     });
 
     it("switches back to selection and starts editing when tool is unlocked", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
-      fireEvent.click(getByToolName("stickynote"));
+      const { container } = await render(<Excalidraw />);
+      UI.clickTool("stickynote");
 
       const canvas = container.querySelector("canvas.interactive")!;
       createDefaultStickyNote(canvas);
@@ -278,9 +274,9 @@ describe("Test dragCreate", () => {
     });
 
     it("keeps sticky note tool active without editing when tool is locked", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
-      fireEvent.click(getByToolName("stickynote"));
-      fireEvent.click(getByToolName("lock"));
+      const { container } = await render(<Excalidraw />);
+      UI.clickTool("stickynote");
+      UI.clickTool("lock");
 
       const canvas = container.querySelector("canvas.interactive")!;
       createDefaultStickyNote(canvas);
@@ -302,8 +298,8 @@ describe("Test dragCreate", () => {
     });
 
     it("treats a wobble under the drag threshold as a click", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
-      fireEvent.click(getByToolName("stickynote"));
+      const { container } = await render(<Excalidraw />);
+      UI.clickTool("stickynote");
 
       const canvas = container.querySelector("canvas.interactive")!;
       fireEvent.pointerDown(canvas, { clientX: 300, clientY: 300 });
@@ -321,8 +317,8 @@ describe("Test dragCreate", () => {
     });
 
     it("previews a drag at its true size and snaps to the minimum on release", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
-      fireEvent.click(getByToolName("stickynote"));
+      const { container } = await render(<Excalidraw />);
+      UI.clickTool("stickynote");
 
       const canvas = container.querySelector("canvas.interactive")!;
       fireEvent.pointerDown(canvas, { clientX: 300, clientY: 300 });
@@ -353,11 +349,11 @@ describe("Test dragCreate", () => {
     });
 
     it("sizes the minimum note to fit one line at a large font ceiling", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // a 60px line (48 × 1.25) plus padding and the date footer high — and as
       // wide, since a plain drag is proportional
       API.setAppState({ currentItemFontSize: 48 });
-      fireEvent.click(getByToolName("stickynote"));
+      UI.clickTool("stickynote");
 
       const canvas = container.querySelector("canvas.interactive")!;
       fireEvent.pointerDown(canvas, { clientX: 300, clientY: 300 });
@@ -383,8 +379,8 @@ describe("Test dragCreate", () => {
     });
 
     it("drags out a square note by default and keeps it square through the snap", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
-      fireEvent.click(getByToolName("stickynote"));
+      const { container } = await render(<Excalidraw />);
+      UI.clickTool("stickynote");
       const canvas = container.querySelector("canvas.interactive")!;
       fireEvent.pointerDown(canvas, { clientX: 300, clientY: 300 });
       // an uneven drag: proportional by default, so the draft is square
@@ -404,8 +400,8 @@ describe("Test dragCreate", () => {
     });
 
     it("drags out a free-form note with Shift", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
-      fireEvent.click(getByToolName("stickynote"));
+      const { container } = await render(<Excalidraw />);
+      UI.clickTool("stickynote");
       const canvas = container.querySelector("canvas.interactive")!;
       fireEvent.pointerDown(canvas, {
         clientX: 300,
@@ -436,8 +432,8 @@ describe("Test dragCreate", () => {
     });
 
     it("keeps the origin corner fixed when a drag toward the top-left snaps to the minimum", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
-      fireEvent.click(getByToolName("stickynote"));
+      const { container } = await render(<Excalidraw />);
+      UI.clickTool("stickynote");
 
       const canvas = container.querySelector("canvas.interactive")!;
       fireEvent.pointerDown(canvas, { clientX: 300, clientY: 300 });
@@ -464,10 +460,9 @@ describe("Test dragCreate", () => {
     });
 
     it("rectangle", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("rectangle");
-      fireEvent.click(tool);
+      UI.clickTool("rectangle");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -486,10 +481,9 @@ describe("Test dragCreate", () => {
     });
 
     it("ellipse", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("ellipse");
-      fireEvent.click(tool);
+      UI.clickTool("ellipse");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -508,10 +502,9 @@ describe("Test dragCreate", () => {
     });
 
     it("diamond", async () => {
-      const { getByToolName, container } = await render(<Excalidraw />);
+      const { container } = await render(<Excalidraw />);
       // select tool
-      const tool = getByToolName("diamond");
-      fireEvent.click(tool);
+      UI.clickTool("diamond");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -530,12 +523,11 @@ describe("Test dragCreate", () => {
     });
 
     it("arrow", async () => {
-      const { getByToolName, container } = await render(
+      const { container } = await render(
         <Excalidraw handleKeyboardGlobally={true} />,
       );
       // select tool
-      const tool = getByToolName("arrow");
-      fireEvent.click(tool);
+      UI.clickTool("arrow");
 
       const canvas = container.querySelector("canvas.interactive")!;
 
@@ -564,12 +556,11 @@ describe("Test dragCreate", () => {
     });
 
     it("line", async () => {
-      const { getByToolName, container } = await render(
+      const { container } = await render(
         <Excalidraw handleKeyboardGlobally={true} />,
       );
       // select tool
-      const tool = getByToolName("line");
-      fireEvent.click(tool);
+      UI.clickTool("line");
 
       const canvas = container.querySelector("canvas.interactive")!;
 

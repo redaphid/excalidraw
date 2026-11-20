@@ -6,6 +6,13 @@ import { act, render, unmountComponent } from "../../tests/test-utils";
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
 import { PUCK_EDGE } from "./puckPlace";
+import {
+  OUTER_BAND,
+  RING_RADIUS,
+  getRingLayout,
+  polar,
+  sectorMiddle,
+} from "./radialLayout";
 
 const puck = () => queryByTestId(document.body, "radial-palette-puck")!;
 
@@ -175,6 +182,37 @@ describe("the radial palette's puck", () => {
 
     it("opens the ring for the flick", () => {
       expect(ring()).not.toBeNull();
+    });
+
+    describe("when it flicks onto the fill chip past empty recent slots", () => {
+      beforeEach(() => {
+        const controller = window.h.app.radialPalette;
+        const colors = controller.items("colors");
+        const fill = colors.findIndex(({ id }) => id === "fill");
+        const layout = getRingLayout({
+          tools: controller.items("tools").length,
+          pens: controller.items("pens").length,
+          colors: colors.length,
+        });
+        const { left, top, width, height } = ring()!.style;
+        const scale = parseFloat(width) / (RING_RADIUS * 2);
+        const at = polar(
+          ((OUTER_BAND.inner + OUTER_BAND.outer) / 2) * scale,
+          sectorMiddle(layout.colors[fill]),
+        );
+        const x = parseFloat(left) + parseFloat(width) / 2 + at.x;
+        const y = parseFloat(top) + parseFloat(height) / 2 + at.y;
+        moveTo(x, y);
+        lift(x, y);
+      });
+
+      it("flips the colors arc to fill", () => {
+        expect(window.h.app.radialPalette.colorsFill).toBe(true);
+      });
+
+      it("keeps the ring open", () => {
+        expect(ring()).not.toBeNull();
+      });
     });
   });
 });

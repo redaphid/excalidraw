@@ -1,102 +1,82 @@
 import React from "react";
 
 import { Excalidraw, MainMenu } from "../../index";
-import { render, queryAllByTestId } from "../../tests/test-utils";
+import { act, render, waitFor } from "../../tests/test-utils";
+
+import type { ExcalidrawImperativeAPI } from "../../types";
+
+// The main menu has no trigger: open each instance's menu through its API
+// and count the menus each instance composes.
+const menusPerInstance = async (
+  renderTwo: (
+    keep: (api: ExcalidrawImperativeAPI | null) => void,
+  ) => React.ReactNode,
+) => {
+  const apis: ExcalidrawImperativeAPI[] = [];
+  const { container } = await render(
+    <div>{renderTwo((api) => api && apis.push(api))}</div>,
+  );
+  await waitFor(() => expect(apis.length).toBe(2));
+  act(() => {
+    apis.forEach((api) =>
+      api.updateScene({ appState: { openMenu: "canvas" } }),
+    );
+  });
+  return Array.from(
+    container.querySelectorAll<HTMLDivElement>(".excalidraw-container"),
+  ).map((instance) => instance.querySelectorAll(".main-menu").length);
+};
 
 describe("Test internal component fallback rendering", () => {
   it("should render only one menu per excalidraw instance (custom menu first scenario)", async () => {
-    const { container } = await render(
-      <div>
-        <Excalidraw>
+    const counts = await menusPerInstance((keep) => (
+      <>
+        <Excalidraw onExcalidrawAPI={keep}>
           <MainMenu>test</MainMenu>
         </Excalidraw>
-        <Excalidraw />
-      </div>,
-    );
+        <Excalidraw onExcalidrawAPI={keep} />
+      </>
+    ));
 
-    expect(queryAllByTestId(container, "main-menu-trigger")?.length).toBe(2);
-
-    const excalContainers = container.querySelectorAll<HTMLDivElement>(
-      ".excalidraw-container",
-    );
-
-    expect(
-      queryAllByTestId(excalContainers[0], "main-menu-trigger")?.length,
-    ).toBe(1);
-    expect(
-      queryAllByTestId(excalContainers[1], "main-menu-trigger")?.length,
-    ).toBe(1);
+    expect(counts).toEqual([1, 1]);
   });
 
   it("should render only one menu per excalidraw instance (default menu first scenario)", async () => {
-    const { container } = await render(
-      <div>
-        <Excalidraw />
-        <Excalidraw>
+    const counts = await menusPerInstance((keep) => (
+      <>
+        <Excalidraw onExcalidrawAPI={keep} />
+        <Excalidraw onExcalidrawAPI={keep}>
           <MainMenu>test</MainMenu>
         </Excalidraw>
-      </div>,
-    );
+      </>
+    ));
 
-    expect(queryAllByTestId(container, "main-menu-trigger")?.length).toBe(2);
-
-    const excalContainers = container.querySelectorAll<HTMLDivElement>(
-      ".excalidraw-container",
-    );
-
-    expect(
-      queryAllByTestId(excalContainers[0], "main-menu-trigger")?.length,
-    ).toBe(1);
-    expect(
-      queryAllByTestId(excalContainers[1], "main-menu-trigger")?.length,
-    ).toBe(1);
+    expect(counts).toEqual([1, 1]);
   });
 
   it("should render only one menu per excalidraw instance (two custom menus scenario)", async () => {
-    const { container } = await render(
-      <div>
-        <Excalidraw>
+    const counts = await menusPerInstance((keep) => (
+      <>
+        <Excalidraw onExcalidrawAPI={keep}>
           <MainMenu>test</MainMenu>
         </Excalidraw>
-        <Excalidraw>
+        <Excalidraw onExcalidrawAPI={keep}>
           <MainMenu>test</MainMenu>
         </Excalidraw>
-      </div>,
-    );
+      </>
+    ));
 
-    expect(queryAllByTestId(container, "main-menu-trigger")?.length).toBe(2);
-
-    const excalContainers = container.querySelectorAll<HTMLDivElement>(
-      ".excalidraw-container",
-    );
-
-    expect(
-      queryAllByTestId(excalContainers[0], "main-menu-trigger")?.length,
-    ).toBe(1);
-    expect(
-      queryAllByTestId(excalContainers[1], "main-menu-trigger")?.length,
-    ).toBe(1);
+    expect(counts).toEqual([1, 1]);
   });
 
   it("should render only one menu per excalidraw instance (two default menus scenario)", async () => {
-    const { container } = await render(
-      <div>
-        <Excalidraw />
-        <Excalidraw />
-      </div>,
-    );
+    const counts = await menusPerInstance((keep) => (
+      <>
+        <Excalidraw onExcalidrawAPI={keep} />
+        <Excalidraw onExcalidrawAPI={keep} />
+      </>
+    ));
 
-    expect(queryAllByTestId(container, "main-menu-trigger")?.length).toBe(2);
-
-    const excalContainers = container.querySelectorAll<HTMLDivElement>(
-      ".excalidraw-container",
-    );
-
-    expect(
-      queryAllByTestId(excalContainers[0], "main-menu-trigger")?.length,
-    ).toBe(1);
-    expect(
-      queryAllByTestId(excalContainers[1], "main-menu-trigger")?.length,
-    ).toBe(1);
+    expect(counts).toEqual([1, 1]);
   });
 });

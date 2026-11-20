@@ -646,20 +646,6 @@ describe("palette knobs", () => {
     });
   });
 
-  describe("with the palette off", () => {
-    beforeEach(async () => {
-      await renderWithPalette(false);
-    });
-
-    it("does nothing but say so", () => {
-      press(KNOB.tools);
-      expect(palette().open).toBe(false);
-      expect(h.state.toast?.message).toBe(
-        "Tool palette: the radial palette is off",
-      );
-    });
-  });
-
   describe("on a Twister's LED ring", () => {
     beforeEach(async () => {
       plugIn();

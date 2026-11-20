@@ -1,18 +1,37 @@
 import { Emitter } from "@excalidraw/common";
 
-import { actionChangeStrokeColor } from "../../actions/actionProperties";
+import {
+  actionChangeBackgroundColor,
+  actionChangeStrokeColor,
+} from "../../actions/actionProperties";
 import { t } from "../../i18n";
 
 import { getActivePenPreset, getPenPresets } from "./penPresets";
-import { getThemeColors, getThemeInks, rememberColor } from "./themeInks";
+import {
+  RECENT_COLOR_SLOTS,
+  getThemeColors,
+  getThemeInks,
+  rememberColor,
+} from "./themeInks";
 
-import type { ToolType, UnsubscribeCallback } from "../../types";
+import { FLICK_DISTANCE } from "./radialLayout";
+
+import {
+  STYLE_PROPERTIES,
+  getStyleProperty,
+  styleOptionId,
+} from "./styleProperties";
+
+import type { RadialHostPen, ToolType, UnsubscribeCallback } from "../../types";
 import type App from "../App";
 import type { PenPreset } from "./penPresets";
+
+import type { StylePropertyId } from "./styleProperties";
 
 /** the shapes and tools on the inner ring, clockwise from the top */
 export const RADIAL_TOOLS = [
   "selection",
+  "hand",
   "rectangle",
   "diamond",
   "ellipse",
@@ -20,13 +39,14 @@ export const RADIAL_TOOLS = [
   "line",
   "freedraw",
   "text",
+  "stickynote",
   "frame",
 ] as const;
 
 export type RadialTool = typeof RADIAL_TOOLS[number];
 
 /** the rings a controller can step through: shapes, pens and colors */
-export const RADIAL_RINGS = ["tools", "pens", "colors"] as const;
+export const RADIAL_RINGS = ["tools", "pens", "colors", "style"] as const;
 
 export type RadialRing = typeof RADIAL_RINGS[number];
 
@@ -58,8 +78,8 @@ export type RadialPaletteOpenOptions = Readonly<{
 }>;
 
 /**
- * Drives the radial palette without a pointer, e.g. from a MIDI knob. Needs
- * the `radialPalette` prop; without it every call does nothing.
+ * Drives the radial palette without a pointer, e.g. from a MIDI knob. Every
+ * call does nothing in view mode.
  */
 export type RadialPaletteAPI = Readonly<{
   /** opens the palette, or moves the highlight to `ring` when it is open */
@@ -90,6 +110,9 @@ export type RadialSession = Readonly<{
   ring: RadialRing;
   index: number;
   flick: RadialFlick | null;
+  /** on the style ring, the property whose options it shows; null for the
+   * list of properties */
+  style: StylePropertyId | null;
 }>;
 
 const wrap = (index: number, length: number) =>
@@ -107,6 +130,8 @@ export class RadialPaletteController {
     index: 0,
   };
   private recent: readonly string[] = [];
+  /** what a color pick paints: the stroke, or the fill after the chip flips it */
+  private colorTarget: "stroke" | "fill" = "stroke";
   /** the opacity a pen preset set, to undo when a shape tool is picked */
   private presetOpacity: number | null = null;
   private readonly emitter = new Emitter<[]>();
@@ -122,11 +147,15 @@ export class RadialPaletteController {
     return this.recent;
   }
 
+  get colorsFill() {
+    return this.colorTarget === "fill";
+  }
+
   /** for `useSyncExternalStore` */
   subscribe = (callback: () => void) => this.emitter.on(callback);
 
   private get enabled() {
-    return !!this.app.props.radialPalette && !this.app.state.viewModeEnabled;
+    return !this.app.state.viewModeEnabled;
   }
 
   private update(session: RadialSession | null) {
@@ -135,6 +164,12 @@ export class RadialPaletteController {
       this.last = { ring: session.ring, index: session.index };
     }
     this.emitter.trigger();
+  }
+
+  /** the host's own pens, from `radialPalette={{ pens }}` */
+  hostPens(): readonly RadialHostPen[] {
+    const { radialPalette } = this.app.props;
+    return typeof radialPalette === "object" ? radialPalette.pens ?? [] : [];
   }
 
   getPresets(): readonly PenPreset[] {
@@ -146,9 +181,16 @@ export class RadialPaletteController {
     return getThemeColors(theme, getThemeInks(theme));
   }
 
-  /** the ring's colors: the theme's, then the recent ones */
-  getColors(): readonly string[] {
-    return [...this.getThemeColors(), ...this.recent];
+  /** the ring's color slots as drawn: the theme's, then every recent
+   * slot, null where none is remembered yet */
+  colorSlots(): readonly (string | null)[] {
+    return [
+      ...this.getThemeColors(),
+      ...Array.from(
+        { length: RECENT_COLOR_SLOTS },
+        (_, index) => this.recent[index] ?? null,
+      ),
+    ];
   }
 
   items(ring: RadialRing): readonly RadialPaletteItem[] {
@@ -164,10 +206,39 @@ export class RadialPaletteController {
             id,
             label: t(`radialPalette.pen_${id}` as const),
           })),
+          ...this.hostPens().map(({ id, label }) => ({
+            id: `host-${id}`,
+            label,
+          })),
           { id: "eraser", label: t("toolBar.eraser") },
         ];
       case "colors":
-        return this.getColors().map((color) => ({ id: color, label: color }));
+        return [
+          // one item per drawn slot, so a slot's index is its item's
+          ...this.colorSlots().map((color) =>
+            color
+              ? { id: color, label: color }
+              : { id: "", label: t("radialPalette.emptyRecent") },
+          ),
+          { id: "fill", label: t("radialPalette.fill") },
+        ];
+      case "style": {
+        const style = this.current?.style;
+        const property = style && getStyleProperty(style);
+        if (property) {
+          return property.options.map((option) => ({
+            id: styleOptionId(option),
+            label:
+              typeof option.label === "string"
+                ? t(option.label)
+                : option.label.text,
+          }));
+        }
+        const elements = this.selectedElements();
+        return STYLE_PROPERTIES.filter((candidate) =>
+          candidate.applies(elements, this.app.state),
+        ).map(({ id, label }) => ({ id, label: t(label) }));
+      }
     }
   }
 
@@ -181,9 +252,13 @@ export class RadialPaletteController {
         : ring === "pens"
         ? state.activeTool.type === "eraser"
           ? "eraser"
+          : this.hostPens().some(({ active }) => active)
+          ? `host-${this.hostPens().find(({ active }) => active)!.id}`
           : state.activeTool.type === "freedraw"
           ? getActivePenPreset(this.getPresets(), state)?.id
           : undefined
+        : this.colorsFill
+        ? state.currentItemBackgroundColor.toLowerCase()
         : state.currentItemStrokeColor.toLowerCase();
     return Math.max(
       0,
@@ -212,7 +287,12 @@ export class RadialPaletteController {
         : this.current?.ring ?? "tools";
     if (this.current) {
       if (this.current.ring !== ring) {
-        this.update({ ...this.current, ring, index: this.activeIndex(ring) });
+        this.update({
+          ...this.current,
+          ring,
+          style: null,
+          index: this.activeIndex(ring),
+        });
       }
       return;
     }
@@ -227,6 +307,7 @@ export class RadialPaletteController {
       ring,
       index: this.activeIndex(ring),
       flick: options.flick ?? null,
+      style: null,
     });
   };
 
@@ -278,8 +359,17 @@ export class RadialPaletteController {
     if (!current || !Number.isFinite(delta)) {
       return;
     }
-    const length = this.items(current.ring).length;
-    const index = wrap(current.index + Math.trunc(delta), length);
+    // whole steps over the items that can be picked: empty recent color
+    // slots are drawn but hold nothing
+    const items = this.items(current.ring);
+    const direction = Math.sign(Math.trunc(delta));
+    let index = current.index;
+    for (let left = Math.abs(Math.trunc(delta)); left > 0; ) {
+      index = wrap(index + direction, items.length);
+      if (items[index].id !== "" || index === current.index) {
+        left--;
+      }
+    }
     if (index !== current.index) {
       this.update({ ...current, index });
     }
@@ -295,7 +385,12 @@ export class RadialPaletteController {
       RADIAL_RINGS[
         wrap(RADIAL_RINGS.indexOf(current.ring) + delta, RADIAL_RINGS.length)
       ];
-    this.update({ ...current, ring, index: this.activeIndex(ring) });
+    this.update({
+      ...current,
+      ring,
+      style: null,
+      index: this.activeIndex(ring),
+    });
   };
 
   choose = () => {
@@ -304,21 +399,87 @@ export class RadialPaletteController {
     }
   };
 
+  private holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** a press held still on a tool for `delay` picks it locked, as Q does */
+  hold = (
+    ring: RadialRing,
+    index: number,
+    delay: number,
+    at: ClientPoint = { x: 0, y: 0 },
+  ) => {
+    this.release();
+    if (ring === "tools") {
+      this.holdStart = at;
+      this.holdTimer = setTimeout(() => {
+        this.holdTimer = null;
+        this.pick(ring, index, true);
+      }, delay);
+    }
+  };
+
+  private holdStart: ClientPoint = { x: 0, y: 0 };
+
+  /** a held press that moves more than FLICK_DISTANCE is not held still */
+  drift = ({ x, y }: ClientPoint) => {
+    if (
+      Math.hypot(x - this.holdStart.x, y - this.holdStart.y) > FLICK_DISTANCE
+    ) {
+      this.release();
+    }
+  };
+
+  release = () => {
+    if (this.holdTimer !== null) {
+      clearTimeout(this.holdTimer);
+      this.holdTimer = null;
+    }
+  };
+
   /** does what the item does, then closes; false when there is no item */
-  pick = (ring: RadialRing, index: number): boolean => {
+  pick = (ring: RadialRing, index: number, locked = false): boolean => {
     const item = this.items(ring)[index];
-    if (!this.enabled || !item) {
+    if (!this.enabled || !item?.id) {
       return false;
     }
     if (ring === "tools") {
-      this.pickTool(item.id as RadialTool);
+      this.pickTool(item.id as RadialTool, locked);
     } else if (ring === "pens") {
       const preset = this.getPresets().find(({ id }) => id === item.id);
+      const host = this.hostPens().find(({ id }) => `host-${id}` === item.id);
       if (preset) {
         this.pickPreset(preset);
+      } else if (host) {
+        host.onPick();
       } else {
         this.pickTool("eraser");
       }
+    } else if (ring === "style") {
+      const property =
+        this.current?.style && getStyleProperty(this.current.style);
+      if (!property) {
+        // a property opens its options in place
+        if (this.current) {
+          this.update({
+            ...this.current,
+            style: item.id as StylePropertyId,
+            index: 0,
+          });
+        }
+        return true;
+      }
+      this.app.actionManager.executeAction(
+        property.action,
+        "ui",
+        property.options[index].value,
+      );
+    } else if (item.id === "fill") {
+      // the chip flips the arc and leaves the ring open for the pick
+      this.colorTarget = this.colorsFill ? "stroke" : "fill";
+      if (this.current) {
+        this.update({ ...this.current });
+      }
+      return true;
     } else {
       this.pickColor(item.id);
     }
@@ -326,8 +487,18 @@ export class RadialPaletteController {
     return true;
   };
 
-  private pickTool(type: ToolType) {
-    this.app.setActiveTool({ type });
+  private selectedElements() {
+    return this.app.scene.getSelectedElements({
+      selectedElementIds: this.app.state.selectedElementIds,
+      includeBoundTextElement: true,
+    });
+  }
+
+  private pickTool(type: ToolType, locked = false) {
+    this.app.setActiveTool({ type, locked });
+    if (type === "frame") {
+      this.app.frameNavigation.frameToolPicked();
+    }
   }
 
   /** the active tool changed, from the ring or anywhere else: a pen
@@ -354,9 +525,11 @@ export class RadialPaletteController {
   }
 
   private pickColor(color: string) {
-    this.app.actionManager.executeAction(actionChangeStrokeColor, "ui", {
-      color,
-    });
+    this.app.actionManager.executeAction(
+      this.colorsFill ? actionChangeBackgroundColor : actionChangeStrokeColor,
+      "ui",
+      { color },
+    );
     this.recent = rememberColor(this.recent, color, this.getThemeColors());
   }
 
