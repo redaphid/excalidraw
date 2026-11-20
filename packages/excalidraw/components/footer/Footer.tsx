@@ -1,12 +1,7 @@
 import clsx from "clsx";
 
-import { actionShortcuts } from "../../actions";
 import { useTunnels } from "../../context/tunnels";
-import { ExitZenModeButton, UndoRedoActions, ZoomActions } from "../Actions";
-import { useApp } from "../App";
-import { HelpButton } from "../HelpButton";
-import { Section } from "../Section";
-import Stack from "../Stack";
+import { ExitZenModeButton } from "../Actions";
 
 import type { ActionManager } from "../../actions/manager";
 import type { UIAppState } from "../../types";
@@ -17,48 +12,22 @@ const Footer = ({
   showExitZenModeBtn,
   renderWelcomeScreen,
   defaultUIEnabled,
-  zoomUIEnabled,
 }: {
   appState: UIAppState;
   actionManager: ActionManager;
   showExitZenModeBtn: boolean;
   renderWelcomeScreen: boolean;
   defaultUIEnabled: boolean;
-  zoomUIEnabled: boolean;
 }) => {
   const { FooterCenterTunnel, WelcomeScreenHelpHintTunnel } = useTunnels();
-  const app = useApp();
 
   return (
     <footer
       role="contentinfo"
       className="layer-ui__wrapper__footer App-menu App-menu_bottom"
     >
-      {/* footer-left is not faded out in zen mode: it holds the zoom controls,
-          which stay visible (chrome-less). Its children opt in individually. */}
-      {(defaultUIEnabled || (zoomUIEnabled && app.isNavigationEnabled())) && (
-        <div className="layer-ui__wrapper__footer-left zen-mode-transition">
-          <Stack.Col gap={2}>
-            <Section heading="canvasActions">
-              {zoomUIEnabled && app.isNavigationEnabled() && (
-                <ZoomActions renderAction={actionManager.renderAction} />
-              )}
-
-              {defaultUIEnabled && !appState.viewModeEnabled && (
-                <UndoRedoActions
-                  renderAction={actionManager.renderAction}
-                  className={clsx("zen-mode-transition", {
-                    "layer-ui__wrapper__footer-left--transition-bottom":
-                      appState.zenModeEnabled,
-                  })}
-                />
-              )}
-            </Section>
-          </Stack.Col>
-        </div>
-      )}
       <FooterCenterTunnel.Out />
-      {(defaultUIEnabled || renderWelcomeScreen) && (
+      {renderWelcomeScreen && (
         <div
           className={clsx(
             "layer-ui__wrapper__footer-right zen-mode-transition",
@@ -68,12 +37,7 @@ const Footer = ({
           )}
         >
           <div style={{ position: "relative" }}>
-            {renderWelcomeScreen && <WelcomeScreenHelpHintTunnel.Out />}
-            {defaultUIEnabled && (
-              <HelpButton
-                onClick={() => actionManager.executeAction(actionShortcuts)}
-              />
-            )}
+            <WelcomeScreenHelpHintTunnel.Out />
           </div>
         </div>
       )}

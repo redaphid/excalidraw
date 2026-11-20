@@ -14,7 +14,6 @@ import { UserList } from "../UserList";
 import DropdownMenu from "../dropdownMenu/DropdownMenu";
 import DropdownMenuSub from "../dropdownMenu/DropdownMenuSub";
 import { withInternalFallback } from "../hoc/withInternalFallback";
-import { HamburgerMenuIcon } from "../icons";
 
 import * as DefaultItems from "./DefaultItems";
 
@@ -40,19 +39,6 @@ const MainMenu = Object.assign(
       return (
         <MainMenuTunnel.In>
           <DropdownMenu open={appState.openMenu === "canvas"}>
-            <DropdownMenu.Trigger
-              onToggle={() => {
-                setAppState({
-                  openMenu: appState.openMenu === "canvas" ? null : "canvas",
-                  openPopup: null,
-                  openDialog: null,
-                });
-              }}
-              data-testid="main-menu-trigger"
-              className="main-menu-trigger"
-            >
-              {HamburgerMenuIcon}
-            </DropdownMenu.Trigger>
             <DropdownMenu.Content
               onClickOutside={() => setAppState({ openMenu: null })}
               onSelect={composeEventHandlers(onSelect, () => {

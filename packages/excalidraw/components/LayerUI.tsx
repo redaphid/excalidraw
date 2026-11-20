@@ -511,7 +511,6 @@ const LayerUI = ({
               showExitZenModeBtn={showExitZenModeBtn}
               renderWelcomeScreen={renderWelcomeScreen}
               defaultUIEnabled={defaultUIEnabled}
-              zoomUIEnabled={zoomUIEnabled}
             />
             {(appState.toast ||
               (scrollBackToContentUIEnabled && appState.scrolledOutside) ||
