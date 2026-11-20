@@ -241,6 +241,61 @@ describe("opening the radial palette from the canvas", () => {
       });
     });
 
+    describe("when the browser clicks where a long press lifts", () => {
+      beforeEach(() => {
+        down(400, 300);
+        wait(LONG_PRESS_DELAY);
+        up(400, 300);
+      });
+
+      describe("on the hub", () => {
+        beforeEach(() => {
+          fireEvent.click(
+            queryByTestId(document.body, "radial-palette-menu")!,
+            {
+              detail: 1,
+            },
+          );
+        });
+
+        it("opens no context menu", () => {
+          expect(h.state.contextMenu).toBeNull();
+        });
+
+        it("keeps the ring open", () => {
+          expect(ring()).not.toBeNull();
+        });
+      });
+
+      describe("on a slice", () => {
+        beforeEach(() => {
+          fireEvent.click(
+            queryByTestId(document.body, "radial-tool-rectangle")!,
+            {
+              detail: 1,
+            },
+          );
+        });
+
+        it("picks nothing", () => {
+          expect(h.state.activeTool.type).toBe("selection");
+        });
+      });
+
+      describe("after a fresh press on the hub", () => {
+        beforeEach(() => {
+          const hub = queryByTestId(document.body, "radial-palette-menu")!;
+          fireEvent.pointerDown(hub, { pointerId: 3, pointerType: "touch" });
+          fireEvent.pointerUp(hub, { pointerId: 3, pointerType: "touch" });
+          fireEvent.click(hub, { detail: 1 });
+        });
+
+        it("opens the context menu", () => {
+          expect(h.state.contextMenu).not.toBeNull();
+        });
+      });
+    });
+
     describe("when a finger drifts a little on a rectangle while it holds", () => {
       let undoDepth: number;
 

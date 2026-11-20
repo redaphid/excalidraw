@@ -323,3 +323,44 @@ test("a held puck moves, tucks against a side, comes back, and stays put", async
   await expect(page.getByTestId("radial-palette")).toBeHidden();
   await page.screenshot({ path: testInfo.outputPath("puck-back.png") });
 });
+
+test("a finger held on a selected shape and lifted leaves only the ring", async ({
+  page,
+  browserName,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, "a touch gesture");
+  await page.keyboard.press("r");
+  await page.mouse.move(120, 250);
+  await page.mouse.down();
+  await page.mouse.move(280, 400, { steps: 6 });
+  await page.mouse.up();
+  expect(await activeTool(page)).toBe("selection");
+
+  const finger = await contact(page, browserName, "touch");
+  await finger.down(200, 325);
+  await page.waitForTimeout(800);
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  await finger.up(200, 325);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: testInfo.outputPath("held-lifted.png") });
+
+  await expect(page.locator(".context-menu")).toHaveCount(0);
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+});
+
+test("on a phone, the puck clears undo and redo", async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.name.endsWith("phone"), "the phone's puck");
+  const gap = await page.evaluate(() => {
+    const shown = (selector: string) =>
+      [...document.querySelectorAll(selector)]
+        .map((element) => element.getBoundingClientRect())
+        .find((box) => box.width > 0);
+    const puck = shown('[data-testid="radial-palette-puck"]')!;
+    const redo = shown('[data-testid="button-redo"]')!;
+    return redo.top - puck.bottom;
+  });
+  await page.screenshot({ path: testInfo.outputPath("puck-clear.png") });
+  expect(gap).toBeGreaterThanOrEqual(4);
+});
