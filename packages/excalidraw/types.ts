@@ -1541,7 +1541,7 @@ export interface ExcalidrawImperativeAPI {
   history: {
     clear: InstanceType<typeof App>["resetHistory"];
   };
-  /** drives the radial palette (with `props.radialPalette`) without a
+  /** drives the radial palette without a
    * pointer, e.g. from a MIDI knob: open, step, choose, close */
   radialPalette: RadialPaletteAPI;
   /** MIDI knobs, with `props.midi` set: `connect()` from a user gesture asks

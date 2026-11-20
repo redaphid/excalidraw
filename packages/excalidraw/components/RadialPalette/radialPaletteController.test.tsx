@@ -297,16 +297,15 @@ describe("the radial palette's controller API", () => {
     });
   });
 
-  describe("with the palette off", () => {
+  describe("without the radialPalette prop", () => {
     beforeEach(async () => {
       await render(<Excalidraw />);
       api = h.app.radialPalette.api;
+      act(() => api.open());
     });
 
-    it("does nothing", () => {
-      act(() => api.open());
-      expect(api.state().open).toBe(false);
-      expect(ring()).toBeNull();
+    it("still opens", () => {
+      expect(api.state().open).toBe(true);
     });
   });
 });

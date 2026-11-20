@@ -21,8 +21,7 @@ export const actionOpenStyleRing = register({
   name: "openStyleRing",
   label: "radialPalette.style",
   trackEvent: false,
-  predicate: (elements, appState, props) =>
-    !!props.radialPalette && elements.length > 0,
+  predicate: (elements) => elements.length > 0,
   perform: (_elements, appState, _, app) => {
     const [minX, minY, maxX, maxY] = getCommonBounds(
       app.scene.getSelectedElements(appState),

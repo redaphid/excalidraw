@@ -76,8 +76,8 @@ export type RadialPaletteOpenOptions = Readonly<{
 }>;
 
 /**
- * Drives the radial palette without a pointer, e.g. from a MIDI knob. Needs
- * the `radialPalette` prop; without it every call does nothing.
+ * Drives the radial palette without a pointer, e.g. from a MIDI knob. Every
+ * call does nothing in view mode.
  */
 export type RadialPaletteAPI = Readonly<{
   /** opens the palette, or moves the highlight to `ring` when it is open */
@@ -153,7 +153,7 @@ export class RadialPaletteController {
   subscribe = (callback: () => void) => this.emitter.on(callback);
 
   private get enabled() {
-    return !!this.app.props.radialPalette && !this.app.state.viewModeEnabled;
+    return !this.app.state.viewModeEnabled;
   }
 
   private update(session: RadialSession | null) {
