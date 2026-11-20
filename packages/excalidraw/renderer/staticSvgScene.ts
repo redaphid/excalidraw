@@ -5,6 +5,8 @@ import {
   THEME,
   DARK_THEME_FILTER,
   getFontFamilyString,
+  getFontVariationSettings,
+  getFontInstanceWeight,
   getFontRenderScale,
   isRTL,
   isTestEnv,
@@ -30,7 +32,11 @@ import {
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
 import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
-import { getButtonIcon, isButtonElement } from "@excalidraw/element";
+import {
+  getButtonIcon,
+  hasLiteralColor,
+  isButtonElement,
+} from "@excalidraw/element";
 import { getLineHeightInPx } from "@excalidraw/element";
 import {
   isArrowElement,
@@ -110,7 +116,7 @@ const createButtonIconNode = (
   const { corners, cornerWidth } = getButtonIcon(button);
   const color = applyDarkModeFilter(
     button.strokeColor,
-    renderConfig.theme === THEME.DARK,
+    renderConfig.theme === THEME.DARK && !hasLiteralColor(button),
   );
   const icon = svgRoot.ownerDocument.createElementNS(SVG_NS, "polygon");
   icon.setAttribute("points", corners.join(" "));
@@ -238,7 +244,7 @@ const renderElementToSvg = (
         commands,
         applyDarkModeFilter(
           element.backgroundColor,
-          renderConfig.theme === THEME.DARK,
+          renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
         ),
       );
       const clipPath = svgRoot.ownerDocument.createElementNS(
@@ -286,7 +292,7 @@ const renderElementToSvg = (
           "fill",
           applyDarkModeFilter(
             element.strokeColor,
-            renderConfig.theme === THEME.DARK,
+            renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
           ),
         );
         dateText.setAttribute("fill-opacity", `${STICKY_NOTE_FOOTER.opacity}`);
@@ -573,7 +579,7 @@ const renderElementToSvg = (
             "fill",
             applyDarkModeFilter(
               element.strokeColor,
-              renderConfig.theme === THEME.DARK,
+              renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
             ),
           );
           path.setAttribute("d", shape);
@@ -710,6 +716,7 @@ const renderElementToSvg = (
 
         if (
           renderConfig.theme === THEME.DARK &&
+          !hasLiteralColor(element) &&
           fileData.mimeType === MIME_TYPES.svg
         ) {
           g.setAttribute("filter", DARK_THEME_FILTER);
@@ -871,17 +878,43 @@ const renderElementToSvg = (
             "y",
             `${(i * lineHeightPx + verticalOffset) * fontScale}`,
           );
-          text.setAttribute("font-family", getFontFamilyString(element));
+          // the SVG declares the family, not an instance's own family, and
+          // takes the instance from font-variation-settings
+          text.setAttribute(
+            "font-family",
+            getFontFamilyString({ fontFamily: element.fontFamily }),
+          );
           text.setAttribute("font-size", `${element.fontSize * fontScale}px`);
           text.setAttribute(
             "fill",
             applyDarkModeFilter(
               element.strokeColor,
-              renderConfig.theme === THEME.DARK,
+              renderConfig.theme === THEME.DARK &&
+                !hasLiteralColor(element, elementsMap),
             ),
           );
           text.setAttribute("text-anchor", textAnchor);
-          text.setAttribute("style", "white-space: pre;");
+          // a renderer that ignores font-variation-settings still draws the
+          // instance's wght from font-weight
+          const variationSettings = getFontVariationSettings(
+            element.fontFamily,
+            element.fontAxes,
+          );
+          const weight = getFontInstanceWeight(
+            element.fontFamily,
+            element.fontAxes,
+          );
+          text.setAttribute(
+            "style",
+            [
+              "white-space: pre;",
+              variationSettings &&
+                `font-variation-settings: ${variationSettings};`,
+              weight !== undefined && `font-weight: ${weight};`,
+            ]
+              .filter(Boolean)
+              .join(" "),
+          );
           text.setAttribute("direction", direction);
           text.setAttribute("dominant-baseline", "alphabetic");
           node.appendChild(text);

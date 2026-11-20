@@ -5,16 +5,27 @@ export const PACKED_RTREE_BUILD_CHUNK = 8192;
 
 export type PackedRTreeBuildWork = { comparisons: number; writes: number };
 
+/**
+ * How often a build pauses, which its caller may change between pauses:
+ * `stride` comparisons and writes, all of which are added to `units`.
+ */
+export type PackedRTreeBuildPace = { stride: number; units: number };
+
 class Chunks {
   private sincePause = 0;
-  constructor(readonly work: PackedRTreeBuildWork) {}
+  constructor(
+    readonly work: PackedRTreeBuildWork,
+    readonly pace: PackedRTreeBuildPace,
+  ) {}
   compared() {
     this.work.comparisons++;
+    this.pace.units++;
     this.sincePause++;
   }
   wrote() {
     this.work.writes++;
-    if (++this.sincePause < PACKED_RTREE_BUILD_CHUNK) {
+    this.pace.units++;
+    if (++this.sincePause < this.pace.stride) {
       return false;
     }
     this.sincePause = 0;
@@ -35,13 +46,15 @@ export class PackedRTree {
 
   /**
    * Packs `items`, indices into `itemBoxes`, into a tree, pausing after every
-   * `PACKED_RTREE_BUILD_CHUNK` comparisons or node writes so the caller can
-   * spread the build over several tasks. `items` is reordered in place.
+   * `pace.stride` comparisons or node writes (`PACKED_RTREE_BUILD_CHUNK` by
+   * default) so the caller can spread the build over several tasks. `items`
+   * is reordered in place.
    */
   static *build(
     itemBoxes: Float64Array,
     items: Uint32Array,
     work: PackedRTreeBuildWork,
+    pace: PackedRTreeBuildPace = { stride: PACKED_RTREE_BUILD_CHUNK, units: 0 },
   ): Generator<void, PackedRTree, void> {
     let count = items.length;
     let total = count;
@@ -54,13 +67,18 @@ export class PackedRTree {
     const boxes = new Float64Array(total * 4);
     const children = new Uint32Array(total);
 
-    const chunks = new Chunks(work);
+    const chunks = new Chunks(work, pace);
     yield* sortTileRecursive(itemBoxes, items, chunks);
 
     for (let node = 0; node < items.length; node++) {
       const item = items[node];
       children[node] = item;
-      boxes.set(itemBoxes.subarray(item * 4, item * 4 + 4), node * 4);
+      // four reads and writes, not a `subarray` view per leaf: on a large
+      // board those views made a build chunk the longest task of a rebuild
+      boxes[node * 4] = itemBoxes[item * 4];
+      boxes[node * 4 + 1] = itemBoxes[item * 4 + 1];
+      boxes[node * 4 + 2] = itemBoxes[item * 4 + 2];
+      boxes[node * 4 + 3] = itemBoxes[item * 4 + 3];
       if (chunks.wrote()) {
         yield;
       }

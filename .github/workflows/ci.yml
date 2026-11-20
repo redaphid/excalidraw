@@ -67,8 +67,14 @@ jobs:
   e2e:
     name: e2e (${{ matrix.browser }})
     needs: playground
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # ubuntu-latest became 26.04 on 2026-11-18, where the WebKit build
+    # Playwright installs cannot load libicudata.so.74. Pin until
+    # Playwright ships a WebKit build for 26.04.
+    runs-on: ubuntu-24.04
+    # `playwright install --with-deps` fetches its system libraries from the
+    # runner's apt mirror, which some runs serve at seconds a package: the
+    # install alone has taken from 20 s to past 10 min.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -88,6 +94,11 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ matrix.browser }}-${{ hashFiles('e2e/yarn.lock') }}
+      # The runner's apt mirror list leads with a regional mirror
+      # (us-east-2.ec2.archive.ubuntu.com) that has served one package every
+      # ~12 s, past the job's limit; security.ubuntu.com, Ubuntu's own, served
+      # the same run at full speed. Use Ubuntu's archive instead.
+      - run: echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:

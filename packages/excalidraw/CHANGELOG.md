@@ -13,6 +13,24 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Palette knobs (2026-11-19)
+
+- New MIDI targets `palette.tools`, `palette.pens` and `palette.colors` drive the radial palette from a knob: a press opens the knob's ring, a turn steps the highlight a slice per four clicks (opening the ring first if it is closed), and a press after a turn chooses the highlighted slice and closes. A press with no turn since the ring opened just closes it. A press on any other knob still resets its target. A Twister's LED ring points at the highlighted slice. Needs `radialPalette`.
+- `TWISTER_LAYOUT`'s second row is now tools, pens, colours and undo / redo; x, y, width and height move to the first row of bank 2 (CC 16–19). Bindings a browser already saved are kept.
+- `MidiCommand.action` is `"press"` (was `"reset"`): the editor decides what a press does per target.
+
+### Radial palette (2026-11-19) [#205](https://github.com/redaphid/excalidraw/pull/205)
+
+- `<Excalidraw radialPalette />` adds a puck that opens a ring of shapes and tools (select, rectangle, diamond, ellipse, arrow, line, pen, text, frame), pen presets and the eraser, and the theme's inks with recent colours, a pen-size arc and an opacity arc.
+- It opens at the pointer on `,`, under a finger held still for 500 ms (10 px tolerance), and at the tip of a pen pressed with its barrel button. Escape or a tap outside closes it. While it is on, the touch long press opens the palette instead of the context menu; the ring's hub opens the context menu for that spot. A mouse right-click is unchanged.
+- `excalidrawAPI.radialPalette` drives it without a pointer (e.g. from a MIDI knob): `open({ ring, at })`, `step(delta)`, `choose()`, `close()`, `state()` and `onChange(listener)`.
+- New `--control-*` CSS custom properties on `.excalidraw` carry the palette's look (surface, ink, accent, rule, widths, radius, font, icon size, motion) for other controls to share.
+- A `freedrawStrokeWidth` prop overrides the pen presets' widths and hides the size arc.
+
+### MIDI settings files (2026-11-19)
+
+- midi:config exports the knobs and preferences as `midi-knobs.json` and imports such a file, to keep a setup or carry it to another browser. The file names its format (`excalidraw-midi`) and `version` (1); a newer version is refused, knobs bound to properties this editor doesn't know are skipped and counted, and unreadable preferences fall back to their defaults. `exportMidiConfig` and `importMidiConfig` are exported for hosts.
+
 ### Auto-arrange (2026-11-12) [#59](https://github.com/redaphid/excalidraw/pull/59)
 
 - Select two or more shapes or groups, or a frame, and press `Shift+Alt+A` (or pick "Auto-arrange" in the command palette, the context menu or the selection panel) to lay them out as a graph with [ELK](https://eclipse.dev/elk/). Arrows bound at both ends are the edges. The move is one undo step. With nothing selected the shortcut asks for a selection.
