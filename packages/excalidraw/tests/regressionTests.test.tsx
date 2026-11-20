@@ -670,6 +670,7 @@ describe("regression tests", () => {
     act(() => {
       h.app.actionManager.executeAction(actionChangeFontFamily, "ui", {
         currentItemFontFamily: FONT_FAMILY["Comic Shanns"],
+        currentHoveredFontFamily: null,
       });
     });
     expect(h.state.currentItemFontFamily).toEqual(FONT_FAMILY["Comic Shanns"]);

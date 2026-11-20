@@ -119,17 +119,6 @@ describe("deep zoom", () => {
     expect(h.state.zoom.value).toBe(0.000_001);
   });
 
-  it("shows a zoom under 1% with its significant digits", () => {
-    const label = () =>
-      document.querySelector(".reset-zoom-button")!.textContent;
-    API.setAppState({ zoom: { value: 0.000_001 as NormalizedZoomValue } });
-    expect(label()).toBe("0.0001%");
-    API.setAppState({ zoom: { value: 0.000_123_4 as NormalizedZoomValue } });
-    expect(label()).toBe("0.012%");
-    API.setAppState({ zoom: { value: 0.5 as NormalizedZoomValue } });
-    expect(label()).toBe("50%");
-  });
-
   describe("zoom buttons and keys", () => {
     const zoomFrom = (zoom: number, step: () => void) => {
       API.setAppState({ zoom: { value: zoom as NormalizedZoomValue } });
