@@ -763,7 +763,15 @@
     "pen_pencil": "Pencil",
     "pen_brush": "Ink brush",
     "pen_marker": "Marker",
-    "pen_wash": "Wash"
+    "pen_wash": "Wash",
+    "style": "Style…",
+    "fill": "Fill",
+    "startArrowhead": "Start arrowhead",
+    "endArrowhead": "End arrowhead",
+    "verticalAlign": "Vertical align",
+    "distribute": "Distribute",
+    "mainMenu": "Menu…",
+    "textToDiagram": "Text to diagram"
   },
   "fontList": {
     "badge": {

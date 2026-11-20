@@ -6,6 +6,17 @@ import { HelpIconThin } from "../components/icons";
 
 import { register } from "./register";
 
+export const actionOpenMainMenu = register({
+  name: "openMainMenu",
+  label: "radialPalette.mainMenu",
+  viewMode: true,
+  trackEvent: false,
+  perform: (_elements, appState) => ({
+    appState: { ...appState, openMenu: "canvas", openPopup: null },
+    captureUpdate: CaptureUpdateAction.EVENTUALLY,
+  }),
+});
+
 export const actionShortcuts = register({
   name: "toggleShortcuts",
   label: "welcomeScreen.defaults.helpHint",

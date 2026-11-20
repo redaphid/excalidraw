@@ -334,6 +334,8 @@ import {
   actionWrapSelectionInFrame,
 } from "../actions/actionFrame";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
+import { actionOpenMainMenu, actionShortcuts } from "../actions/actionMenu";
+import { actionZoomToFit } from "../actions/actionCanvas";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
 import { ActionManager } from "../actions/manager";
@@ -13332,6 +13334,9 @@ ${css}
       }
 
       return [
+        this.actionManager.actions.undo,
+        this.actionManager.actions.redo,
+        CONTEXT_MENU_SEPARATOR,
         actionPaste,
         CONTEXT_MENU_SEPARATOR,
         actionCopyAsPng,
@@ -13348,6 +13353,10 @@ ${css}
         actionToggleZenMode,
         actionToggleViewMode,
         actionToggleStats,
+        CONTEXT_MENU_SEPARATOR,
+        actionZoomToFit,
+        actionShortcuts,
+        actionOpenMainMenu,
       ];
     }
 

@@ -673,3 +673,36 @@ describe("contextMenu on a phone", () => {
     ).toEqual([true, true]);
   });
 });
+
+describe("contextMenu on the empty canvas", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    reseed(7);
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 1,
+      clientY: 1,
+    });
+  });
+
+  it("lists undo, redo, zoom to fit, help and the main menu", () => {
+    const contextMenu = UI.queryContextMenu();
+
+    expect(
+      ["undo", "redo", "zoomToFit", "toggleShortcuts", "openMainMenu"].map(
+        (name) => contextMenu?.querySelector(`li[data-testid="${name}"]`) != null,
+      ),
+    ).toEqual([true, true, true, true, true]);
+  });
+
+  describe("when Menu… is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(queryByText(UI.queryContextMenu()!, "Menu…")!);
+    });
+
+    it("opens the main menu", () => {
+      expect(h.state.openMenu).toBe("canvas");
+    });
+  });
+});

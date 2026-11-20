@@ -7613,6 +7613,61 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
   "contextMenu": {
     "items": [
       {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          viewBox="0 0 20 20"
+        >
+          <path
+            d="M7.5 10.833 4.167 7.5 7.5 4.167M4.167 7.5h9.166a3.333 3.333 0 0 1 0 6.667H12.5"
+            strokeWidth="1.25"
+          />
+        </svg>,
+        "keyTest": [Function],
+        "label": "buttons.undo",
+        "name": "undo",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "history",
+        },
+        "viewMode": false,
+      },
+      {
+        "PanelComponent": [Function],
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          viewBox="0 0 20 20"
+        >
+          <path
+            d="M12.5 10.833 15.833 7.5 12.5 4.167M15.833 7.5H6.667a3.333 3.333 0 1 0 0 6.667H7.5"
+            strokeWidth="1.25"
+          />
+        </svg>,
+        "keyTest": [Function],
+        "label": "buttons.redo",
+        "name": "redo",
+        "perform": [Function],
+        "trackEvent": {
+          "category": "history",
+        },
+        "viewMode": false,
+      },
+      "separator",
+      {
         "keyTest": undefined,
         "label": "labels.paste",
         "name": "paste",
@@ -8168,6 +8223,116 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         "trackEvent": {
           "category": "menu",
         },
+        "viewMode": true,
+      },
+      "separator",
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth={"1.25000"}
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <path
+              d="M15 15m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"
+            />
+            <path
+              d="M22 22l-3 -3"
+            />
+            <path
+              d="M6 18h-1a2 2 0 0 1 -2 -2v-1"
+            />
+            <path
+              d="M3 11v-1"
+            />
+            <path
+              d="M3 6v-1a2 2 0 0 1 2 -2h1"
+            />
+            <path
+              d="M10 3h1"
+            />
+            <path
+              d="M15 3h1a2 2 0 0 1 2 2v1"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "helpDialog.zoomToFit",
+        "name": "zoomToFit",
+        "navigation": true,
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+        "viewMode": true,
+      },
+      {
+        "icon": <svg
+          aria-hidden="true"
+          className=""
+          fill="none"
+          focusable="false"
+          role="img"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+        >
+          <g
+            strokeWidth="1.25"
+          >
+            <path
+              d="M0 0h24v24H0z"
+              fill="none"
+              stroke="none"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+            />
+            <line
+              x1="12"
+              x2="12"
+              y1="17"
+              y2="17.01"
+            />
+            <path
+              d="M12 13.5a1.5 1.5 0 0 1 1 -1.5a2.6 2.6 0 1 0 -3 -4"
+            />
+          </g>
+        </svg>,
+        "keyTest": [Function],
+        "label": "welcomeScreen.defaults.helpHint",
+        "name": "toggleShortcuts",
+        "perform": [Function],
+        "trackEvent": {
+          "action": "toggleHelpDialog",
+          "category": "menu",
+        },
+        "viewMode": true,
+      },
+      {
+        "label": "radialPalette.mainMenu",
+        "name": "openMainMenu",
+        "perform": [Function],
+        "trackEvent": false,
         "viewMode": true,
       },
     ],
