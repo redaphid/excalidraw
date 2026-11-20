@@ -154,10 +154,8 @@ describe("a frame that needs more new bitmaps than it has time for", () => {
     expect(elements.filter(isBuilt)).toHaveLength(BITMAPS_PER_FRAME);
   });
 
-  it("draws the rest straight onto the canvas", () => {
-    expect(painted.pathsFilled).toBeGreaterThanOrEqual(
-      SHAPES - painted.bitmapsDrawn,
-    );
+  it("leaves the rest for the frames that follow", () => {
+    expect(painted.pathsFilled).toBe(0);
   });
 
   describe("when the browser is next idle", () => {
