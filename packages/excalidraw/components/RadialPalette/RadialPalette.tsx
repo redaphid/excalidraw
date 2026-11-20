@@ -62,7 +62,6 @@ import {
   toPolar,
 } from "./radialLayout";
 import { RADIAL_TOOLS } from "./radialPaletteController";
-import { RECENT_COLOR_SLOTS } from "./themeInks";
 
 import "./RadialPalette.scss";
 
@@ -410,15 +409,7 @@ const Ring = ({
     { width, height },
   );
 
-  const themeColors = controller.getThemeColors();
-  const recent = controller.recentColors;
-  const colors: readonly (string | null)[] = [
-    ...themeColors,
-    ...Array.from(
-      { length: RECENT_COLOR_SLOTS },
-      (_, index) => recent[index] ?? null,
-    ),
-  ];
+  const colors = controller.colorSlots();
   const presets = controller.getPresets();
   // a host pen width replaces the user's, so the size arc would do nothing
   const showSize = app.props.freedrawStrokeWidth === undefined;

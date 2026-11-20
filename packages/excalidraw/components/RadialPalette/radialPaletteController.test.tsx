@@ -152,6 +152,15 @@ describe("the radial palette's controller API", () => {
           expect(ring()).not.toBeNull();
         });
 
+        it("gives the fill chip the index the ring draws it at, past empty recent slots", () => {
+          const drawn = document.body.querySelectorAll(
+            '[data-testid^="radial-color-"]:not([data-testid="radial-color-fill"])',
+          ).length;
+          expect(api.state().items.findIndex(({ id }) => id === "fill")).toBe(
+            drawn,
+          );
+        });
+
         it("inks with the chosen color", () => {
           act(() => api.step(1));
           const { items, index } = api.state();

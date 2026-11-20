@@ -7,7 +7,12 @@ import {
 import { t } from "../../i18n";
 
 import { getActivePenPreset, getPenPresets } from "./penPresets";
-import { getThemeColors, getThemeInks, rememberColor } from "./themeInks";
+import {
+  RECENT_COLOR_SLOTS,
+  getThemeColors,
+  getThemeInks,
+  rememberColor,
+} from "./themeInks";
 
 import type { ToolType, UnsubscribeCallback } from "../../types";
 import type App from "../App";
@@ -157,9 +162,16 @@ export class RadialPaletteController {
     return getThemeColors(theme, getThemeInks(theme));
   }
 
-  /** the ring's colors: the theme's, then the recent ones */
-  getColors(): readonly string[] {
-    return [...this.getThemeColors(), ...this.recent];
+  /** the ring's color slots as drawn: the theme's, then every recent
+   * slot, null where none is remembered yet */
+  colorSlots(): readonly (string | null)[] {
+    return [
+      ...this.getThemeColors(),
+      ...Array.from(
+        { length: RECENT_COLOR_SLOTS },
+        (_, index) => this.recent[index] ?? null,
+      ),
+    ];
   }
 
   items(ring: RadialRing): readonly RadialPaletteItem[] {
@@ -179,7 +191,12 @@ export class RadialPaletteController {
         ];
       case "colors":
         return [
-          ...this.getColors().map((color) => ({ id: color, label: color })),
+          // one item per drawn slot, so a slot's index is its item's
+          ...this.colorSlots().map((color) =>
+            color
+              ? { id: color, label: color }
+              : { id: "", label: t("radialPalette.emptyRecent") },
+          ),
           { id: "fill", label: t("radialPalette.fill") },
         ];
     }
@@ -323,7 +340,7 @@ export class RadialPaletteController {
   /** does what the item does, then closes; false when there is no item */
   pick = (ring: RadialRing, index: number): boolean => {
     const item = this.items(ring)[index];
-    if (!this.enabled || !item) {
+    if (!this.enabled || !item?.id) {
       return false;
     }
     if (ring === "tools") {
