@@ -2,6 +2,15 @@
 
 Draw is this fork's main consumer. This page asks what draw could drop or specialise if the fork drifts further from upstream Excalidraw, and what each change would buy. Every number is marked MEASURED or ESTIMATE. Measurements were taken on 2026-11-18 against draw `main` (1716e35, fork v1.12.1) and fork `master` (eae8d992, v1.12.2).
 
+## Since this was measured
+
+Status on 2026-11-20, against fork `master` at v1.15.0 and draw `main`:
+
+- Item 1 shipped in draw #503 for the Xiaolai font, the locales and ELK's no-Worker fallback (`onDemand` in `frontend/pwa.ts`). The font-subsetting WASM is still precached.
+- Item 2 shipped: the fork's half in #212 (v1.13.0), draw's in draw #502.
+- Item 3 shipped on draw's side only: draw #503 leaves `elk.bundled.js` out of the precache. The fork still ships the fallback.
+- Items 4 to 8 are open. The code they describe is unchanged on `master`: `Fonts.init()` still builds 209 Xiaolai faces, `AppFrameNavigation.model()` still joins the frame signature whenever the scene nonce moves, and `App.tsx` still imports `AppMidi` eagerly.
+
 ## The short answer
 
 Cutting features draw never calls buys little. Those features are small (each under 30 KB of eager code) and cost under 2% of the time of any interaction I profiled. The weight is elsewhere:
