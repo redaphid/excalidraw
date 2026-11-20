@@ -12,15 +12,10 @@ import { API } from "../../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
 import { act, render } from "../../tests/test-utils";
 
-import { getPenPresets } from "./penPresets";
 import { RADIAL_TOOLS } from "./radialPaletteController";
-import {
-  TOOLS_BAND,
-  getRingLayout,
-  placeRing,
-  polar,
-  sectorMiddle,
-} from "./radialLayout";
+import { getRingLayout, polar, sectorMiddle } from "./radialLayout";
+
+import { STICK_RIM } from "./stick";
 
 import type { PenPresetId } from "./penPresets";
 
@@ -281,44 +276,31 @@ describe("RadialPalette", () => {
       });
     });
 
-    describe("when the puck is flicked to the rectangle", () => {
+    describe("when the puck is pulled toward the rectangle past the rim", () => {
       beforeEach(() => {
-        API.setAppState({ width: 1000, height: 800 });
-        const layout = getRingLayout({
-          tools: RADIAL_TOOLS.length,
-          pens: getPenPresets(h.app.cssTheme).length + 1,
-          colors: 12,
-        });
-        const center = placeRing(
-          { x: 0, y: 0 },
-          { width: h.state.width, height: h.state.height },
-        );
-        const target = polar(
-          (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
-          sectorMiddle(layout.tools[1]),
+        const rectangle = polar(
+          STICK_RIM + 10,
+          sectorMiddle(
+            getRingLayout({ tools: RADIAL_TOOLS.length, pens: 1, colors: 1 })
+              .tools[1],
+          ),
         );
         const at = {
           pointerId: 1,
-          clientX: center.x + target.x * center.scale,
-          clientY: center.y + target.y * center.scale,
+          clientX: 300 + rectangle.x,
+          clientY: 300 + rectangle.y,
         };
         fireEvent.pointerDown(puck(), {
           button: 0,
           pointerId: 1,
-          clientX: 0,
-          clientY: 0,
-        });
-        // the ring opens once the pointer leaves the puck
-        fireEvent.pointerMove(window, {
-          pointerId: 1,
-          clientX: 20,
-          clientY: 20,
+          clientX: 300,
+          clientY: 300,
         });
         fireEvent.pointerMove(window, at);
         fireEvent.pointerUp(window, at);
       });
 
-      it("picks the rectangle on lift", () => {
+      it("picks the rectangle", () => {
         expect(h.state.activeTool.type).toBe("rectangle");
       });
 

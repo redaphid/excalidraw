@@ -6,6 +6,10 @@ import { act, render, unmountComponent } from "../../tests/test-utils";
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
 import { PUCK_EDGE } from "./puckPlace";
+import { RADIAL_TOOLS } from "./radialPaletteController";
+import { STICK_RIM } from "./stick";
+
+const { h } = window;
 
 const puck = () => queryByTestId(document.body, "radial-palette-puck")!;
 
@@ -173,8 +177,80 @@ describe("the radial palette's puck", () => {
       expect(has("moving")).toBe(false);
     });
 
-    it("opens the ring for the flick", () => {
+    it("opens the ring for the pull", () => {
       expect(ring()).not.toBeNull();
+    });
+  });
+
+  describe("when it is pulled toward the rectangle", () => {
+    const toward = (reach: number) => {
+      const radians = (-50 * Math.PI) / 180;
+      return {
+        x: 370 + reach * Math.cos(radians),
+        y: 700 + reach * Math.sin(radians),
+      };
+    };
+
+    beforeEach(() => {
+      press(370, 700);
+      const { x, y } = toward(STICK_RIM - 5);
+      moveTo(x, y);
+    });
+
+    it("aims at it on the ring", () => {
+      expect(h.app.radialPalette.state()).toMatchObject({
+        open: true,
+        ring: "tools",
+        index: RADIAL_TOOLS.indexOf("rectangle"),
+      });
+    });
+
+    it("leaves the tool as it was until the rim", () => {
+      expect(h.state.activeTool.type).toBe("selection");
+    });
+
+    it("follows the thumb with the puck", () => {
+      expect(has("pulled")).toBe(true);
+    });
+
+    describe("when it rests there past the hold", () => {
+      beforeEach(() => {
+        wait(LONG_PRESS_DELAY);
+      });
+
+      it("does not lift the puck to move", () => {
+        expect(has("moving")).toBe(false);
+      });
+    });
+
+    describe("when it is released inside the rim", () => {
+      beforeEach(() => {
+        const { x, y } = toward(STICK_RIM - 5);
+        lift(x, y);
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+
+      it("picks nothing", () => {
+        expect(h.state.activeTool.type).toBe("selection");
+      });
+    });
+
+    describe("when it is pulled on past the rim", () => {
+      beforeEach(() => {
+        const { x, y } = toward(STICK_RIM + 5);
+        moveTo(x, y);
+      });
+
+      it("picks the rectangle", () => {
+        expect(h.state.activeTool.type).toBe("rectangle");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
     });
   });
 });
