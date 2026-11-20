@@ -494,6 +494,9 @@ export class RadialPaletteController {
 
   private pickTool(type: ToolType, locked = false) {
     this.app.setActiveTool({ type, locked });
+    if (type === "frame") {
+      this.app.frameNavigation.frameToolPicked();
+    }
   }
 
   /** the active tool changed, from the ring or anywhere else: a pen
