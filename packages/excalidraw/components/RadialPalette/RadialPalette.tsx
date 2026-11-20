@@ -28,6 +28,8 @@ import {
   SelectionIcon,
   TextIcon,
   frameToolIcon,
+  handIcon,
+  stickyNoteToolIcon,
 } from "../icons";
 import {
   PEN_SIZE_SLIDER_MAX,
@@ -89,6 +91,7 @@ const placeIcon = (icon: Icon, x: number, y: number) =>
 
 const TOOL_ICONS: Record<RadialTool, Icon> = {
   selection: SelectionIcon,
+  hand: handIcon,
   rectangle: RectangleIcon,
   diamond: DiamondIcon,
   ellipse: EllipseIcon,
@@ -96,6 +99,7 @@ const TOOL_ICONS: Record<RadialTool, Icon> = {
   line: LineIcon,
   freedraw: FreedrawIcon,
   text: TextIcon,
+  stickynote: stickyNoteToolIcon,
   frame: frameToolIcon,
 };
 

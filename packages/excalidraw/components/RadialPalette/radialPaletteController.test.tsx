@@ -21,6 +21,24 @@ const highlighted = () =>
     ?.querySelector(".RadialPalette__segment--highlight")
     ?.getAttribute("data-testid");
 
+describe("the tools ring", () => {
+  it("holds the eleven tools, hand and sticky note among them", () => {
+    expect(RADIAL_TOOLS).toEqual([
+      "selection",
+      "hand",
+      "rectangle",
+      "diamond",
+      "ellipse",
+      "arrow",
+      "line",
+      "freedraw",
+      "text",
+      "stickynote",
+      "frame",
+    ]);
+  });
+});
+
 describe("the radial palette's controller API", () => {
   let api: ExcalidrawImperativeAPI["radialPalette"];
 
@@ -83,15 +101,7 @@ describe("the radial palette's controller API", () => {
 
       it("lists the shapes and tools, and nothing named for a role", () => {
         expect(api.state().items.map(({ id }) => id)).toEqual([
-          "selection",
-          "rectangle",
-          "diamond",
-          "ellipse",
-          "arrow",
-          "line",
-          "freedraw",
-          "text",
-          "frame",
+          ...RADIAL_TOOLS,
         ]);
       });
 
@@ -110,8 +120,7 @@ describe("the radial palette's controller API", () => {
         act(() => api.step(-1));
         expect(api.state().index).toBe(RADIAL_TOOLS.length - 1);
         act(() => api.step(2));
-        expect(api.state().index).toBe(1);
-        expect(highlighted()).toBe("radial-tool-rectangle");
+        expect(highlighted()).toBe("radial-tool-hand");
       });
 
       it("chooses the highlighted shape and closes", () => {
@@ -240,7 +249,7 @@ describe("the radial palette's controller API", () => {
 
       it("chooses with Enter", () => {
         Keyboard.keyPress(KEYS.ENTER);
-        expect(h.state.activeTool.type).toBe("rectangle");
+        expect(h.state.activeTool.type).toBe("hand");
         expect(ring()).toBeNull();
       });
 

@@ -13,6 +13,7 @@ import type { PenPreset } from "./penPresets";
 /** the shapes and tools on the inner ring, clockwise from the top */
 export const RADIAL_TOOLS = [
   "selection",
+  "hand",
   "rectangle",
   "diamond",
   "ellipse",
@@ -20,6 +21,7 @@ export const RADIAL_TOOLS = [
   "line",
   "freedraw",
   "text",
+  "stickynote",
   "frame",
 ] as const;
 

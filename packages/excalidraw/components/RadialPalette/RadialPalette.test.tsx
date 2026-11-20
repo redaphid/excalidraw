@@ -295,7 +295,7 @@ describe("RadialPalette", () => {
         );
         const target = polar(
           (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
-          sectorMiddle(layout.tools[1]),
+          sectorMiddle(layout.tools[RADIAL_TOOLS.indexOf("rectangle")]),
         );
         const at = {
           pointerId: 1,
