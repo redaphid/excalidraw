@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import { vi } from "vitest";
 
 import { ROUNDNESS, KEYS, arrayToMap, cloneJSON } from "@excalidraw/common";
@@ -19,6 +20,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { actionFlipHorizontal, actionFlipVertical } from "../actions";
+import { actionChangeSloppiness } from "../actions/actionProperties";
 import { createPasteEvent } from "../clipboard";
 import { Excalidraw } from "../index";
 
@@ -858,7 +860,9 @@ describe("image", () => {
 describe("mutliple elements", () => {
   it("with bound text flip correctly", async () => {
     UI.clickTool("arrow");
-    fireEvent.click(screen.getByTitle("Architect"));
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeSloppiness, "ui", 0);
+    });
     const arrow = UI.createElement("arrow", {
       x: 0,
       y: 0,

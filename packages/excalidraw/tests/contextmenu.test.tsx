@@ -2,6 +2,11 @@ import React from "react";
 import {
   actionChangeStrokeColor,
   actionChangeBackgroundColor,
+  actionChangeFillStyle,
+  actionChangeOpacity,
+  actionChangeSloppiness,
+  actionChangeStrokeStyle,
+  actionChangeStrokeWidth,
 } from "../actions/actionProperties";
 import { act } from "@testing-library/react";
 import { vi } from "vitest";
@@ -337,28 +342,26 @@ describe("contextMenu element", () => {
 
     // Change some styles of second rectangle
     act(() => {
-      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { currentItemStrokeColor: "#e03131" });
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { color: "#e03131" });
     });
     act(() => {
-      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#a5d8ff" });
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#a5d8ff" });
     });
-    // Fill style
-    fireEvent.click(screen.getByTitle("Cross-hatch"));
-    // Stroke width
-    fireEvent.click(screen.getByTitle("Bold"));
-    // Stroke style
-    fireEvent.click(screen.getByTitle("Dotted"));
-    // Roughness
-    fireEvent.click(screen.getByTitle("Cartoonist"));
-    // Opacity
-    fireEvent.change(screen.getByTestId("opacity"), {
-      target: { value: "60" },
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeFillStyle, "ui", "cross-hatch");
     });
-
-    // closing the background popover as this blocks
-    // context menu from rendering after we started focussing
-    // the popover once rendered :/
-    togglePopover("Background");
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeWidth, "ui", "bold");
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeStrokeStyle, "ui", "dotted");
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeSloppiness, "ui", 2);
+    });
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeOpacity, "ui", 60);
+    });
 
     mouse.reset();
 

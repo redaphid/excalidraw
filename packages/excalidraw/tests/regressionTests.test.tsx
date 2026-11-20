@@ -1,6 +1,7 @@
 import React from "react";
 import {
   actionChangeBackgroundColor,
+  actionChangeFontFamily,
   actionChangeStrokeColor,
 } from "../actions/actionProperties";
 import { act } from "@testing-library/react";
@@ -175,13 +176,13 @@ describe("regression tests", () => {
     mouse.down(10, 10);
     mouse.up(10, 10);
     act(() => {
-      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#ffec99" });
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffec99" });
     });
     act(() => {
-      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#ffc9c9" });
+      h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
     });
     act(() => {
-      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { currentItemStrokeColor: "#1971c2" });
+      h.app.actionManager.executeAction(actionChangeStrokeColor, "ui", { color: "#1971c2" });
     });
     expect(API.getSelectedElement().backgroundColor).toBe("#ffc9c9");
     expect(API.getSelectedElement().strokeColor).toBe("#1971c2");
@@ -666,7 +667,11 @@ describe("regression tests", () => {
   it("updates fontSize & fontFamily appState", () => {
     UI.clickTool("text");
     expect(h.state.currentItemFontFamily).toEqual(FONT_FAMILY.Excalifont);
-    fireEvent.click(screen.getByTitle(/code/i));
+    act(() => {
+      h.app.actionManager.executeAction(actionChangeFontFamily, "ui", {
+        currentItemFontFamily: FONT_FAMILY["Comic Shanns"],
+      });
+    });
     expect(h.state.currentItemFontFamily).toEqual(FONT_FAMILY["Comic Shanns"]);
   });
 
@@ -990,7 +995,7 @@ describe("regression tests", () => {
       // change background color since default is transparent
       // and transparent elements can't be selected by clicking inside of them
       act(() => {
-        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { currentItemBackgroundColor: "#ffc9c9" });
+        h.app.actionManager.executeAction(actionChangeBackgroundColor, "ui", { color: "#ffc9c9" });
       });
       mouse.down();
       mouse.up(1000, 1000);
