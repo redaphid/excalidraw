@@ -329,7 +329,7 @@ describe("authoringUnits: screen", () => {
         height: 80,
       });
       act(() => {
-        h.app.actionManager.executeAction(actionChangeStrokeWidth, "ui", 2);
+        h.app.actionManager.executeAction(actionChangeStrokeWidth, "ui", "bold");
       });
       return { strokeWidth: rectangle.get().strokeWidth * zoom };
     });
