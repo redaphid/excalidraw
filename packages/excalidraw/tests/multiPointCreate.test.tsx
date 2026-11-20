@@ -17,6 +17,7 @@ import {
   restoreOriginalGetBoundingClientRect,
   unmountComponent,
 } from "./test-utils";
+import { UI } from "./helpers/ui";
 
 unmountComponent();
 
@@ -45,10 +46,9 @@ describe("remove shape in non linear elements", () => {
   });
 
   it("rectangle", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     // select tool
-    const tool = getByToolName("rectangle");
-    fireEvent.click(tool);
+    UI.clickTool("rectangle");
 
     const canvas = container.querySelector("canvas.interactive")!;
 
@@ -61,10 +61,9 @@ describe("remove shape in non linear elements", () => {
   });
 
   it("ellipse", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     // select tool
-    const tool = getByToolName("ellipse");
-    fireEvent.click(tool);
+    UI.clickTool("ellipse");
 
     const canvas = container.querySelector("canvas.interactive")!;
     fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
@@ -76,10 +75,9 @@ describe("remove shape in non linear elements", () => {
   });
 
   it("diamond", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     // select tool
-    const tool = getByToolName("diamond");
-    fireEvent.click(tool);
+    UI.clickTool("diamond");
 
     const canvas = container.querySelector("canvas.interactive")!;
     fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
@@ -93,10 +91,9 @@ describe("remove shape in non linear elements", () => {
 
 describe("multi point mode in linear elements", () => {
   it("arrow", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     // select tool
-    const tool = getByToolName("arrow");
-    fireEvent.click(tool);
+    UI.clickTool("arrow");
 
     const canvas = container.querySelector("canvas.interactive")!;
     // first point is added on pointer down
@@ -139,10 +136,9 @@ describe("multi point mode in linear elements", () => {
   });
 
   it("line", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     // select tool
-    const tool = getByToolName("line");
-    fireEvent.click(tool);
+    UI.clickTool("line");
 
     const canvas = container.querySelector("canvas.interactive")!;
     // first point is added on pointer down
@@ -184,10 +180,9 @@ describe("multi point mode in linear elements", () => {
   });
 
   it("prevents switching to eraser while creating a multi-point line", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     // select tool
-    const tool = getByToolName("line");
-    fireEvent.click(tool);
+    UI.clickTool("line");
 
     const canvas = container.querySelector("canvas.interactive")!;
     // first point is added on pointer down

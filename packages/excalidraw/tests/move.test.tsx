@@ -39,13 +39,12 @@ const { h } = window;
 
 describe("move element", () => {
   it("rectangle", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     const canvas = container.querySelector("canvas.interactive")!;
 
     {
       // create element
-      const tool = getByToolName("rectangle");
-      fireEvent.click(tool);
+      UI.clickTool("rectangle");
       fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
       fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
       fireEvent.pointerUp(canvas);
@@ -150,13 +149,12 @@ describe("move element", () => {
 
 describe("duplicate element on move when ALT is clicked", () => {
   it("rectangle", async () => {
-    const { getByToolName, container } = await render(<Excalidraw />);
+    const { container } = await render(<Excalidraw />);
     const canvas = container.querySelector("canvas.interactive")!;
 
     {
       // create element
-      const tool = getByToolName("rectangle");
-      fireEvent.click(tool);
+      UI.clickTool("rectangle");
       fireEvent.pointerDown(canvas, { clientX: 30, clientY: 20 });
       fireEvent.pointerMove(canvas, { clientX: 60, clientY: 70 });
       fireEvent.pointerUp(canvas);
