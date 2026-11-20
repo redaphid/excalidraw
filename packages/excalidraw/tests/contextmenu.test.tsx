@@ -627,3 +627,49 @@ describe("contextMenu element", () => {
     ]);
   });
 });
+
+describe("contextMenu on a phone", () => {
+  beforeEach(async () => {
+    localStorage.clear();
+    reseed(7);
+    await render(
+      <Excalidraw
+        handleKeyboardGlobally={true}
+        UIOptions={{ getFormFactor: () => "phone" }}
+      />,
+    );
+  });
+
+  beforeAll(() => {
+    mockBoundingClientRect();
+  });
+
+  afterAll(() => {
+    restoreOriginalGetBoundingClientRect();
+  });
+
+  it("lists the z-index actions for an element", () => {
+    const rectangle = API.createElement({
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+    });
+    API.setElements([rectangle]);
+    API.setSelectedElements([rectangle]);
+
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 50,
+      clientY: 50,
+    });
+    const contextMenu = UI.queryContextMenu();
+
+    expect(
+      ["Bring forward", "Send backward"].map(
+        (label) => queryByText(contextMenu!, label) !== null,
+      ),
+    ).toEqual([true, true]);
+  });
+});

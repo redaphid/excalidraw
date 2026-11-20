@@ -13360,16 +13360,13 @@ ${css}
       return [actionCopy, ...options];
     }
 
-    const zIndexActions: ContextMenuItems =
-      this.editorInterface.formFactor === "desktop"
-        ? [
-            CONTEXT_MENU_SEPARATOR,
-            actionSendBackward,
-            actionBringForward,
-            actionSendToBack,
-            actionBringToFront,
-          ]
-        : [];
+    const zIndexActions: ContextMenuItems = [
+      CONTEXT_MENU_SEPARATOR,
+      actionSendBackward,
+      actionBringForward,
+      actionSendToBack,
+      actionBringToFront,
+    ];
 
     return [
       CONTEXT_MENU_SEPARATOR,
