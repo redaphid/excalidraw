@@ -352,45 +352,6 @@ const PenToolButton = createToolButton("freedraw", {
   },
 });
 
-/**
- * The pen button with its pen-size flyout: picking the pen opens the flyout,
- * clicking the active pen toggles it, and drawing on the canvas closes it.
- */
-export const PenToolFlyout = ({
-  app,
-  activeTool,
-  openPopup,
-  renderAction,
-}: {
-  app: AppClassProperties;
-  activeTool: UIAppState["activeTool"];
-  openPopup: UIAppState["openPopup"];
-  renderAction: ActionManager["renderAction"];
-}) => {
-  const { container } = useExcalidrawContainer();
-
-  return (
-    <Popover.Root
-      open={activeTool.type === "freedraw" && openPopup === "penSize"}
-    >
-      <Popover.Anchor asChild>
-        <div>
-          <PenToolButton app={app} activeTool={activeTool} />
-        </div>
-      </Popover.Anchor>
-      <Popover.Content
-        className="pen-size-flyout shape-actions-theme-scope"
-        data-testid="pen-size-flyout"
-        sideOffset={16}
-        collisionBoundary={container ?? undefined}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onEscapeKeyDown={() => app.setAppState({ openPopup: null })}
-      >
-        {renderAction("changeFreedrawStrokeWidth")}
-      </Popover.Content>
-    </Popover.Root>
-  );
-};
 export const StickyNoteToolButton = createToolButton("stickynote");
 export const ImageToolButton = createToolButton("image");
 export const EraserToolButton = createToolButton("eraser");
