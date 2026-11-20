@@ -363,9 +363,10 @@ export const getStaticSceneAppState = (
 /**
  * Paints elements as the static scene does: the painted ones in order, then
  * the iframe-like ones over all of them, then pending flowchart nodes. In a
- * static frame that may stop ({@link frameOutOfTime}) it returns the index,
- * among the painted ones, of the first it left for the next frame, which
- * passes it back as `from`; null once everything is painted.
+ * static frame that may stop ({@link frameOutOfTime}), once past `reach`,
+ * it returns the index, among the painted ones, of the first it left for the
+ * next frame, which passes it back as `from`; null once everything is
+ * painted.
  */
 export const renderSceneElements = ({
   context,
@@ -376,6 +377,7 @@ export const renderSceneElements = ({
   appState,
   renderConfig,
   from = 0,
+  reach = 0,
 }: {
   context: CanvasRenderingContext2D;
   rc: StaticSceneRenderConfig["rc"];
@@ -385,6 +387,7 @@ export const renderSceneElements = ({
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
   from?: number;
+  reach?: number;
 }): number | null => {
   const { isExporting } = renderConfig;
 
@@ -437,7 +440,6 @@ export const renderSceneElements = ({
 
   // Paint visible elements
   const painting = visibleElements.filter((el) => !isIframeLikeElement(el));
-  let painted = 0;
   for (let index = from; index < painting.length; index++) {
     const element = painting[index];
     if (
@@ -448,10 +450,12 @@ export const renderSceneElements = ({
       // will be rendered with the container
       continue;
     }
-    if (frameOutOfTime(element, painted, elementsMap, renderConfig, appState)) {
+    if (
+      index >= reach &&
+      frameOutOfTime(element, elementsMap, renderConfig, appState)
+    ) {
       return index;
     }
-    painted++;
     try {
       const renderState = getRenderState(element);
       context.save();
@@ -704,6 +708,40 @@ type Unfinished = {
 
 const unfinished = new WeakMap<HTMLCanvasElement, Unfinished>();
 
+/**
+ * How far the canvas's last paint got, and at what zoom and stretch. A paint
+ * at the same goes at least as far before it stops: what was painted has
+ * its bitmaps, so it costs little, and a stream of paints (a redraw per move,
+ * or the sharp redraw while the rest is still coming) gets further each time
+ * instead of starting over. A new zoom, or the stretched bitmaps' end, starts
+ * from nothing.
+ */
+const reached = new WeakMap<
+  HTMLCanvasElement,
+  { zoom: number; stretched: boolean; index: number }
+>();
+
+const reachOf = (canvas: HTMLCanvasElement, appState: StaticCanvasAppState) => {
+  const last = reached.get(canvas);
+  return last &&
+    last.zoom === appState.zoom.value &&
+    last.stretched === !!appState.shouldCacheIgnoreZoom
+    ? last.index
+    : 0;
+};
+
+const markReached = (
+  canvas: HTMLCanvasElement,
+  appState: StaticCanvasAppState,
+  stopped: number | null,
+) => {
+  reached.set(canvas, {
+    zoom: appState.zoom.value,
+    stretched: !!appState.shouldCacheIgnoreZoom,
+    index: stopped ?? Infinity,
+  });
+};
+
 const finishLater = (left: Omit<Unfinished, "frame">) => {
   const canvas = left.config.canvas!;
   const pending: Unfinished = {
@@ -741,6 +779,7 @@ const paintRest = ({ config, appState, from }: Unfinished) => {
     renderConfig: config.renderConfig,
     from,
   });
+  markReached(canvas!, appState, stopped);
   if (stopped !== null) {
     finishLater({ config, appState, from: stopped });
     return;
@@ -790,6 +829,7 @@ const paintStaticScene = (config: StaticSceneRenderConfig) => {
       allElementsMap,
       appState,
       renderConfig,
+      reach: Infinity,
     });
     cacheSettledBitmaps(
       canvas,
@@ -891,7 +931,9 @@ const paintStaticScene = (config: StaticSceneRenderConfig) => {
     allElementsMap,
     appState,
     renderConfig,
+    reach: reachOf(canvas, appState),
   });
+  markReached(canvas, appState, stopped);
 
   cacheSettledBitmaps(
     canvas,
@@ -914,16 +956,16 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
     paintStaticScene(config);
     return;
   }
-  // A paint that comes before the last one was finished paints everything:
-  // a stream of paints (a drag Excalidraw redraws per move) must not leave
-  // the same elements out of every one.
+  // A new paint replaces the frames still to come of the last one, and
+  // paints over nothing it left unfinished (`reachOf` keeps it from losing
+  // ground).
   const left = config.canvas && unfinished.get(config.canvas);
   if (left) {
     cancelAnimationFrame(left.frame);
     unfinished.delete(config.canvas!);
     paintedUnderNewElement.delete(config.canvas!);
   }
-  startBitmapBuildBudget(!left);
+  startBitmapBuildBudget(true);
   try {
     paintStaticScene(config);
   } finally {

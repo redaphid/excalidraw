@@ -162,15 +162,35 @@ describe("a frame that runs out of time with elements left to paint", () => {
       expect(painted).toBe(1);
     });
   });
+});
 
-  describe("when a new paint comes before the rest is painted", () => {
-    beforeEach(() => {
-      vi.mocked(context.drawImage).mockClear();
-      paint(denseView());
-    });
+describe("a second paint at the same zoom before the rest is painted", () => {
+  beforeEach(() => {
+    const elements = denseView();
+    paint(elements);
+    vi.mocked(context.fill).mockClear();
+    vi.mocked(context.drawImage).mockClear();
+    paint(elements);
+  });
 
-    it("paints the whole scene at once", () => {
-      expect(painted).toBe(1);
-    });
+  it("draws nothing straight onto the canvas", () => {
+    expect(context.fill).not.toHaveBeenCalled();
+  });
+
+  it("paints further than the first", () => {
+    expect(laid()).toBe(2 * BITMAPS_PER_FRAME);
+  });
+});
+
+describe("paints that keep coming before the rest is painted", () => {
+  beforeEach(() => {
+    const elements = denseView();
+    paint(elements);
+    paint(elements);
+    paint(elements);
+  });
+
+  it("each paint further than the last, until one paints the whole scene", () => {
+    expect(painted).toBe(1);
   });
 });

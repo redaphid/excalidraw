@@ -1114,23 +1114,21 @@ const defersBitmap = (
 };
 
 /**
- * Whether a static frame that may stop has spent its time, after painting
- * `painted` elements, and `element` would cost more of it: it has no bitmap
- * it may use, so it would build one or draw straight onto the canvas. The
- * frame then stops before it, and the frames that follow paint the rest in
- * order. Until BITMAPS_PER_FRAME are painted it never stops, so a small scene
- * paints in one frame and every frame gets on. Images and frames never wait,
- * as in {@link defersBitmap}.
+ * Whether a static frame that may stop has spent its budget (its time and
+ * its BITMAPS_PER_FRAME bitmaps) and `element` would cost more: it has no
+ * bitmap it may use, so it would build one or draw straight onto the
+ * canvas. The frame then stops before it, and the frames that follow paint
+ * the rest in order. A small scene still paints in one frame. Images and
+ * frames never wait, as in {@link defersBitmap}.
  */
 export const frameOutOfTime = (
   element: NonDeletedExcalidrawElement,
-  painted: number,
   elementsMap: ElementsMap,
   renderConfig: StaticCanvasRenderConfig,
   appState: StaticCanvasAppState,
 ) =>
   !!bitmapBudget?.mayStop &&
-  painted >= BITMAPS_PER_FRAME &&
+  bitmapBudget.left <= 0 &&
   performance.now() >= bitmapBudget.until &&
   element.type !== "image" &&
   !isFrameLikeElement(element) &&
