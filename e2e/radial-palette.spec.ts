@@ -97,16 +97,21 @@ test("opens on a tap, picks a pen and an ink, and draws with them", async ({
     });
 });
 
-test("picks a tool with one flick from the puck", async ({ page }) => {
+test("picks a tool with one pull from the puck, like a stick", async ({
+  page,
+}) => {
   const puck = await center(page, "radial-palette-puck");
+  // up and to the left, toward the frame tool, since the puck sits in the
+  // bottom right corner
+  const toward = (reach: number) => ({
+    x: puck.x + reach * Math.cos((-130 * Math.PI) / 180),
+    y: puck.y + reach * Math.sin((-130 * Math.PI) / 180),
+  });
   await page.mouse.move(puck.x, puck.y);
   await page.mouse.down();
-  // the ring opens once the pointer leaves the puck, so a still press can
-  // become a hold that moves it
-  await page.mouse.move(puck.x - 20, puck.y - 20, { steps: 4 });
+  await page.mouse.move(toward(30).x, toward(30).y, { steps: 4 });
   await expect(page.getByTestId("radial-palette")).toBeVisible();
-  const rectangle = await center(page, "radial-tool-rectangle");
-  await page.mouse.move(rectangle.x, rectangle.y, { steps: 8 });
+  await page.mouse.move(toward(80).x, toward(80).y, { steps: 6 });
   await page.mouse.up();
 
   await expect(page.getByTestId("radial-palette")).toBeHidden();
@@ -114,7 +119,7 @@ test("picks a tool with one flick from the puck", async ({ page }) => {
     await page.evaluate(
       () => (window as Playground).excalidrawAPI?.getAppState().activeTool.type,
     ),
-  ).toBe("rectangle");
+  ).toBe("frame");
 });
 
 /** a finger or a pen held on the canvas: real input through CDP in

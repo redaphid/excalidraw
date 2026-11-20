@@ -47,6 +47,12 @@
       transform: translate(-50%, -50%);
     }
 
+    // pulled as a joystick: it follows the pointer out to the rim
+    &--pulled {
+      translate: var(--radial-pull-x) var(--radial-pull-y);
+      background: var(--control-surface-active);
+    }
+
     &--moving {
       cursor: grabbing;
       transform: translate(-50%, -50%) scale(1.15);

@@ -13,6 +13,12 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### The puck as a joystick (2026-11-20)
+
+- A pull on the radial palette's puck works like a virtual stick (after Sporefall Station's): the ring opens above the puck, the pull's direction aims at a tool, and pulling past the rim (60 px) picks it. A release inside the rim picks nothing. Only the direction counts, so every slice is 40° wide at any reach. This replaces the flick from the puck; a tap still opens the ring for taps, and the long press still moves the puck.
+- The puck follows the thumb out to the rim, and a phone ticks as the aim changes and on the pick (`navigator.vibrate`, where there is one).
+- The ring follows a mouse's hover only while no button is pressed, so a pull with the mouse is the stick's alone.
+
 ### Movable puck (2026-11-20)
 
 - Hold the radial palette's puck still for the long press (500 ms, 10 px) and it lifts: drag it anywhere and drop it. Dropped within 28 px of the left or right side, it tucks into a dot on that side; a tap on the dot brings the puck back, and a drag moves it. A tap and a flick work as before.

@@ -39,6 +39,7 @@ import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
 import { getActivePenPreset } from "./penPresets";
 import { dropPuck, loadPuckPlace, savePuckPlace } from "./puckPlace";
+import { STICK_RIM, readStick } from "./stick";
 import {
   FLICK_DISTANCE,
   HUB_RADIUS,
@@ -110,6 +111,9 @@ const TOUCH_FLICK_DISTANCE = 24;
 const isSameTarget = (a: RingHit | null, b: RingHit | null) =>
   a?.kind === b?.kind &&
   (a && "index" in a && b && "index" in b ? a.index === b.index : true);
+
+/** the gap between the puck and the ring a pull opens, in CSS px */
+const HUD_GAP = 24;
 
 /** one opacity step on the ring */
 const OPACITY_STEP = 5;
@@ -206,6 +210,8 @@ export const RadialPalette = React.memo(
     );
     /** where a puck being moved is, as fractions of the editor */
     const [moving, setMoving] = useState<ClientPoint | null>(null);
+    /** how far the puck is pulled as a joystick, clamped to the rim */
+    const [pull, setPull] = useState<ClientPoint | null>(null);
     /** ends the press in progress, if any */
     const endPress = useRef<(() => void) | null>(null);
     useEffect(() => () => endPress.current?.(), []);
@@ -232,13 +238,36 @@ export const RadialPalette = React.memo(
       };
     };
 
+    /** where the ring opens for a pull: above the puck, or below it when
+     * there is no room above */
+    const hudFor = (center: ClientPoint): ClientPoint => {
+      const above = center.y - RING_RADIUS - HUD_GAP;
+      return {
+        x: center.x,
+        y:
+          above - RING_RADIUS < app.state.offsetTop
+            ? center.y + RING_RADIUS + HUD_GAP
+            : above,
+      };
+    };
+
+    const buzz = (ms: number) => {
+      try {
+        app.ownerWindow.navigator.vibrate?.(ms);
+      } catch {
+        // no vibration here
+      }
+    };
+
     /**
      * A press opens nothing yet, like Sporefall Station's sticks, which
      * appear only once the thumb moves. Held still for the long press, it
-     * lifts the puck, which follows the pointer until it is dropped. Moved
-     * first, it opens the ring and hands it the flick. Lifted first, it is a
-     * tap and opens the ring for taps. A dot (a collapsed puck) lifts as soon
-     * as it is dragged, and a tap on it brings the puck back.
+     * lifts the puck, which follows the pointer until it is dropped. Pulled
+     * first, the puck is a joystick: the ring opens above it, the pull's
+     * direction aims at a tool, past the rim picks it, and a release inside
+     * the rim picks nothing. Lifted first, it is a tap and opens the ring for
+     * taps. A dot (a collapsed puck) lifts as soon as it is dragged, and a
+     * tap on it brings the puck back.
      */
     const trackPress = (
       event: React.PointerEvent<HTMLButtonElement>,
@@ -249,9 +278,10 @@ export const RadialPalette = React.memo(
       const { pointerId } = event;
       const start = { x: event.clientX, y: event.clientY };
       const center = puckCenter(event.currentTarget);
-      let lifted = false;
+      let mode: "press" | "move" | "stick" | "done" = "press";
+      let aimed = -1;
       const liftPuck = () => {
-        lifted = true;
+        mode = "move";
         controller.close();
         setMoving(fractionAt(start.x, start.y));
       };
@@ -259,42 +289,67 @@ export const RadialPalette = React.memo(
         ? undefined
         : win.setTimeout(liftPuck, LONG_PRESS_DELAY);
       const onMove = (moveEvent: PointerEvent) => {
-        if (moveEvent.pointerId !== pointerId) {
+        if (moveEvent.pointerId !== pointerId || mode === "done") {
           return;
         }
-        if (!lifted) {
-          const travel = Math.hypot(
-            moveEvent.clientX - start.x,
-            moveEvent.clientY - start.y,
-          );
-          if (travel <= LONG_PRESS_TOLERANCE) {
+        const dx = moveEvent.clientX - start.x;
+        const dy = moveEvent.clientY - start.y;
+        if (mode === "press") {
+          if (Math.hypot(dx, dy) <= LONG_PRESS_TOLERANCE) {
             return;
           }
-          if (!collapsed) {
-            end();
-            controller.open({ at: center, flick: { pointerId, start } });
-            return;
+          win.clearTimeout(timer);
+          if (collapsed) {
+            liftPuck();
+          } else {
+            mode = "stick";
+            controller.open({ at: hudFor(center), ring: "tools" });
           }
-          liftPuck();
         }
-        setMoving(fractionAt(moveEvent.clientX, moveEvent.clientY));
+        if (mode === "move") {
+          setMoving(fractionAt(moveEvent.clientX, moveEvent.clientY));
+          return;
+        }
+        const reach = Math.min(1, STICK_RIM / Math.hypot(dx, dy));
+        setPull({ x: dx * reach, y: dy * reach });
+        const reading = readStick(dx, dy, RADIAL_TOOLS.length);
+        if (reading.kind === "rest") {
+          return;
+        }
+        if (reading.index !== aimed) {
+          aimed = reading.index;
+          controller.highlight("tools", aimed);
+          buzz(8);
+        }
+        if (reading.kind === "pick") {
+          mode = "done";
+          setPull(null);
+          buzz(20);
+          controller.pick("tools", reading.index);
+        }
       };
       const onUp = (upEvent: PointerEvent) => {
         if (upEvent.pointerId !== pointerId) {
           return;
         }
+        const was = mode;
         end();
-        if (lifted) {
+        if (was === "move") {
           const { at, bounds } = inEditor(upEvent.clientX, upEvent.clientY);
           keep(dropPuck(at, bounds));
-        } else if (collapsed && place) {
+        } else if (was === "stick") {
+          controller.close();
+        } else if (was === "press" && collapsed && place) {
           keep({ ...place, collapsed: false });
-        } else if (!collapsed) {
+        } else if (was === "press") {
           controller.open({ at: center });
         }
       };
       const onCancel = (cancelEvent: PointerEvent) => {
         if (cancelEvent.pointerId === pointerId) {
+          if (mode === "stick") {
+            controller.close();
+          }
           end();
         }
       };
@@ -304,6 +359,7 @@ export const RadialPalette = React.memo(
         win.removeEventListener("pointerup", onUp);
         win.removeEventListener("pointercancel", onCancel);
         setMoving(null);
+        setPull(null);
         endPress.current = null;
       };
       endPress.current = end;
@@ -324,14 +380,19 @@ export const RadialPalette = React.memo(
             "RadialPalette__puck--placed": !!shown,
             "RadialPalette__puck--moving": !!moving,
             "RadialPalette__puck--collapsed": collapsed,
+            "RadialPalette__puck--pulled": !!pull,
           })}
           style={
-            shown
-              ? ({
-                  "--radial-puck-x": `${shown.x * 100}%`,
-                  "--radial-puck-y": `${shown.y * 100}%`,
-                } as React.CSSProperties)
-              : undefined
+            {
+              ...(shown && {
+                "--radial-puck-x": `${shown.x * 100}%`,
+                "--radial-puck-y": `${shown.y * 100}%`,
+              }),
+              ...(pull && {
+                "--radial-pull-x": `${pull.x}px`,
+                "--radial-pull-y": `${pull.y}px`,
+              }),
+            } as React.CSSProperties
           }
           aria-label={t(
             collapsed ? "radialPalette.expand" : "radialPalette.open",
@@ -789,7 +850,11 @@ const Ring = ({
           height={size}
           onPointerMove={(event) => {
             if (!dragging) {
-              if (event.pointerType === "mouse" && !flick) {
+              if (
+                event.pointerType === "mouse" &&
+                !flick &&
+                event.buttons === 0
+              ) {
                 follow(hitAt(event.clientX, event.clientY));
               }
               return;
