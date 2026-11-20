@@ -1057,22 +1057,26 @@ const BITMAP_BUILD_BUDGET_MS = 8;
 const BITMAPS_PER_FRAME = 24;
 
 /** The static frame being painted: its time and bitmaps left for building,
- * and what it drew directly for want of them. Outside a frame (a host
- * calling renderElement) there is no budget and every bitmap is built. */
+ * what it drew directly for want of them, and whether it may leave elements
+ * for the frames that follow ({@link frameOutOfTime}). Outside a frame (a
+ * host calling renderElement) there is no budget and every bitmap is built. */
 let bitmapBudget: {
   until: number;
   left: number;
   deferred: Set<NonDeletedExcalidrawElement>;
+  mayStop: boolean;
 } | null = null;
 
 const NOTHING_DEFERRED: ReadonlySet<NonDeletedExcalidrawElement> = new Set();
 
-/** Starts a static frame's budget for building bitmaps. */
-export const startBitmapBuildBudget = () => {
+/** Starts a static frame's budget for building bitmaps. With `mayStop`,
+ * the frame may also stop painting once that time is spent. */
+export const startBitmapBuildBudget = (mayStop = false) => {
   bitmapBudget = {
     until: performance.now() + BITMAP_BUILD_BUDGET_MS,
     left: BITMAPS_PER_FRAME,
     deferred: new Set(),
+    mayStop,
   };
 };
 
@@ -1108,6 +1112,28 @@ const defersBitmap = (
   bitmapBudget.deferred.add(element);
   return true;
 };
+
+/**
+ * Whether a static frame that may stop has spent its budget (its time and
+ * its BITMAPS_PER_FRAME bitmaps) and `element` would cost more: it has no
+ * bitmap it may use, so it would build one or draw straight onto the
+ * canvas. The frame then stops before it, and the frames that follow paint
+ * the rest in order. A small scene still paints in one frame. Images and
+ * frames never wait, as in {@link defersBitmap}.
+ */
+export const frameOutOfTime = (
+  element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
+  renderConfig: StaticCanvasRenderConfig,
+  appState: StaticCanvasAppState,
+) =>
+  !!bitmapBudget?.mayStop &&
+  bitmapBudget.left <= 0 &&
+  performance.now() >= bitmapBudget.until &&
+  element.type !== "image" &&
+  !isFrameLikeElement(element) &&
+  !(appState.shouldCacheIgnoreZoom && elementWithCanvasCache.has(element)) &&
+  !reusableElementCanvas(element, elementsMap, renderConfig, appState);
 
 /**
  * Whether an element's cached bitmap may be laid on the device-pixel grid:
