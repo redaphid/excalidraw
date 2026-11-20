@@ -6,7 +6,12 @@ const SCENE_KEY = "excalidraw-playground-scene";
 
 /** the playground's handle on the editor */
 type Playground = Window & {
-  excalidrawAPI?: { getAppState: () => { activeTool: { type: string } } };
+  excalidrawAPI?: {
+    getAppState: () => {
+      activeTool: { type: string };
+      selectedElementIds: Record<string, true>;
+    };
+  };
 };
 
 type SavedElement = {
@@ -329,18 +334,30 @@ test("a finger held on a selected shape and lifted leaves only the ring", async 
   browserName,
 }, testInfo) => {
   test.skip(!testInfo.project.use.hasTouch, "a touch gesture");
+  // drawn around the canvas centre: once R picks the rectangle, a tablet
+  // shows the shape's properties island on the left, over x 120
+  const { x, y } = await canvasCenter(page);
   await page.keyboard.press("r");
-  await page.mouse.move(120, 250);
+  await page.mouse.move(x - 80, y - 75);
   await page.mouse.down();
-  await page.mouse.move(280, 400, { steps: 6 });
+  await page.mouse.move(x + 80, y + 75, { steps: 6 });
   await page.mouse.up();
   expect(await activeTool(page)).toBe("selection");
+  expect(
+    await page.evaluate(
+      () =>
+        Object.keys(
+          (window as Playground).excalidrawAPI!.getAppState()
+            .selectedElementIds,
+        ).length,
+    ),
+  ).toBe(1);
 
   const finger = await contact(page, browserName, "touch");
-  await finger.down(200, 325);
+  await finger.down(x, y);
   await page.waitForTimeout(800);
   await expect(page.getByTestId("radial-palette")).toBeVisible();
-  await finger.up(200, 325);
+  await finger.up(x, y);
   await page.waitForTimeout(400);
   await page.screenshot({ path: testInfo.outputPath("held-lifted.png") });
 
