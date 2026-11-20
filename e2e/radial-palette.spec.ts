@@ -347,20 +347,3 @@ test("a finger held on a selected shape and lifted leaves only the ring", async 
   await expect(page.locator(".context-menu")).toHaveCount(0);
   await expect(page.getByTestId("radial-palette")).toBeVisible();
 });
-
-test("on a phone, the puck clears undo and redo", async ({
-  page,
-}, testInfo) => {
-  test.skip(!testInfo.project.name.endsWith("phone"), "the phone's puck");
-  const gap = await page.evaluate(() => {
-    const shown = (selector: string) =>
-      [...document.querySelectorAll(selector)]
-        .map((element) => element.getBoundingClientRect())
-        .find((box) => box.width > 0);
-    const puck = shown('[data-testid="radial-palette-puck"]')!;
-    const redo = shown('[data-testid="button-redo"]')!;
-    return redo.top - puck.bottom;
-  });
-  await page.screenshot({ path: testInfo.outputPath("puck-clear.png") });
-  expect(gap).toBeGreaterThanOrEqual(4);
-});

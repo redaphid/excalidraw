@@ -205,7 +205,7 @@ const unbound = (scene: SavedScene) =>
 const press = (locator: Locator, hasTouch: boolean) =>
   hasTouch ? locator.tap() : locator.click();
 
-test("arranges a scattered chain from the selection's Auto-arrange button, laying it out in a worker", async ({
+test("arranges a scattered chain from the selection's context menu, laying it out in a worker", async ({
   page,
 }, testInfo) => {
   const hasTouch = !!testInfo.project.use.hasTouch;
@@ -241,13 +241,27 @@ test("arranges a scattered chain from the selection's Auto-arrange button, layin
   await page.locator(".excalidraw-container").focus();
   await page.keyboard.press("Control+a");
 
-  const arrange = page.getByRole("button", { name: "Auto-arrange" });
-  const actions = page.getByTitle("Actions").first();
-  await expect(arrange.or(actions).first()).toBeVisible();
-  if (!(await arrange.isVisible())) {
-    await press(actions, hasTouch);
-  }
-  await press(arrange, hasTouch);
+  // the selection's actions live in the element context menu, opened on a
+  // selected shape
+  const at = await page.evaluate(
+    ([x, y]) => {
+      const api = window.excalidrawAPI as unknown as {
+        getAppState: () => {
+          scrollX: number;
+          scrollY: number;
+          zoom: { value: number };
+        };
+      };
+      const { scrollX, scrollY, zoom } = api.getAppState();
+      return { x: (x + scrollX) * zoom.value, y: (y + scrollY) * zoom.value };
+    },
+    [SHAPES[0].x + SIZE.width / 2, SHAPES[0].y + SIZE.height / 2] as const,
+  );
+  await page.mouse.click(at.x, at.y, { button: "right" });
+  await press(
+    page.locator(".context-menu").getByText("Auto-arrange", { exact: true }),
+    hasTouch,
+  );
 
   await expect
     .poll(async () => {
