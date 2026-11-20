@@ -62,6 +62,7 @@ import {
   toPolar,
 } from "./radialLayout";
 import { RADIAL_TOOLS } from "./radialPaletteController";
+import { getStyleProperty } from "./styleProperties";
 
 import "./RadialPalette.scss";
 
@@ -409,12 +410,35 @@ const Ring = ({
     { width, height },
   );
 
+  // the style ring shows its properties, or one's options, in the tools band
+  const styleRing = session.ring === "style";
+  const toolsRing: RadialRing = styleRing ? "style" : "tools";
+  const ringOf = (kind: keyof typeof RING_OF): RadialRing =>
+    kind === "tool" ? toolsRing : RING_OF[kind];
+  const styleItems = styleRing ? controller.items("style") : [];
+  const styleProperty = session.style && getStyleProperty(session.style);
+  const selected = app.scene.getSelectedElements(appState);
+  const styleIcon = (index: number): Icon | null => {
+    if (styleProperty) {
+      return (styleProperty.options[index]?.icon as Icon) ?? null;
+    }
+    const property = getStyleProperty(styleItems[index].id);
+    if (!property) {
+      return null;
+    }
+    const current = property.current(selected, app.state);
+    return (
+      property.options.find((option) => option.value === current) ??
+      property.options[0]
+    )?.icon as Icon;
+  };
+
   const colors = controller.colorSlots();
   const presets = controller.getPresets();
   // a host pen width replaces the user's, so the size arc would do nothing
   const showSize = app.props.freedrawStrokeWidth === undefined;
   const layout = getRingLayout({
-    tools: RADIAL_TOOLS.length,
+    tools: styleRing ? styleItems.length : RADIAL_TOOLS.length,
     pens: presets.length + 1,
     // the fill chip ends the arc
     colors: colors.length + 1,
@@ -441,7 +465,7 @@ const Ring = ({
       hit?.kind === "size" || hit?.kind === "opacity" ? hit.kind : null,
     );
     if (hit && (hit.kind === "tool" || hit.kind === "pen")) {
-      controller.highlight(RING_OF[hit.kind], hit.index);
+      controller.highlight(ringOf(hit.kind), hit.index);
     } else if (hit?.kind === "color" && colors[hit.index]) {
       controller.highlight("colors", hit.index);
     }
@@ -521,7 +545,7 @@ const Ring = ({
         (hit?.kind === "tool" ||
           hit?.kind === "pen" ||
           hit?.kind === "color") &&
-        controller.pick(RING_OF[hit.kind], hit.index);
+        controller.pick(ringOf(hit.kind), hit.index);
       if (!picked) {
         controller.close();
       }
@@ -846,23 +870,45 @@ const Ring = ({
           <circle r={TOOLS_BAND.outer + 1} className="RadialPalette__rule" />
           <circle r={HUB_RADIUS + 1} className="RadialPalette__rule" />
 
-          {RADIAL_TOOLS.map((type, index) => {
-            const sector = layout.tools[index];
-            const { x, y } = at(
-              (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
-              sector,
-            );
-            return button(
-              type,
-              t(`toolBar.${type}` as const),
-              `radial-tool-${type}`,
-              "tools",
-              index,
-              appState.activeTool.type === type,
-              sectorPath(TOOLS_BAND, sector),
-              placeIcon(TOOL_ICONS[type], x, y),
-            );
-          })}
+          {styleRing &&
+            styleItems.map((item, index) => {
+              const sector = layout.tools[index];
+              const { x, y } = at(
+                (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+                sector,
+              );
+              return button(
+                `style-${index}`,
+                item.label,
+                styleProperty
+                  ? `radial-style-option-${index}`
+                  : `radial-style-${item.id}`,
+                "style",
+                index,
+                false,
+                sectorPath(TOOLS_BAND, sector),
+                styleIcon(index) && placeIcon(styleIcon(index)!, x, y),
+              );
+            })}
+
+          {!styleRing &&
+            RADIAL_TOOLS.map((type, index) => {
+              const sector = layout.tools[index];
+              const { x, y } = at(
+                (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+                sector,
+              );
+              return button(
+                type,
+                t(`toolBar.${type}` as const),
+                `radial-tool-${type}`,
+                "tools",
+                index,
+                appState.activeTool.type === type,
+                sectorPath(TOOLS_BAND, sector),
+                placeIcon(TOOL_ICONS[type], x, y),
+              );
+            })}
 
           {[...presets, null].map((preset, index) => {
             const sector = layout.pens[index];

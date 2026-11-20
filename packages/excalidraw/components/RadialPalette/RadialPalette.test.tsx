@@ -342,6 +342,30 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when the style ring opens on a selected rectangle and dashed is picked", () => {
+      beforeEach(() => {
+        const rectangle = API.createElement({
+          type: "rectangle",
+          strokeStyle: "solid",
+        });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        act(() => {
+          h.app.radialPalette.api.open({ ring: "style" });
+        });
+        tap("radial-style-strokeStyle");
+        tap("radial-style-option-1");
+      });
+
+      it("dashes the rectangle", () => {
+        expect(h.elements[0].strokeStyle).toBe("dashed");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+    });
+
     describe("when the ring opens on a color the theme lacks", () => {
       beforeEach(() => {
         API.setAppState({ currentItemStrokeColor: "#123456" });
