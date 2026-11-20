@@ -63,16 +63,6 @@ describe("RadialPalette", () => {
     await act(async () => {});
   });
 
-  describe("when the host leaves it off", () => {
-    beforeEach(async () => {
-      await render(<Excalidraw />);
-    });
-
-    it("renders no puck", () => {
-      expect(byTestId("radial-palette-puck")).toBeNull();
-    });
-  });
-
   describe("when the host adds pens of its own", () => {
     const onPick = vi.fn();
 

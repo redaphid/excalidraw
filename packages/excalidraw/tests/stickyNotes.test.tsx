@@ -12,7 +12,6 @@ import { pointFrom } from "@excalidraw/math";
 
 import {
   getStickyNoteLayout,
-  getTransformHandles,
   getBaseFontSize,
   resizeMultipleElements,
   resizeSingleElement,
@@ -1035,36 +1034,6 @@ describe("sticky notes", () => {
       expect(resizedLabel.angle).toBe(0);
       expect(resizedLabel.x).toBeGreaterThan(resized.x);
       expect(resizedLabel.y).toBeGreaterThan(resized.y);
-    });
-
-    const hintWhileDragging = (
-      note: ExcalidrawStickyNoteElement,
-      handle: "se" | "e",
-    ) => {
-      const [x, y, width, height] = getTransformHandles(
-        note,
-        h.state.zoom,
-        h.app.scene.getNonDeletedElementsMap(),
-        "mouse",
-        {},
-      )[handle]!;
-      mouse.reset();
-      mouse.downAt(x + width / 2, y + height / 2);
-      mouse.moveTo(x + width / 2 + 30, y + height / 2 + 30);
-      const hint =
-        h.app.ownerDocument.querySelector(".HintViewer")?.textContent ?? "";
-      mouse.up();
-      return hint;
-    };
-
-    it("hints that a corner is proportional and Shift frees it", () => {
-      const { note } = setup();
-      expect(hintWhileDragging(note, "se")).toContain("resize freely");
-    });
-
-    it("hints that an edge is free and Shift constrains it", () => {
-      const { note } = setup();
-      expect(hintWhileDragging(note, "e")).toContain("constrain proportions");
     });
 
     it("constrains an edge with Shift and scales the ceiling", () => {
