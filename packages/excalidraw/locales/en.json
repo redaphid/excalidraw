@@ -754,6 +754,16 @@
   "quickSearch": {
     "placeholder": "Quick search"
   },
+  "radialPalette": {
+    "open": "Palette",
+    "menu": "Menu",
+    "emptyRecent": "Recent color",
+    "pen_liner": "Fine liner",
+    "pen_pencil": "Pencil",
+    "pen_brush": "Ink brush",
+    "pen_marker": "Marker",
+    "pen_wash": "Wash"
+  },
   "fontList": {
     "badge": {
       "old": "old"

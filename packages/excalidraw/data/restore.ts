@@ -28,6 +28,7 @@ import {
   arrayToMap,
   getSizeFromPoints,
   normalizeLink,
+  normalizeFontAxes,
   getLineHeight,
   STROKE_WIDTH,
   STROKE_WIDTH_KEYS,
@@ -587,9 +588,12 @@ export const restoreElement = (
           : // no element height likely means programmatic use, so default
             // to a fixed line height
             getLineHeight(element.fontFamily));
+      // the boundary where axis values are checked: nothing past it clamps
+      const fontAxes = normalizeFontAxes(fontFamily, element.fontAxes);
       element = restoreElementWithProperties(element, {
         fontSize,
         fontFamily,
+        fontAxes,
         text,
         textAlign: element.textAlign || DEFAULT_TEXT_ALIGN,
         verticalAlign: element.verticalAlign || DEFAULT_VERTICAL_ALIGN,
@@ -609,6 +613,10 @@ export const restoreElement = (
             )
           : null,
       });
+      // absent means the family's regular instance
+      if (!fontAxes) {
+        delete (element as { fontAxes?: unknown }).fontAxes;
+      }
 
       // if empty text, mark as deleted. We keep in array
       // for data integrity purposes (collab etc.)

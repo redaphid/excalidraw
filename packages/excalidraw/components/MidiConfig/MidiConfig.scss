@@ -41,7 +41,8 @@
     color: inherit;
   }
 
-  button {
+  button,
+  &__file {
     cursor: pointer;
     border: 1px solid var(--mc-line);
     background: var(--mc-panel);
@@ -316,6 +317,21 @@
     gap: 8px;
     flex-wrap: wrap;
     margin-top: 24px;
+  }
+
+  // Export and Import read as buttons; Import's file input stays usable to
+  // assistive tech but out of sight
+  &__file {
+    color: inherit;
+    text-decoration: none;
+    font: inherit;
+
+    input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
   }
 
   @media (max-width: 640px) {

@@ -8,6 +8,7 @@ import {
   getFontString,
   getFontRenderScale,
   getFontFamilyString,
+  getFontVariationSettings,
   isTestEnv,
   MIME_TYPES,
   applyDarkModeFilter,
@@ -24,7 +25,7 @@ import {
 } from "@excalidraw/element";
 
 import { LinearElementEditor } from "@excalidraw/element";
-import { bumpVersion } from "@excalidraw/element";
+import { bumpVersion, hasLiteralColor } from "@excalidraw/element";
 import {
   getBoundTextElementId,
   getContainerElement,
@@ -342,8 +343,10 @@ export const textWysiwyg = ({
     }
     const currentFont = editable.style.fontFamily.replace(/"/g, "");
     if (
-      getFontFamilyString({ fontFamily: updatedTextElement.fontFamily }) !==
-      currentFont
+      getFontFamilyString({
+        fontFamily: updatedTextElement.fontFamily,
+        fontAxes: updatedTextElement.fontAxes,
+      }).replace(/"/g, "") !== currentFont
     ) {
       return true;
     }
@@ -502,6 +505,7 @@ export const textWysiwyg = ({
       const presentedFont = getFontString({
         fontSize: updatedTextElement.fontSize * fontScale,
         fontFamily: updatedTextElement.fontFamily,
+        fontAxes: updatedTextElement.fontAxes,
       });
       const editorBoxLeft = updateEditorBoxInsets();
 
@@ -539,10 +543,20 @@ export const textWysiwyg = ({
         verticalAlign,
         color: applyDarkModeFilter(
           updatedTextElement.strokeColor,
-          app.getCanvasMode() === THEME.DARK,
+          app.getCanvasMode() === THEME.DARK &&
+            !hasLiteralColor(updatedTextElement, elementsMap),
         ),
         opacity: updatedTextElement.opacity / 100,
       });
+      // the instance's faces may not have loaded yet; the family's own face
+      // with these settings draws the same instance meanwhile
+      editable.style.setProperty(
+        "font-variation-settings",
+        getFontVariationSettings(
+          updatedTextElement.fontFamily,
+          updatedTextElement.fontAxes,
+        ) ?? "",
+      );
       currentTextLayout = {
         angle: angle as Radians,
         font,

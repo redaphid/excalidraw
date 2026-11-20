@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import { parseMermaidToExcalidraw } from "@excalidraw/mermaid-to-excalidraw";
 import { isFiniteNumber } from "@excalidraw/math";
 
 import { useAtom } from "../../../editor-jotai";
@@ -18,14 +17,20 @@ import {
   updateAssistantContent,
 } from "../utils/chat";
 
-import type { LLMMessage, TTTDDialog } from "../types";
+import type {
+  LLMMessage,
+  MermaidToExcalidrawLibProps,
+  TTTDDialog,
+} from "../types";
 
 const MIN_PROMPT_LENGTH = 3;
 const MAX_PROMPT_LENGTH = 10000;
 
 export const useTextGeneration = ({
   onTextSubmit,
+  mermaidToExcalidrawLib,
 }: {
+  mermaidToExcalidrawLib: MermaidToExcalidrawLibProps;
   onTextSubmit: (
     props: TTTDDialog.OnTextSubmitProps,
   ) => Promise<TTTDDialog.OnTextSubmitRetValue>;
@@ -190,8 +195,22 @@ export const useTextGeneration = ({
         return;
       }
 
+      // a library that fails to load is a network error, which offers a retry,
+      // not a parse error, which asks the model to repair a valid definition
+      const api = await mermaidToExcalidrawLib.api.catch((error: Error) => {
+        const _error = new Error(
+          error.message || t("chat.errors.requestFailed"),
+        );
+        setAssistantError(_error.message, "network");
+        setError(_error);
+        return null;
+      });
+      if (!api) {
+        return;
+      }
+
       try {
-        await parseMermaidToExcalidraw(generatedResponse ?? "");
+        await api.parseMermaidToExcalidraw(generatedResponse ?? "");
         trackEvent("ai", "mermaid parse success", "ttd");
       } catch (error: any) {
         trackEvent("ai", "mermaid parse failed", "ttd");

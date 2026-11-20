@@ -438,8 +438,21 @@ export const setColorSaturationLightness = (
   return rgbToHex(r, g, b, a);
 };
 
+/** A board uses few colors, and every rough shape asks about its fill, so
+ * the answers are kept. Cleared when full, as colors are user input. */
+const transparentByColor = new Map<string, boolean>();
+const TRANSPARENT_BY_COLOR_MAX = 1024;
+
 export const isTransparent = (color: string) => {
-  return tinycolor(color).getAlpha() === 0;
+  let transparent = transparentByColor.get(color);
+  if (transparent === undefined) {
+    transparent = tinycolor(color).getAlpha() === 0;
+    if (transparentByColor.size >= TRANSPARENT_BY_COLOR_MAX) {
+      transparentByColor.clear();
+    }
+    transparentByColor.set(color, transparent);
+  }
+  return transparent;
 };
 
 /**

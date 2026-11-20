@@ -5,6 +5,8 @@ import type {
 
 import { FONT_FAMILY, FONT_FAMILY_FALLBACKS } from "./constants";
 
+import type { FontAxisRange } from "./font-axes";
+
 /**
  * Encapsulates font metrics with additional font metadata.
  * */
@@ -30,6 +32,12 @@ export interface FontMetadata {
   local?: true;
   /** flag to indicate a fallback font */
   fallback?: true;
+  /**
+   * The variation axes of a variable font, by OpenType axis tag, with the
+   * `min` and `max` of the font's `fvar` table. A text element in such a
+   * family may carry `fontAxes`; every other family draws one instance.
+   */
+  axes?: Readonly<Record<string, FontAxisRange>>;
 }
 
 export const FONT_METADATA: Record<number, FontMetadata> = {
@@ -110,6 +118,21 @@ export const FONT_METADATA: Record<number, FontMetadata> = {
       lineHeight: 1.25,
     },
     private: true,
+  },
+  [FONT_FAMILY["Shantell Sans"]]: {
+    metrics: {
+      unitsPerEm: 1000,
+      ascender: 1020,
+      descender: -320,
+      lineHeight: 1.25,
+    },
+    axes: {
+      // the file's own default weight is 300 (Light); an absent one is Regular
+      wght: { min: 300, default: 400, max: 800 },
+      INFM: { min: 0, default: 0, max: 100 },
+      BNCE: { min: -100, default: 0, max: 100 },
+      SPAC: { min: 0, default: 0, max: 100 },
+    },
   },
   [FONT_FAMILY_FALLBACKS.Xiaolai]: {
     metrics: {
