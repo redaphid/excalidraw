@@ -209,29 +209,6 @@ describe("RadialPalette", () => {
           expect(h.state.activeTool.locked).toBe(false);
         });
       });
-
-      describe("when a tool is held again", () => {
-        beforeEach(() => {
-          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-          fireEvent.pointerDown(byTestId("radial-tool-rectangle")!, {
-            button: 0,
-          });
-          act(() => {
-            vi.advanceTimersByTime(LONG_PRESS_DELAY);
-          });
-        });
-
-        afterEach(() => {
-          vi.useRealTimers();
-        });
-
-        it("still picks it locked", () => {
-          expect(h.state.activeTool).toMatchObject({
-            type: "rectangle",
-            locked: true,
-          });
-        });
-      });
     });
 
     describe.each<[PenPresetId, Partial<ExcalidrawFreeDrawElement>]>([

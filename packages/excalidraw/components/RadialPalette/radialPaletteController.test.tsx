@@ -164,8 +164,7 @@ describe("the radial palette's controller API", () => {
         describe("when it steps off the last filled color", () => {
           beforeEach(() => {
             const { items, index } = api.state();
-            const lastFilled =
-              items.findIndex(({ id }) => id === "") - 1;
+            const lastFilled = items.findIndex(({ id }) => id === "") - 1;
             act(() => api.step(lastFilled - index));
             act(() => api.step(1));
           });
@@ -308,6 +307,38 @@ describe("the radial palette's controller API", () => {
       act(() => api.open());
       expect(api.state().open).toBe(false);
       expect(ring()).toBeNull();
+    });
+  });
+});
+describe("the style ring", () => {
+  let controller: typeof h.app.radialPalette;
+  const ids = () => controller.state().items.map(({ id }) => id);
+
+  beforeEach(async () => {
+    await render(<Excalidraw radialPalette />);
+    const rectangle = API.createElement({ type: "rectangle" });
+    API.setElements([rectangle]);
+    API.setSelectedElements([rectangle]);
+    controller = h.app.radialPalette;
+    act(() => controller.open({ ring: "style" }));
+  });
+
+  it("lists the stroke style for a selected rectangle", () => {
+    expect(ids()).toContain("strokeStyle");
+  });
+
+  it("leaves out the font family for a selected rectangle", () => {
+    expect(ids()).not.toContain("fontFamily");
+  });
+
+  describe("when the stroke style and then dashed are chosen", () => {
+    beforeEach(() => {
+      act(() => controller.pick("style", ids().indexOf("strokeStyle")));
+      act(() => controller.pick("style", ids().indexOf("dashed")));
+    });
+
+    it("makes the rectangle dashed", () => {
+      expect(h.elements[0].strokeStyle).toBe("dashed");
     });
   });
 });
