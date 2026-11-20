@@ -62,6 +62,7 @@ import { JSONExportDialog } from "./JSONExportDialog";
 import { LaserPointerButton } from "./LaserPointerButton";
 import { Toast } from "./Toast";
 import { Toolbar } from "./Toolbar";
+import { RadialPalette } from "./RadialPalette/RadialPalette";
 import {
   ViewportStatusBadge,
   ViewportStatusBorder,
@@ -704,6 +705,12 @@ const LayerUI = ({
           </div>
           {renderSidebars()}
         </>
+      )}
+      {appProps.radialPalette && !appState.viewModeEnabled && (
+        <RadialPalette
+          actionManager={actionManager}
+          phone={editorInterface.formFactor === "phone"}
+        />
       )}
     </>
   );

@@ -206,8 +206,8 @@ export class AppClipboard {
 
     // ------------------- Successful Mermaid -------------------
     if (!isPlainPaste && isMaybeMermaidDefinition(data.text)) {
-      const api = await import("@excalidraw/mermaid-to-excalidraw");
       try {
+        const api = await import("@excalidraw/mermaid-to-excalidraw");
         const { elements: skeletonElements, files = {} } =
           await api.parseMermaidToExcalidraw(data.text);
 

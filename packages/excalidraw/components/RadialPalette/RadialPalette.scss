@@ -1,0 +1,233 @@
+// Every value is a `--control-*` token (css/theme.scss), so a `css` theme
+// restyles the palette, and other controls can share its look.
+.excalidraw {
+  .RadialPalette__puck {
+    position: absolute;
+    right: calc(1rem + env(safe-area-inset-right, 0px));
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    z-index: var(--zIndex-ui-bottom);
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0.5rem;
+    border: none;
+    border-radius: 50%;
+    background: var(--control-surface);
+    box-shadow: var(--control-shadow);
+    color: var(--control-ink);
+    cursor: pointer;
+    pointer-events: all;
+    // a press on the puck starts a flick, never a scroll or a zoom
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--control-motion-duration)
+      var(--control-motion-easing);
+
+    &--phone {
+      bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    &[aria-expanded="true"] {
+      background: var(--control-surface-active);
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+  }
+
+  .RadialPalette__puck-ring {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: var(--control-active-width);
+  }
+
+  .RadialPalette__puck-dot {
+    fill: currentColor;
+  }
+
+  .RadialPalette__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: var(--zIndex-ui-context-menu);
+    pointer-events: all;
+    touch-action: none;
+  }
+
+  .RadialPalette {
+    position: absolute;
+    z-index: var(--zIndex-ui-context-menu);
+    pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    font-family: var(--control-font);
+    animation: RadialPalette-open var(--control-motion-duration)
+      var(--control-motion-easing);
+
+    svg {
+      position: relative;
+      display: block;
+      overflow: visible;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  @keyframes RadialPalette-open {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+  }
+
+  .RadialPalette__disc {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--control-surface);
+    border: var(--control-rule-width) solid var(--control-rule);
+    box-shadow: var(--control-shadow);
+  }
+
+  .RadialPalette__rule {
+    fill: none;
+    stroke: var(--control-rule);
+    stroke-width: var(--control-rule-width);
+    pointer-events: none;
+  }
+
+  .RadialPalette__segment {
+    pointer-events: all;
+    cursor: pointer;
+    color: var(--control-ink);
+    outline: none;
+  }
+
+  .RadialPalette__icon {
+    color: var(--control-ink);
+    overflow: visible;
+  }
+
+  .RadialPalette__segment-bg {
+    fill: transparent;
+    transition: fill var(--control-motion-duration) var(--control-motion-easing);
+  }
+
+  .RadialPalette__segment-content {
+    pointer-events: none;
+  }
+
+  .RadialPalette__segment:hover .RadialPalette__segment-bg,
+  .RadialPalette__segment:focus-visible .RadialPalette__segment-bg {
+    fill: var(--control-surface-hover);
+  }
+
+  // the highlight a flick, a knob or the arrow keys move
+  .RadialPalette__segment--highlight .RadialPalette__segment-bg {
+    fill: var(--control-surface-hover);
+    stroke: var(--control-accent);
+    stroke-width: var(--control-rule-width);
+  }
+
+  .RadialPalette__segment--active .RadialPalette__segment-bg {
+    fill: var(--control-surface-active);
+    stroke: var(--control-accent);
+    stroke-width: var(--control-active-width);
+  }
+
+  .RadialPalette__segment--disabled {
+    cursor: default;
+  }
+
+  .RadialPalette__segment--disabled:hover .RadialPalette__segment-bg {
+    fill: transparent;
+  }
+
+  .RadialPalette__label {
+    fill: var(--control-text);
+    font-size: var(--control-label-size);
+    text-anchor: middle;
+    dominant-baseline: middle;
+  }
+
+  .RadialPalette__sample {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .RadialPalette__swatch {
+    stroke: var(--control-rule);
+    stroke-width: var(--control-rule-width);
+
+    &--empty {
+      stroke-dasharray: 3 2;
+    }
+  }
+
+  .RadialPalette__slider {
+    pointer-events: all;
+    cursor: grab;
+    outline: none;
+
+    &-hit {
+      fill: transparent;
+    }
+
+    &-track,
+    &-value {
+      fill: none;
+      stroke-linecap: round;
+      stroke-width: var(--control-track-width);
+      pointer-events: none;
+    }
+
+    &-track {
+      stroke: var(--control-rule);
+    }
+
+    &-value {
+      stroke: var(--control-accent);
+    }
+
+    &-end {
+      fill: var(--control-ink);
+      pointer-events: none;
+    }
+
+    &-knob {
+      fill: var(--control-surface);
+      stroke: var(--control-accent);
+      stroke-width: var(--control-knob-width);
+      pointer-events: none;
+    }
+  }
+
+  .RadialPalette__slider--active .RadialPalette__slider-knob,
+  .RadialPalette__slider:focus-visible .RadialPalette__slider-knob {
+    fill: var(--control-surface-active);
+  }
+
+  .RadialPalette__hub {
+    pointer-events: all;
+    cursor: pointer;
+    outline: none;
+    color: var(--control-ink);
+  }
+
+  .RadialPalette__hub-bg {
+    fill: var(--control-surface);
+    transition: fill var(--control-motion-duration) var(--control-motion-easing);
+  }
+
+  .RadialPalette__hub:hover .RadialPalette__hub-bg,
+  .RadialPalette__hub:focus-visible .RadialPalette__hub-bg {
+    fill: var(--control-surface-hover);
+  }
+}
