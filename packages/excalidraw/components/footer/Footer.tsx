@@ -1,5 +1,3 @@
-import clsx from "clsx";
-
 import { useTunnels } from "../../context/tunnels";
 import { ExitZenModeButton } from "../Actions";
 

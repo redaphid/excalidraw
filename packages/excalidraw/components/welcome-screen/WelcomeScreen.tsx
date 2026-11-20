@@ -3,11 +3,7 @@ import { Center } from "./WelcomeScreen.Center";
 import "./WelcomeScreen.scss";
 
 const WelcomeScreen = (props: { children?: React.ReactNode }) => {
-  return (
-    <>
-      {props.children || <Center />}
-    </>
-  );
+  return <>{props.children || <Center />}</>;
 };
 
 WelcomeScreen.displayName = "WelcomeScreen";

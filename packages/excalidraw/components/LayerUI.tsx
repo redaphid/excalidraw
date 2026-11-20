@@ -4,7 +4,6 @@ import React from "react";
 import {
   DEFAULT_SIDEBAR,
   arrayToMap,
-  capitalizeString,
   isShallowEqual,
 } from "@excalidraw/common";
 
@@ -39,7 +38,6 @@ import MainMenu from "./main-menu/MainMenu";
 import { ActiveConfirmDialog } from "./ActiveConfirmDialog";
 import { useAppProps, useEditorInterface, useStylesPanelMode } from "./App";
 import { OverwriteConfirmDialog } from "./OverwriteConfirm/OverwriteConfirm";
-import { sidebarRightIcon } from "./icons";
 import { DefaultSidebar } from "./DefaultSidebar";
 import { FrameBreadcrumb } from "./FrameBreadcrumb";
 import { TTDDialog } from "./TTDDialog/TTDDialog";
