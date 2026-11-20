@@ -148,6 +148,41 @@ const isTypingTarget = (target: EventTarget | null) =>
   (target instanceof Element &&
     !!target.closest('[contenteditable]:not([contenteditable="false"])'));
 
+/** how long after a press on the radial lifts its context menu event may
+ * still come: Windows sends it on the lift, others with the hold */
+const MENU_AFTER_LIFT_MS = 300;
+
+/**
+ * Keeps every context menu shut, the browser's and the editor's, while a
+ * press on the radial lasts: a hold there is the radial's, never a
+ * right-click, wherever the platform sends its menu event (the puck, or the
+ * canvas a drag has moved over). Returns the release; after a hold, the
+ * menus stay shut a moment longer, for the event Windows sends on the lift.
+ */
+const holdMenusShut = (win: Window) => {
+  const swallow = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const open = () => win.removeEventListener("contextmenu", swallow, true);
+  win.addEventListener("contextmenu", swallow, true);
+  let released = false;
+  return (afterHold: boolean) => {
+    if (released) {
+      return;
+    }
+    released = true;
+    if (afterHold) {
+      win.setTimeout(open, MENU_AFTER_LIFT_MS);
+    } else {
+      open();
+    }
+  };
+};
+
+/** keeps the browser's menu shut over the radial's own parts */
+const preventMenu = (event: React.MouseEvent) => event.preventDefault();
+
 /**
  * The radial palette: a puck that opens into a ring of shapes, pens,
  * colors, pen size and opacity. `,` opens it at the pointer; the editor
@@ -211,8 +246,8 @@ export const RadialPalette = React.memo(
     /** where a puck being moved is, as fractions of the editor */
     const [moving, setMoving] = useState<ClientPoint | null>(null);
     /** ends the press in progress, if any */
-    const endPress = useRef<(() => void) | null>(null);
-    useEffect(() => () => endPress.current?.(), []);
+    const endPress = useRef<((afterHold?: boolean) => void) | null>(null);
+    useEffect(() => () => endPress.current?.(false), []);
 
     const keep = (next: PuckPlace) => {
       setPlace(next);
@@ -253,6 +288,7 @@ export const RadialPalette = React.memo(
       const { pointerId } = event;
       const start = { x: event.clientX, y: event.clientY };
       const center = puckCenter(event.currentTarget);
+      const releaseMenus = holdMenusShut(win);
       let lifted = false;
       const liftPuck = () => {
         lifted = true;
@@ -302,11 +338,12 @@ export const RadialPalette = React.memo(
           end();
         }
       };
-      const end = () => {
+      const end = (afterHold = lifted) => {
         win.clearTimeout(timer);
         win.removeEventListener("pointermove", onMove);
         win.removeEventListener("pointerup", onUp);
         win.removeEventListener("pointercancel", onCancel);
+        releaseMenus(afterHold);
         setMoving(null);
         endPress.current = null;
       };
@@ -347,6 +384,7 @@ export const RadialPalette = React.memo(
           }
           aria-expanded={!!session}
           data-testid="radial-palette-puck"
+          onContextMenu={preventMenu}
           onPointerDown={(event) => {
             if (event.button !== 0) {
               return;
@@ -383,6 +421,9 @@ export const RadialPalette = React.memo(
             session={session}
             controller={controller}
             actionManager={actionManager}
+            onMoved={(at) =>
+              keep({ ...fractionAt(at.x, at.y), collapsed: false })
+            }
           />
         )}
       </>
@@ -395,10 +436,13 @@ const Ring = ({
   session,
   controller,
   actionManager,
+  onMoved,
 }: {
   session: RadialSession;
   controller: RadialPaletteController;
   actionManager: ActionManager;
+  /** the ring was dragged by its hub and dropped, centered at `at` */
+  onMoved: (at: ClientPoint) => void;
 }) => {
   const app = useApp();
   const appState = useUIAppState();
@@ -619,6 +663,83 @@ const Ring = ({
     return () => doc.removeEventListener("keydown", onKeyDown, true);
   }, [app, controller]);
 
+  /** the ring being moved by its hub */
+  const [moving, setMoving] = useState(false);
+  /** ends the hub press in progress, if any */
+  const endHubPress = useRef<((afterHold?: boolean) => void) | null>(null);
+  useEffect(() => () => endHubPress.current?.(false), []);
+  /** the click that follows a hold or a drag on the hub is no tap */
+  const hubClickSpent = useRef(false);
+
+  /**
+   * A press on the hub: held still for the long press, it lifts the ring,
+   * which follows the pointer, stays open where it is dropped, and takes the
+   * puck there. Lifted first, it is a tap and opens the context menu.
+   */
+  const trackHubPress = (event: React.PointerEvent<SVGGElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    endHubPress.current?.();
+    hubClickSpent.current = false;
+    const win = app.ownerWindow;
+    const { pointerId } = event;
+    const start = { x: event.clientX, y: event.clientY };
+    const from = session.at;
+    const releaseMenus = holdMenusShut(win);
+    let lifted = false;
+    let at = from;
+    const timer = win.setTimeout(() => {
+      lifted = true;
+      hubClickSpent.current = true;
+      setMoving(true);
+    }, LONG_PRESS_DELAY);
+    const onMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) {
+        return;
+      }
+      const dx = moveEvent.clientX - start.x;
+      const dy = moveEvent.clientY - start.y;
+      if (!lifted) {
+        if (Math.hypot(dx, dy) > LONG_PRESS_TOLERANCE) {
+          // a drag before the hold is no tap, and moves nothing
+          hubClickSpent.current = true;
+          end();
+        }
+        return;
+      }
+      at = { x: from.x + dx, y: from.y + dy };
+      controller.moveTo(at);
+    };
+    const onUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) {
+        return;
+      }
+      end();
+      if (lifted && at !== from) {
+        onMoved(at);
+      }
+    };
+    const onCancel = (cancelEvent: PointerEvent) => {
+      if (cancelEvent.pointerId === pointerId) {
+        end();
+      }
+    };
+    const end = (afterHold = lifted) => {
+      win.clearTimeout(timer);
+      win.removeEventListener("pointermove", onMove);
+      win.removeEventListener("pointerup", onUp);
+      win.removeEventListener("pointercancel", onCancel);
+      releaseMenus(afterHold);
+      setMoving(false);
+      endHubPress.current = null;
+    };
+    endHubPress.current = end;
+    win.addEventListener("pointermove", onMove);
+    win.addEventListener("pointerup", onUp);
+    win.addEventListener("pointercancel", onCancel);
+  };
+
   const isHighlighted = (ring: RadialRing, index: number) =>
     session.ring === ring && session.index === index;
 
@@ -797,7 +918,6 @@ const Ring = ({
   const penSize = appState.currentItemFreedrawStrokeWidth;
   const sizeValue = sliderFromPenSize(penSize) / PEN_SIZE_SLIDER_MAX;
   const opacityValue = appState.currentItemOpacity / 100;
-  const preventMenu = (event: React.MouseEvent) => event.preventDefault();
 
   return (
     <>
@@ -812,7 +932,9 @@ const Ring = ({
       />
       <div
         ref={ringRef}
-        className="RadialPalette"
+        className={clsx("RadialPalette", {
+          "RadialPalette--moving": moving,
+        })}
         role="dialog"
         aria-label={t("radialPalette.open")}
         data-testid="radial-palette"
@@ -1041,7 +1163,14 @@ const Ring = ({
             aria-label={t("radialPalette.menu")}
             data-testid="radial-palette-menu"
             className="RadialPalette__hub"
-            onClick={controller.menu}
+            onPointerDown={trackHubPress}
+            onClick={() => {
+              if (hubClickSpent.current) {
+                hubClickSpent.current = false;
+                return;
+              }
+              controller.menu();
+            }}
             onKeyDown={(event) => {
               if (event.key === KEYS.ENTER || event.key === " ") {
                 event.preventDefault();
