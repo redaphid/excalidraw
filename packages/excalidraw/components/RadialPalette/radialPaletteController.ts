@@ -17,6 +17,7 @@ import {
 import type { ToolType, UnsubscribeCallback } from "../../types";
 import type App from "../App";
 import type { PenPreset } from "./penPresets";
+import { FLICK_DISTANCE } from "./radialLayout";
 
 /** the shapes and tools on the inner ring, clockwise from the top */
 export const RADIAL_TOOLS = [
@@ -349,13 +350,30 @@ export class RadialPaletteController {
   private holdTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** a press held still on a tool for `delay` picks it locked, as Q does */
-  hold = (ring: RadialRing, index: number, delay: number) => {
+  hold = (
+    ring: RadialRing,
+    index: number,
+    delay: number,
+    at: ClientPoint = { x: 0, y: 0 },
+  ) => {
     this.release();
     if (ring === "tools") {
+      this.holdStart = at;
       this.holdTimer = setTimeout(() => {
         this.holdTimer = null;
         this.pick(ring, index, true);
       }, delay);
+    }
+  };
+
+  private holdStart: ClientPoint = { x: 0, y: 0 };
+
+  /** a held press that moves more than FLICK_DISTANCE is not held still */
+  drift = ({ x, y }: ClientPoint) => {
+    if (
+      Math.hypot(x - this.holdStart.x, y - this.holdStart.y) > FLICK_DISTANCE
+    ) {
+      this.release();
     }
   };
 

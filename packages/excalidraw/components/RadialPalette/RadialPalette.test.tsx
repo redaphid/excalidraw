@@ -22,6 +22,7 @@ import {
   placeRing,
   polar,
   sectorMiddle,
+  FLICK_DISTANCE,
 } from "./radialLayout";
 
 import type { PenPresetId } from "./penPresets";
@@ -175,6 +176,56 @@ describe("RadialPalette", () => {
         });
 
         it("picks it locked, as Q does", () => {
+          expect(h.state.activeTool).toMatchObject({
+            type: "rectangle",
+            locked: true,
+          });
+        });
+      });
+
+      describe("when a held tool drifts past the flick distance", () => {
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          const slice = byTestId("radial-tool-rectangle")!;
+          fireEvent.pointerDown(slice, {
+            button: 0,
+            clientX: 100,
+            clientY: 100,
+          });
+          fireEvent.pointerMove(slice, {
+            clientX: 100 + FLICK_DISTANCE + 1,
+            clientY: 100,
+          });
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("cancels the hold", () => {
+          expect(h.state.activeTool.locked).toBe(false);
+        });
+      });
+
+      describe("when a tool is held again", () => {
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          fireEvent.pointerDown(byTestId("radial-tool-rectangle")!, {
+            button: 0,
+          });
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("still picks it locked", () => {
           expect(h.state.activeTool).toMatchObject({
             type: "rectangle",
             locked: true,

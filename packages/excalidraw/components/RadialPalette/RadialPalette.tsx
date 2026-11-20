@@ -629,8 +629,15 @@ const Ring = ({
           !disabled && isHighlighted(ring, index),
         "RadialPalette__segment--disabled": disabled,
       })}
-      onPointerDown={() =>
-        !disabled && controller.hold(ring, index, LONG_PRESS_DELAY)
+      onPointerDown={(event) =>
+        !disabled &&
+        controller.hold(ring, index, LONG_PRESS_DELAY, {
+          x: event.clientX,
+          y: event.clientY,
+        })
+      }
+      onPointerMove={(event) =>
+        controller.drift({ x: event.clientX, y: event.clientY })
       }
       onPointerUp={controller.release}
       onPointerLeave={controller.release}
