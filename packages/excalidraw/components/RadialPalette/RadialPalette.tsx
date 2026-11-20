@@ -547,6 +547,10 @@ const Ring = ({
   }, [app, controller, flick]);
 
   const ringRef = useRef<HTMLDivElement>(null);
+  // a long press opens the ring under the finger, and the browser's click
+  // on release lands on the hub or a slice; only a press made on the ring
+  // counts
+  const pressedOnRing = useRef(false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -773,6 +777,15 @@ const Ring = ({
         data-testid="radial-palette"
         data-ring={session.ring}
         onContextMenu={preventMenu}
+        onPointerDownCapture={() => {
+          pressedOnRing.current = true;
+        }}
+        onClickCapture={(event) => {
+          if (!pressedOnRing.current && event.detail > 0) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
         style={{
           left: place.x - size / 2,
           top: place.y - size / 2,

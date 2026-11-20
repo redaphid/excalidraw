@@ -23,7 +23,7 @@
       var(--control-motion-easing);
 
     &--phone {
-      bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+      bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
     }
 
     // moved by a hold and a drag: centered on a place kept as fractions of

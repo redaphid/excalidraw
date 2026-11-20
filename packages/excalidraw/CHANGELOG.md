@@ -13,6 +13,11 @@ Please add the latest change on the top under the correct section.
 
 ## Unreleased
 
+### Phone fixes for the radial palette (2026-11-20)
+
+- A finger held still on the canvas and then lifted leaves only the ring open. The browser's click on release used to land on the hub, under the finger, and open the context menu as well (or, near an edge, pick a slice). The ring now acts only on a press made on it. Keyboard activation is unchanged.
+- On phones the puck sits above the undo and redo buttons (`bottom: 6.5rem`), where it used to cover their top 8 px.
+
 ### Movable puck (2026-11-20)
 
 - Hold the radial palette's puck still for the long press (500 ms, 10 px) and it lifts: drag it anywhere and drop it. Dropped within 28 px of the left or right side, it tucks into a dot on that side; a tap on the dot brings the puck back, and a drag moves it. A tap and a flick work as before.
