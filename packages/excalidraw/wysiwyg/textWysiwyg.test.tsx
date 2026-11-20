@@ -39,7 +39,6 @@ import {
   GlobalTestState,
   act,
   render,
-  screen,
   unmountComponent,
 } from "../tests/test-utils";
 import {

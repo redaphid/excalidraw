@@ -48,12 +48,16 @@ describe("Test LanguageList", () => {
       target: { value: TEST_LANG_CODE },
     });
     // switching to French, `Reset the canvas` label should no longer exist
-    await waitFor(() => expect(screen.queryByText(/reset the canvas/i)).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByText(/reset the canvas/i)).toBeNull(),
+    );
     // reset language
     fireEvent.change(document.querySelector(".dropdown-select__language")!, {
       target: { value: defaultLang.code },
     });
     // switching back to English
-    await waitFor(() => expect(screen.queryByText(/reset the canvas/i)).not.toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByText(/reset the canvas/i)).not.toBeNull(),
+    );
   });
 });

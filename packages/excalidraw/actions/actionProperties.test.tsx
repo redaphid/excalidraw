@@ -1,7 +1,4 @@
-import {
-  FREEDRAW_STROKE_WIDTH,
-  STROKE_WIDTH,
-} from "@excalidraw/common";
+import { FREEDRAW_STROKE_WIDTH, STROKE_WIDTH } from "@excalidraw/common";
 
 import { Excalidraw } from "../index";
 import { API } from "../tests/helpers/api";
