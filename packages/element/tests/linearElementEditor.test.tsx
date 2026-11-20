@@ -19,7 +19,6 @@ import { API } from "@excalidraw/excalidraw/tests/helpers/api";
 
 import { Keyboard, Pointer, UI } from "@excalidraw/excalidraw/tests/helpers/ui";
 import {
-  screen,
   render,
   fireEvent,
   GlobalTestState,
