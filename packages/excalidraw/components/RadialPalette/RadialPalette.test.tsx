@@ -157,6 +157,29 @@ describe("RadialPalette", () => {
         expect(h.state.contextMenu).not.toBeNull();
       });
 
+      describe("when the hub is tapped with a shape selected away from the ring", () => {
+        beforeEach(() => {
+          const rectangle = API.createElement({
+            type: "rectangle",
+            x: 400,
+            y: 400,
+            width: 40,
+            height: 40,
+          });
+          API.setElements([rectangle]);
+          API.setSelectedElements([rectangle]);
+          tap("radial-palette-menu");
+        });
+
+        it("opens the shape's menu", () => {
+          expect(
+            UI.queryContextMenu()?.querySelector(
+              'li[data-testid="deleteSelectedElements"]',
+            ),
+          ).not.toBeNull();
+        });
+      });
+
       it("offers shapes and pens, and no style roles", () => {
         const ids = Array.from(
           ring()!.querySelectorAll("[data-testid]"),

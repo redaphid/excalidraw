@@ -364,3 +364,41 @@ test("a finger held on a selected shape and lifted leaves only the ring", async 
   await expect(page.locator(".context-menu")).toHaveCount(0);
   await expect(page.getByTestId("radial-palette")).toBeVisible();
 });
+
+test("the hub opens the selection's menu, where two shapes line up", async ({
+  page,
+}, testInfo) => {
+  const { x, y } = await canvasCenter(page);
+  for (const [left, top] of [
+    [x - 110, y + 30],
+    [x + 20, y + 70],
+  ]) {
+    await page.keyboard.press("r");
+    await page.mouse.move(left, top);
+    await page.mouse.down();
+    await page.mouse.move(left + 70, top + 50, { steps: 4 });
+    await page.mouse.up();
+  }
+  await page.keyboard.press("ControlOrMeta+a");
+
+  await tap(page, testInfo, "radial-palette-puck");
+  await tap(page, testInfo, "radial-palette-menu");
+  const menu = page.locator(".context-menu");
+  await expect(menu.getByTestId("deleteSelectedElements")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("hub-selection.png") });
+
+  await menu.getByTestId("alignLeft").click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (key) =>
+          new Set(
+            (JSON.parse(localStorage.getItem(key) ?? "{}").elements ?? []).map(
+              (element: { x: number }) => Math.round(element.x),
+            ),
+          ).size,
+        SCENE_KEY,
+      ),
+    )
+    .toBe(1);
+});
