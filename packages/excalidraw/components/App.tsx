@@ -13437,6 +13437,8 @@ ${css}
       actionToggleElementLock,
       CONTEXT_MENU_SEPARATOR,
       actionDeleteSelected,
+      CONTEXT_MENU_SEPARATOR,
+      actionOpenMainMenu,
     ];
   };
 

@@ -148,6 +148,7 @@ describe("contextMenu element", () => {
       "hyperlink",
       "copyElementLink",
       "toggleElementLock",
+      "openMainMenu",
     ];
 
     expect(contextMenu).not.toBeNull();
@@ -243,6 +244,7 @@ describe("contextMenu element", () => {
       "bringToFront",
       "duplicateSelection",
       "toggleElementLock",
+      "openMainMenu",
     ];
 
     expect(contextMenu).not.toBeNull();
@@ -293,6 +295,7 @@ describe("contextMenu element", () => {
       "deleteSelectedElements",
       "copyElementLink",
       "ungroup",
+      "openMainMenu",
       "addToLibrary",
       "flipHorizontal",
       "flipVertical",
@@ -795,6 +798,20 @@ describe("contextMenu element with the radial palette", () => {
 
     it("opens the radial on the style ring", () => {
       expect(h.app.radialPalette.session?.ring).toBe("style");
+    });
+  });
+
+  describe("when Menu… is picked", () => {
+    beforeEach(() => {
+      fireEvent.click(queryByText(UI.queryContextMenu()!, "Menu…")!);
+    });
+
+    it("opens the main menu", () => {
+      expect(h.state.openMenu).toBe("canvas");
+    });
+
+    it("keeps the selection", () => {
+      expect(Object.keys(h.state.selectedElementIds)).toHaveLength(1);
     });
   });
 });

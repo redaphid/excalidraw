@@ -97,6 +97,7 @@ const MenuContent = ({
         data-testid="dropdown-menu"
         align={align}
         sideOffset={8}
+        collisionPadding={8}
         onCloseAutoFocus={(event: Event) => event.preventDefault()}
       >
         {/* the zIndex ensures this menu has higher stacking order,
