@@ -144,6 +144,22 @@
     box-shadow: var(--control-shadow);
   }
 
+  /* the corner a frame would have: dragged, it scales the ring */
+  .RadialPalette__scale {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    pointer-events: auto;
+    touch-action: none;
+    cursor: nwse-resize;
+    border-radius: 0.375rem;
+    background: var(--control-surface);
+    border: var(--control-rule-width) solid var(--control-accent);
+    box-shadow: var(--control-shadow);
+  }
+
   .RadialPalette__rule {
     fill: none;
     stroke: var(--control-rule);

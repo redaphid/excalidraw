@@ -402,3 +402,33 @@ test("the hub opens the selection's menu, where two shapes line up", async ({
     )
     .toBe(1);
 });
+
+test("its corner scales the ring as a frame's does, and the size stays", async ({
+  page,
+}, testInfo) => {
+  const ring = page.getByTestId("radial-palette");
+  const width = async () => (await ring.boundingBox())!.width;
+
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(ring).toBeVisible();
+  const before = await width();
+  const corner = (await page
+    .getByTestId("radial-palette-scale")
+    .boundingBox())!;
+  const from = {
+    x: corner.x + corner.width / 2,
+    y: corner.y + corner.height / 2,
+  };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 30, from.y + 30, { steps: 6 });
+  await page.mouse.up();
+  await page.screenshot({ path: testInfo.outputPath("ring-scaled.png") });
+  const scaled = await width();
+  expect(scaled).toBeGreaterThan(before);
+
+  await page.reload();
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(ring).toBeVisible();
+  expect(await width()).toBeCloseTo(scaled, 0);
+});

@@ -184,16 +184,17 @@ export const hitTest = (
 
 /**
  * Where the ring goes: centered on `anchor` when it fits, else moved just
- * far enough to fit, and scaled down (to `MIN_RING_SCALE` at most) when the
- * editor is too small for it.
+ * far enough to fit, at the `preferred` size the person gave it, scaled
+ * down (to `MIN_RING_SCALE` at most) when the editor is too small for it.
  */
 export const placeRing = (
   anchor: { x: number; y: number },
   bounds: { width: number; height: number },
   margin = 8,
+  preferred = 1,
 ) => {
   const scale = Math.min(
-    1,
+    preferred,
     Math.max(
       MIN_RING_SCALE,
       (Math.min(bounds.width, bounds.height) / 2 - margin) / RING_RADIUS,
