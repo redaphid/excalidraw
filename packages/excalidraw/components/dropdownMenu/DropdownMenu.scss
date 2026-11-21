@@ -65,7 +65,10 @@
 
       box-shadow: var(--box-shadow, var(--shadow-island));
 
-      max-height: calc(100svh - var(--editor-container-padding) * 2 - 2.25rem);
+      max-height: min(
+        calc(100svh - var(--editor-container-padding) * 2 - 2.25rem),
+        var(--radix-dropdown-menu-content-available-height, 100svh)
+      );
 
       @at-root .excalidraw.theme--dark#{&} {
         box-shadow: var(--box-shadow, var(--shadow-island)),
