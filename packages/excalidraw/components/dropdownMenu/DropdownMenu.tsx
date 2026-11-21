@@ -23,9 +23,12 @@ import "./DropdownMenu.scss";
 const DropdownMenu = ({
   children,
   open,
+  anchor,
 }: {
   children?: React.ReactNode;
   open: boolean;
+  /** a viewport point the content opens at, for a menu with no trigger */
+  anchor?: { x: number; y: number };
 }) => {
   const MenuTriggerComp = getMenuTriggerComponent(children);
   const MenuContentComp = getMenuContentComponent(children);
@@ -48,6 +51,22 @@ const DropdownMenu = ({
           display: "contents",
         }}
       >
+        {anchor && (
+          <DropdownMenuPrimitive.Trigger asChild>
+            <span
+              aria-hidden
+              className="dropdown-menu-anchor"
+              style={{
+                position: "fixed",
+                left: anchor.x,
+                top: anchor.y,
+                width: 0,
+                height: 0,
+                pointerEvents: "none",
+              }}
+            />
+          </DropdownMenuPrimitive.Trigger>
+        )}
         {MenuTriggerComp}
         {MenuContentWithState}
       </div>

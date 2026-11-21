@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 
 import { composeEventHandlers } from "@excalidraw/common";
 
@@ -35,10 +35,22 @@ const MainMenu = Object.assign(
       const appState = useUIAppState();
       const appProps = useAppProps();
       const setAppState = useExcalidrawSetAppState();
+      // "Menu…" runs after the context menu has closed, so keep where it was
+      // opened: the main menu opens there
+      const pickedAt = useRef({ top: 0, left: 0 });
+      if (appState.contextMenu) {
+        pickedAt.current = appState.contextMenu;
+      }
 
       return (
         <MainMenuTunnel.In>
-          <DropdownMenu open={appState.openMenu === "canvas"}>
+          <DropdownMenu
+            open={appState.openMenu === "canvas"}
+            anchor={{
+              x: appState.offsetLeft + pickedAt.current.left,
+              y: appState.offsetTop + pickedAt.current.top,
+            }}
+          >
             <DropdownMenu.Content
               onClickOutside={() => setAppState({ openMenu: null })}
               onSelect={composeEventHandlers(onSelect, () => {
