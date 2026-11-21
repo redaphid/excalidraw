@@ -407,7 +407,9 @@ test("its corner scales the ring as a frame's does, and the size stays", async (
   page,
 }, testInfo) => {
   const ring = page.getByTestId("radial-palette");
-  const width = async () => (await ring.boundingBox())!.width;
+  // its layout width: the box also has the opening animation's scale in it
+  const width = () =>
+    ring.evaluate((element) => (element as HTMLElement).offsetWidth);
 
   await tap(page, testInfo, "radial-palette-puck");
   await expect(ring).toBeVisible();
