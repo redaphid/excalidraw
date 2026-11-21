@@ -342,7 +342,7 @@ import {
   actionOpenStyleRing,
   actionShortcuts,
 } from "../actions/actionMenu";
-import { actionZoomToFit } from "../actions/actionCanvas";
+import { actionResetZoom, actionZoomToFit } from "../actions/actionCanvas";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
 import { ActionManager } from "../actions/manager";
@@ -13373,6 +13373,7 @@ ${css}
         actionToggleStats,
         CONTEXT_MENU_SEPARATOR,
         actionZoomToFit,
+        actionResetZoom,
         actionShortcuts,
         actionOpenLibrary,
         actionOpenMainMenu,
