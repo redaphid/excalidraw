@@ -4,6 +4,7 @@ const require = createRequire(import.meta.url);
 const {
   declarationTarget,
   GITHUB_REGISTRY,
+  packedFilename,
   registryManifest,
   siblingClosure,
   urlManifest,
@@ -208,6 +209,22 @@ describe("declarationTarget", () => {
   it("points excalidraw's own name at its root", () => {
     expect(declarationTarget("@excalidraw/excalidraw", "excalidraw")).toBe(
       "excalidraw/index",
+    );
+  });
+});
+
+describe("packedFilename", () => {
+  const tarball = { id: "x@1.0.0", filename: "excalidraw-common-1.18.0.tgz" };
+
+  it("reads npm 10 and 11's list", () => {
+    expect(packedFilename([tarball])).toBe("excalidraw-common-1.18.0.tgz");
+  });
+
+  it("reads npm 12's object keyed by package name", () => {
+    // Defect: destructuring it as a list throws "object is not iterable"
+    // after the first package is packed.
+    expect(packedFilename({ "@excalidraw/common": tarball })).toBe(
+      "excalidraw-common-1.18.0.tgz",
     );
   });
 });

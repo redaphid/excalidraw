@@ -343,6 +343,18 @@ import {
   actionShortcuts,
 } from "../actions/actionMenu";
 import { actionResetZoom, actionZoomToFit } from "../actions/actionCanvas";
+import {
+  actionAlignBottom,
+  actionAlignHorizontallyCentered,
+  actionAlignLeft,
+  actionAlignRight,
+  actionAlignTop,
+  actionAlignVerticallyCentered,
+} from "../actions/actionAlign";
+import {
+  distributeHorizontally,
+  distributeVertically,
+} from "../actions/actionDistribute";
 import { actionTextAutoResize } from "../actions/actionTextAutoResize";
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
 import { ActionManager } from "../actions/manager";
@@ -12876,12 +12888,15 @@ ${css}
     });
   };
 
-  /** opens the context menu for the element under the pointer, or the canvas */
+  /** opens the context menu for the element under the pointer, or the
+   * canvas; with `forSelection`, the selection's menu when nothing is under
+   * the pointer */
   public openContextMenu = (pointer: {
     clientX: number;
     clientY: number;
     button?: number;
     pointerType?: string;
+    forSelection?: boolean;
   }) => {
     // In non-interactive mode there is no menu, so the native one cannot be
     // mistaken for Excalidraw's own.
@@ -12916,7 +12931,12 @@ ${css}
         selectedElements,
       );
 
-    const type = element || isHittingCommonBoundBox ? "element" : "canvas";
+    const type =
+      element ||
+      isHittingCommonBoundBox ||
+      (pointer.forSelection && selectedElements.length > 0)
+        ? "element"
+        : "canvas";
 
     const container = this.excalidrawContainerRef.current!;
     const { top: offsetTop, left: offsetLeft } =
@@ -13422,6 +13442,15 @@ ${css}
       actionWrapTextInContainer,
       actionUngroup,
       actionArrangeElements,
+      CONTEXT_MENU_SEPARATOR,
+      actionAlignLeft,
+      actionAlignHorizontallyCentered,
+      actionAlignRight,
+      actionAlignTop,
+      actionAlignVerticallyCentered,
+      actionAlignBottom,
+      distributeHorizontally,
+      distributeVertically,
       CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,

@@ -236,6 +236,12 @@ describe("contextMenu element", () => {
       "deleteSelectedElements",
       "group",
       "arrangeElements",
+      "alignLeft",
+      "alignHorizontallyCentered",
+      "alignRight",
+      "alignTop",
+      "alignVerticallyCentered",
+      "alignBottom",
       "addToLibrary",
       "flipHorizontal",
       "flipVertical",
@@ -296,6 +302,12 @@ describe("contextMenu element", () => {
       "deleteSelectedElements",
       "copyElementLink",
       "ungroup",
+      "alignLeft",
+      "alignHorizontallyCentered",
+      "alignRight",
+      "alignTop",
+      "alignVerticallyCentered",
+      "alignBottom",
       "openMainMenu",
       "addToLibrary",
       "flipHorizontal",
@@ -826,6 +838,94 @@ describe("contextMenu element with the radial palette", () => {
 
     it("keeps the selection", () => {
       expect(Object.keys(h.state.selectedElementIds)).toHaveLength(1);
+    });
+  });
+});
+
+describe("contextMenu for shapes picked together", () => {
+  const ALIGNMENTS = [
+    "alignLeft",
+    "alignHorizontallyCentered",
+    "alignRight",
+    "alignTop",
+    "alignVerticallyCentered",
+    "alignBottom",
+  ];
+
+  const selectShapes = (count: number) => {
+    const shapes = Array.from({ length: count }, (_, index) =>
+      API.createElement({
+        type: "rectangle",
+        x: index * 40,
+        y: index * 15,
+        width: 20,
+        height: 20,
+      }),
+    );
+    API.setElements(shapes);
+    API.setSelectedElements(shapes);
+    fireEvent.contextMenu(GlobalTestState.interactiveCanvas, {
+      button: 2,
+      clientX: 5,
+      clientY: 5,
+    });
+  };
+
+  const offeredArrangements = () =>
+    Array.from(
+      UI.queryContextMenu()?.querySelectorAll(".context-menu li") ?? [],
+      (item) => item.getAttribute("data-testid"),
+    ).filter((name) => /^(align|distribute)/.test(name ?? ""));
+
+  beforeEach(async () => {
+    localStorage.clear();
+    reseed(7);
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
+  });
+
+  describe("when one shape is selected", () => {
+    beforeEach(() => {
+      selectShapes(1);
+    });
+
+    it("offers no alignment", () => {
+      expect(offeredArrangements()).toEqual([]);
+    });
+  });
+
+  describe("when two shapes are selected", () => {
+    beforeEach(() => {
+      selectShapes(2);
+    });
+
+    it("offers the six alignments and no distribution", () => {
+      expect(offeredArrangements()).toEqual(ALIGNMENTS);
+    });
+  });
+
+  describe("when three shapes are selected", () => {
+    beforeEach(() => {
+      selectShapes(3);
+    });
+
+    it("offers distribution after the alignments", () => {
+      expect(offeredArrangements()).toEqual([
+        ...ALIGNMENTS,
+        "distributeHorizontally",
+        "distributeVertically",
+      ]);
+    });
+
+    describe("when Align left is picked", () => {
+      beforeEach(() => {
+        fireEvent.click(queryByText(UI.queryContextMenu()!, "Align left")!);
+      });
+
+      it("lines their left edges up", () => {
+        expect(new Set(h.elements.map((element) => element.x))).toEqual(
+          new Set([0]),
+        );
+      });
     });
   });
 });

@@ -333,8 +333,8 @@ export class RadialPaletteController {
   };
 
   /** closes, and opens the context menu for what is under the ring's
-   * center: the touch context menu's way in while the palette has the
-   * long press */
+   * center, else for the selection: the touch context menu's way in while
+   * the palette has the long press */
   menu = () => {
     const { current } = this;
     if (current) {
@@ -342,6 +342,7 @@ export class RadialPaletteController {
       this.app.openContextMenu({
         clientX: current.at.x,
         clientY: current.at.y,
+        forSelection: true,
       });
     }
   };
