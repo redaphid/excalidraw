@@ -18,6 +18,7 @@ import { getPenPresets } from "./penPresets";
 import { RADIAL_TOOLS } from "./radialPaletteController";
 import {
   TOOLS_BAND,
+  RING_RADIUS,
   getRingLayout,
   placeRing,
   polar,
@@ -51,6 +52,35 @@ const tap = (testId: string) => {
     throw new Error(`no ${testId} on the ring`);
   }
   fireEvent.click(target);
+};
+
+/** the ring's size against its own, from its box */
+const ringScale = () => parseFloat(ring()!.style.width) / (RING_RADIUS * 2);
+
+/** drags the ring's corner handle to where the ring would be `scale` big */
+const dragScaleHandle = (scale: number) => {
+  const box = ring()!.style;
+  const center = {
+    x: parseFloat(box.left) + parseFloat(box.width) / 2,
+    y: parseFloat(box.top) + parseFloat(box.height) / 2,
+  };
+  const corner = parseFloat(box.width) / 2;
+  const to = RING_RADIUS * scale;
+  fireEvent.pointerDown(byTestId("radial-palette-scale")!, {
+    pointerId: 7,
+    clientX: center.x + corner,
+    clientY: center.y + corner,
+  });
+  fireEvent.pointerMove(window, {
+    pointerId: 7,
+    clientX: center.x + to,
+    clientY: center.y + to,
+  });
+  fireEvent.pointerUp(window, {
+    pointerId: 7,
+    clientX: center.x + to,
+    clientY: center.y + to,
+  });
 };
 
 const drawStroke = () => {
@@ -203,6 +233,47 @@ describe("RadialPalette", () => {
       it("closes on a press outside it", () => {
         fireEvent.pointerDown(byTestId("radial-palette-backdrop")!);
         expect(ring()).toBeNull();
+      });
+
+      describe("when its corner is dragged outward, as a frame's is", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(1.3);
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("draws the ring bigger", () => {
+          expect(ringScale()).toBeCloseTo(1.3);
+        });
+
+        describe("when it is opened again", () => {
+          beforeEach(() => {
+            Keyboard.keyPress(KEYS.ESCAPE);
+            openRing();
+          });
+
+          it("keeps the size", () => {
+            expect(ringScale()).toBeCloseTo(1.3);
+          });
+        });
+      });
+
+      describe("when its corner is dragged into the middle", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(0.2);
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("folds the ring back into the puck", () => {
+          expect(ring()).toBeNull();
+        });
       });
 
       it("closes on Escape", () => {

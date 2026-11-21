@@ -62,6 +62,13 @@ import {
   toPolar,
 } from "./radialLayout";
 import { RADIAL_TOOLS } from "./radialPaletteController";
+import {
+  FOLD_RING_SCALE,
+  loadRingScale,
+  rawRingScaleAt,
+  ringScaleAt,
+  saveRingScale,
+} from "./ringScale";
 import { getStyleProperty } from "./styleProperties";
 
 import "./RadialPalette.scss";
@@ -405,10 +412,50 @@ const Ring = ({
   const setAppState = useExcalidrawSetAppState();
 
   const { offsetLeft, offsetTop, width, height } = appState;
+  const [ringScale, setRingScale] = useState(() =>
+    loadRingScale(app.ownerWindow),
+  );
   const place = placeRing(
     { x: session.at.x - offsetLeft, y: session.at.y - offsetTop },
     { width, height },
+    8,
+    ringScale,
   );
+
+  /** a drag on the corner scales the ring about its centre, as a frame's
+   * corner does; dropped far enough in, it folds the ring into the puck */
+  const scaleFromCorner = (event: React.PointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const win = app.ownerWindow;
+    const { pointerId } = event;
+    const center = { x: offsetLeft + place.x, y: offsetTop + place.y };
+    const distance = (e: PointerEvent) =>
+      Math.hypot(e.clientX - center.x, e.clientY - center.y);
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerId === pointerId) {
+        setRingScale(ringScaleAt(distance(e)));
+      }
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) {
+        return;
+      }
+      win.removeEventListener("pointermove", onMove);
+      win.removeEventListener("pointerup", onUp);
+      win.removeEventListener("pointercancel", onUp);
+      if (rawRingScaleAt(distance(e)) < FOLD_RING_SCALE) {
+        controller.close();
+        return;
+      }
+      const scale = ringScaleAt(distance(e));
+      setRingScale(scale);
+      saveRingScale(win, scale);
+    };
+    win.addEventListener("pointermove", onMove);
+    win.addEventListener("pointerup", onUp);
+    win.addEventListener("pointercancel", onUp);
+  };
 
   // the style ring shows its properties, or one's options, in the tools band
   const styleRing = session.ring === "style";
@@ -835,6 +882,13 @@ const Ring = ({
         }}
       >
         <div className="RadialPalette__disc" />
+        <div
+          role="button"
+          aria-label={t("radialPalette.scale")}
+          data-testid="radial-palette-scale"
+          className="RadialPalette__scale"
+          onPointerDown={scaleFromCorner}
+        />
         <svg
           viewBox={`${-RING_RADIUS} ${-RING_RADIUS} ${RING_RADIUS * 2} ${
             RING_RADIUS * 2
