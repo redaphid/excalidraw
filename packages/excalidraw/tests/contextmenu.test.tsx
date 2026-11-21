@@ -38,6 +38,7 @@ import {
 
 import type { ShortcutName } from "../actions/shortcuts";
 import type { ActionName } from "../actions/types";
+import type { NormalizedZoomValue } from "../types";
 
 const checkpoint = (name: string) => {
   expect(renderStaticScene.mock.calls.length).toMatchSnapshot(
@@ -767,6 +768,19 @@ describe("contextMenu on the empty canvas", () => {
 
     it("opens the default sidebar on its library tab", () => {
       expect(h.state.openSidebar).toEqual({ name: "default", tab: "library" });
+    });
+  });
+
+  describe("when Reset zoom is picked", () => {
+    beforeEach(() => {
+      API.setAppState({ zoom: { value: 2 as NormalizedZoomValue } });
+      fireEvent.click(
+        UI.queryContextMenu()!.querySelector('li[data-testid="resetZoom"]')!,
+      );
+    });
+
+    it("sets the zoom back to 100%", () => {
+      expect(h.state.zoom.value).toBe(1);
     });
   });
 });
