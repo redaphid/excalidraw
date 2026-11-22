@@ -92,6 +92,19 @@ describe("dragging the radial palette", () => {
     });
   });
 
+  describe("when the ring is open against a corner", () => {
+    beforeEach(() => {
+      act(() => h.app.radialPalette.open({ at: { x: 20, y: 20 } }));
+      fireEvent.pointerDown(hub(), touch(166, 166));
+      wait(LONG_PRESS_DELAY);
+      moveTo(206, 196);
+    });
+
+    it("moves the ring with the finger from the first move", () => {
+      expect(ringCenter()).toEqual({ x: 206, y: 196 });
+    });
+  });
+
   describe("when the ring is open", () => {
     beforeEach(() => {
       act(() => h.app.radialPalette.open({ at: { x: 500, y: 400 } }));
@@ -156,6 +169,19 @@ describe("dragging the radial palette", () => {
             );
           });
         });
+      });
+    });
+
+    describe("and its hub is held and dragged past the left side", () => {
+      beforeEach(() => {
+        fireEvent.pointerDown(hub(), touch(500, 400));
+        wait(LONG_PRESS_DELAY);
+        moveTo(-200, 400);
+        lift(-200, 400);
+      });
+
+      it("puts the puck where the ring is drawn, not past the side", () => {
+        expect(puck().style.getPropertyValue("--radial-puck-x")).toBe("16.6%");
       });
     });
 

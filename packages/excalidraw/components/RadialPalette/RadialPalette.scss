@@ -132,11 +132,20 @@
     }
   }
 
+  // lifted by its hub, as the puck lifts when it moves
   .RadialPalette--moving {
     cursor: grabbing;
 
+    .RadialPalette__disc {
+      box-shadow: var(--control-shadow), var(--control-shadow);
+    }
+
     .RadialPalette__hub {
       cursor: grabbing;
+    }
+
+    .RadialPalette__hub-bg {
+      fill: var(--control-surface-hover);
     }
   }
 

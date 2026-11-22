@@ -449,6 +449,14 @@ const Ring = ({
   const setAppState = useExcalidrawSetAppState();
 
   const { offsetLeft, offsetTop, width, height } = appState;
+  /** where the ring is drawn when it is open at `at`, in client terms */
+  const drawnAt = (at: ClientPoint) => {
+    const placed = placeRing(
+      { x: at.x - offsetLeft, y: at.y - offsetTop },
+      { width, height },
+    );
+    return { x: placed.x + offsetLeft, y: placed.y + offsetTop };
+  };
   const place = placeRing(
     { x: session.at.x - offsetLeft, y: session.at.y - offsetTop },
     { width, height },
@@ -685,7 +693,9 @@ const Ring = ({
     const win = app.ownerWindow;
     const { pointerId } = event;
     const start = { x: event.clientX, y: event.clientY };
-    const from = session.at;
+    // from where the ring is drawn, which an edge may have pushed in from
+    // where it was opened, so it follows the finger from the first move
+    const from = drawnAt(session.at);
     const releaseMenus = holdMenusShut(win);
     let lifted = false;
     let at = from;
@@ -717,7 +727,9 @@ const Ring = ({
       }
       end();
       if (lifted && at !== from) {
-        onMoved(at);
+        const dropped = drawnAt(at);
+        controller.moveTo(dropped);
+        onMoved(dropped);
       }
     };
     const onCancel = (cancelEvent: PointerEvent) => {
