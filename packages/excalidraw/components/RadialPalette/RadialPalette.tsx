@@ -80,14 +80,22 @@ import type {
 type Icon = React.ReactElement<React.SVGProps<SVGSVGElement>>;
 
 /** an icon as a square of `--control-icon-size` centered on `x, y` */
-const placeIcon = (icon: Icon, x: number, y: number) =>
-  React.cloneElement(icon, {
+/** puts an icon in its segment: a bare svg takes the place itself, anything
+ * else (a host's component, say) fills a placed svg around it */
+const placeIcon = (icon: Icon, x: number, y: number) => {
+  const place = {
     x: x - 9,
     y: y - 9,
     width: 18,
     height: 18,
     className: "RadialPalette__icon",
-  });
+  };
+  return icon.type === "svg" ? (
+    React.cloneElement(icon, place)
+  ) : (
+    <svg {...place}>{icon}</svg>
+  );
+};
 
 const TOOL_ICONS: Record<RadialTool, Icon> = {
   selection: SelectionIcon,
