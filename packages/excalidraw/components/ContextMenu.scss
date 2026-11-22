@@ -95,6 +95,20 @@
     }
   }
 
+  // a finger, not a mouse: rows a thumb can hit, and no keys to show
+  @media (pointer: coarse) {
+    .context-menu .context-menu-item {
+      display: flex;
+      align-items: center;
+      min-height: 2.75rem;
+      font-size: 1rem;
+
+      .context-menu-item__shortcut {
+        display: none;
+      }
+    }
+  }
+
   .context-menu-item-separator {
     border: none;
     border-top: 1px solid $color-gray-5;
