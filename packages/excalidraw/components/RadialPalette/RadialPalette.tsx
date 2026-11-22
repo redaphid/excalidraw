@@ -158,9 +158,12 @@ export const RadialPalette = React.memo(
   ({
     actionManager,
     phone,
+    besideSidebar,
   }: {
     actionManager: ActionManager;
     phone: boolean;
+    /** a sidebar is open on the editor's right, where the puck sits */
+    besideSidebar: boolean;
   }) => {
     const app = useApp();
     const { container } = useExcalidrawContainer();
@@ -325,6 +328,7 @@ export const RadialPalette = React.memo(
           type="button"
           className={clsx("RadialPalette__puck", {
             "RadialPalette__puck--phone": phone,
+            "RadialPalette__puck--beside-sidebar": besideSidebar,
             "RadialPalette__puck--placed": !!shown,
             "RadialPalette__puck--moving": !!moving,
             "RadialPalette__puck--collapsed": collapsed,
