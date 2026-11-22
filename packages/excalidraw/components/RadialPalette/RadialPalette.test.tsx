@@ -65,9 +65,13 @@ describe("RadialPalette", () => {
 
   describe("when the host adds pens of its own", () => {
     const onPick = vi.fn();
+    const doodleLeft = vi.fn();
+    const sketchyLeft = vi.fn();
 
     beforeEach(async () => {
       onPick.mockReset();
+      doodleLeft.mockReset();
+      sketchyLeft.mockReset();
       await render(
         <Excalidraw
           radialPalette={{
@@ -77,6 +81,7 @@ describe("RadialPalette", () => {
                 label: "Doodle",
                 icon: <svg data-testid="host-pen-icon-doodle" />,
                 onPick,
+                onLeave: doodleLeft,
               },
               {
                 id: "sketchy",
@@ -84,6 +89,7 @@ describe("RadialPalette", () => {
                 icon: <svg />,
                 active: true,
                 onPick: () => {},
+                onLeave: sketchyLeft,
               },
             ],
           }}
@@ -124,6 +130,54 @@ describe("RadialPalette", () => {
 
       it("closes the ring", () => {
         expect(ring()).toBeNull();
+      });
+
+      it("leaves the active one", () => {
+        expect(sketchyLeft).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe("when a preset is picked over the active one", () => {
+      beforeEach(() => {
+        tap(`radial-pen-${h.app.radialPalette.getPresets()[0].id}`);
+      });
+
+      it("leaves the active one", () => {
+        expect(sketchyLeft).toHaveBeenCalledTimes(1);
+      });
+
+      it("leaves no pen that was not active", () => {
+        expect(doodleLeft).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("when the eraser is picked over the active one", () => {
+      beforeEach(() => {
+        tap("radial-tool-eraser");
+      });
+
+      it("leaves the active one", () => {
+        expect(sketchyLeft).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe("when a shape is picked over the active one", () => {
+      beforeEach(() => {
+        tap("radial-tool-rectangle");
+      });
+
+      it("leaves the active one", () => {
+        expect(sketchyLeft).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe("when a color is picked with one active", () => {
+      beforeEach(() => {
+        tap("radial-color-0");
+      });
+
+      it("keeps it", () => {
+        expect(sketchyLeft).not.toHaveBeenCalled();
       });
     });
   });
