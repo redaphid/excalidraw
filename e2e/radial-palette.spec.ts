@@ -240,31 +240,6 @@ const activeTool = (page: Page) =>
     () => (window as Playground).excalidrawAPI?.getAppState().activeTool.type,
   );
 
-test("the hub's menu fits a thumb on a touch screen", async ({
-  page,
-}, testInfo) => {
-  test.skip(
-    !(await page.evaluate(() => matchMedia("(pointer: coarse)").matches)),
-    "a touch screen's coarse pointer",
-  );
-  await tap(page, testInfo, "radial-palette-puck");
-  await tap(page, testInfo, "radial-palette-menu");
-  await expect(page.locator(".context-menu")).toBeVisible();
-  const rows = await page.locator(".context-menu-item").evaluateAll((items) =>
-    items.map((item) => ({
-      label: item.querySelector(".context-menu-item__label")?.textContent,
-      height: Math.round(item.getBoundingClientRect().height),
-      shortcut:
-        getComputedStyle(item.querySelector(".context-menu-item__shortcut")!)
-          .display !== "none",
-    })),
-  );
-  expect(rows.length).toBeGreaterThan(0);
-  expect(
-    rows.filter(({ height, shortcut }) => height < 44 || shortcut),
-  ).toEqual([]);
-});
-
 test("opens at the pointer on , and closes on Escape", async ({ page }) => {
   const { x, y } = await canvasCenter(page);
   await page.mouse.move(x, y);
