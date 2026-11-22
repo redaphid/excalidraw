@@ -27,6 +27,10 @@ export const OPACITY_SLIDER: Slider = { from: 84, to: 6 };
 /** below this the ring would be too small to hit; it overflows instead */
 export const MIN_RING_SCALE = 0.6;
 
+/** a colour's tap target reaches this far from its swatch, past its sector:
+ * a sector is about 34 by 37, under the 44px a finger needs */
+export const SWATCH_HIT_RADIUS = 23;
+
 /** a pointer this far from where it went down is a flick, not a tap */
 export const FLICK_DISTANCE = 10;
 

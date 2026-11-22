@@ -329,6 +329,61 @@ test("a held puck moves, tucks against a side, comes back, and stays put", async
   await page.screenshot({ path: testInfo.outputPath("puck-back.png") });
 });
 
+test("a finger a little past a colour still picks it", async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, "a touch target");
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  const ring = await ringCenter(page);
+  const swatch = await center(page, "radial-color-1");
+  const color = await page
+    .getByTestId("radial-color-1")
+    .getAttribute("aria-label");
+  const away = Math.hypot(swatch.x - ring.x, swatch.y - ring.y);
+
+  await page.touchscreen.tap(
+    swatch.x + ((swatch.x - ring.x) / away) * 20,
+    swatch.y + ((swatch.y - ring.y) / away) * 20,
+  );
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              excalidrawAPI: {
+                getAppState: () => { currentItemStrokeColor: string };
+              };
+            }
+          ).excalidrawAPI.getAppState().currentItemStrokeColor,
+      ),
+    )
+    .toBe(color);
+});
+
+test("every colour a finger can pick is at least 44px each way", async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, "a touch target");
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  const swatches = page.locator(
+    '[data-testid^="radial-color-"]:not([aria-disabled="true"])',
+  );
+  await expect(swatches.first()).toBeVisible();
+
+  const sizes = await swatches.evaluateAll((elements) =>
+    elements.map((element) => {
+      const { width, height } = element.getBoundingClientRect();
+      return Math.min(width, height);
+    }),
+  );
+
+  expect(Math.min(...sizes)).toBeGreaterThanOrEqual(44);
+});
+
 test("a finger held on a selected shape and lifted leaves only the ring", async ({
   page,
   browserName,
