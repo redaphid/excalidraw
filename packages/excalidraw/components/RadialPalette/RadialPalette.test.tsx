@@ -57,30 +57,48 @@ const tap = (testId: string) => {
 /** the ring's size against its own, from its box */
 const ringScale = () => parseFloat(ring()!.style.width) / (RING_RADIUS * 2);
 
-/** drags the ring's corner handle to where the ring would be `scale` big */
-const dragScaleHandle = (scale: number) => {
-  const box = ring()!.style;
-  const center = {
-    x: parseFloat(box.left) + parseFloat(box.width) / 2,
-    y: parseFloat(box.top) + parseFloat(box.height) / 2,
+const ringBox = () => {
+  const { left, top, width } = ring()!.style;
+  return {
+    left: parseFloat(left),
+    top: parseFloat(top),
+    size: parseFloat(width),
   };
-  const corner = parseFloat(box.width) / 2;
-  const to = RING_RADIUS * scale;
+};
+
+/** the corner handle's centre: it sits 22px inside the ring's box corner */
+const scaleHandleCenter = () => {
+  const { left, top, size } = ringBox();
+  const handle = byTestId("radial-palette-scale")!;
+  const onLeft = handle.classList.contains("RadialPalette__scale--left");
+  const onTop = handle.classList.contains("RadialPalette__scale--top");
+  return {
+    x: onLeft ? left + 22 : left + size - 22,
+    y: onTop ? top + 22 : top + size - 22,
+    anchor: { x: onLeft ? left + size : left, y: onTop ? top + size : top },
+  };
+};
+
+/** presses the corner handle at its centre and moves it as far as the
+ * ring's corner moves when it is `scale` big, its opposite corner held;
+ * lifts it unless told not to */
+const dragScaleHandle = (scale: number, { lift = true } = {}) => {
+  const from = scaleHandleCenter();
+  const way = {
+    x: Math.sign(from.x - from.anchor.x),
+    y: Math.sign(from.y - from.anchor.y),
+  };
+  const by = RING_RADIUS * 2 * (scale - ringScale());
+  const to = { clientX: from.x + way.x * by, clientY: from.y + way.y * by };
   fireEvent.pointerDown(byTestId("radial-palette-scale")!, {
     pointerId: 7,
-    clientX: center.x + corner,
-    clientY: center.y + corner,
+    clientX: from.x,
+    clientY: from.y,
   });
-  fireEvent.pointerMove(window, {
-    pointerId: 7,
-    clientX: center.x + to,
-    clientY: center.y + to,
-  });
-  fireEvent.pointerUp(window, {
-    pointerId: 7,
-    clientX: center.x + to,
-    clientY: center.y + to,
-  });
+  fireEvent.pointerMove(window, { pointerId: 7, ...to });
+  if (lift) {
+    fireEvent.pointerUp(window, { pointerId: 7, ...to });
+  }
 };
 
 const drawStroke = () => {
@@ -273,6 +291,119 @@ describe("RadialPalette", () => {
 
         it("folds the ring back into the puck", () => {
           expect(ring()).toBeNull();
+        });
+      });
+
+      describe("when it is opened in the middle and its corner dragged outward", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          Keyboard.keyPress(KEYS.ESCAPE);
+          act(() => h.app.radialPalette.api.open({ at: { x: 400, y: 300 } }));
+          dragScaleHandle(1.3);
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("holds the opposite corner where it was, as a frame does", () => {
+          const { left, top } = ringBox();
+          expect({ left: Math.round(left), top: Math.round(top) }).toEqual({
+            left: 242,
+            top: 142,
+          });
+        });
+      });
+
+      describe("when it is opened against the lower right", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          Keyboard.keyPress(KEYS.ESCAPE);
+          act(() => h.app.radialPalette.api.open({ at: { x: 900, y: 700 } }));
+        });
+
+        it("puts its corner on the top left, where there is room", () => {
+          const { classList } = byTestId("radial-palette-scale")!;
+          expect([
+            classList.contains("RadialPalette__scale--left"),
+            classList.contains("RadialPalette__scale--top"),
+          ]).toEqual([true, true]);
+        });
+      });
+
+      describe("when its corner is pressed and moved by a pixel", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          const from = scaleHandleCenter();
+          fireEvent.pointerDown(byTestId("radial-palette-scale")!, {
+            pointerId: 7,
+            clientX: from.x,
+            clientY: from.y,
+          });
+          fireEvent.pointerMove(window, {
+            pointerId: 7,
+            clientX: from.x + 1,
+            clientY: from.y,
+          });
+        });
+
+        afterEach(() => {
+          fireEvent.pointerUp(window, { pointerId: 7 });
+          localStorage.clear();
+        });
+
+        it("keeps the ring its size, as a grab is no resize", () => {
+          expect(ringScale()).toBeCloseTo(1, 2);
+        });
+      });
+
+      describe("when its corner is held in far enough to fold it", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(0.2, { lift: false });
+        });
+
+        afterEach(() => {
+          fireEvent.pointerUp(window, { pointerId: 7 });
+          localStorage.clear();
+        });
+
+        it("shows it will fold before it is let go", () => {
+          expect(ring()!.classList).toContain("RadialPalette--folding");
+        });
+      });
+
+      describe("when Escape closes it while its corner is held", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(1.3, { lift: false });
+          Keyboard.keyPress(KEYS.ESCAPE);
+          fireEvent.pointerUp(window, { pointerId: 7 });
+          openRing();
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("keeps the size it had, not the one held", () => {
+          expect(ringScale()).toBeCloseTo(1);
+        });
+      });
+
+      describe("when its corner is focused and + is pressed", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          byTestId("radial-palette-scale")!.focus();
+          fireEvent.keyDown(byTestId("radial-palette-scale")!, { key: "+" });
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("draws the ring a step bigger", () => {
+          expect(ringScale()).toBeCloseTo(1.1);
         });
       });
 

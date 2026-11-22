@@ -407,23 +407,38 @@ test("its corner scales the ring as a frame's does, and the size stays", async (
   page,
 }, testInfo) => {
   const ring = page.getByTestId("radial-palette");
+  const handle = page.getByTestId("radial-palette-scale");
   // its layout width: the box also has the opening animation's scale in it
   const width = () =>
     ring.evaluate((element) => (element as HTMLElement).offsetWidth);
+  const middleOf = async (target: typeof ring) => {
+    const box = (await target.boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
 
   await tap(page, testInfo, "radial-palette-puck");
   await expect(ring).toBeVisible();
+  await ring.evaluate((element) =>
+    Promise.all(
+      element.getAnimations({ subtree: true }).map(({ finished }) => finished),
+    ),
+  );
   const before = await width();
-  const corner = (await page
-    .getByTestId("radial-palette-scale")
-    .boundingBox())!;
-  const from = {
-    x: corner.x + corner.width / 2,
-    y: corner.y + corner.height / 2,
+  const from = await middleOf(handle);
+  const center = await middleOf(ring);
+  const out = {
+    x: Math.sign(from.x - center.x),
+    y: Math.sign(from.y - center.y),
   };
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(from.x + 30, from.y + 30, { steps: 6 });
+  await page.mouse.move(from.x + out.x, from.y);
+  expect(Math.abs((await width()) - before)).toBeLessThan(2);
+
+  const to = { x: from.x + out.x * 30, y: from.y + out.y * 30 };
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  const held = await middleOf(handle);
+  expect(Math.hypot(held.x - to.x, held.y - to.y)).toBeLessThan(2);
   await page.mouse.up();
   await page.screenshot({ path: testInfo.outputPath("ring-scaled.png") });
   const scaled = await width();

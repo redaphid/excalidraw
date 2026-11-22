@@ -1,11 +1,11 @@
 import {
   MAX_RING_SCALE,
   RING_SCALE_STORAGE_KEY,
+  clampRingScale,
   loadRingScale,
-  ringScaleAt,
   saveRingScale,
 } from "./ringScale";
-import { MIN_RING_SCALE, RING_RADIUS } from "./radialLayout";
+import { MIN_RING_SCALE } from "./radialLayout";
 
 describe("ringScale", () => {
   beforeEach(() => {
@@ -38,17 +38,17 @@ describe("ringScale", () => {
     });
   });
 
-  describe("ringScaleAt", () => {
-    it("reads the corner's distance from the centre as a size", () => {
-      expect(ringScaleAt(RING_RADIUS * Math.SQRT2 * 1.25)).toBeCloseTo(1.25);
+  describe("clampRingScale", () => {
+    it("keeps a size between the smallest and the largest", () => {
+      expect(clampRingScale(1.25)).toBe(1.25);
     });
 
     it("stops at the largest size", () => {
-      expect(ringScaleAt(RING_RADIUS * 10)).toBe(MAX_RING_SCALE);
+      expect(clampRingScale(10)).toBe(MAX_RING_SCALE);
     });
 
     it("stops at the smallest size", () => {
-      expect(ringScaleAt(RING_RADIUS * 0.5)).toBe(MIN_RING_SCALE);
+      expect(clampRingScale(0.1)).toBe(MIN_RING_SCALE);
     });
   });
 });
