@@ -144,8 +144,9 @@ describe("RadialPalette", () => {
       });
 
       it("writes every pen's name above its sample stroke, at any angle", () => {
-        // an 8px label's half height and a sample stroke's half height
-        const clearance = 12;
+        // an 8px label's half height, and the widest sample's: its curve and
+        // half its 12px stroke, and a few pixels between them
+        const clearance = 18;
         const crowded = h.app.radialPalette
           .getPresets()
           .map(({ id }) => {

@@ -922,8 +922,8 @@ const Ring = ({
             );
             // stacked, not along the radius: side by side, the two would
             // overlap on the ring's left and right
-            const sample = { x: icon.x, y: icon.y + 8 };
-            const label = { x: icon.x, y: icon.y - 8 };
+            const sample = { x: icon.x, y: icon.y + 7 };
+            const label = { x: icon.x, y: icon.y - 12 };
             if (preset && "onPick" in preset) {
               return button(
                 `host-${preset.id}`,
