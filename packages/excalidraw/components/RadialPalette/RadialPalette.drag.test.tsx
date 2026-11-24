@@ -49,7 +49,7 @@ describe("dragging the radial palette", () => {
   beforeEach(async () => {
     localStorage.clear();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    await render(<Excalidraw radialPalette />);
+    await render(<Excalidraw />);
     API.setAppState({ width: 1000, height: 800, offsetLeft: 0, offsetTop: 0 });
   });
 

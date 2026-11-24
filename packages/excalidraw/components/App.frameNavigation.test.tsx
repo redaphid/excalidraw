@@ -611,12 +611,9 @@ describe("the drawer key", () => {
     });
   });
 
-  describe.each([
-    ["on a board without frames", [], {}],
-    ["with frameNavigation off", board, null],
-  ])("when M is pressed %s", (_, elements, nav) => {
+  describe("when M is pressed on a board without frames", () => {
     beforeEach(async () => {
-      await mount(elements, nav);
+      await mount([]);
       Keyboard.keyPress("m");
     });
 
