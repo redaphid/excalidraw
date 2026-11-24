@@ -224,7 +224,11 @@ describe("RadialPalette", () => {
       describe("when one is dragged out of its slot", () => {
         beforeEach(() => {
           const slot = byTestId("radial-palette-slot-portal")!;
-          fireEvent.pointerDown(slot, { pointerId: 7, clientX: 50, clientY: 50 });
+          fireEvent.pointerDown(slot, {
+            pointerId: 7,
+            clientX: 50,
+            clientY: 50,
+          });
           fireEvent.pointerMove(slot, {
             pointerId: 7,
             clientX: 50 + FLICK_DISTANCE * 4,
@@ -255,8 +259,16 @@ describe("RadialPalette", () => {
       describe("when a press on one barely moves", () => {
         beforeEach(() => {
           const slot = byTestId("radial-palette-slot-portal")!;
-          fireEvent.pointerDown(slot, { pointerId: 7, clientX: 50, clientY: 50 });
-          fireEvent.pointerMove(slot, { pointerId: 7, clientX: 53, clientY: 52 });
+          fireEvent.pointerDown(slot, {
+            pointerId: 7,
+            clientX: 50,
+            clientY: 50,
+          });
+          fireEvent.pointerMove(slot, {
+            pointerId: 7,
+            clientX: 53,
+            clientY: 52,
+          });
           fireEvent.pointerUp(slot, { pointerId: 7, clientX: 53, clientY: 52 });
           fireEvent.click(slot);
         });
