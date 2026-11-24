@@ -15,9 +15,7 @@ export const actionToggleFramesMenu = register({
     app.frameNavigation.toggleDrawer();
     return false;
   },
-  predicate: (elements, appState, props) => !!props.frameNavigation,
-  keyTest: (event, appState, elements, app) =>
-    !!app.props.frameNavigation &&
+  keyTest: (event) =>
     event.key === DRAWER_KEY &&
     !event.ctrlKey &&
     !event.metaKey &&

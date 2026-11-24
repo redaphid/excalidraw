@@ -692,7 +692,6 @@ describe("binding hit tests", () => {
   type SceneElement = Ordered<NonDeletedExcalidrawElement>;
   const zoom = (value: number) => ({
     zoom: { value } as Zoom,
-    authoringUnits: "scene" as const,
   });
 
   const hitTest = (

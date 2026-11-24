@@ -172,8 +172,7 @@ export class RadialPaletteController {
 
   /** the host's own pens, from `radialPalette={{ pens }}` */
   hostPens(): readonly RadialHostPen[] {
-    const { radialPalette } = this.app.props;
-    return typeof radialPalette === "object" ? radialPalette.pens ?? [] : [];
+    return this.app.props.radialPalette?.pens ?? [];
   }
 
   getPresets(): readonly PenPreset[] {

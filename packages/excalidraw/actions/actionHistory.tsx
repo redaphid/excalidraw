@@ -1,9 +1,4 @@
-import {
-  KEYS,
-  matchKey,
-  arrayToMap,
-  MOBILE_ACTION_BUTTON_BG,
-} from "@excalidraw/common";
+import { KEYS, matchKey, arrayToMap } from "@excalidraw/common";
 
 import { CaptureUpdateAction } from "@excalidraw/element";
 
@@ -11,13 +6,7 @@ import { orderByFractionalIndex } from "@excalidraw/element";
 
 import type { SceneElementsMap } from "@excalidraw/element/types";
 
-import { IconButton } from "../components/IconButton";
 import { UndoIcon, RedoIcon } from "../components/icons";
-import { HistoryChangedEvent } from "../history";
-import { useEmitter } from "../hooks/useEmitter";
-import { t } from "../i18n";
-
-import { useStylesPanelMode } from "../components/App";
 
 import type { History } from "../history";
 import type { AppClassProperties, AppState } from "../types";
@@ -78,31 +67,6 @@ export const createUndoAction: ActionCreator = (history) => ({
     ),
   keyTest: (event) =>
     event[KEYS.CTRL_OR_CMD] && matchKey(event, KEYS.Z) && !event.shiftKey,
-  PanelComponent: ({ appState, updateData, data, app }) => {
-    const { isUndoStackEmpty } = useEmitter<HistoryChangedEvent>(
-      history.onHistoryChangedEmitter,
-      new HistoryChangedEvent(
-        history.isUndoStackEmpty,
-        history.isRedoStackEmpty,
-      ),
-    );
-    const isMobile = useStylesPanelMode() === "mobile";
-
-    return (
-      <IconButton
-        type="button"
-        icon={UndoIcon}
-        aria-label={t("buttons.undo")}
-        onClick={updateData}
-        size={data?.size || "medium"}
-        disabled={isUndoStackEmpty}
-        data-testid="button-undo"
-        style={{
-          ...(isMobile ? MOBILE_ACTION_BUTTON_BG : {}),
-        }}
-      />
-    );
-  },
 });
 
 export const createRedoAction: ActionCreator = (history) => ({
@@ -118,29 +82,4 @@ export const createRedoAction: ActionCreator = (history) => ({
   keyTest: (event) =>
     (event[KEYS.CTRL_OR_CMD] && event.shiftKey && matchKey(event, KEYS.Z)) ||
     (event[KEYS.CTRL_OR_CMD] && !event.shiftKey && matchKey(event, KEYS.Y)),
-  PanelComponent: ({ appState, updateData, data, app }) => {
-    const { isRedoStackEmpty } = useEmitter(
-      history.onHistoryChangedEmitter,
-      new HistoryChangedEvent(
-        history.isUndoStackEmpty,
-        history.isRedoStackEmpty,
-      ),
-    );
-    const isMobile = useStylesPanelMode() === "mobile";
-
-    return (
-      <IconButton
-        type="button"
-        icon={RedoIcon}
-        aria-label={t("buttons.redo")}
-        onClick={updateData}
-        size={data?.size || "medium"}
-        disabled={isRedoStackEmpty}
-        data-testid="button-redo"
-        style={{
-          ...(isMobile ? MOBILE_ACTION_BUTTON_BG : {}),
-        }}
-      />
-    );
-  },
 });

@@ -76,18 +76,9 @@ describe("radialLayout", () => {
   });
 
   describe("when a pointer lands on the size arc", () => {
-    describe("with the size arc shown", () => {
-      it("hits the size slider", () => {
-        const { x, y } = polar(middleOf(OUTER_BAND), 135);
-        expect(hitTest(layout, x, y)).toMatchObject({ kind: "size" });
-      });
-    });
-
-    describe("with the size arc hidden", () => {
-      it("hits nothing", () => {
-        const { x, y } = polar(middleOf(OUTER_BAND), 135);
-        expect(hitTest(layout, x, y, { size: false })).toBeNull();
-      });
+    it("hits the size slider", () => {
+      const { x, y } = polar(middleOf(OUTER_BAND), 135);
+      expect(hitTest(layout, x, y)).toMatchObject({ kind: "size" });
     });
   });
 

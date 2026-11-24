@@ -16,7 +16,7 @@ import { t } from "../i18n";
 
 import "../components/dropdownMenu/DropdownMenu.scss";
 
-import { useAppProps, useExcalidrawSetAppState } from "./App";
+import { useExcalidrawSetAppState } from "./App";
 import { FramesMenu } from "./FramesMenu";
 import { LibraryMenu } from "./LibraryMenu";
 import { SearchMenu } from "./SearchMenu";
@@ -74,7 +74,6 @@ export const DefaultSidebar = Object.assign(
     >) => {
       const appState = useUIAppState();
       const setAppState = useExcalidrawSetAppState();
-      const { frameNavigation } = useAppProps();
 
       const { DefaultSidebarTabTriggersTunnel } = useTunnels();
 
@@ -109,14 +108,12 @@ export const DefaultSidebar = Object.assign(
                 <Sidebar.TabTrigger tab={LIBRARY_SIDEBAR_TAB}>
                   {LibraryIcon}
                 </Sidebar.TabTrigger>
-                {frameNavigation && (
-                  <Sidebar.TabTrigger
-                    tab={FRAMES_SIDEBAR_TAB}
-                    title={t("frameNavigation.title")}
-                  >
-                    {frameToolIcon}
-                  </Sidebar.TabTrigger>
-                )}
+                <Sidebar.TabTrigger
+                  tab={FRAMES_SIDEBAR_TAB}
+                  title={t("frameNavigation.title")}
+                >
+                  {frameToolIcon}
+                </Sidebar.TabTrigger>
                 <DefaultSidebarTabTriggersTunnel.Out />
               </Sidebar.TabTriggers>
             </Sidebar.Header>
@@ -126,11 +123,9 @@ export const DefaultSidebar = Object.assign(
             <Sidebar.Tab tab={CANVAS_SEARCH_TAB}>
               <SearchMenu />
             </Sidebar.Tab>
-            {frameNavigation && (
-              <Sidebar.Tab tab={FRAMES_SIDEBAR_TAB}>
-                <FramesMenu />
-              </Sidebar.Tab>
-            )}
+            <Sidebar.Tab tab={FRAMES_SIDEBAR_TAB}>
+              <FramesMenu />
+            </Sidebar.Tab>
             {children}
           </Sidebar.Tabs>
         </Sidebar>

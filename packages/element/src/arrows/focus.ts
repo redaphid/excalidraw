@@ -42,7 +42,6 @@ export const isFocusPointVisible = (
   appState: {
     isBindingEnabled: AppState["isBindingEnabled"];
     zoom: AppState["zoom"];
-    authoringUnits: AppState["authoringUnits"];
   },
   startOrEnd: "start" | "end",
   ignoreOverlap = false,

@@ -805,7 +805,7 @@ describe("contextMenu element with the radial palette", () => {
   beforeEach(async () => {
     localStorage.clear();
     reseed(7);
-    await render(<Excalidraw handleKeyboardGlobally={true} radialPalette />);
+    await render(<Excalidraw handleKeyboardGlobally={true} />);
     const rectangle = API.createElement({
       type: "rectangle",
       x: 10,

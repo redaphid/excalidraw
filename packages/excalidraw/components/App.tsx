@@ -379,7 +379,7 @@ import {
   getElementRenderOffsets,
 } from "../renderOverrides";
 import { History } from "../history";
-import { defaultLang, getLanguage, languages, setLanguage, t } from "../i18n";
+import { t } from "../i18n";
 
 import {
   getScrollToContentState,
@@ -675,7 +675,7 @@ class App extends React.Component<AppProps, AppState> {
     this.cssTheme.canvas.mode ?? this.state.theme;
 
   public backgroundCanvas = (): HTMLCanvasElement | null =>
-    this.props.separateCanvasBackground ? this.separateBackgroundCanvas : null;
+    this.separateBackgroundCanvas;
 
   private scopedCss: { css: string; scoped: string } | null = null;
 
@@ -962,7 +962,6 @@ class App extends React.Component<AppProps, AppState> {
       zenModeEnabled,
       objectsSnapModeEnabled,
       gridModeEnabled: gridModeEnabled ?? defaultAppState.gridModeEnabled,
-      authoringUnits: props.authoringUnits ?? defaultAppState.authoringUnits,
       name,
       width: this.ownerWindow.innerWidth,
       height: this.ownerWindow.innerHeight,
@@ -2518,7 +2517,7 @@ class App extends React.Component<AppProps, AppState> {
 
   public render() {
     const selectedElements = this.scene.getSelectedElements(this.state);
-    const { renderTopRightUI, renderTopLeftUI, renderCustomStats } = this.props;
+    const { renderTopRightUI, renderCustomStats } = this.props;
 
     const {
       elementsMap: renderableElementsMap,
@@ -2674,8 +2673,6 @@ class App extends React.Component<AppProps, AppState> {
                             actionManager={this.actionManager}
                             elements={this.scene.getNonDeletedElements()}
                             onLockToggle={this.toggleLock}
-                            langCode={getLanguage().code}
-                            renderTopLeftUI={renderTopLeftUI}
                             renderTopRightUI={renderTopRightUI}
                             renderCustomStats={renderCustomStats}
                             showExitZenModeBtn={
@@ -2735,7 +2732,6 @@ class App extends React.Component<AppProps, AppState> {
                               />
                             )}
                           {this.isDefaultUIEnabled() &&
-                            this.props.aiEnabled !== false &&
                             selectedElements.length === 1 &&
                             isMagicFrameElement(firstSelectedElement) && (
                               <ElementCanvasButtons
@@ -4533,15 +4529,6 @@ class App extends React.Component<AppProps, AppState> {
     );
   }
 
-  // the prop is the source of truth, whatever restores or resets the state
-  static getDerivedStateFromProps(
-    props: AppProps,
-    state: AppState,
-  ): Partial<AppState> | null {
-    const authoringUnits = props.authoringUnits ?? "scene";
-    return state.authoringUnits === authoringUnits ? null : { authoringUnits };
-  }
-
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
     if (prevState.activeTool.type !== this.state.activeTool.type) {
       this.radialPalette.toolChanged();
@@ -4663,10 +4650,6 @@ class App extends React.Component<AppProps, AppState> {
     ) {
       this.setState({ showHyperlinkPopup: false });
     }
-    if (prevProps.langCode !== this.props.langCode) {
-      this.updateLanguage();
-    }
-
     if (isEraserActive(prevState) && !isEraserActive(this.state)) {
       this.eraserTrail.endPath();
     }
@@ -9987,11 +9970,8 @@ ${css}
   public getCurrentItemScale(
     elementType: ExcalidrawElement["type"],
   ): Pick<ExcalidrawElement, "strokeWidth" | "authoringScale"> {
-    const { freedrawStrokeWidth } = this.props;
     const width =
-      elementType === "freedraw" && freedrawStrokeWidth !== undefined
-        ? freedrawStrokeWidth
-        : elementType === "freedraw"
+      elementType === "freedraw"
         ? this.state.currentItemFreedrawStrokeWidth
         : getStrokeWidthByKey(
             elementType,
@@ -13629,14 +13609,6 @@ ${css}
   }
 
   watchState = () => {};
-
-  private async updateLanguage() {
-    const currentLang =
-      languages.find((lang) => lang.code === this.props.langCode) ||
-      defaultLang;
-    await setLanguage(currentLang);
-    this.setAppState({});
-  }
 }
 
 // -----------------------------------------------------------------------------

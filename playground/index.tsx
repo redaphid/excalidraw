@@ -99,7 +99,6 @@ const Playground = () => {
       onButtonClick={(elementId) => console.info("button clicked", elementId)}
       css={theme?.css}
       theme={theme?.mode}
-      separateCanvasBackground={params.get("separateCanvasBackground") === "1"}
       renderTopRightUI={
         showSwitcher
           ? () => (
@@ -113,8 +112,6 @@ const Playground = () => {
             )
           : undefined
       }
-      authoringUnits="screen"
-      radialPalette={params.get("radialPalette") !== "0"}
       midi={params.get("midi") !== "0"}
       initialData={initialData}
       frameNavigation={frameNavigation}

@@ -4,9 +4,7 @@ import { CaptureUpdateAction } from "@excalidraw/element";
 
 import type { ExcalidrawImageElement } from "@excalidraw/element/types";
 
-import { IconButton } from "../components/IconButton";
 import { cropIcon } from "../components/icons";
-import { t } from "../i18n";
 
 import { register } from "./register";
 
@@ -42,18 +40,5 @@ export const actionToggleCropEditor = register({
       return true;
     }
     return false;
-  },
-  PanelComponent: ({ appState, updateData, app }) => {
-    const label = t("helpDialog.cropStart");
-
-    return (
-      <IconButton
-        type="button"
-        icon={cropIcon}
-        title={label}
-        aria-label={label}
-        onClick={() => updateData(null)}
-      />
-    );
   },
 });

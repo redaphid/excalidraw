@@ -25,10 +25,17 @@ import type { Drawable } from "roughjs/bin/core";
 
 const { h } = window;
 
-/** the color the static canvas last painted its background with */
+/** the canvas the background, grid and backdrop are painted on, under the
+ * static canvas */
+const backgroundCanvas = () =>
+  GlobalTestState.renderResult.container.querySelector<HTMLCanvasElement>(
+    "canvas.excalidraw__canvas.background",
+  )!;
+
+/** the color the background canvas last painted its background with */
 const paintedBackground = () => {
   const events: { type: string; props: { value?: string } }[] = (
-    GlobalTestState.canvas.getContext("2d") as any
+    backgroundCanvas().getContext("2d") as any
   ).__getEvents();
   const fill = events.map(({ type }) => type).lastIndexOf("fillRect");
   return events
@@ -817,12 +824,12 @@ describe("css prop", () => {
 
 describe("the grid", () => {
   const events = () =>
-    (GlobalTestState.canvas.getContext("2d") as any).__getEvents() as {
+    (backgroundCanvas().getContext("2d") as any).__getEvents() as {
       type: string;
     }[];
 
   const linesPainted = async () => {
-    (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+    (backgroundCanvas().getContext("2d") as any).__clearEvents();
     API.setAppState({ scrollX: h.state.scrollX + 7 });
     await waitFor(() =>
       expect(events().some(({ type }) => type === "fillRect")).toBe(true),
@@ -868,13 +875,13 @@ describe("the backdrop", () => {
 }`;
 
   const events = () =>
-    (GlobalTestState.canvas.getContext("2d") as any).__getEvents() as {
+    (backgroundCanvas().getContext("2d") as any).__getEvents() as {
       type: string;
       props: Record<string, unknown>;
     }[];
 
   const paint = async () => {
-    (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+    (backgroundCanvas().getContext("2d") as any).__clearEvents();
     API.setAppState({ scrollX: h.state.scrollX + 7 });
     await waitFor(() =>
       expect(events().some(({ type }) => type === "fillRect")).toBe(true),

@@ -770,7 +770,6 @@ describe("ui={false} with host UI", () => {
     const { container } = await render(
       <Excalidraw
         ui={false}
-        renderTopLeftUI={() => <div data-testid="host-top-left" />}
         renderTopRightUI={() => <div data-testid="host-top-right" />}
       >
         <MainMenu>
@@ -784,7 +783,6 @@ describe("ui={false} with host UI", () => {
       </Excalidraw>,
     );
 
-    expect(queryContainer("[data-testid='host-top-left']")).not.toBe(null);
     expect(queryContainer("[data-testid='host-top-right']")).not.toBe(null);
     expect(queryContainer("[data-testid='host-footer']")).not.toBe(null);
     expect(queryContainer("[aria-label='host sidebar']")).not.toBe(null);

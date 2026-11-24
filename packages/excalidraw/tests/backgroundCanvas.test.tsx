@@ -50,8 +50,8 @@ const repaint = async () => {
   return { shown: count(GlobalTestState.canvas), under: count(canvases[1]) };
 };
 
-describe("separateCanvasBackground", () => {
-  describe("when set, under a theme with a backdrop", () => {
+describe("the background canvas", () => {
+  describe("under a theme with a backdrop", () => {
     const BACKDROP_THEME = `:scope {
   --canvas-backdrop: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%2F%3E") 100;
 }`;
@@ -70,9 +70,7 @@ describe("separateCanvasBackground", () => {
         "naturalWidth",
         "get",
       ).mockReturnValue(100);
-      await render(
-        <Excalidraw separateCanvasBackground css={BACKDROP_THEME} />,
-      );
+      await render(<Excalidraw css={BACKDROP_THEME} />);
       API.setAppState({ width: 800, height: 600 });
       await repaint();
       painted = {
@@ -94,11 +92,11 @@ describe("separateCanvasBackground", () => {
     });
   });
 
-  describe("when set, under a theme with a grid", () => {
+  describe("under a theme with a grid", () => {
     let painted: { shown: Painted; under: Painted };
 
     beforeEach(async () => {
-      await render(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
+      await render(<Excalidraw css={GRID_THEME} />);
       API.setAppState({ width: 800, height: 600 });
       painted = await repaint();
     });
@@ -137,9 +135,9 @@ describe("separateCanvasBackground", () => {
     });
   });
 
-  describe("when set, and the editor is resized", () => {
+  describe("and the editor is resized", () => {
     beforeEach(async () => {
-      await render(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
+      await render(<Excalidraw css={GRID_THEME} />);
       API.setAppState({ width: 640, height: 480 });
     });
 
@@ -152,14 +150,14 @@ describe("separateCanvasBackground", () => {
     });
   });
 
-  describe("when set, and the device pixel ratio changes", () => {
+  describe("and the device pixel ratio changes", () => {
     const pixelRatio = Object.getOwnPropertyDescriptor(
       window,
       "devicePixelRatio",
     )!;
 
     beforeEach(async () => {
-      await render(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
+      await render(<Excalidraw css={GRID_THEME} />);
       Object.defineProperty(window, "devicePixelRatio", {
         configurable: true,
         value: 3,
@@ -178,45 +176,9 @@ describe("separateCanvasBackground", () => {
     });
   });
 
-  describe("when turned off and on again", () => {
-    let off: { shown: Painted; under: Painted; mounted: boolean };
-    let on: { shown: Painted; under: Painted; mounted: boolean };
-
-    beforeEach(async () => {
-      const { rerender } = await render(
-        <Excalidraw separateCanvasBackground css={GRID_THEME} />,
-      );
-      API.setAppState({ width: 800, height: 600 });
-      rerender(<Excalidraw css={GRID_THEME} />);
-      off = { ...(await repaint()), mounted: !!backgroundCanvas() };
-      rerender(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
-      on = { ...(await repaint()), mounted: !!backgroundCanvas() };
-    });
-
-    it("removes the background canvas when off", () => {
-      expect(off.mounted).toBe(false);
-    });
-
-    it("fills the static canvas when off", () => {
-      expect(off.shown.fills).toBeGreaterThan(0);
-    });
-
-    it("mounts the background canvas again when on", () => {
-      expect(on.mounted).toBe(true);
-    });
-
-    it("leaves the static canvas unfilled when on again", () => {
-      expect(on.shown.fills).toBe(0);
-    });
-
-    it("fills the background canvas when on again", () => {
-      expect(on.under.fills).toBeGreaterThan(0);
-    });
-  });
-
-  describe("when set, in grid mode", () => {
+  describe("in grid mode", () => {
     it("snaps new shapes to the grid", async () => {
-      await render(<Excalidraw separateCanvasBackground css={GRID_THEME} />);
+      await render(<Excalidraw css={GRID_THEME} />);
       API.setAppState({ gridModeEnabled: true });
 
       const rectangle = UI.createElement("rectangle", {
@@ -227,28 +189,6 @@ describe("separateCanvasBackground", () => {
       });
 
       expect([rectangle.x, rectangle.y]).toEqual([20, 20]);
-    });
-  });
-
-  describe("when not set", () => {
-    let painted: { shown: Painted; under: Painted };
-
-    beforeEach(async () => {
-      await render(<Excalidraw css={GRID_THEME} />);
-      API.setAppState({ width: 800, height: 600 });
-      painted = await repaint();
-    });
-
-    it("adds no background canvas", () => {
-      expect(backgroundCanvas()).toBeNull();
-    });
-
-    it("fills the static canvas", () => {
-      expect(painted.shown.fills).toBeGreaterThan(0);
-    });
-
-    it("draws the grid on the static canvas", () => {
-      expect(painted.shown.lines).toBeGreaterThan(0);
     });
   });
 });

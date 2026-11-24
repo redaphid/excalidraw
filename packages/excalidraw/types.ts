@@ -65,7 +65,6 @@ import type { ImportedDataState } from "./data/types";
 import type { SetViewportOptions } from "./viewport";
 import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
 
-import type { Language } from "./i18n";
 import type { isOverScrollBars } from "./scene/scrollbars";
 import type React from "react";
 import type { JSX } from "react";
@@ -250,7 +249,6 @@ export type InteractiveCanvasAppState = Readonly<
     newElement: AppState["newElement"];
     isBindingEnabled: AppState["isBindingEnabled"];
     isMidpointSnappingEnabled: AppState["isMidpointSnappingEnabled"];
-    authoringUnits: AppState["authoringUnits"];
     gridModeEnabled: AppState["gridModeEnabled"];
     suggestedBinding: AppState["suggestedBinding"];
     textToolHover: AppState["textToolHover"];
@@ -479,10 +477,8 @@ export interface AppState {
   currentItemBackgroundColor: string;
   currentItemFillStyle: ExcalidrawElement["fillStyle"];
   currentItemStrokeWidthKey: StrokeWidthKey;
-  /** in `authoringUnits` */
+  /** in screen pixels; see `getAuthoringScale` */
   currentItemFreedrawStrokeWidth: number;
-  /** mirrors the `authoringUnits` prop; see `getAuthoringScale` */
-  authoringUnits: AuthoringUnits;
   currentItemStrokeStyle: ExcalidrawElement["strokeStyle"];
   currentItemRoughness: number;
   currentItemStrokeVariability: StrokeVariability;
@@ -494,7 +490,7 @@ export interface AppState {
   currentItemPenOptions: PenOptions | null;
   currentItemOpacity: number;
   currentItemFontFamily: FontFamilyValues;
-  /** in `authoringUnits` */
+  /** in screen pixels */
   currentItemFontSize: number;
   currentItemTextAlign: TextAlign;
   currentItemStartArrowhead: Arrowhead | null;
@@ -880,9 +876,6 @@ export type ElementRenderOffsets = ReadonlyMap<
   NonNullable<ElementRenderOverride["offset"]>
 >;
 
-/** See `ExcalidrawProps.authoringUnits`. */
-export type AuthoringUnits = "scene" | "screen";
-
 export interface ExcalidrawProps {
   className?: string;
   /**
@@ -928,15 +921,6 @@ export interface ExcalidrawProps {
   onInitialize?: (api: ExcalidrawImperativeAPI) => void;
   isCollaborating?: boolean;
   /**
-   * What the sizes the user authors are measured in. `"scene"` (the default)
-   * measures named stroke widths, font sizes, default element sizes and tool
-   * tolerances in scene units, so they grow on screen as you zoom in.
-   * `"screen"` measures them in screen pixels and divides them by the zoom
-   * when an element is created or edited, so a new element looks the same on
-   * screen at any zoom. Existing elements keep their scene sizes either way.
-   */
-  authoringUnits?: AuthoringUnits;
-  /**
    * CSS for this editor, scoped to it with `@scope`: `:scope` matches the
    * editor root and each of its portals. Besides restyling the UI, it can
    * set the custom properties listed in docs/theming.md: the canvas colors
@@ -947,28 +931,10 @@ export interface ExcalidrawProps {
    */
   css?: string;
   /**
-   * The freedraw tool's stroke width, in `authoringUnits`, in place of the
-   * named widths, which are hidden while the tool is out.
+   * The host's pens for the radial palette, the editor's only control
+   * surface. The palette always renders.
    */
-  freedrawStrokeWidth?: number;
-  /**
-   * Shows the radial palette: a small puck that opens into a ring of
-   * shapes, pens, colors, pen size and opacity. `,`, a finger held still,
-   * or a pen's barrel button also open it, at the pointer; the long press
-   * replaces the touch context menu, which the palette's hub opens. Off by
-   * default. While closed, only the puck renders.
-   */
-  radialPalette?: boolean | { pens?: readonly RadialHostPen[] };
-  /**
-   * Paints the canvas background and the grid on a canvas of their own,
-   * `canvas.excalidraw__canvas.background`, under the static canvas and in
-   * the same pass. The static canvas then holds only the elements, over
-   * transparency, for a host that copies it over a background of its own.
-   * The screen looks the same either way. The `canvas` that
-   * `UIOptions.canvasActions.export.renderCustomUI` receives is that static
-   * canvas, so it holds only the elements too.
-   */
-  separateCanvasBackground?: boolean;
+  radialPalette?: { pens?: readonly RadialHostPen[] };
   onPointerUpdate?: (payload: {
     pointer: { x: number; y: number; tool: "pointer" | "laser" };
     button: "down" | "up";
@@ -1010,15 +976,10 @@ export interface ExcalidrawProps {
     /** lookups covering just the elements taking part in the duplication */
     data: OnDuplicateData,
   ) => ExcalidrawElement[] | void | false;
-  renderTopLeftUI?: (
-    isMobile: boolean,
-    appState: UIAppState,
-  ) => JSX.Element | null;
   renderTopRightUI?: (
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
-  langCode?: Language["code"];
   viewModeEnabled?: boolean;
   /**
    * Whether the editor accepts user input (pointer, keyboard, wheel, touch,
@@ -1145,16 +1106,15 @@ export interface ExcalidrawProps {
     element: NonDeleted<ExcalidrawEmbeddableElement>,
     appState: AppState,
   ) => JSX.Element | null;
-  aiEnabled?: boolean;
   showDeprecatedFonts?: boolean;
   renderScrollbars?: boolean;
   viewportStatusFrame?: ViewportStatusFrame | null;
   /**
-   * Turns on frame navigation: a Frames tab in the default sidebar (also
-   * `M`, or `toggleSidebar({ name: "default", tab: FRAMES_SIDEBAR_TAB })`),
-   * a breadcrumb of the frame the view is in, arrow keys that step between
-   * frames while nothing is selected, and ⌥1–9 for the first nine
-   * bookmarks. Leave it out to turn all of it off.
+   * The host's bookmarks and slides for frame navigation, which is always
+   * on: a Frames tab in the default sidebar (also `M`, or
+   * `toggleSidebar({ name: "default", tab: FRAMES_SIDEBAR_TAB })`), a
+   * breadcrumb of the frame the view is in, arrow keys that step between
+   * frames while nothing is selected, and ⌥1–9 for the first nine bookmarks.
    *
    * The object may be inlined: it is compared by its bookmarks and by the
    * identity of `onBookmarkChange`, like any other callback prop. The keys
@@ -1338,7 +1298,6 @@ export type AppProps = Merge<
     handleKeyboardGlobally: boolean;
     isCollaborating: boolean;
     children?: React.ReactNode;
-    aiEnabled: boolean;
   }
 >;
 

@@ -29,10 +29,6 @@ type MobileMenuProps = {
     isMobile: boolean,
     appState: UIAppState,
   ) => JSX.Element | null;
-  renderTopLeftUI?: (
-    isMobile: boolean,
-    appState: UIAppState,
-  ) => JSX.Element | null;
   renderSidebars: () => JSX.Element | null;
   renderWelcomeScreen: boolean;
   defaultUIEnabled: boolean;
@@ -45,7 +41,6 @@ export const MobileMenu = ({
   elements,
   actionManager,
   setAppState,
-  renderTopLeftUI,
   renderTopRightUI,
   renderSidebars,
   renderWelcomeScreen,
@@ -77,7 +72,6 @@ export const MobileMenu = ({
 
     const topLeftUI = (
       <div className="excalidraw-ui-top-left">
-        {renderTopLeftUI?.(true, appState)}
         <MainMenuTunnel.Out />
       </div>
     );
@@ -116,7 +110,7 @@ export const MobileMenu = ({
       </button>
     ) : null;
 
-  const breadcrumb = app.props.frameNavigation ? <FrameBreadcrumb /> : null;
+  const breadcrumb = <FrameBreadcrumb />;
 
   const floatingStatus = appState.toast ? (
     <Toast

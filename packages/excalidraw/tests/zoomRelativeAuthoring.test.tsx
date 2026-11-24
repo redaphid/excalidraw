@@ -49,8 +49,6 @@ import { act, render } from "./test-utils";
 
 import type { Drawable } from "roughjs/bin/core";
 
-import type { AuthoringUnits } from "../types";
-
 const { h } = window;
 const mouse = new Pointer("mouse");
 
@@ -66,13 +64,7 @@ setCustomTextMetricsProvider({
       : text.length * Math.min(parseFloat(font), 2000) * 0.6,
 });
 
-const renderEditor = (authoringUnits?: AuthoringUnits) =>
-  render(
-    <Excalidraw
-      authoringUnits={authoringUnits}
-      handleKeyboardGlobally={true}
-    />,
-  );
+const renderEditor = () => render(<Excalidraw handleKeyboardGlobally={true} />);
 
 const atZoom = (zoom: number) => {
   API.setElements([]);
@@ -131,9 +123,9 @@ const createText = async (x: number, y: number, text: string) => {
   return latest().find(isTextElement)!;
 };
 
-describe("authoringUnits: screen", () => {
+describe("screen authoring", () => {
   beforeEach(async () => {
-    await renderEditor("screen");
+    await renderEditor();
   });
 
   afterEach(async () => {
@@ -481,9 +473,9 @@ describe("authoringUnits: screen", () => {
   });
 });
 
-describe("authoringUnits: screen, made at the zoom floor", () => {
+describe("screen authoring, made at the zoom floor", () => {
   beforeEach(async () => {
-    await renderEditor("screen");
+    await renderEditor();
   });
 
   afterEach(async () => {
@@ -561,11 +553,11 @@ describe("authoringUnits: screen, made at the zoom floor", () => {
   );
 });
 
-describe("authoringUnits: screen, a long new text", () => {
+describe("screen authoring, a long new text", () => {
   const long = "Thunderwrench HVAC Co. ".repeat(12);
 
   beforeEach(async () => {
-    await renderEditor("screen");
+    await renderEditor();
   });
 
   afterEach(async () => {
@@ -587,9 +579,9 @@ describe("authoringUnits: screen, a long new text", () => {
   });
 });
 
-describe("authoringUnits: screen, the details drawn around new elements", () => {
+describe("screen authoring, the details drawn around new elements", () => {
   beforeEach(async () => {
-    await renderEditor("screen");
+    await renderEditor();
     // without rough.js wobble, so only the details' sizes differ
     API.setAppState({ currentItemRoughness: 0 });
   });
@@ -757,9 +749,9 @@ describe("authoringUnits: screen, the details drawn around new elements", () => 
   });
 });
 
-describe("authoringUnits: screen, what an element made far in keeps", () => {
+describe("screen authoring, what an element made far in keeps", () => {
   beforeEach(async () => {
-    await renderEditor("screen");
+    await renderEditor();
     API.setAppState({
       currentItemStrokeWidthKey: "medium",
       currentItemRoughness: 0,
@@ -903,31 +895,6 @@ describe("authoringUnits: screen, what an element made far in keeps", () => {
         zoom,
         ...atOneX,
       });
-    }
-  });
-});
-
-describe("authoringUnits: scene (default)", () => {
-  beforeEach(async () => {
-    await renderEditor();
-  });
-
-  afterEach(async () => {
-    await act(async () => {});
-  });
-
-  it("keeps new elements' sizes in scene units at any zoom", async () => {
-    for (const zoom of ZOOMS) {
-      atZoom(zoom);
-      expect(
-        UI.createElement("rectangle", { x: 100, y: 100, width: 120 })
-          .strokeWidth,
-      ).toBe(2);
-      expect((await createText(100, 300, "hi")).fontSize).toBe(20);
-      UI.clickTool("stickynote");
-      mouse.clickAt(300, 300);
-      const note = latest().find((element) => element.type === "stickynote")!;
-      expect(note.width).toBe(250);
     }
   });
 });

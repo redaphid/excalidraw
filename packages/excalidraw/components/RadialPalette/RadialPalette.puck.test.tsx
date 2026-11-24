@@ -46,7 +46,7 @@ const has = (modifier: string) =>
   puck().classList.contains(`RadialPalette__puck--${modifier}`);
 
 const renderEditor = async () => {
-  await render(<Excalidraw radialPalette />);
+  await render(<Excalidraw />);
   API.setAppState({ width: 400, height: 800, offsetLeft: 0, offsetTop: 0 });
 };
 

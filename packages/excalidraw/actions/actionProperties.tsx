@@ -1,18 +1,9 @@
 import { pointFrom } from "@excalidraw/math";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-
 import {
-  BUCKET_FILL_BACKGROUND_PICKS,
-  COLOR_PALETTE,
-  DEFAULT_ELEMENT_BACKGROUND_COLOR_PALETTE,
   ARROW_TYPE,
-  DEFAULT_FONT_FAMILY,
-  DEFAULT_FONT_SIZE,
   FONT_FAMILY,
   ROUNDNESS,
-  STROKE_WIDTH_KEYS,
-  VERTICAL_ALIGN,
   KEYS,
   randomInteger,
   arrayToMap,
@@ -22,7 +13,6 @@ import {
   getStrokeWidthByKey,
   reduceToCommonValue,
   invariant,
-  FONT_SIZES,
   type StrokeWidthKey,
 } from "@excalidraw/common";
 
@@ -43,10 +33,8 @@ import {
 import { LinearElementEditor } from "@excalidraw/element";
 
 import { newElementWith } from "@excalidraw/element";
-import { getArrowheadForPicker } from "@excalidraw/element";
 
 import {
-  getBoundTextElement,
   getBaseFontSize,
   getBaseFontSizeUpdate,
   redrawTextBoundingBox,
@@ -78,8 +66,6 @@ import {
   toggleLinePolygonState,
 } from "@excalidraw/element";
 
-import { deriveStylesPanelMode } from "@excalidraw/common";
-
 import type { LocalPoint, Radians } from "@excalidraw/math";
 
 import type {
@@ -87,7 +73,6 @@ import type {
   ElementsMap,
   ExcalidrawBindableElement,
   ExcalidrawElement,
-  ExcalidrawFreeDrawElement,
   ExcalidrawLinearElement,
   ExcalidrawTextElement,
   FontFamilyValues,
@@ -103,77 +88,10 @@ import type { ElementUpdate, Scene } from "@excalidraw/element";
 import type { CaptureUpdateActionType } from "@excalidraw/element";
 
 import { trackEvent } from "../analytics";
-import { RadioSelection } from "../components/RadioSelection";
-import { IconButton } from "../components/IconButton";
-import { ColorPicker } from "../components/ColorPicker/ColorPicker";
-import { FontPicker } from "../components/FontPicker/FontPicker";
-import { IconPicker } from "../components/IconPicker";
-import { Range } from "../components/Range";
-import { PenSizeSlider } from "../components/PenSizeSlider";
-import {
-  ArrowheadArrowIcon,
-  ArrowheadBarIcon,
-  ArrowheadCircleIcon,
-  ArrowheadTriangleIcon,
-  ArrowheadNoneIcon,
-  StrokeStyleDashedIcon,
-  StrokeStyleDottedIcon,
-  TextAlignTopIcon,
-  TextAlignBottomIcon,
-  TextAlignMiddleIcon,
-  FillHachureIcon,
-  FillCrossHatchIcon,
-  FillSolidIcon,
-  SloppinessArchitectIcon,
-  SloppinessArtistIcon,
-  SloppinessCartoonistIcon,
-  StrokeWidthBaseIcon,
-  StrokeWidthBoldIcon,
-  StrokeWidthExtraBoldIcon,
-  FontSizeSmallIcon,
-  FontSizeMediumIcon,
-  FontSizeLargeIcon,
-  FontSizeExtraLargeIcon,
-  EdgeSharpIcon,
-  EdgeRoundIcon,
-  TextAlignLeftIcon,
-  TextAlignCenterIcon,
-  TextAlignRightIcon,
-  FillZigZagIcon,
-  ArrowheadTriangleOutlineIcon,
-  ArrowheadCircleOutlineIcon,
-  ArrowheadDiamondIcon,
-  ArrowheadDiamondOutlineIcon,
-  fontSizeIcon,
-  sharpArrowIcon,
-  roundArrowIcon,
-  elbowArrowIcon,
-  ArrowheadCardinalityExactlyOneIcon,
-  ArrowheadCardinalityManyIcon,
-  ArrowheadCardinalityOneIcon,
-  ArrowheadCardinalityOneOrManyIcon,
-  ArrowheadCardinalityZeroOrManyIcon,
-  ArrowheadCardinalityZeroOrOneIcon,
-  strokeVariabilityConstantIcon,
-  strokeVariabilityVariableIcon,
-} from "../components/icons";
+import { fontSizeIcon } from "../components/icons";
 
 import { Fonts } from "../fonts";
-import { getLanguage, t } from "../i18n";
-import {
-  canHaveArrowheads,
-  getSelectedElements,
-  getTargetElements,
-  isSomeElementSelected,
-} from "../scene";
-
-import {
-  withCaretPositionPreservation,
-  restoreCaretPosition,
-} from "../hooks/useTextEditorFocus";
-
-import { getShortcutKey } from "../shortcut";
-import { useAppStateValue } from "../hooks/useAppStateValue";
+import { getSelectedElements, isSomeElementSelected } from "../scene";
 
 import {
   getColorTargetAppStateUpdates,
@@ -184,15 +102,6 @@ import { register } from "./register";
 import type { AppClassProperties, AppState, Primitive } from "../types";
 
 const FONT_SIZE_RELATIVE_INCREASE_STEP = 0.1;
-
-const getStylesPanelInfo = (app: AppClassProperties) => {
-  const stylesPanelMode = deriveStylesPanelMode(app.editorInterface);
-  return {
-    stylesPanelMode,
-    isCompact: stylesPanelMode !== "full",
-    isMobile: stylesPanelMode === "mobile",
-  } as const;
-};
 
 export const changeProperty = (
   elements: readonly ExcalidrawElement[],
@@ -415,39 +324,6 @@ export const actionChangeStrokeColor = register<
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    const { stylesPanelMode } = getStylesPanelInfo(app);
-    const target = resolveColorTarget(appState, elements, "strokeColor");
-    // a note has no stroke: its "stroke" is the ink of its text and footer
-    const label =
-      target.kind === "sticky" ? t("labels.textColor") : t("labels.stroke");
-
-    return (
-      <>
-        {stylesPanelMode === "full" && <h3 aria-hidden="true">{label}</h3>}
-        <ColorPicker
-          topPicks={target.topPicks}
-          palette={target.palette}
-          customizableTopPicks={target.customizableTopPicks}
-          excludedColors={target.excludedColors}
-          type="elementStroke"
-          label={label}
-          color={getFormValue(
-            elements,
-            app,
-            (element) => element.strokeColor,
-            true,
-            (hasSelection) => (!hasSelection ? target.currentValue : null),
-          )}
-          onChange={(color) => updateData({ color })}
-          elements={elements}
-          appState={appState}
-          canvasMode={app.getCanvasMode()}
-          updateData={updateData}
-        />
-      </>
-    );
-  },
 });
 
 export const actionChangeBackgroundColor = register<
@@ -529,42 +405,6 @@ export const actionChangeBackgroundColor = register<
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    const { stylesPanelMode } = getStylesPanelInfo(app);
-    const target = resolveColorTarget(appState, elements, "backgroundColor");
-    // while editing a note's label the picker shows and sets the note's fill
-    const elementsMap = app.scene.getNonDeletedElementsMap();
-
-    return (
-      <>
-        {stylesPanelMode === "full" && (
-          <h3 aria-hidden="true">{t("labels.background")}</h3>
-        )}
-        <ColorPicker
-          topPicks={target.topPicks}
-          palette={target.palette}
-          customizableTopPicks={target.customizableTopPicks}
-          excludedColors={target.excludedColors}
-          type="elementBackground"
-          label={t("labels.background")}
-          color={getFormValue(
-            elements,
-            app,
-            (element) =>
-              getColorTargetElement(element, "backgroundColor", elementsMap)
-                .backgroundColor,
-            true,
-            (hasSelection) => (!hasSelection ? target.currentValue : null),
-          )}
-          onChange={(color) => updateData({ color })}
-          elements={elements}
-          appState={appState}
-          canvasMode={app.getCanvasMode()}
-          updateData={updateData}
-        />
-      </>
-    );
-  },
 });
 
 export const actionChangeBucketFillBackgroundColor = register<
@@ -584,40 +424,6 @@ export const actionChangeBucketFillBackgroundColor = register<
       },
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
-  },
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    const { stylesPanelMode } = getStylesPanelInfo(app);
-
-    return (
-      <>
-        {stylesPanelMode === "full" && (
-          <h3 aria-hidden="true">{t("labels.background")}</h3>
-        )}
-        <ColorPicker
-          topPicks={BUCKET_FILL_BACKGROUND_PICKS}
-          palette={DEFAULT_ELEMENT_BACKGROUND_COLOR_PALETTE}
-          // hidden rather than removed from the palette so the remaining
-          // colors keep their usual hotkeys (w for white etc.)
-          excludedColors={[COLOR_PALETTE.transparent]}
-          // customized independently of the background picker's picks even
-          // though both drive `currentItemBackgroundColor` — the bucket
-          // strip's defaults and use case differ (no transparent)
-          customizableTopPicks="bucketFill"
-          type="elementBackground"
-          label={t("labels.background")}
-          color={app.bucketFill.getBucketFillBackgroundColor(
-            appState.currentItemBackgroundColor,
-          )}
-          onChange={(color) =>
-            updateData({ currentItemBackgroundColor: color })
-          }
-          elements={elements}
-          appState={appState}
-          canvasMode={app.getCanvasMode()}
-          updateData={updateData}
-        />
-      </>
-    );
   },
 });
 
@@ -641,86 +447,7 @@ export const actionChangeFillStyle = register<ExcalidrawElement["fillStyle"]>({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    const selectedElements = getSelectedElements(elements, appState);
-    const selectedFillStyleElements = selectedElements.filter((element) =>
-      hasFillStyle(element.type),
-    );
-    const allElementsZigZag =
-      selectedFillStyleElements.length > 0 &&
-      selectedFillStyleElements.every((el) => el.fillStyle === "zigzag");
-
-    return (
-      <fieldset>
-        <legend>{t("labels.fill")}</legend>
-        <div className="buttonList">
-          <RadioSelection
-            type="button"
-            options={[
-              {
-                value: "hachure",
-                text: `${
-                  allElementsZigZag ? t("labels.zigzag") : t("labels.hachure")
-                } (${getShortcutKey("Alt-Click")})`,
-                icon: allElementsZigZag ? FillZigZagIcon : FillHachureIcon,
-                active: allElementsZigZag ? true : undefined,
-                testId: `fill-hachure`,
-              },
-              {
-                value: "cross-hatch",
-                text: t("labels.crossHatch"),
-                icon: FillCrossHatchIcon,
-                testId: `fill-cross-hatch`,
-              },
-              {
-                value: "solid",
-                text: t("labels.solid"),
-                icon: FillSolidIcon,
-                testId: `fill-solid`,
-              },
-            ]}
-            value={getFormValue(
-              elements,
-              app,
-              (element) => element.fillStyle,
-              (element) => hasFillStyle(element.type),
-              (hasSelection) =>
-                hasSelection ? null : appState.currentItemFillStyle,
-            )}
-            onClick={(value, event) => {
-              const nextValue =
-                event.altKey &&
-                value === "hachure" &&
-                selectedFillStyleElements.every(
-                  (el) => el.fillStyle === "hachure",
-                )
-                  ? "zigzag"
-                  : value;
-
-              updateData(nextValue);
-            }}
-          />
-        </div>
-      </fieldset>
-    );
-  },
 });
-
-/** the named width an element was given at the current authoring scale */
-const getStrokeWidthKeyForElement = (
-  element: ExcalidrawElement,
-  scale: number,
-): StrokeWidthKey | null => {
-  return (
-    STROKE_WIDTH_KEYS.find(
-      (key) =>
-        Math.abs(
-          getStrokeWidthByKey(element.type, key) * scale - element.strokeWidth,
-        ) <=
-        element.strokeWidth * 1e-9,
-    ) ?? null
-  );
-};
 
 export const actionChangeStrokeWidth = register<StrokeWidthKey>({
   name: "changeStrokeWidth",
@@ -740,49 +467,6 @@ export const actionChangeStrokeWidth = register<StrokeWidthKey>({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => (
-    <fieldset>
-      <legend>{t("labels.strokeWidth")}</legend>
-      <div className="buttonList">
-        <RadioSelection<StrokeWidthKey>
-          group="stroke-width"
-          options={[
-            {
-              value: "thin",
-              text: t("labels.thin"),
-              icon: StrokeWidthBaseIcon,
-              testId: "strokeWidth-thin",
-            },
-            {
-              value: "medium",
-              text: t("labels.medium"),
-              icon: StrokeWidthBoldIcon,
-              testId: "strokeWidth-medium",
-            },
-            {
-              value: "bold",
-              text: t("labels.bold"),
-              icon: StrokeWidthExtraBoldIcon,
-              testId: "strokeWidth-bold",
-            },
-          ]}
-          value={getFormValue(
-            elements,
-            app,
-            (element) =>
-              getStrokeWidthKeyForElement(
-                element,
-                getAuthoringScale(app.state),
-              ),
-            (element) => element.hasOwnProperty("strokeWidth"),
-            (hasSelection) =>
-              hasSelection ? null : appState.currentItemStrokeWidthKey,
-          )}
-          onChange={(value) => updateData(value)}
-        />
-      </div>
-    </fieldset>
-  ),
 });
 
 export const actionChangeFreedrawStrokeWidth = register<number>({
@@ -807,40 +491,6 @@ export const actionChangeFreedrawStrokeWidth = register<number>({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    const scale = useAppStateValue(getAuthoringScale);
-    const width = getFormValue<number | null>(
-      elements,
-      app,
-      (element) => element.strokeWidth / scale,
-      isFreeDrawElement,
-      (hasSelection) =>
-        hasSelection ? null : appState.currentItemFreedrawStrokeWidth,
-    );
-    const value = width ?? appState.currentItemFreedrawStrokeWidth;
-    const variability =
-      getFormValue<StrokeVariability | null>(
-        elements,
-        app,
-        (element) =>
-          isFreeDrawElement(element)
-            ? element.strokeOptions?.variability ?? "variable"
-            : null,
-        isFreeDrawElement,
-        (hasSelection) =>
-          hasSelection ? null : appState.currentItemStrokeVariability,
-      ) ?? appState.currentItemStrokeVariability;
-
-    return (
-      <PenSizeSlider
-        value={value}
-        hasCommonValue={width !== null}
-        color={appState.currentItemStrokeColor}
-        variability={variability}
-        onChange={updateData}
-      />
-    );
-  },
 });
 
 export const actionChangeSloppiness = register<ExcalidrawElement["roughness"]>({
@@ -859,42 +509,6 @@ export const actionChangeSloppiness = register<ExcalidrawElement["roughness"]>({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => (
-    <fieldset>
-      <legend>{t("labels.sloppiness")}</legend>
-      <div className="buttonList">
-        <RadioSelection
-          group="sloppiness"
-          options={[
-            {
-              value: 0,
-              text: t("labels.architect"),
-              icon: SloppinessArchitectIcon,
-            },
-            {
-              value: 1,
-              text: t("labels.artist"),
-              icon: SloppinessArtistIcon,
-            },
-            {
-              value: 2,
-              text: t("labels.cartoonist"),
-              icon: SloppinessCartoonistIcon,
-            },
-          ]}
-          value={getFormValue(
-            elements,
-            app,
-            (element) => element.roughness,
-            (element) => element.hasOwnProperty("roughness"),
-            (hasSelection) =>
-              hasSelection ? null : appState.currentItemRoughness,
-          )}
-          onChange={(value) => updateData(value)}
-        />
-      </div>
-    </fieldset>
-  ),
 });
 
 export const actionChangeFreedrawMode = register<StrokeVariability>({
@@ -920,62 +534,6 @@ export const actionChangeFreedrawMode = register<StrokeVariability>({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => {
-    const strokeVariability =
-      getFormValue(
-        elements,
-        app,
-        (element) =>
-          (element as ExcalidrawFreeDrawElement).strokeOptions?.variability,
-        (element) => element.type === "freedraw",
-        (hasSelection) =>
-          hasSelection ? null : appState.currentItemStrokeVariability,
-      ) ?? appState.currentItemStrokeVariability;
-
-    // in the compact UI the pressure setting is rendered as a single button
-    // that cycles between the two variability modes on click
-    if (data?.cycle) {
-      const isVariable = strokeVariability === "variable";
-      return (
-        <IconButton
-          type="button"
-          icon={
-            isVariable
-              ? strokeVariabilityVariableIcon
-              : strokeVariabilityConstantIcon
-          }
-          title={t("labels.pressure")}
-          aria-label={t("labels.pressure")}
-          onClick={() => updateData(isVariable ? "constant" : "variable")}
-        />
-      );
-    }
-
-    return (
-      <fieldset>
-        <legend>{t("labels.pressure")}</legend>
-        <div className="buttonList">
-          <RadioSelection<StrokeVariability>
-            group="strokeOptions.variability"
-            options={[
-              {
-                value: "constant",
-                text: t("labels.pressure_constant"),
-                icon: strokeVariabilityConstantIcon,
-              },
-              {
-                value: "variable",
-                text: t("labels.pressure_variable"),
-                icon: strokeVariabilityVariableIcon,
-              },
-            ]}
-            value={strokeVariability}
-            onChange={(value) => updateData(value)}
-          />
-        </div>
-      </fieldset>
-    );
-  },
 });
 
 export const actionChangeStrokeStyle = register<
@@ -995,42 +553,6 @@ export const actionChangeStrokeStyle = register<
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => (
-    <fieldset>
-      <legend>{t("labels.strokeStyle")}</legend>
-      <div className="buttonList">
-        <RadioSelection
-          group="strokeStyle"
-          options={[
-            {
-              value: "solid",
-              text: t("labels.strokeStyle_solid"),
-              icon: StrokeWidthBaseIcon,
-            },
-            {
-              value: "dashed",
-              text: t("labels.strokeStyle_dashed"),
-              icon: StrokeStyleDashedIcon,
-            },
-            {
-              value: "dotted",
-              text: t("labels.strokeStyle_dotted"),
-              icon: StrokeStyleDottedIcon,
-            },
-          ]}
-          value={getFormValue(
-            elements,
-            app,
-            (element) => element.strokeStyle,
-            (element) => element.hasOwnProperty("strokeStyle"),
-            (hasSelection) =>
-              hasSelection ? null : appState.currentItemStrokeStyle,
-          )}
-          onChange={(value) => updateData(value)}
-        />
-      </div>
-    </fieldset>
-  ),
 });
 
 export const actionChangeOpacity = register<ExcalidrawElement["opacity"]>({
@@ -1052,28 +574,6 @@ export const actionChangeOpacity = register<ExcalidrawElement["opacity"]>({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, app, updateData }) => {
-    const opacity = getFormValue(
-      elements,
-      app,
-      (element) => element.opacity,
-      true,
-      (hasSelection) => (hasSelection ? null : appState.currentItemOpacity),
-    );
-
-    return (
-      <Range
-        label={t("labels.opacity")}
-        value={opacity ?? appState.currentItemOpacity}
-        hasCommonValue={opacity !== null}
-        onChange={updateData}
-        min={0}
-        max={100}
-        step={10}
-        testId="opacity"
-      />
-    );
-  },
 });
 
 export const actionChangeFontSize = register<ExcalidrawTextElement["fontSize"]>(
@@ -1091,80 +591,6 @@ export const actionChangeFontSize = register<ExcalidrawTextElement["fontSize"]>(
           return value * getAuthoringScale(appState);
         },
         value,
-      );
-    },
-    PanelComponent: ({ elements, appState, updateData, app, data }) => {
-      const { isCompact } = getStylesPanelInfo(app);
-
-      return (
-        <fieldset>
-          <legend>{t("labels.fontSize")}</legend>
-          <div className="buttonList">
-            <RadioSelection
-              group="font-size"
-              options={[
-                {
-                  value: FONT_SIZES.sm,
-                  text: t("labels.small"),
-                  icon: FontSizeSmallIcon,
-                  testId: "fontSize-small",
-                },
-                {
-                  value: FONT_SIZES.md,
-                  text: t("labels.medium"),
-                  icon: FontSizeMediumIcon,
-                  testId: "fontSize-medium",
-                },
-                {
-                  value: FONT_SIZES.lg,
-                  text: t("labels.large"),
-                  icon: FontSizeLargeIcon,
-                  testId: "fontSize-large",
-                },
-                {
-                  value: FONT_SIZES.xl,
-                  text: t("labels.veryLarge"),
-                  icon: FontSizeExtraLargeIcon,
-                  testId: "fontSize-veryLarge",
-                },
-              ]}
-              value={getFormValue(
-                elements,
-                app,
-                (element) => {
-                  const elementsMap = app.scene.getNonDeletedElementsMap();
-                  const textElement = isTextElement(element)
-                    ? element
-                    : getBoundTextElement(element, elementsMap);
-                  return textElement
-                    ? toAuthoringFontSize(
-                        getBaseFontSize(textElement, elementsMap),
-                        app.state,
-                      )
-                    : null;
-                },
-                (element) =>
-                  isTextElement(element) ||
-                  getBoundTextElement(
-                    element,
-                    app.scene.getNonDeletedElementsMap(),
-                  ) !== null,
-                (hasSelection) =>
-                  hasSelection
-                    ? null
-                    : appState.currentItemFontSize || DEFAULT_FONT_SIZE,
-              )}
-              onChange={(value) => {
-                withCaretPositionPreservation(
-                  () => updateData(value),
-                  isCompact,
-                  !!appState.editingTextElement,
-                  data?.onPreventClose,
-                );
-              }}
-            />
-          </div>
-        </fieldset>
       );
     },
   },
@@ -1436,190 +862,6 @@ export const actionChangeFontFamily = register<{
 
     return result;
   },
-  PanelComponent: ({ elements, appState, app, updateData }) => {
-    const cachedElementsRef = useRef<ElementsMap>(new Map());
-    const prevSelectedFontFamilyRef = useRef<number | null>(null);
-    // relying on state batching as multiple `FontPicker` handlers could be called in rapid succession and we want to combine them
-    const [batchedData, setBatchedData] = useState<ChangeFontFamilyData>({});
-    const isUnmounted = useRef(true);
-    const { stylesPanelMode, isCompact } = getStylesPanelInfo(app);
-
-    const selectedFontFamily = useMemo(() => {
-      const getFontFamily = (
-        elementsArray: readonly ExcalidrawElement[],
-        elementsMap: ElementsMap,
-      ) =>
-        getFormValue(
-          elementsArray,
-          app,
-          (element) => {
-            if (isTextElement(element)) {
-              return element.fontFamily;
-            }
-            const boundTextElement = getBoundTextElement(element, elementsMap);
-            if (boundTextElement) {
-              return boundTextElement.fontFamily;
-            }
-            return null;
-          },
-          (element) =>
-            isTextElement(element) ||
-            getBoundTextElement(element, elementsMap) !== null,
-          (hasSelection) =>
-            hasSelection
-              ? null
-              : appState.currentItemFontFamily || DEFAULT_FONT_FAMILY,
-        );
-
-      // popup opened, use cached elements
-      if (
-        batchedData.openPopup === "fontFamily" &&
-        appState.openPopup === "fontFamily"
-      ) {
-        return getFontFamily(
-          Array.from(cachedElementsRef.current?.values() ?? []),
-          cachedElementsRef.current,
-        );
-      }
-
-      // popup closed, use all elements
-      if (!batchedData.openPopup && appState.openPopup !== "fontFamily") {
-        return getFontFamily(elements, app.scene.getNonDeletedElementsMap());
-      }
-
-      // popup props are not in sync, hence we are in the middle of an update, so keeping the previous value we've had
-      return prevSelectedFontFamilyRef.current;
-    }, [batchedData.openPopup, appState, elements, app]);
-
-    useEffect(() => {
-      prevSelectedFontFamilyRef.current = selectedFontFamily;
-    }, [selectedFontFamily]);
-
-    useEffect(() => {
-      if (Object.keys(batchedData).length) {
-        updateData(batchedData);
-        // reset the data after we've used the data
-        setBatchedData({});
-      }
-      // call update only on internal state changes
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [batchedData]);
-
-    useEffect(() => {
-      isUnmounted.current = false;
-
-      return () => {
-        isUnmounted.current = true;
-      };
-    }, []);
-
-    return (
-      <>
-        {stylesPanelMode === "full" && (
-          <legend>{t("labels.fontFamily")}</legend>
-        )}
-        <FontPicker
-          isOpened={appState.openPopup === "fontFamily"}
-          selectedFontFamily={selectedFontFamily}
-          hoveredFontFamily={appState.currentHoveredFontFamily}
-          topPicks={appState.fontTopPicks}
-          compactMode={stylesPanelMode !== "full"}
-          onTopPicksChange={(fontTopPicks) => updateData({ fontTopPicks })}
-          onSelect={(fontFamily) => {
-            withCaretPositionPreservation(
-              () => {
-                setBatchedData({
-                  openPopup: null,
-                  currentHoveredFontFamily: null,
-                  currentItemFontFamily: fontFamily,
-                });
-                // defensive clear so immediate close won't abuse the cached elements
-                cachedElementsRef.current.clear();
-              },
-              isCompact,
-              !!appState.editingTextElement,
-            );
-          }}
-          onHover={(fontFamily) => {
-            setBatchedData({
-              currentHoveredFontFamily: fontFamily,
-              cachedElements: new Map(cachedElementsRef.current),
-              resetContainers: true,
-            });
-          }}
-          onLeave={() => {
-            setBatchedData({
-              currentHoveredFontFamily: null,
-              cachedElements: new Map(cachedElementsRef.current),
-              resetAll: true,
-            });
-          }}
-          onPopupChange={(open) => {
-            if (open) {
-              // open, populate the cache from scratch
-              cachedElementsRef.current.clear();
-
-              const { editingTextElement } = appState;
-
-              // still check type to be safe
-              if (editingTextElement?.type === "text") {
-                // retrieve the latest version from the scene, as `editingTextElement` isn't mutated
-                const latesteditingTextElement = app.scene.getElement(
-                  editingTextElement.id,
-                );
-
-                // inside the wysiwyg editor
-                cachedElementsRef.current.set(
-                  editingTextElement.id,
-                  newElementWith(
-                    latesteditingTextElement || editingTextElement,
-                    {},
-                    true,
-                  ),
-                );
-              } else {
-                const selectedElements = getSelectedElements(
-                  elements,
-                  appState,
-                  {
-                    includeBoundTextElement: true,
-                  },
-                );
-
-                for (const element of selectedElements) {
-                  cachedElementsRef.current.set(
-                    element.id,
-                    newElementWith(element, {}, true),
-                  );
-                }
-              }
-
-              setBatchedData({
-                ...batchedData,
-                openPopup: "fontFamily",
-              });
-            } else {
-              const fontFamilyData = {
-                currentHoveredFontFamily: null,
-                cachedElements: new Map(cachedElementsRef.current),
-                resetAll: true,
-              } as ChangeFontFamilyData;
-
-              setBatchedData({
-                ...fontFamilyData,
-              });
-              cachedElementsRef.current.clear();
-
-              // Refocus text editor when font picker closes if we were editing text
-              if (isCompact && appState.editingTextElement) {
-                restoreCaretPosition(null, app.ownerDocument); // Just refocus without saved position
-              }
-            }
-          }}
-        />
-      </>
-    );
-  },
 });
 
 export const actionChangeTextAlign = register<TextAlign>({
@@ -1655,71 +897,6 @@ export const actionChangeTextAlign = register<TextAlign>({
       },
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
-  },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => {
-    const elementsMap = app.scene.getNonDeletedElementsMap();
-    const { isCompact } = getStylesPanelInfo(app);
-
-    return (
-      <fieldset>
-        <legend>{t("labels.textAlign")}</legend>
-        <div className="buttonList">
-          <RadioSelection<TextAlign | false>
-            group="text-align"
-            options={[
-              {
-                value: "left",
-                text: t("labels.left"),
-                icon: TextAlignLeftIcon,
-                testId: "align-left",
-              },
-              {
-                value: "center",
-                text: t("labels.center"),
-                icon: TextAlignCenterIcon,
-                testId: "align-horizontal-center",
-              },
-              {
-                value: "right",
-                text: t("labels.right"),
-                icon: TextAlignRightIcon,
-                testId: "align-right",
-              },
-            ]}
-            value={getFormValue(
-              elements,
-              app,
-              (element) => {
-                if (isTextElement(element)) {
-                  return element.textAlign;
-                }
-                const boundTextElement = getBoundTextElement(
-                  element,
-                  elementsMap,
-                );
-                if (boundTextElement) {
-                  return boundTextElement.textAlign;
-                }
-                return null;
-              },
-              (element) =>
-                isTextElement(element) ||
-                getBoundTextElement(element, elementsMap) !== null,
-              (hasSelection) =>
-                hasSelection ? null : appState.currentItemTextAlign,
-            )}
-            onChange={(value) => {
-              withCaretPositionPreservation(
-                () => updateData(value),
-                isCompact,
-                !!appState.editingTextElement,
-                data?.onPreventClose,
-              );
-            }}
-          />
-        </div>
-      </fieldset>
-    );
   },
 });
 
@@ -1757,70 +934,6 @@ export const actionChangeVerticalAlign = register<VerticalAlign>({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, data }) => {
-    const { isCompact } = getStylesPanelInfo(app);
-    return (
-      <fieldset>
-        <div className="buttonList">
-          <RadioSelection<VerticalAlign | false>
-            group="text-align"
-            options={[
-              {
-                value: VERTICAL_ALIGN.TOP,
-                text: t("labels.alignTop"),
-                icon: <TextAlignTopIcon theme={appState.theme} />,
-                testId: "align-top",
-              },
-              {
-                value: VERTICAL_ALIGN.MIDDLE,
-                text: t("labels.centerVertically"),
-                icon: <TextAlignMiddleIcon theme={appState.theme} />,
-                testId: "align-middle",
-              },
-              {
-                value: VERTICAL_ALIGN.BOTTOM,
-                text: t("labels.alignBottom"),
-                icon: <TextAlignBottomIcon theme={appState.theme} />,
-                testId: "align-bottom",
-              },
-            ]}
-            value={getFormValue(
-              elements,
-              app,
-              (element) => {
-                if (isTextElement(element) && element.containerId) {
-                  return element.verticalAlign;
-                }
-                const boundTextElement = getBoundTextElement(
-                  element,
-                  app.scene.getNonDeletedElementsMap(),
-                );
-                if (boundTextElement) {
-                  return boundTextElement.verticalAlign;
-                }
-                return null;
-              },
-              (element) =>
-                isTextElement(element) ||
-                getBoundTextElement(
-                  element,
-                  app.scene.getNonDeletedElementsMap(),
-                ) !== null,
-              (hasSelection) => (hasSelection ? null : VERTICAL_ALIGN.MIDDLE),
-            )}
-            onChange={(value) => {
-              withCaretPositionPreservation(
-                () => updateData(value),
-                isCompact,
-                !!appState.editingTextElement,
-                data?.onPreventClose,
-              );
-            }}
-          />
-        </div>
-      </fieldset>
-    );
-  },
 });
 
 export const actionChangeRoundness = register<"sharp" | "round">({
@@ -1850,170 +963,7 @@ export const actionChangeRoundness = register<"sharp" | "round">({
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app, renderAction }) => {
-    const targetElements = getTargetElements(
-      getNonDeletedElements(elements),
-      appState,
-    );
-
-    const hasLegacyRoundness = targetElements.some(
-      (el) => el.roundness?.type === ROUNDNESS.LEGACY,
-    );
-
-    return (
-      <fieldset>
-        <legend>{t("labels.edges")}</legend>
-        <div className="buttonList">
-          <RadioSelection
-            group="edges"
-            options={[
-              {
-                value: "sharp",
-                text: t("labels.sharp"),
-                icon: EdgeSharpIcon,
-              },
-              {
-                value: "round",
-                text: t("labels.round"),
-                icon: EdgeRoundIcon,
-              },
-            ]}
-            value={getFormValue(
-              elements,
-              app,
-              (element) =>
-                hasLegacyRoundness
-                  ? null
-                  : element.roundness
-                  ? "round"
-                  : "sharp",
-              (element) =>
-                !isArrowElement(element) && element.hasOwnProperty("roundness"),
-              (hasSelection) =>
-                hasSelection ? null : appState.currentItemRoundness,
-            )}
-            onChange={(value) => updateData(value)}
-          />
-          {renderAction("togglePolygon")}
-        </div>
-      </fieldset>
-    );
-  },
 });
-
-const getArrowheadOptions = (flip: boolean) => {
-  return {
-    visibleSections: [
-      {
-        name: "default",
-        options: [
-          {
-            value: null,
-            text: t("labels.arrowhead_none"),
-            keyBinding: "q",
-            icon: <ArrowheadNoneIcon flip={flip} />,
-          },
-          {
-            value: "arrow",
-            text: t("labels.arrowhead_arrow"),
-            keyBinding: "w",
-            icon: <ArrowheadArrowIcon flip={flip} />,
-          },
-          {
-            value: "triangle",
-            text: t("labels.arrowhead_triangle"),
-            icon: <ArrowheadTriangleIcon flip={flip} />,
-            keyBinding: "e",
-          },
-          {
-            value: "triangle_outline",
-            text: t("labels.arrowhead_triangle_outline"),
-            icon: <ArrowheadTriangleOutlineIcon flip={flip} />,
-            keyBinding: "r",
-          },
-        ],
-      },
-    ],
-    hiddenSections: [
-      {
-        name: "default",
-        options: [
-          {
-            value: "circle",
-            text: t("labels.arrowhead_circle"),
-            keyBinding: "a",
-            icon: <ArrowheadCircleIcon flip={flip} />,
-          },
-          {
-            value: "circle_outline",
-            text: t("labels.arrowhead_circle_outline"),
-            keyBinding: "s",
-            icon: <ArrowheadCircleOutlineIcon flip={flip} />,
-          },
-          {
-            value: "diamond",
-            text: t("labels.arrowhead_diamond"),
-            icon: <ArrowheadDiamondIcon flip={flip} />,
-            keyBinding: "d",
-          },
-          {
-            value: "diamond_outline",
-            text: t("labels.arrowhead_diamond_outline"),
-            icon: <ArrowheadDiamondOutlineIcon flip={flip} />,
-            keyBinding: "f",
-          },
-          {
-            value: "bar",
-            text: t("labels.arrowhead_bar"),
-            keyBinding: "z",
-            icon: <ArrowheadBarIcon flip={flip} />,
-          },
-        ],
-      },
-      {
-        name: t("labels.cardinality"),
-        options: [
-          {
-            value: "cardinality_one",
-            text: t("labels.arrowhead_cardinality_one"),
-            icon: <ArrowheadCardinalityOneIcon flip={flip} />,
-            keyBinding: "x",
-          },
-          {
-            value: "cardinality_many",
-            text: t("labels.arrowhead_cardinality_many"),
-            icon: <ArrowheadCardinalityManyIcon flip={flip} />,
-            keyBinding: "c",
-          },
-          {
-            value: "cardinality_one_or_many",
-            text: t("labels.arrowhead_cardinality_one_or_many"),
-            icon: <ArrowheadCardinalityOneOrManyIcon flip={flip} />,
-            keyBinding: "v",
-          },
-          {
-            value: "cardinality_exactly_one",
-            text: t("labels.arrowhead_cardinality_exactly_one"),
-            icon: <ArrowheadCardinalityExactlyOneIcon flip={flip} />,
-            keyBinding: null,
-          },
-          {
-            value: "cardinality_zero_or_one",
-            text: t("labels.arrowhead_cardinality_zero_or_one"),
-            icon: <ArrowheadCardinalityZeroOrOneIcon flip={flip} />,
-            keyBinding: null,
-          },
-          {
-            value: "cardinality_zero_or_many",
-            text: t("labels.arrowhead_cardinality_zero_or_many"),
-            icon: <ArrowheadCardinalityZeroOrManyIcon flip={flip} />,
-            keyBinding: null,
-          },
-        ],
-      },
-    ],
-  } as const;
-};
 
 export const actionChangeArrowhead = register<{
   position: "start" | "end";
@@ -2054,59 +1004,6 @@ export const actionChangeArrowhead = register<{
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    const isRTL = getLanguage().rtl;
-    const startArrowheadOptions = useMemo(
-      () => getArrowheadOptions(!isRTL),
-      [isRTL],
-    );
-    const endArrowheadOptions = useMemo(
-      () => getArrowheadOptions(!!isRTL),
-      [isRTL],
-    );
-
-    return (
-      <fieldset>
-        <legend>{t("labels.arrowheads")}</legend>
-        <div className="iconSelectList buttonList">
-          <IconPicker
-            visibleSections={startArrowheadOptions.visibleSections}
-            hiddenSections={startArrowheadOptions.hiddenSections}
-            label="arrowhead_start"
-            value={getFormValue<Arrowhead | null>(
-              elements,
-              app,
-              (element) =>
-                isLinearElement(element) && canHaveArrowheads(element.type)
-                  ? getArrowheadForPicker(element.startArrowhead)
-                  : appState.currentItemStartArrowhead,
-              true,
-              (hasSelection) =>
-                hasSelection ? null : appState.currentItemStartArrowhead,
-            )}
-            onChange={(value) => updateData({ position: "start", type: value })}
-          />
-          <IconPicker
-            visibleSections={endArrowheadOptions.visibleSections}
-            hiddenSections={endArrowheadOptions.hiddenSections}
-            label="arrowhead_end"
-            value={getFormValue<Arrowhead | null>(
-              elements,
-              app,
-              (element) =>
-                isLinearElement(element) && canHaveArrowheads(element.type)
-                  ? getArrowheadForPicker(element.endArrowhead)
-                  : appState.currentItemEndArrowhead,
-              true,
-              (hasSelection) =>
-                hasSelection ? null : appState.currentItemEndArrowhead,
-            )}
-            onChange={(value) => updateData({ position: "end", type: value })}
-          />
-        </div>
-      </fieldset>
-    );
-  },
 });
 
 export const actionChangeArrowProperties = register({
@@ -2117,14 +1014,6 @@ export const actionChangeArrowProperties = register({
     // This action doesn't perform any changes directly
     // It's just a container for the arrow type and arrowhead actions
     return false;
-  },
-  PanelComponent: ({ elements, appState, updateData, app, renderAction }) => {
-    return (
-      <div className="selected-shape-actions">
-        {renderAction("changeArrowhead")}
-        {renderAction("changeArrowType")}
-      </div>
-    );
   },
 });
 
@@ -2321,56 +1210,5 @@ export const actionChangeArrowType = register<keyof typeof ARROW_TYPE>({
       appState: newState,
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
-  },
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    return (
-      <fieldset>
-        <legend>{t("labels.arrowtypes")}</legend>
-        <div className="buttonList">
-          <RadioSelection
-            group="arrowtypes"
-            options={[
-              {
-                value: ARROW_TYPE.sharp,
-                text: t("labels.arrowtype_sharp"),
-                icon: sharpArrowIcon,
-                testId: "sharp-arrow",
-              },
-              {
-                value: ARROW_TYPE.round,
-                text: t("labels.arrowtype_round"),
-                icon: roundArrowIcon,
-                testId: "round-arrow",
-              },
-              {
-                value: ARROW_TYPE.elbow,
-                text: t("labels.arrowtype_elbowed"),
-                icon: elbowArrowIcon,
-                testId: "elbow-arrow",
-              },
-            ]}
-            value={getFormValue(
-              elements,
-              app,
-              (element) => {
-                if (isArrowElement(element)) {
-                  return element.elbowed
-                    ? ARROW_TYPE.elbow
-                    : element.roundness
-                    ? ARROW_TYPE.round
-                    : ARROW_TYPE.sharp;
-                }
-
-                return null;
-              },
-              (element) => isArrowElement(element),
-              (hasSelection) =>
-                hasSelection ? null : appState.currentItemArrowType,
-            )}
-            onChange={(value) => updateData(value)}
-          />
-        </div>
-      </fieldset>
-    );
   },
 });

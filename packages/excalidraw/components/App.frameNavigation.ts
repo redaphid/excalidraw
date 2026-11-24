@@ -32,7 +32,7 @@ const FIT: ViewportOffsetsOptions = { left: 24 };
 const SEEN_LIMIT = 8;
 
 /**
- * Frame navigation for `props.frameNavigation`: the scene's frame model,
+ * Frame navigation, always on: the scene's frame model,
  * the frame the view is in, and the keys and flights that move between
  * frames. The drawer (a default sidebar tab) and the breadcrumb read it.
  */
@@ -50,10 +50,6 @@ export class AppFrameNavigation {
   private heading: { id: string; until: number } | null = null;
 
   constructor(private app: App) {}
-
-  get enabled() {
-    return !!this.app.props.frameNavigation;
-  }
 
   /** rebuilt only when a frame or an arrow between frames changes, not on
    * every scene update */
@@ -151,8 +147,7 @@ export class AppFrameNavigation {
   };
 
   /** the drawer can sit beside the canvas; on a phone it would cover it */
-  private besideCanvas = () =>
-    this.enabled && this.app.editorInterface.formFactor !== "phone";
+  private besideCanvas = () => this.app.editorInterface.formFactor !== "phone";
 
   /** The user picked the frame tool (F, the toolbar, the command palette),
    * even with it already in hand: the drawer opens beside it so each frame
@@ -207,9 +202,6 @@ export class AppFrameNavigation {
   };
 
   handleKeyDown = (event: React.KeyboardEvent | KeyboardEvent): boolean => {
-    if (!this.enabled) {
-      return false;
-    }
     const key = frameKey(event, {
       selecting: Object.values(this.app.state.selectedElementIds).some(Boolean),
     });

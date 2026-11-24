@@ -35,10 +35,7 @@ import type {
   PointsPositionUpdates,
 } from "@excalidraw/element/types";
 
-import { t } from "../i18n";
-import { done } from "../components/icons";
 import { TOGGLE_TOOLS } from "../components/Tools";
-import { IconButton } from "../components/IconButton";
 
 import { register } from "./register";
 
@@ -422,16 +419,4 @@ export const actionFinalize = register<FormData>({
     (event.key === KEYS.ESCAPE && appState.selectedLinearElement?.isEditing) ||
     ((event.key === KEYS.ESCAPE || event.key === KEYS.ENTER) &&
       appState.multiElement !== null),
-  PanelComponent: ({ appState, updateData, data }) => (
-    <IconButton
-      type="button"
-      icon={done}
-      title={t("buttons.done")}
-      aria-label={t("buttons.done")}
-      onClick={updateData}
-      visible={appState.multiElement != null}
-      size={data?.size || "medium"}
-      style={{ pointerEvents: "all" }}
-    />
-  ),
 });
