@@ -13426,6 +13426,10 @@ ${css}
     ];
 
     return [
+      // the hub opens this menu while a shape is selected, and on a phone it
+      // is the only way to undo a change made to that shape
+      this.actionManager.actions.undo,
+      this.actionManager.actions.redo,
       CONTEXT_MENU_SEPARATOR,
       actionCut,
       actionCopy,

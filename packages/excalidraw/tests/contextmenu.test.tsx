@@ -131,6 +131,8 @@ describe("contextMenu element", () => {
     const contextMenuOptions =
       contextMenu?.querySelectorAll(".context-menu li");
     const expectedContextMenuItems: ActionName[] = [
+      "undo",
+      "redo",
       "cut",
       "copy",
       "paste",
@@ -227,6 +229,8 @@ describe("contextMenu element", () => {
     const contextMenuOptions =
       contextMenu?.querySelectorAll(".context-menu li");
     const expectedShortcutNames: (ShortcutName | ActionName)[] = [
+      "undo",
+      "redo",
       "cut",
       "copy",
       "paste",
@@ -294,6 +298,8 @@ describe("contextMenu element", () => {
     const contextMenuOptions =
       contextMenu?.querySelectorAll(".context-menu li");
     const expectedContextMenuItems: ActionName[] = [
+      "undo",
+      "redo",
       "cut",
       "copy",
       "paste",
