@@ -160,6 +160,27 @@ describe("RadialPalette", () => {
         openRing();
       });
 
+      it("writes every pen's name above its sample stroke, at any angle", () => {
+        // an 8px label's half height, and the widest sample's: its curve and
+        // half its 12px stroke, and a few pixels between them
+        const clearance = 18;
+        const crowded = h.app.radialPalette
+          .getPresets()
+          .map(({ id }) => {
+            const segment = byTestId(`radial-pen-${id}`)!;
+            const label = segment.querySelector(".RadialPalette__label")!;
+            const sample = segment.querySelector(".RadialPalette__sample")!;
+            const sampleY = Number(
+              /translate\(\S+ (\S+)\)/.exec(
+                sample.getAttribute("transform")!,
+              )![1],
+            );
+            return { id, gap: sampleY - Number(label.getAttribute("y")) };
+          })
+          .filter(({ gap }) => gap < clearance);
+        expect(crowded).toEqual([]);
+      });
+
       it("opens the ring", () => {
         expect(ring()).not.toBeNull();
       });

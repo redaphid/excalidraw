@@ -924,12 +924,14 @@ const Ring = ({
 
           {[...presets, ...hostPens, null].map((preset, index) => {
             const sector = layout.pens[index];
-            const sample = at(MIDDLE_BAND.inner + 17, sector);
-            const label = at(MIDDLE_BAND.outer - 10, sector);
             const icon = at(
               (MIDDLE_BAND.inner + MIDDLE_BAND.outer) / 2,
               sector,
             );
+            // stacked, not along the radius: side by side, the two would
+            // overlap on the ring's left and right
+            const sample = { x: icon.x, y: icon.y + 7 };
+            const label = { x: icon.x, y: icon.y - 12 };
             if (preset && "onPick" in preset) {
               return button(
                 `host-${preset.id}`,
