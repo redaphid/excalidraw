@@ -300,6 +300,10 @@ export class RadialPaletteController {
       }
       return;
     }
+    // one menu at a time: the ring takes the place of an open context menu
+    if (this.app.state.contextMenu) {
+      this.app.setAppState({ contextMenu: null });
+    }
     // the color in use joins the recent colors when the ring opens
     this.recent = rememberColor(
       this.recent,
