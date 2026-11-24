@@ -329,6 +329,55 @@ test("a held puck moves, tucks against a side, comes back, and stays put", async
   await page.screenshot({ path: testInfo.outputPath("puck-back.png") });
 });
 
+test("a held hub carries the open ring, which stays open where it lands", async ({
+  page,
+  browserName,
+}, testInfo) => {
+  const viewport = page.viewportSize()!;
+  const to = { x: viewport.width / 2, y: viewport.height / 2 };
+  await tap(page, testInfo, "radial-palette-puck");
+  const ring = page.getByTestId("radial-palette");
+  await expect(ring).toBeVisible();
+  const from = await center(page, "radial-palette-menu");
+  // a real finger in Chromium, so the browser sends its own long-press menu
+  const finger =
+    browserName === "chromium" && testInfo.project.use.hasTouch
+      ? await contact(page, browserName, "touch")
+      : {
+          down: async (x: number, y: number) => {
+            await page.mouse.move(x, y);
+            await page.mouse.down();
+          },
+          move: (x: number, y: number) => page.mouse.move(x, y),
+          up: () => page.mouse.up(),
+        };
+
+  await finger.down(from.x, from.y);
+  await page.waitForTimeout(700);
+  await expect(ring).toHaveClass(/RadialPalette--moving/);
+  await page.screenshot({ path: testInfo.outputPath("ring-lifted.png") });
+  for (let step = 1; step <= 8; step++) {
+    await finger.move(
+      from.x + ((to.x - from.x) * step) / 8,
+      from.y + ((to.y - from.y) * step) / 8,
+    );
+  }
+  await finger.up(to.x, to.y);
+
+  await expect(ring).toBeVisible();
+  await expect(ring).not.toHaveClass(/RadialPalette--moving/);
+  const landed = await ringCenter(page);
+  expect(Math.hypot(landed.x - to.x, landed.y - to.y)).toBeLessThan(2);
+  await expect(page.locator(".context-menu")).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("ring-dropped.png") });
+
+  await page.keyboard.press("Escape");
+  await expect(ring).toBeHidden();
+  const puck = (await page.getByTestId("radial-palette-puck").boundingBox())!;
+  const puckAt = { x: puck.x + puck.width / 2, y: puck.y + puck.height / 2 };
+  expect(Math.hypot(puckAt.x - to.x, puckAt.y - to.y)).toBeLessThan(2);
+});
+
 test("a finger held on a selected shape and lifted leaves only the ring", async ({
   page,
   browserName,
