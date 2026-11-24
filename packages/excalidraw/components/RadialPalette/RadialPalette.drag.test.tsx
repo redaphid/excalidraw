@@ -13,6 +13,8 @@ const ring = () => queryByTestId(document.body, "radial-palette");
 
 const hub = () => queryByTestId(document.body, "radial-palette-menu")!;
 
+const backdrop = () => queryByTestId(document.body, "radial-palette-backdrop")!;
+
 const canvas = () => GlobalTestState.interactiveCanvas;
 
 const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
@@ -169,6 +171,64 @@ describe("dragging the radial palette", () => {
             );
           });
         });
+      });
+    });
+
+    describe("and its hub is held and dragged while another finger lands", () => {
+      const other = (x: number, y: number) => ({
+        ...touch(x, y),
+        pointerId: 9,
+      });
+
+      beforeEach(() => {
+        fireEvent.pointerDown(hub(), touch(500, 400));
+        wait(LONG_PRESS_DELAY);
+        moveTo(560, 330);
+        // a second finger, as when the other hand starts to pan
+        fireEvent.pointerDown(backdrop(), other(200, 600));
+        fireEvent.pointerMove(window, other(260, 640));
+        moveTo(600, 300);
+      });
+
+      it("keeps the ring open", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      it("keeps the ring on the first finger", () => {
+        expect(ringCenter()).toEqual({ x: 600, y: 300 });
+      });
+
+      describe("when the first finger lifts", () => {
+        beforeEach(() => {
+          lift(600, 300);
+          fireEvent.pointerUp(window, { ...other(260, 640), buttons: 0 });
+        });
+
+        it("puts the puck where the ring was dropped", () => {
+          expect(puck().style.getPropertyValue("--radial-puck-x")).toBe("60%");
+        });
+      });
+    });
+
+    describe("and its hub is held and dragged and the browser takes the pointer", () => {
+      beforeEach(() => {
+        fireEvent.pointerDown(hub(), touch(500, 400));
+        wait(LONG_PRESS_DELAY);
+        moveTo(600, 300);
+        fireEvent.pointerCancel(window, touch(600, 300));
+      });
+
+      it("leaves the ring open where it was carried", () => {
+        expect(ring()).not.toBeNull();
+        expect(ringCenter()).toEqual({ x: 600, y: 300 });
+      });
+
+      it("puts the puck there too", () => {
+        expect(puck().style.getPropertyValue("--radial-puck-x")).toBe("60%");
+      });
+
+      it("sets the ring down", () => {
+        expect(ring()!.classList.contains("RadialPalette--moving")).toBe(false);
       });
     });
 

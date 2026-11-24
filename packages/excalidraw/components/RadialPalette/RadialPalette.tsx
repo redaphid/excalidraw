@@ -201,9 +201,12 @@ export const RadialPalette = React.memo(
   ({
     actionManager,
     phone,
+    besideSidebar,
   }: {
     actionManager: ActionManager;
     phone: boolean;
+    /** a sidebar is open on the editor's right, where the puck sits */
+    besideSidebar: boolean;
   }) => {
     const app = useApp();
     const { container } = useExcalidrawContainer();
@@ -298,6 +301,8 @@ export const RadialPalette = React.memo(
       const center = puckCenter(event.currentTarget);
       const releaseMenus = holdMenusShut(win);
       let lifted = false;
+      /** where the pointer last was, for a drop the browser cuts short */
+      let last = start;
       const liftPuck = () => {
         lifted = true;
         controller.close();
@@ -325,7 +330,8 @@ export const RadialPalette = React.memo(
           }
           liftPuck();
         }
-        setMoving(fractionAt(moveEvent.clientX, moveEvent.clientY));
+        last = { x: moveEvent.clientX, y: moveEvent.clientY };
+        setMoving(fractionAt(last.x, last.y));
       };
       const onUp = (upEvent: PointerEvent) => {
         if (upEvent.pointerId !== pointerId) {
@@ -342,8 +348,15 @@ export const RadialPalette = React.memo(
         }
       };
       const onCancel = (cancelEvent: PointerEvent) => {
-        if (cancelEvent.pointerId === pointerId) {
-          end();
+        if (cancelEvent.pointerId !== pointerId) {
+          return;
+        }
+        end();
+        // the browser took the pointer (a gesture, a second finger): a lifted
+        // puck stays where it was carried, as if it were dropped there
+        if (lifted) {
+          const { at, bounds } = inEditor(last.x, last.y);
+          keep(dropPuck(at, bounds));
         }
       };
       const end = (afterHold = lifted) => {
@@ -370,6 +383,7 @@ export const RadialPalette = React.memo(
           type="button"
           className={clsx("RadialPalette__puck", {
             "RadialPalette__puck--phone": phone,
+            "RadialPalette__puck--beside-sidebar": besideSidebar,
             "RadialPalette__puck--placed": !!shown,
             "RadialPalette__puck--moving": !!moving,
             "RadialPalette__puck--collapsed": collapsed,
@@ -729,20 +743,26 @@ const Ring = ({
       at = { x: from.x + dx, y: from.y + dy };
       controller.moveTo(at);
     };
-    const onUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
+    /** sets the ring down where it was carried, with the puck there too */
+    const drop = () => {
+      const carried = lifted && at !== from;
       end();
-      if (lifted && at !== from) {
+      if (carried) {
         const dropped = drawnAt(at);
         controller.moveTo(dropped);
         onMoved(dropped);
       }
     };
+    const onUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId === pointerId) {
+        drop();
+      }
+    };
+    // the browser took the pointer (a gesture, a second finger): the ring
+    // stays where it was carried, as if it were dropped there
     const onCancel = (cancelEvent: PointerEvent) => {
       if (cancelEvent.pointerId === pointerId) {
-        end();
+        drop();
       }
     };
     const end = (afterHold = lifted) => {
@@ -947,6 +967,11 @@ const Ring = ({
         onContextMenu={preventMenu}
         onPointerDown={(event) => {
           event.preventDefault();
+          // a second finger while the hub is pressed, as when the other
+          // hand pans, leaves the ring with the first
+          if (endHubPress.current) {
+            return;
+          }
           controller.close();
         }}
       />
