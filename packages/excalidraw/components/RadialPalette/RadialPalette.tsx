@@ -250,11 +250,14 @@ export const RadialPalette = React.memo(
         // like the editor's own shortcuts: from inside the editor, or from
         // anywhere with `handleKeyboardGlobally`, but never from a host's
         // focused control while nothing in the editor has focus
+        // the editor's element as it is now: the context's value is filled
+        // in after this effect first runs, and is the same object after
+        const editor = app.excalidrawContainerValue.container;
         const fromHost =
           target instanceof Element &&
           target !== doc.body &&
           target !== doc.documentElement &&
-          !container?.contains(target);
+          !editor?.contains(target);
         if (
           !isPaletteKey(event) ||
           isTypingTarget(target) ||
@@ -271,7 +274,7 @@ export const RadialPalette = React.memo(
       const doc = app.ownerDocument;
       doc.addEventListener("keydown", onKeyDown);
       return () => doc.removeEventListener("keydown", onKeyDown);
-    }, [app, controller, container]);
+    }, [app, controller]);
 
     const puckCenter = (target: HTMLElement) => {
       const rect = target.getBoundingClientRect();
