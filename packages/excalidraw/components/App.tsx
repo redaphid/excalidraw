@@ -468,6 +468,7 @@ import { AppFlowchart } from "./App.flowchart";
 import { AppFrameNavigation } from "./App.frameNavigation";
 import { AppMidi } from "./App.midi";
 import { AppPan } from "./App.pan";
+import { TwoFingerDoubleTap } from "./App.twoFingerTap";
 import { AppRadialPaletteGestures } from "./App.radialPalette";
 
 import { RadialPaletteController } from "./RadialPalette/radialPaletteController";
@@ -790,6 +791,9 @@ class App extends React.Component<AppProps, AppState> {
     isGestureActive: () => gesture.pointers.size >= 2 || this.pan.isActive(),
   });
   public wheel: AppWheel = new AppWheel(this);
+  private twoFingerDoubleTap = new TwoFingerDoubleTap();
+  /** the undo stack's depth when a possible double two-finger tap began */
+  private twoFingerDoubleTapHistoryDepth = 0;
 
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
@@ -4284,6 +4288,18 @@ class App extends React.Component<AppProps, AppState> {
           passive: false,
         },
       ), // #3553
+      // a touch can lift off the canvas (the frame-name label captures the
+      // touches it receives), so its lift is heard on the whole document,
+      // ahead of every other handler
+      addEventListener(this.ownerDocument, EVENT.POINTER_UP, this.onTouchLift, {
+        capture: true,
+      }),
+      addEventListener(
+        this.ownerDocument,
+        EVENT.POINTER_CANCEL,
+        this.onTouchLift,
+        { capture: true },
+      ),
       // rerender text elements on font load to fix #637 && #1553
       addEventListener(
         this.ownerDocument.fonts,
@@ -7335,6 +7351,13 @@ ${css}
   private handleCanvasPointerMove = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
+    if (event.pointerType === "touch") {
+      this.twoFingerDoubleTap.move(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+      );
+    }
     this.radialPaletteGestures.onPointerMove(event.nativeEvent);
     if (!this.isInteractionEnabled()) {
       if (this.isToolSupported(this.state.activeTool.type)) {
@@ -8060,6 +8083,17 @@ ${css}
   private handleCanvasPointerDown = (
     event: React.PointerEvent<HTMLElement>,
   ) => {
+    if (
+      event.pointerType === "touch" &&
+      this.twoFingerDoubleTap.down(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+        event.timeStamp,
+      )
+    ) {
+      this.twoFingerDoubleTapHistoryDepth = this.history.undoStack.length;
+    }
     if (this.button.handlePointerDown(event)) {
       return;
     }
@@ -8576,6 +8610,27 @@ ${css}
       pointerDownState.eventListeners.onUp = onPointerUp;
       pointerDownState.eventListeners.onKeyUp = onKeyUp;
       pointerDownState.eventListeners.onKeyDown = onKeyDown;
+    }
+  };
+
+  private onTouchLift = (event: PointerEvent) => {
+    if (event.pointerType !== "touch") {
+      return;
+    }
+    if (event.type === EVENT.POINTER_CANCEL) {
+      this.twoFingerDoubleTap.cancel(event.pointerId);
+      return;
+    }
+    if (
+      this.twoFingerDoubleTap.up(event.pointerId, event.timeStamp) &&
+      !this.state.viewModeEnabled
+    ) {
+      // the fingers of the taps landed as clicks first, and a click on the
+      // canvas changes the selection: undo what came before the gesture
+      this.history.dropAppStateEntriesSince(
+        this.twoFingerDoubleTapHistoryDepth,
+      );
+      this.actionManager.executeAction(this.actionManager.actions.undo, "ui");
     }
   };
 
