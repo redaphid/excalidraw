@@ -1147,8 +1147,16 @@ describe("RadialPalette", () => {
         act(() => {
           h.app.radialPalette.api.open({ at: { x: 500, y: 400 } });
         });
-        fireEvent.pointerMove(window, { pointerId: 7, clientX: 560, clientY: 300 });
-        fireEvent.pointerUp(window, { pointerId: 7, clientX: 560, clientY: 300 });
+        fireEvent.pointerMove(window, {
+          pointerId: 7,
+          clientX: 560,
+          clientY: 300,
+        });
+        fireEvent.pointerUp(window, {
+          pointerId: 7,
+          clientX: 560,
+          clientY: 300,
+        });
       });
 
       it("stays open", () => {
