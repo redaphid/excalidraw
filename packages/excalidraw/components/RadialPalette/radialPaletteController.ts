@@ -502,9 +502,11 @@ export class RadialPaletteController {
     }
   }
 
-  /** the active tool changed, from the ring or anywhere else: a pen
+  /** the active tool changed, from the ring or anywhere else (a tool's key,
+   * the host): the tool is picked, so the ring has done its job, and a pen
    * preset's see-through ink does not carry over to shapes */
   toolChanged() {
+    this.close();
     const { app, presetOpacity } = this;
     const { type } = app.state.activeTool;
     if (presetOpacity === null || type === "freedraw" || type === "eraser") {
