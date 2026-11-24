@@ -12,6 +12,9 @@ import {
   getRingLayout,
   hitTest,
   placeRing,
+  placeSlots,
+  SLOT_INSET,
+  SLOT_SIZE,
   polar,
   sectorMiddle,
   sliderValue,
@@ -238,5 +241,31 @@ describe("slotsToward", () => {
 
   it("shows at most MAX_SLOTS", () => {
     expect(slotCenters(MAX_SLOTS + 3)).toHaveLength(MAX_SLOTS);
+  });
+});
+
+describe("placeSlots", () => {
+  const phone = { width: 390, height: 844 };
+
+  describe.each([
+    ["at the left edge", { x: 40, y: 422 }],
+    ["at the bottom left", { x: 40, y: 800 }],
+    ["from the puck", { x: 350, y: 780 }],
+    ["in the middle", { x: 195, y: 422 }],
+  ])("when six slots go round a ring opened %s on a phone", (_, at) => {
+    it("puts every slot inside the screen, clear of the bars", () => {
+      const ring = placeRing(at, phone, 8);
+      const half = (SLOT_SIZE * ring.scale) / 2;
+      const off = placeSlots(6, ring, phone).filter(({ x, y }) => {
+        const [ex, ey] = [ring.x + x * ring.scale, ring.y + y * ring.scale];
+        return (
+          ex - half < SLOT_INSET.x - 0.01 ||
+          ex + half > phone.width - SLOT_INSET.x + 0.01 ||
+          ey - half < SLOT_INSET.y - 0.01 ||
+          ey + half > phone.height - SLOT_INSET.y + 0.01
+        );
+      });
+      expect(off).toEqual([]);
+    });
   });
 });

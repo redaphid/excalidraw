@@ -248,3 +248,44 @@ export const slotsToward = (
     ? 270
     : normalizeAngle((Math.atan2(dy, dx) * 180) / Math.PI);
 };
+
+/** what slots keep clear of: the editor's sides, and a host's bars along its
+ * top and bottom (a thumb-high bar each) */
+export const SLOT_INSET = { x: 8, y: 48 };
+
+/**
+ * Where `count` slots sit round a ring placed at `ring` (its center and
+ * scale, in editor terms) inside `bounds`, in palette units: the arc
+ * `slotsToward` picks, else the nearest turn of it whose every slot lies
+ * inside the editor clear of `inset`, else that arc with each slot pulled
+ * inside, so no slot is ever off screen.
+ */
+export const placeSlots = (
+  count: number,
+  ring: { x: number; y: number; scale: number },
+  bounds: { width: number; height: number },
+  inset: { x: number; y: number } = SLOT_INSET,
+) => {
+  const half = (SLOT_SIZE * ring.scale) / 2;
+  const [left, right] = [inset.x + half, bounds.width - inset.x - half];
+  const [top, bottom] = [inset.y + half, bounds.height - inset.y - half];
+  const inside = ({ x, y }: { x: number; y: number }) => {
+    const [ex, ey] = [ring.x + x * ring.scale, ring.y + y * ring.scale];
+    return ex >= left && ex <= right && ey >= top && ey <= bottom;
+  };
+  const toward = slotsToward(ring, bounds);
+  for (let turn = 0; turn <= 180; turn += 10) {
+    for (const way of turn ? [turn, -turn] : [0]) {
+      const centers = slotCenters(count, toward + way);
+      if (centers.every(inside)) {
+        return centers;
+      }
+    }
+  }
+  const pull = (value: number, from: number, to: number) =>
+    from > to ? (from + to) / 2 : Math.min(to, Math.max(from, value));
+  return slotCenters(count, toward).map(({ x, y }) => ({
+    x: (pull(ring.x + x * ring.scale, left, right) - ring.x) / ring.scale,
+    y: (pull(ring.y + y * ring.scale, top, bottom) - ring.y) / ring.scale,
+  }));
+};

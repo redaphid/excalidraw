@@ -60,8 +60,7 @@ import {
   sectorPath,
   sliderAngle,
   sliderValue,
-  slotCenters,
-  slotsToward,
+  placeSlots,
   toPolar,
 } from "./radialLayout";
 import { RADIAL_TOOLS } from "./radialPaletteController";
@@ -1419,7 +1418,8 @@ const Ring = ({
           controller={controller}
           center={{ x: place.x + offsetLeft, y: place.y + offsetTop }}
           scale={place.scale}
-          toward={slotsToward(place, { width, height })}
+          bounds={{ width, height }}
+          ring={place}
         />
       </div>
     </>
@@ -1435,14 +1435,17 @@ const Slots = ({
   controller,
   center,
   scale,
-  toward,
+  bounds,
+  ring,
 }: {
   controller: RadialPaletteController;
   /** the ring's center, in client coordinates */
   center: ClientPoint;
   scale: number;
-  /** the angle the slots fan out at, in degrees */
-  toward: number;
+  /** the editor's size, which every slot stays inside */
+  bounds: { width: number; height: number };
+  /** the ring's center and scale, in editor terms */
+  ring: { x: number; y: number; scale: number };
 }) => {
   const [slots] = useState(() => controller.hostSlots());
   const [drag, setDrag] = useState<{
@@ -1456,7 +1459,7 @@ const Slots = ({
   if (!slots.length) {
     return null;
   }
-  const centers = slotCenters(slots.length, toward);
+  const centers = placeSlots(slots.length, ring, bounds);
   const side = SLOT_SIZE * scale;
   const radius = RING_RADIUS * scale;
   return (
