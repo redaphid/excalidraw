@@ -209,6 +209,22 @@ describe("RadialPalette", () => {
       expect(ring()).toBeNull();
     });
 
+    describe("when the canvas menu is open and , opens the ring", () => {
+      beforeEach(() => {
+        act(() => h.app.openContextMenu({ clientX: 300, clientY: 300 }));
+        expect(h.state.contextMenu).not.toBeNull();
+        Keyboard.keyPress(",", document.body);
+      });
+
+      it("opens the ring", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      it("closes the menu: one menu at a time", () => {
+        expect(h.state.contextMenu).toBeNull();
+      });
+    });
+
     describe("when the puck is pressed", () => {
       beforeEach(() => {
         openRing();
@@ -241,6 +257,20 @@ describe("RadialPalette", () => {
 
       it("keeps it open after a tap, for the next tap", () => {
         expect(puck().getAttribute("aria-expanded")).toBe("true");
+      });
+
+      describe("when a context menu opens while the ring is open", () => {
+        beforeEach(() => {
+          act(() => h.app.openContextMenu({ clientX: 300, clientY: 300 }));
+        });
+
+        it("opens the menu", () => {
+          expect(h.state.contextMenu).not.toBeNull();
+        });
+
+        it("closes the ring: one menu at a time", () => {
+          expect(ring()).toBeNull();
+        });
       });
 
       it("opens the context menu from the hub, in place of itself", () => {
