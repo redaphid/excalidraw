@@ -493,6 +493,7 @@ import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 
 import { findShapeByKey, TOGGLE_TOOLS } from "./Tools";
+import { isEquipped } from "./RadialPalette/equipped";
 
 import UnlockPopup from "./UnlockPopup";
 
@@ -5728,6 +5729,19 @@ ${css}
         !this.state.selectedElementsAreBeingDragged
       ) {
         const shape = findShapeByKey(event.key, this, event.shiftKey);
+
+        // `x` puts an equipped tool down and picks up the hand (#305); with
+        // nothing equipped it is still freedraw's second key; in view mode too,
+        // where the laser is the one tool to put down
+        if (
+          !event.shiftKey &&
+          event.key === KEYS.X &&
+          isEquipped(this.state.activeTool.type)
+        ) {
+          this.setActiveTool({ type: "hand" });
+          event.stopPropagation();
+          return;
+        }
 
         if (this.state.viewModeEnabled && !oneOf(shape, ["laser", "hand"])) {
           return;

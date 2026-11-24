@@ -102,6 +102,72 @@
     }
   }
 
+  // the equipped tool, on the palette's edge: a tap puts it down (#305)
+  .RadialPalette__equipped {
+    position: absolute;
+    z-index: var(--zIndex-ui-bottom);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--control-surface);
+    box-shadow: var(--control-shadow);
+    color: var(--control-accent);
+    cursor: pointer;
+    pointer-events: all;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--control-motion-duration)
+      var(--control-motion-easing);
+
+    &:hover {
+      background: var(--control-surface-hover);
+    }
+  }
+
+  // on the open ring, over its disc and drawing
+  .RadialPalette .RadialPalette__equipped {
+    z-index: 1;
+  }
+
+  .RadialPalette__equipped-icon {
+    display: flex;
+    width: var(--control-icon-size, 1.25rem);
+    height: var(--control-icon-size, 1.25rem);
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  // the put-down mark, on the chip's shoulder
+  .RadialPalette__equipped-x {
+    position: absolute;
+    top: -0.125rem;
+    right: -0.125rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: var(--control-ink);
+    color: var(--control-surface);
+
+    svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+    }
+  }
+
   .RadialPalette__puck-ring {
     fill: none;
     stroke: currentColor;

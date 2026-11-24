@@ -542,6 +542,7 @@ const LayerUI = ({
           besideSidebar={
             editorInterface.formFactor !== "phone" && !!appState.openSidebar
           }
+          tool={appState.activeTool.type}
         />
       )}
     </>
