@@ -240,6 +240,27 @@ const activeTool = (page: Page) =>
     () => (window as Playground).excalidrawAPI?.getAppState().activeTool.type,
   );
 
+test("the puck stays in reach beside an open sidebar", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.endsWith("-phone"),
+    "a phone's sidebar covers the whole editor",
+  );
+  await page.evaluate(() =>
+    (
+      window as Window & {
+        excalidrawAPI?: {
+          toggleSidebar: (opts: { name: string; force: boolean }) => void;
+        };
+      }
+    ).excalidrawAPI!.toggleSidebar({ name: "default", force: true }),
+  );
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+});
+
 test("opens at the pointer on , and closes on Escape", async ({ page }) => {
   const { x, y } = await canvasCenter(page);
   await page.mouse.move(x, y);
