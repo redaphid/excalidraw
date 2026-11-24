@@ -63,3 +63,91 @@ export const savePuckPlace = (win: Window, place: PuckPlace) => {
     // storage full or blocked: the puck stays put for this session
   }
 };
+
+export const forgetPuckPlace = (win: Window) => {
+  try {
+    win.localStorage.removeItem(PUCK_STORAGE_KEY);
+  } catch {
+    // storage blocked: nothing was kept
+  }
+};
+
+type Point = Readonly<{ x: number; y: number }>;
+
+/** the editor's box in client terms */
+export type PuckArea = Readonly<{
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}>;
+
+/** half the puck's hit box, in CSS px: 2.75rem across */
+export const PUCK_RADIUS = 22;
+
+/** the center a puck at `place` is drawn at, in client terms: the puck's
+ * CSS keeps it one radius (a dot's, when collapsed) from the editor's sides */
+export const puckCenter = (place: PuckPlace, area: PuckArea): Point => {
+  const inset = place.collapsed ? 10 : PUCK_RADIUS;
+  const along = (fraction: number, size: number) =>
+    Math.min(Math.max(fraction * size, inset), Math.max(inset, size - inset));
+  return {
+    x: area.left + along(place.x, area.width),
+    y: area.top + along(place.y, area.height),
+  };
+};
+
+/** whether a puck centered at `at` can be pressed: nothing that takes taps
+ * covers its center or its rim */
+export const puckIsClear = (at: Point, clear: (point: Point) => boolean) => {
+  if (!clear(at)) {
+    return false;
+  }
+  for (let step = 0; step < 8; step++) {
+    const angle = (step * Math.PI) / 4;
+    const rim = PUCK_RADIUS + 1;
+    if (
+      !clear({
+        x: at.x + rim * Math.cos(angle),
+        y: at.y + rim * Math.sin(angle),
+      })
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
+/**
+ * The nearest center to `from`, inside the editor, where a puck can be
+ * pressed, searched in rings out from it; null when there is none. A puck
+ * dropped on or under the host's own controls (a top bar) would otherwise
+ * be out of reach for good, since its place is kept.
+ */
+export const reachablePuckCenter = (
+  from: Point,
+  area: PuckArea,
+  clear: (point: Point) => boolean,
+): Point | null => {
+  const inside = (at: Point) =>
+    at.x >= area.left + PUCK_RADIUS &&
+    at.x <= area.left + area.width - PUCK_RADIUS &&
+    at.y >= area.top + PUCK_RADIUS &&
+    at.y <= area.top + area.height - PUCK_RADIUS;
+  const reach = Math.hypot(area.width, area.height);
+  for (let ring = 0; ring * PUCK_RADIUS <= reach; ring++) {
+    const distance = ring * PUCK_RADIUS;
+    const steps = ring === 0 ? 1 : Math.max(8, ring * 6);
+    for (let step = 0; step < steps; step++) {
+      const angle = (step * 2 * Math.PI) / steps;
+      const at = {
+        x: Math.round(from.x + distance * Math.cos(angle)),
+        y: Math.round(from.y + distance * Math.sin(angle)),
+      };
+      if (inside(at) && puckIsClear(at, clear)) {
+        return at;
+      }
+    }
+  }
+  return null;
+};

@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -39,8 +40,17 @@ import {
 
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
+import { measureHostInsets, takesNoTaps as reachesCanvas } from "./hostChrome";
 import { getActivePenPreset } from "./penPresets";
-import { dropPuck, loadPuckPlace, savePuckPlace } from "./puckPlace";
+import {
+  dropPuck,
+  forgetPuckPlace,
+  loadPuckPlace,
+  puckCenter as placedPuckCenter,
+  puckIsClear,
+  reachablePuckCenter,
+  savePuckPlace,
+} from "./puckPlace";
 import {
   FLICK_DISTANCE,
   HUB_RADIUS,
@@ -62,6 +72,13 @@ import {
   toPolar,
 } from "./radialLayout";
 import { RADIAL_TOOLS } from "./radialPaletteController";
+import {
+  clampRingScale,
+  FOLD_RING_SCALE,
+  loadRingScale,
+  RING_SCALE_STEP,
+  saveRingScale,
+} from "./ringScale";
 import { getStyleProperty } from "./styleProperties";
 
 import "./RadialPalette.scss";
@@ -156,6 +173,12 @@ const isTypingTarget = (target: EventTarget | null) =>
   (target instanceof Element &&
     !!target.closest('[contenteditable]:not([contenteditable="false"])'));
 
+/** the least room the ring keeps from the editor's sides */
+const RING_MARGIN = 8;
+
+/** a corner of the ring's box: right or left, down or up */
+type Corner = Readonly<{ x: 1 | -1; y: 1 | -1 }>;
+
 /** how long after a press on the radial lifts its context menu event may
  * still come: Windows sends it on the lift, others with the hold */
 const MENU_AFTER_LIFT_MS = 300;
@@ -188,6 +211,10 @@ const holdMenusShut = (win: Window) => {
   };
 };
 
+/** how long after the editor opens to look again for host controls over
+ * the puck, as a host may draw them later */
+const PUCK_RECHECK_MS = 1000;
+
 /** keeps the browser's menu shut over the radial's own parts */
 const preventMenu = (event: React.MouseEvent) => event.preventDefault();
 
@@ -201,9 +228,12 @@ export const RadialPalette = React.memo(
   ({
     actionManager,
     phone,
+    besideSidebar,
   }: {
     actionManager: ActionManager;
     phone: boolean;
+    /** a sidebar is open on the editor's right, where the puck sits */
+    besideSidebar: boolean;
   }) => {
     const app = useApp();
     const { container } = useExcalidrawContainer();
@@ -262,6 +292,50 @@ export const RadialPalette = React.memo(
       savePuckPlace(app.ownerWindow, next);
     };
 
+    /** whether a press at `at` would reach the puck there: nothing above
+     * the canvas that takes taps (the host's top bar, a button) is there */
+    const takesNoTaps = (at: ClientPoint) =>
+      reachesCanvas(app.ownerDocument, container, at);
+
+    /** a placed puck the host's controls cover moves to the nearest spot
+     * that can be pressed, or back to its own corner when there is none */
+    const [checkAgain, setCheckAgain] = useState(0);
+    useEffect(() => {
+      // the host may draw its controls after the editor: look once more
+      const timer = app.ownerWindow.setTimeout(
+        () => setCheckAgain((count) => count + 1),
+        PUCK_RECHECK_MS,
+      );
+      return () => app.ownerWindow.clearTimeout(timer);
+    }, [app]);
+    useLayoutEffect(() => {
+      if (!place || moving || session || !container) {
+        return;
+      }
+      const { offsetLeft, offsetTop, width, height } = app.state;
+      if (!width || !height) {
+        // not laid out yet: the look after it decides
+        return;
+      }
+      const area = { left: offsetLeft, top: offsetTop, width, height };
+      const at = placedPuckCenter(place, area);
+      if (puckIsClear(at, takesNoTaps)) {
+        return;
+      }
+      const free = reachablePuckCenter(at, area, takesNoTaps);
+      if (free) {
+        keep({
+          x: (free.x - offsetLeft) / width,
+          y: (free.y - offsetTop) / height,
+          collapsed: false,
+        });
+      } else {
+        setPlace(null);
+        forgetPuckPlace(app.ownerWindow);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [place, moving, session, container, checkAgain]);
+
     const inEditor = (clientX: number, clientY: number) => {
       const { offsetLeft, offsetTop, width, height } = app.state;
       return {
@@ -298,6 +372,8 @@ export const RadialPalette = React.memo(
       const center = puckCenter(event.currentTarget);
       const releaseMenus = holdMenusShut(win);
       let lifted = false;
+      /** where the pointer last was, for a drop the browser cuts short */
+      let last = start;
       const liftPuck = () => {
         lifted = true;
         controller.close();
@@ -325,7 +401,8 @@ export const RadialPalette = React.memo(
           }
           liftPuck();
         }
-        setMoving(fractionAt(moveEvent.clientX, moveEvent.clientY));
+        last = { x: moveEvent.clientX, y: moveEvent.clientY };
+        setMoving(fractionAt(last.x, last.y));
       };
       const onUp = (upEvent: PointerEvent) => {
         if (upEvent.pointerId !== pointerId) {
@@ -342,8 +419,15 @@ export const RadialPalette = React.memo(
         }
       };
       const onCancel = (cancelEvent: PointerEvent) => {
-        if (cancelEvent.pointerId === pointerId) {
-          end();
+        if (cancelEvent.pointerId !== pointerId) {
+          return;
+        }
+        end();
+        // the browser took the pointer (a gesture, a second finger): a lifted
+        // puck stays where it was carried, as if it were dropped there
+        if (lifted) {
+          const { at, bounds } = inEditor(last.x, last.y);
+          keep(dropPuck(at, bounds));
         }
       };
       const end = (afterHold = lifted) => {
@@ -370,6 +454,7 @@ export const RadialPalette = React.memo(
           type="button"
           className={clsx("RadialPalette__puck", {
             "RadialPalette__puck--phone": phone,
+            "RadialPalette__puck--beside-sidebar": besideSidebar,
             "RadialPalette__puck--placed": !!shown,
             "RadialPalette__puck--moving": !!moving,
             "RadialPalette__puck--collapsed": collapsed,
@@ -457,18 +542,178 @@ const Ring = ({
   const setAppState = useExcalidrawSetAppState();
 
   const { offsetLeft, offsetTop, width, height } = appState;
+  const { container } = useExcalidrawContainer();
+  /** the bands the host's controls take along the editor's top and bottom,
+   * measured as the ring opens, before it is drawn over them */
+  const [insets] = useState(() =>
+    measureHostInsets(
+      { left: offsetLeft, top: offsetTop, width, height },
+      (at) => reachesCanvas(app.ownerDocument, container, at),
+    ),
+  );
+  const [ringScale, setRingScale] = useState(() =>
+    loadRingScale(app.ownerWindow),
+  );
   /** where the ring is drawn when it is open at `at`, in client terms */
   const drawnAt = (at: ClientPoint) => {
     const placed = placeRing(
       { x: at.x - offsetLeft, y: at.y - offsetTop },
       { width, height },
+      RING_MARGIN,
+      ringScale,
+      insets,
     );
     return { x: placed.x + offsetLeft, y: placed.y + offsetTop };
   };
   const place = placeRing(
     { x: session.at.x - offsetLeft, y: session.at.y - offsetTop },
     { width, height },
+    RING_MARGIN,
+    ringScale,
+    insets,
   );
+
+  /** which way the corner handle points: towards the most room, or, while
+   * it is dragged, the way it pointed when it was pressed */
+  const [heldCorner, setHeldCorner] = useState<Corner | null>(null);
+  const corner: Corner = heldCorner ?? {
+    x: place.x < width / 2 ? 1 : -1,
+    y: place.y < height / 2 ? 1 : -1,
+  };
+  /** the corner held below the fold: letting go folds the ring */
+  const [folding, setFolding] = useState(false);
+  /** ends the corner drag in progress, if any, keeping nothing */
+  const endScaleDrag = useRef<(() => void) | null>(null);
+  useEffect(() => () => endScaleDrag.current?.(), []);
+
+  /** the corner opposite the handle, which stays put as the ring scales */
+  const heldAnchor = () => {
+    const half = RING_RADIUS * place.scale;
+    return {
+      x: offsetLeft + place.x - corner.x * half,
+      y: offsetTop + place.y - corner.y * half,
+    };
+  };
+  /** the largest size that fits between `anchor` and the editor's far sides */
+  const roomFrom = (anchor: ClientPoint) =>
+    (Math.min(
+      corner.x > 0 ? offsetLeft + width - anchor.x : anchor.x - offsetLeft,
+      corner.y > 0 ? offsetTop + height - anchor.y : anchor.y - offsetTop,
+    ) -
+      RING_MARGIN) /
+    (RING_RADIUS * 2);
+  /** draws the ring `scale` big with its corner at `anchor` */
+  const scaleAbout = (anchor: ClientPoint, scale: number) => {
+    setRingScale(scale);
+    controller.moveTo({
+      x: anchor.x + corner.x * RING_RADIUS * scale,
+      y: anchor.y + corner.y * RING_RADIUS * scale,
+    });
+  };
+
+  /** a drag on the corner scales the ring as a frame's corner does: the
+   * opposite corner stays put and this one follows the pointer; held far
+   * enough in, it folds the ring into the puck when let go */
+  const scaleFromCorner = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    endScaleDrag.current?.();
+    const win = app.ownerWindow;
+    const handle = event.currentTarget;
+    const { pointerId } = event;
+    try {
+      // Firefox loses the lift of a drag that leaves the handle otherwise
+      handle.setPointerCapture(pointerId);
+    } catch {
+      // a pointer the browser no longer knows: the window still hears it
+    }
+    const anchor = heldAnchor();
+    const largest = roomFrom(anchor);
+    // where on the handle it was taken, from the corner, which then keeps
+    // that far from the pointer: no jump on the grab, and no drift after
+    const side = RING_RADIUS * 2 * place.scale;
+    const grip = {
+      x: event.clientX - (anchor.x + corner.x * side),
+      y: event.clientY - (anchor.y + corner.y * side),
+    };
+    /** the size whose corner sits under `at`, unclamped */
+    const rawAt = (at: PointerEvent) =>
+      ((at.clientX - grip.x - anchor.x) * corner.x +
+        (at.clientY - grip.y - anchor.y) * corner.y) /
+      (RING_RADIUS * 4);
+    const sizeAt = (at: PointerEvent) =>
+      clampRingScale(Math.min(largest, rawAt(at)));
+    let last: PointerEvent | null = null;
+    setHeldCorner(corner);
+    const onMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) {
+        return;
+      }
+      last = moveEvent;
+      setFolding(rawAt(moveEvent) < FOLD_RING_SCALE);
+      scaleAbout(anchor, sizeAt(moveEvent));
+    };
+    const onUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) {
+        return;
+      }
+      const at = upEvent.type === "lostpointercapture" ? last : upEvent;
+      end();
+      if (!at) {
+        return;
+      }
+      if (rawAt(at) < FOLD_RING_SCALE) {
+        controller.close();
+        return;
+      }
+      const scale = sizeAt(at);
+      scaleAbout(anchor, scale);
+      saveRingScale(win, scale);
+    };
+    const end = () => {
+      win.removeEventListener("pointermove", onMove);
+      win.removeEventListener("pointerup", onUp);
+      win.removeEventListener("pointercancel", end);
+      handle.removeEventListener("lostpointercapture", onUp);
+      setHeldCorner(null);
+      setFolding(false);
+      endScaleDrag.current = null;
+    };
+    endScaleDrag.current = end;
+    win.addEventListener("pointermove", onMove);
+    win.addEventListener("pointerup", onUp);
+    win.addEventListener("pointercancel", end);
+    handle.addEventListener("lostpointercapture", onUp);
+  };
+
+  /** + and - step the size from the keyboard, the opposite corner held */
+  const scaleFromKeys = (event: React.KeyboardEvent) => {
+    const step = (
+      {
+        "+": 1,
+        "=": 1,
+        ArrowUp: 1,
+        ArrowRight: 1,
+        "-": -1,
+        ArrowDown: -1,
+        ArrowLeft: -1,
+      } as Record<string, number>
+    )[event.key];
+    if (!step) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const anchor = heldAnchor();
+    const scale = clampRingScale(
+      Math.min(roomFrom(anchor), place.scale + step * RING_SCALE_STEP),
+    );
+    scaleAbout(anchor, scale);
+    saveRingScale(app.ownerWindow, scale);
+  };
 
   // the style ring shows its properties, or one's options, in the tools band
   const styleRing = session.ring === "style";
@@ -631,6 +876,21 @@ const Ring = ({
   }, [app, controller, flick, toolsRing]);
 
   const ringRef = useRef<HTMLDivElement>(null);
+
+  // a press on a slice focuses it; when the ring goes, that slice goes with
+  // it and focus would fall to the page, where the editor takes no Ctrl+Z.
+  // Focus goes back to the editor instead, unless it has moved elsewhere
+  // (redaphid/excalidraw#283)
+  useLayoutEffect(() => {
+    const ring = ringRef.current;
+    return () => {
+      const doc = app.ownerDocument;
+      const active = doc.activeElement;
+      if (!active || active === doc.body || ring?.contains(active)) {
+        app.focusContainer();
+      }
+    };
+  }, [app]);
   // a long press opens the ring under the finger, and the browser's click
   // on release lands on the hub or a slice; only a press made on the ring
   // counts
@@ -729,20 +989,26 @@ const Ring = ({
       at = { x: from.x + dx, y: from.y + dy };
       controller.moveTo(at);
     };
-    const onUp = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) {
-        return;
-      }
+    /** sets the ring down where it was carried, with the puck there too */
+    const drop = () => {
+      const carried = lifted && at !== from;
       end();
-      if (lifted && at !== from) {
+      if (carried) {
         const dropped = drawnAt(at);
         controller.moveTo(dropped);
         onMoved(dropped);
       }
     };
+    const onUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId === pointerId) {
+        drop();
+      }
+    };
+    // the browser took the pointer (a gesture, a second finger): the ring
+    // stays where it was carried, as if it were dropped there
     const onCancel = (cancelEvent: PointerEvent) => {
       if (cancelEvent.pointerId === pointerId) {
-        end();
+        drop();
       }
     };
     const end = (afterHold = lifted) => {
@@ -799,7 +1065,10 @@ const Ring = ({
         "RadialPalette__segment--disabled": disabled,
       })}
       onPointerDown={(event) =>
+        // only the main button picks: a right-click, a pen's barrel button
+        // or a middle-click held on a slice is not a hold
         !disabled &&
+        event.button === 0 &&
         controller.hold(ring, index, LONG_PRESS_DELAY, {
           x: event.clientX,
           y: event.clientY,
@@ -944,15 +1213,33 @@ const Ring = ({
       <div
         className="RadialPalette__backdrop"
         data-testid="radial-palette-backdrop"
-        onContextMenu={preventMenu}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          // the menu event of a press that left the ring with a held hub
+          if (endHubPress.current) {
+            return;
+          }
+          controller.close();
+        }}
         onPointerDown={(event) => {
           event.preventDefault();
-          controller.close();
+          // a second finger while the hub is pressed, as when the other
+          // hand pans, leaves the ring with the first
+          if (endHubPress.current) {
+            return;
+          }
+          // a right-click (or a pen's barrel button) closes on its menu
+          // event, which must land here: with the backdrop gone it reaches
+          // the canvas and opens the editor's menu on the same click
+          if (event.button !== 2) {
+            controller.close();
+          }
         }}
       />
       <div
         ref={ringRef}
         className={clsx("RadialPalette", {
+          "RadialPalette--folding": folding,
           "RadialPalette--moving": moving,
         })}
         role="dialog"
@@ -977,6 +1264,18 @@ const Ring = ({
         }}
       >
         <div className="RadialPalette__disc" />
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={t("radialPalette.scale")}
+          data-testid="radial-palette-scale"
+          className={clsx("RadialPalette__scale", {
+            "RadialPalette__scale--left": corner.x < 0,
+            "RadialPalette__scale--top": corner.y < 0,
+          })}
+          onPointerDown={scaleFromCorner}
+          onKeyDown={scaleFromKeys}
+        />
         <svg
           viewBox={`${-RING_RADIUS} ${-RING_RADIUS} ${RING_RADIUS * 2} ${
             RING_RADIUS * 2

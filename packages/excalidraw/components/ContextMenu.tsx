@@ -16,7 +16,17 @@ import type { Action } from "../actions/types";
 
 import type { TranslationKeys } from "../i18n";
 
-export type ContextMenuItem = typeof CONTEXT_MENU_SEPARATOR | Action;
+/** actions offered side by side as icon buttons, one tap each, which keeps
+ * a long menu short enough for a phone */
+export type ContextMenuRow = Readonly<{
+  row: string;
+  actions: readonly Action[];
+}>;
+
+export type ContextMenuItem =
+  | typeof CONTEXT_MENU_SEPARATOR
+  | Action
+  | ContextMenuRow;
 
 export type ContextMenuItems = (ContextMenuItem | false | null | undefined)[];
 
@@ -35,18 +45,46 @@ export const ContextMenu = React.memo(
     const appState = useExcalidrawAppState();
     const elements = useExcalidrawElements();
 
+    const offered = (action: Action) =>
+      !action.predicate ||
+      action.predicate(
+        elements,
+        appState,
+        actionManager.app.props,
+        actionManager.app,
+      );
+
+    const labelOf = (action: Action) => {
+      if (!action.label) {
+        return "";
+      }
+      return t(
+        (typeof action.label === "function"
+          ? action.label(elements, appState, actionManager.app)
+          : action.label) as unknown as TranslationKeys,
+      );
+    };
+
+    const run = (action: Action) =>
+      // we need update state before executing the action in case
+      // the action uses the appState it's being passed (that still
+      // contains a defined contextMenu) to return the next state.
+      onClose(() => {
+        actionManager.executeAction(action, "contextMenu");
+      });
+
     const filteredItems = items.reduce((acc: ContextMenuItem[], item) => {
-      if (
-        item &&
-        (item === CONTEXT_MENU_SEPARATOR ||
-          !item.predicate ||
-          item.predicate(
-            elements,
-            appState,
-            actionManager.app.props,
-            actionManager.app,
-          ))
-      ) {
+      if (!item) {
+        return acc;
+      }
+      if (item === CONTEXT_MENU_SEPARATOR) {
+        acc.push(item);
+      } else if ("row" in item) {
+        const actions = item.actions.filter(offered);
+        if (actions.length) {
+          acc.push({ ...item, actions });
+        }
+      } else if (offered(item)) {
         acc.push(item);
       }
       return acc;
@@ -79,35 +117,36 @@ export const ContextMenu = React.memo(
               return <hr key={idx} className="context-menu-item-separator" />;
             }
 
-            const actionName = item.name;
-            let label = "";
-            if (item.label) {
-              if (typeof item.label === "function") {
-                label = t(
-                  item.label(
-                    elements,
-                    appState,
-                    actionManager.app,
-                  ) as unknown as TranslationKeys,
-                );
-              } else {
-                label = t(item.label as unknown as TranslationKeys);
-              }
+            if ("row" in item) {
+              return (
+                <li key={idx} className="context-menu-row">
+                  {item.actions.map((action) => {
+                    const label = labelOf(action);
+                    return (
+                      <button
+                        key={action.name}
+                        type="button"
+                        data-testid={action.name}
+                        aria-label={label}
+                        title={label}
+                        className="context-menu-row__button"
+                        onClick={() => run(action)}
+                      >
+                        {typeof action.icon === "function"
+                          ? action.icon(appState, elements)
+                          : action.icon}
+                      </button>
+                    );
+                  })}
+                </li>
+              );
             }
 
+            const actionName = item.name;
+            const label = labelOf(item);
+
             return (
-              <li
-                key={idx}
-                data-testid={actionName}
-                onClick={() => {
-                  // we need update state before executing the action in case
-                  // the action uses the appState it's being passed (that still
-                  // contains a defined contextMenu) to return the next state.
-                  onClose(() => {
-                    actionManager.executeAction(item, "contextMenu");
-                  });
-                }}
-              >
+              <li key={idx} data-testid={actionName} onClick={() => run(item)}>
                 <button
                   type="button"
                   className={clsx("context-menu-item", {

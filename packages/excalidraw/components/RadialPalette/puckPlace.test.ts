@@ -1,8 +1,10 @@
 import {
   PUCK_EDGE,
+  PUCK_RADIUS,
   PUCK_STORAGE_KEY,
   dropPuck,
   loadPuckPlace,
+  reachablePuckCenter,
   savePuckPlace,
 } from "./puckPlace";
 
@@ -96,5 +98,29 @@ describe("loadPuckPlace", () => {
       } as unknown as Window;
       expect(loadPuckPlace(blocked)).toBeNull();
     });
+  });
+});
+
+describe("reachablePuckCenter", () => {
+  const area = { left: 0, top: 0, width: 390, height: 844 };
+  const belowBar = (at: { y: number }) => at.y >= 60;
+
+  it("keeps a center that can already be pressed", () => {
+    expect(reachablePuckCenter({ x: 200, y: 400 }, area, belowBar)).toEqual({
+      x: 200,
+      y: 400,
+    });
+  });
+
+  it("moves a center under a top bar to the nearest spot below it", () => {
+    const at = reachablePuckCenter({ x: 368, y: 22 }, area, belowBar)!;
+    expect(at.y - PUCK_RADIUS).toBeGreaterThanOrEqual(60);
+    expect(at.y).toBeLessThan(60 + 3 * PUCK_RADIUS);
+  });
+
+  it("finds nothing when nothing can be pressed", () => {
+    expect(reachablePuckCenter({ x: 200, y: 400 }, area, () => false)).toBe(
+      null,
+    );
   });
 });
