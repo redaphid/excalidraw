@@ -371,6 +371,11 @@ export class RadialPaletteController {
     // whole steps over the items that can be picked: empty recent color
     // slots are drawn but hold nothing
     const items = this.items(current.ring);
+    // a ring with nothing in it (the style ring with nothing selected), as
+    // a knob may open it: nothing to step to
+    if (!items.length) {
+      return;
+    }
     const direction = Math.sign(Math.trunc(delta));
     let index = current.index;
     for (let left = Math.abs(Math.trunc(delta)); left > 0; ) {
@@ -390,10 +395,19 @@ export class RadialPaletteController {
     if (!current) {
       return;
     }
-    const ring =
-      RADIAL_RINGS[
-        wrap(RADIAL_RINGS.indexOf(current.ring) + delta, RADIAL_RINGS.length)
-      ];
+    // a ring with nothing in it (the style ring with nothing selected) is
+    // passed over, on in the same direction
+    const direction = Math.sign(delta) || 1;
+    let at = RADIAL_RINGS.indexOf(current.ring) + delta;
+    for (
+      let tries = 1;
+      tries < RADIAL_RINGS.length &&
+      !this.items(RADIAL_RINGS[wrap(at, RADIAL_RINGS.length)]).length;
+      tries++
+    ) {
+      at += direction;
+    }
+    const ring = RADIAL_RINGS[wrap(at, RADIAL_RINGS.length)];
     this.update({
       ...current,
       ring,
