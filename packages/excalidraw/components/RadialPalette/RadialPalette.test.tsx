@@ -581,6 +581,8 @@ describe("RadialPalette", () => {
       describe("when the size arc is dragged", () => {
         beforeEach(() => {
           const svg = ring()!.querySelector("svg")!;
+          // the test DOM knows no pointer 1 to capture
+          svg.setPointerCapture = () => {};
           const { left, top, width, height } = ring()!.style;
           const center = {
             x: parseFloat(left) + parseFloat(width) / 2,
