@@ -1088,7 +1088,7 @@ describe("textWysiwyg", () => {
     });
 
     it.each([0.5, 2])(
-      "should stop a growing text at TEXT_MAX_WRAP_WIDTH at any zoom, however wide the view (zoom %s)",
+      "should stop a growing text at TEXT_MAX_WRAP_WIDTH screen pixels at any zoom, however wide the view (zoom %s)",
       (zoom) => {
         API.setAppState({
           width: 2000,
@@ -1101,8 +1101,9 @@ describe("textWysiwyg", () => {
         );
         const text = h.elements[0] as ExcalidrawTextElement;
         expect(text.autoResize).toBe(false);
-        // in scene units: at 200%, the view would allow 980
-        expect(text.width).toBe(TEXT_MAX_WRAP_WIDTH);
+        // in screen pixels, as all authoring is: at 200%, the view would
+        // allow 980 scene units
+        expect(text.width).toBe(TEXT_MAX_WRAP_WIDTH / zoom);
       },
     );
 

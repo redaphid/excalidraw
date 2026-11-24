@@ -604,9 +604,14 @@ describe("scroll pixel snap", () => {
 });
 
 describe("grid pixel snap", () => {
-  /** the static canvas's path starts, in device pixels */
+  /** the canvas the grid is painted on, under the static canvas */
+  const gridCanvas = () =>
+    GlobalTestState.renderResult.container.querySelector<HTMLCanvasElement>(
+      "canvas.excalidraw__canvas.background",
+    )!;
+  /** the grid canvas's path starts, in device pixels */
   const getPathStarts = () => {
-    const context = GlobalTestState.canvas.getContext("2d") as any;
+    const context = gridCanvas().getContext("2d") as any;
     return (context.__getEvents() as CanvasEvent[])
       .filter((event) => event.type === "moveTo")
       .map(({ transform: [a, , , d, e, f], props }) => ({
@@ -623,7 +628,7 @@ describe("grid pixel snap", () => {
     // zooms at which a grid line is at least a device pixel wide — 1.9
     // included, where `(1 / zoom) × zoom` evaluates just under 1
     for (const zoom of [1, 1.5, 1.9, 2.2]) {
-      (GlobalTestState.canvas.getContext("2d") as any).__clearEvents();
+      (gridCanvas().getContext("2d") as any).__clearEvents();
       API.setAppState({
         zoom: { value: zoom as NormalizedZoomValue },
         scrollX: 3.3,

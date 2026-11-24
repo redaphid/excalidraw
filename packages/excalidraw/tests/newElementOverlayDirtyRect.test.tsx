@@ -20,6 +20,7 @@ const overlayCanvas = () =>
     (canvas) =>
       canvas.classList.contains("excalidraw__canvas") &&
       !canvas.classList.contains("static") &&
+      !canvas.classList.contains("background") &&
       !canvas.classList.contains("interactive"),
   )!;
 

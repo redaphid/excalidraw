@@ -11,7 +11,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -140,7 +139,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -390,7 +388,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.group",
@@ -439,7 +436,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.ungroup",
@@ -451,7 +447,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -507,7 +502,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -556,7 +550,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -600,7 +593,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -649,7 +641,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -698,7 +689,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -742,7 +732,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -791,7 +780,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeHorizontally",
         "name": "distributeHorizontally",
@@ -802,7 +790,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeVertically",
         "name": "distributeVertically",
@@ -823,7 +810,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -875,7 +861,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -922,7 +907,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -976,7 +960,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -1107,7 +1090,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "category": "Elements",
         "keywords": [
           "line",
@@ -1122,7 +1104,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -1192,7 +1173,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -1237,7 +1217,6 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -1480,7 +1459,6 @@ exports[`contextMenu element > selecting 'Add to library' in context menu adds e
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -1713,7 +1691,6 @@ exports[`contextMenu element > selecting 'Bring forward' in context menu brings 
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -2065,7 +2042,6 @@ exports[`contextMenu element > selecting 'Bring to front' in context menu brings
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -2417,7 +2393,6 @@ exports[`contextMenu element > selecting 'Copy styles' in context menu copies st
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -2650,7 +2625,6 @@ exports[`contextMenu element > selecting 'Delete' in context menu deletes elemen
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -2910,7 +2884,6 @@ exports[`contextMenu element > selecting 'Duplicate' in context menu duplicates 
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -3229,7 +3202,6 @@ exports[`contextMenu element > selecting 'Group selection' in context menu group
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -3622,7 +3594,6 @@ exports[`contextMenu element > selecting 'Paste styles' in context menu pastes s
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -4163,7 +4134,6 @@ exports[`contextMenu element > selecting 'Send backward' in context menu sends e
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -4507,7 +4477,6 @@ exports[`contextMenu element > selecting 'Send to back' in context menu sends el
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -4851,7 +4820,6 @@ exports[`contextMenu element > selecting 'Ungroup selection' in context menu ung
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -5283,7 +5251,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -5412,7 +5379,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5662,7 +5628,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.group",
@@ -5711,7 +5676,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.ungroup",
@@ -5723,7 +5687,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5779,7 +5742,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5828,7 +5790,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5872,7 +5833,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5921,7 +5881,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -5970,7 +5929,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6014,7 +5972,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6063,7 +6020,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeHorizontally",
         "name": "distributeHorizontally",
@@ -6074,7 +6030,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeVertically",
         "name": "distributeVertically",
@@ -6095,7 +6050,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6147,7 +6101,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6194,7 +6147,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6248,7 +6200,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6379,7 +6330,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "category": "Elements",
         "keywords": [
           "line",
@@ -6394,7 +6344,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6464,7 +6413,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6509,7 +6457,6 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -6898,7 +6845,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -7027,7 +6973,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7277,7 +7222,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.group",
@@ -7326,7 +7270,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.ungroup",
@@ -7338,7 +7281,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7394,7 +7336,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7443,7 +7384,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7487,7 +7427,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7536,7 +7475,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7585,7 +7523,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7629,7 +7566,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7678,7 +7614,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeHorizontally",
         "name": "distributeHorizontally",
@@ -7689,7 +7624,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeVertically",
         "name": "distributeVertically",
@@ -7710,7 +7644,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7762,7 +7695,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7809,7 +7741,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7863,7 +7794,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -7994,7 +7924,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "category": "Elements",
         "keywords": [
           "line",
@@ -8009,7 +7938,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -8079,7 +8007,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -8124,7 +8051,6 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -8564,7 +8490,6 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -8579,7 +8504,6 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
   "contextMenu": {
     "items": [
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -8606,7 +8530,6 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         "viewMode": false,
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -9317,7 +9240,6 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
         "viewMode": true,
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -9554,7 +9476,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -9683,7 +9604,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -9933,7 +9853,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.group",
@@ -9982,7 +9901,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.ungroup",
@@ -9994,7 +9912,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10050,7 +9967,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10099,7 +10015,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10143,7 +10058,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10192,7 +10106,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10241,7 +10154,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10285,7 +10197,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10334,7 +10245,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeHorizontally",
         "name": "distributeHorizontally",
@@ -10345,7 +10255,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeVertically",
         "name": "distributeVertically",
@@ -10366,7 +10275,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10418,7 +10326,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10465,7 +10372,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10519,7 +10425,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10650,7 +10555,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "category": "Elements",
         "keywords": [
           "line",
@@ -10665,7 +10569,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10735,7 +10638,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10780,7 +10682,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -10939,7 +10840,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
     "locked": false,
     "type": "selection",
   },
-  "authoringUnits": "scene",
   "bindMode": "orbit",
   "bindingPreference": "enabled",
   "boxSelectionMode": "contain",
@@ -11068,7 +10968,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11318,7 +11217,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.group",
@@ -11367,7 +11265,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": [Function],
         "keyTest": [Function],
         "label": "labels.ungroup",
@@ -11379,7 +11276,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11435,7 +11331,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11484,7 +11379,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11528,7 +11422,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11577,7 +11470,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11626,7 +11518,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11670,7 +11561,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11719,7 +11609,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeHorizontally",
         "name": "distributeHorizontally",
@@ -11730,7 +11619,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "keyTest": [Function],
         "label": "labels.distributeVertically",
         "name": "distributeVertically",
@@ -11751,7 +11639,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11803,7 +11690,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11850,7 +11736,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -11904,7 +11789,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         },
       },
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -12035,7 +11919,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "category": "Elements",
         "keywords": [
           "line",
@@ -12050,7 +11933,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -12120,7 +12002,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""
@@ -12165,7 +12046,6 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
       },
       "separator",
       {
-        "PanelComponent": [Function],
         "icon": <svg
           aria-hidden="true"
           className=""

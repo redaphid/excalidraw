@@ -47,14 +47,11 @@ const mouse = new Pointer("mouse");
 
 type Box = { x: number; y: number; width: number; height: number };
 
-/** `null` mounts the editor without frame navigation */
 const mount = async (
   elements: readonly ExcalidrawElement[],
-  nav: FrameNavigation | null = {},
+  nav: FrameNavigation = {},
 ) => {
-  await render(
-    <Excalidraw handleKeyboardGlobally frameNavigation={nav ?? undefined} />,
-  );
+  await render(<Excalidraw handleKeyboardGlobally frameNavigation={nav} />);
   fakeClock();
   API.setElements(elements);
 };
@@ -239,17 +236,6 @@ describe("the frame the view is in", () => {
 
     it("should show the new name", () => {
       expect(here()).toBe("The Lair");
-    });
-  });
-
-  describe("when frameNavigation is off", () => {
-    beforeEach(async () => {
-      await mount([frame("frame-valley-of-the-sun", 0, 0)], null);
-      showView({ x: 0, y: 0, width: 400, height: 300 });
-    });
-
-    it("should show no breadcrumb", () => {
-      expect(document.querySelector(".frame-breadcrumb")).toBeNull();
     });
   });
 });
@@ -462,23 +448,6 @@ describe("arrow keys", () => {
 
     it("should leave the view where it was", () => {
       expect(here()).toBe("frame-valley-of-the-sun");
-    });
-  });
-
-  describe("when frameNavigation is off", () => {
-    let before: { scrollX: number; scrollY: number };
-
-    beforeEach(async () => {
-      await mount(row, null);
-      showView(valley);
-      before = { scrollX: h.state.scrollX, scrollY: h.state.scrollY };
-      await press(KEYS.ARROW_RIGHT);
-    });
-
-    it("should leave the view where it was", () => {
-      expect({ scrollX: h.state.scrollX, scrollY: h.state.scrollY }).toEqual(
-        before,
-      );
     });
   });
 });
@@ -913,21 +882,6 @@ describe("the frame tool", () => {
 
     it("should keep the host's tool", () => {
       expect(h.state.activeTool.type).toBe("rectangle");
-    });
-
-    it("should leave the sidebar closed", () => {
-      expect(h.state.openSidebar).toBeNull();
-    });
-  });
-
-  describe("when it is picked with frameNavigation off", () => {
-    beforeEach(async () => {
-      await mount(board, null);
-      Keyboard.keyPress("f");
-    });
-
-    it("should pick the tool", () => {
-      expect(h.state.activeTool.type).toBe("frame");
     });
 
     it("should leave the sidebar closed", () => {
