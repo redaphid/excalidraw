@@ -12952,6 +12952,9 @@ ${css}
     const left = pointer.clientX - offsetLeft;
     const top = pointer.clientY - offsetTop;
 
+    // one menu at a time: the context menu takes the place of the ring
+    this.radialPalette.close();
+
     trackEvent("contextMenu", "openContextMenu", type);
 
     this.setState(

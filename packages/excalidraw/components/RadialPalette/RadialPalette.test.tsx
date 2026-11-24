@@ -257,6 +257,22 @@ describe("RadialPalette", () => {
       expect(ring()).toBeNull();
     });
 
+    describe("when the canvas menu is open and , opens the ring", () => {
+      beforeEach(() => {
+        act(() => h.app.openContextMenu({ clientX: 300, clientY: 300 }));
+        expect(h.state.contextMenu).not.toBeNull();
+        Keyboard.keyPress(",", document.body);
+      });
+
+      it("opens the ring", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      it("closes the menu: one menu at a time", () => {
+        expect(h.state.contextMenu).toBeNull();
+      });
+    });
+
     describe("when the puck is pressed", () => {
       beforeEach(() => {
         openRing();
@@ -318,6 +334,20 @@ describe("RadialPalette", () => {
 
         it("stays open", () => {
           expect(ring()).not.toBeNull();
+        });
+      });
+
+      describe("when a context menu opens while the ring is open", () => {
+        beforeEach(() => {
+          act(() => h.app.openContextMenu({ clientX: 300, clientY: 300 }));
+        });
+
+        it("opens the menu", () => {
+          expect(h.state.contextMenu).not.toBeNull();
+        });
+
+        it("closes the ring: one menu at a time", () => {
+          expect(ring()).toBeNull();
         });
       });
 
@@ -642,6 +672,49 @@ describe("RadialPalette", () => {
 
         it("opens no context menu: one click, one menu closed", () => {
           expect(h.state.contextMenu).toBeNull();
+        });
+      });
+
+      describe("when the rings are stepped down from the keyboard with nothing selected", () => {
+        beforeEach(() => {
+          // from the tools ring, down wraps to the style ring, which holds
+          // nothing while nothing is selected
+          Keyboard.keyPress(KEYS.ARROW_DOWN);
+        });
+
+        it("passes over the empty style ring", () => {
+          expect(ring()!.getAttribute("data-ring")).toBe("colors");
+        });
+
+        it("steps along the ring it lands on", () => {
+          const before = h.app.radialPalette.api.state().index;
+          Keyboard.keyPress(KEYS.ARROW_RIGHT);
+          const { index } = h.app.radialPalette.api.state();
+          expect(Number.isInteger(index)).toBe(true);
+          expect(index).not.toBe(before);
+        });
+      });
+
+      describe("when the rings are stepped up past the colors with nothing selected", () => {
+        beforeEach(() => {
+          // tools, pens, colors, then the empty style ring
+          Keyboard.keyPress(KEYS.ARROW_UP);
+          Keyboard.keyPress(KEYS.ARROW_UP);
+          Keyboard.keyPress(KEYS.ARROW_UP);
+        });
+
+        it("passes over the empty style ring to the tools", () => {
+          expect(ring()!.getAttribute("data-ring")).toBe("tools");
+        });
+      });
+
+      describe("when a knob steps the empty style ring", () => {
+        it("does nothing, and does not throw", () => {
+          act(() => h.app.radialPalette.api.open({ ring: "style" }));
+          expect(() =>
+            act(() => h.app.radialPalette.api.step(1)),
+          ).not.toThrow();
+          expect(h.app.radialPalette.api.state().open).toBe(true);
         });
       });
 
