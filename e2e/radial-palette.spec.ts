@@ -367,7 +367,11 @@ test("every colour a finger can pick owns a 44px run each way, and nothing else'
   page,
 }, testInfo) => {
   test.skip(!testInfo.project.use.hasTouch, "a touch target");
-  await tap(page, testInfo, "radial-palette-puck");
+  // opened mid-screen, so every target's outer reach lies on the screen (from
+  // the puck the ring sits at the edge and the fill chip's reach runs off it)
+  const viewport = page.viewportSize()!;
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  await page.keyboard.press(",");
   await expect(page.getByTestId("radial-palette")).toBeVisible();
   const ring = await ringCenter(page);
   const scale =
