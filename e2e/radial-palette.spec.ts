@@ -406,7 +406,7 @@ test("every colour a finger can pick owns a 44px run each way, and nothing else'
     }
     // across its outer part: 44px of it
     for (let across = -22; across <= 22; across += 4) {
-      expect(`${id} across ${across}: ${await owner(170, across)}`).toBe(
+      expect(`${id} across ${across}: ${await owner(184, across)}`).toBe(
         `${id} across ${across}: ${id}`,
       );
     }

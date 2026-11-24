@@ -29,12 +29,13 @@ export const MIN_RING_SCALE = 0.6;
 
 /**
  * Where a colour takes a tap: its own sector, run on past the ring's edge.
- * The colours share the top half, so a sector is only about 37px wide at the
- * swatch; it grows outward only, never into a neighbour or another band.
- * Out at 168 a 15 degree sector is 44px wide, so each target holds a 44px
- * run both ways (52 deep, 44 to 46 across its outer part).
+ * The colours (twelve and the fill chip) share the top half, so a sector is
+ * under 14 degrees, only about 35px wide at the swatch; it grows outward
+ * only, never into a neighbour or another band. Out at 184 a 13.8 degree
+ * sector is 44px wide, so each target holds a 44px run both ways (66 deep,
+ * 44 to 46 across its outer part).
  */
-export const SWATCH_BAND: Band = { inner: OUTER_BAND.inner, outer: 176 };
+export const SWATCH_BAND: Band = { inner: OUTER_BAND.inner, outer: 190 };
 
 /** a pointer this far from where it went down is a flick, not a tap */
 export const FLICK_DISTANCE = 10;

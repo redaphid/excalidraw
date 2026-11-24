@@ -113,6 +113,13 @@ describe("radialLayout", () => {
         expect(SWATCH_BAND.inner).toBeGreaterThan(MIDDLE_BAND.outer);
       });
     });
+
+    it("still holds 44px across when twelve colours and the fill chip share the top", () => {
+      const span = Math.PI / 13;
+      expect(
+        2 * (SWATCH_BAND.outer - 6) * Math.sin(span / 2),
+      ).toBeGreaterThanOrEqual(44);
+    });
   });
 
   describe("when a pointer lands on the size arc", () => {
