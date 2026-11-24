@@ -4287,6 +4287,18 @@ class App extends React.Component<AppProps, AppState> {
           passive: false,
         },
       ), // #3553
+      // a touch can lift off the canvas (the frame-name label captures the
+      // touches it receives), so its lift is heard on the whole document,
+      // ahead of every other handler
+      addEventListener(this.ownerDocument, EVENT.POINTER_UP, this.onTouchLift, {
+        capture: true,
+      }),
+      addEventListener(
+        this.ownerDocument,
+        EVENT.POINTER_CANCEL,
+        this.onTouchLift,
+        { capture: true },
+      ),
       // rerender text elements on font load to fix #637 && #1553
       addEventListener(
         this.ownerDocument.fonts,
@@ -8593,22 +8605,15 @@ ${css}
    * same cleanup a lost pointerup gets at the next press, only not left
    * lying in wait for it, where its replay would tangle with that press.
    */
-  private handleCanvasPointerCancel = (
-    event: React.PointerEvent<HTMLCanvasElement>,
-  ) => {
-    if (event.pointerType === "touch") {
-      this.twoFingerDoubleTap.cancel(event.pointerId);
+  private onTouchLift = (event: PointerEvent) => {
+    if (event.pointerType !== "touch") {
+      return;
     }
-    this.button.clear();
-    this.removePointer(event);
-    this.maybeCleanupAfterMissingPointerUp(event.nativeEvent);
-  };
-
-  private handleCanvasPointerUp = (
-    event: React.PointerEvent<HTMLCanvasElement>,
-  ) => {
+    if (event.type === EVENT.POINTER_CANCEL) {
+      this.twoFingerDoubleTap.cancel(event.pointerId);
+      return;
+    }
     if (
-      event.pointerType === "touch" &&
       this.twoFingerDoubleTap.up(event.pointerId, event.timeStamp) &&
       !this.state.viewModeEnabled
     ) {
@@ -8619,6 +8624,19 @@ ${css}
       );
       this.actionManager.executeAction(this.actionManager.actions.undo, "ui");
     }
+  };
+
+  private handleCanvasPointerCancel = (
+    event: React.PointerEvent<HTMLCanvasElement>,
+  ) => {
+    this.button.clear();
+    this.removePointer(event);
+    this.maybeCleanupAfterMissingPointerUp(event.nativeEvent);
+  };
+
+  private handleCanvasPointerUp = (
+    event: React.PointerEvent<HTMLCanvasElement>,
+  ) => {
     if (this.button.handlePointerUp(event)) {
       return;
     }

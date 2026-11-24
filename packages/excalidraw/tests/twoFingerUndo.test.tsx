@@ -1,10 +1,17 @@
 import React from "react";
 import { vi } from "vitest";
 
+import { fireEvent } from "@testing-library/react";
+
+import { CLASSES } from "@excalidraw/common";
+import { CaptureUpdateAction } from "@excalidraw/element";
+
 import { Excalidraw } from "../index";
 
+import { API } from "./helpers/api";
 import { Pointer, UI } from "./helpers/ui";
 import {
+  GlobalTestState,
   mockBoundingClientRect,
   render,
   restoreOriginalGetBoundingClientRect,
@@ -116,6 +123,38 @@ describe("double two-finger tap", () => {
     twoFingerTap();
 
     expect(liveIds()).toEqual([]);
+  });
+
+  it("still undoes after a touch lifted off the canvas, on a frame's name", async () => {
+    drawTwo("rectangle");
+    const frame = API.createElement({
+      type: "frame",
+      x: 20,
+      y: 40,
+      width: 170,
+      height: 100,
+    });
+    API.updateScene({
+      elements: [...h.elements, frame],
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+    const label = await waitFor(() => {
+      const found = GlobalTestState.renderResult.container.querySelector(
+        `.${CLASSES.FRAME_NAME}`,
+      );
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    const touch = { pointerType: "touch", pointerId: 9, button: 0 };
+    fireEvent.pointerDown(label, { ...touch, clientX: 30, clientY: 30 });
+    fireEvent.pointerUp(label, { ...touch, clientX: 30, clientY: 30 });
+    wait(1000);
+
+    twoFingerTap();
+    wait(150);
+    twoFingerTap();
+
+    expect(liveIds()).toEqual([first, second]);
   });
 
   it("does nothing on a single two-finger tap", () => {
