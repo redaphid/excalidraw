@@ -370,6 +370,90 @@ test("a pen with its barrel button held opens the ring at the tip", async ({
   await expect(page.getByTestId("radial-palette")).toBeVisible();
 });
 
+test("a puck dropped on the host's own control lands where it can still be pressed (#273)", async ({
+  page,
+}, testInfo) => {
+  const puck = page.getByTestId("radial-palette-puck");
+  // the playground's theme picker stands for a host's top bar
+  const control = (await page.locator("select").first().boundingBox())!;
+  const onControl = {
+    x: control.x + control.width / 2,
+    y: control.y + control.height / 2,
+  };
+  const centerOf = async () => {
+    const box = (await puck.boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  /** whether a press at the puck's center reaches the puck */
+  const reachable = async () => {
+    const at = await centerOf();
+    return page.evaluate(
+      ({ x, y }) =>
+        !!document
+          .elementFromPoint(x, y)
+          ?.closest('[data-testid="radial-palette-puck"]'),
+      at,
+    );
+  };
+  const from = await centerOf();
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.move(onControl.x, onControl.y, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  await page.screenshot({
+    path: testInfo.outputPath("dropped-on-control.png"),
+  });
+
+  expect(await reachable()).toBe(true);
+  // the puck's disc keeps off the control
+  const box = (await puck.boundingBox())!;
+  const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const nearest = {
+    x: Math.min(Math.max(at.x, control.x), control.x + control.width),
+    y: Math.min(Math.max(at.y, control.y), control.y + control.height),
+  };
+  expect(Math.hypot(nearest.x - at.x, nearest.y - at.y)).toBeGreaterThanOrEqual(
+    box.width / 2 - 1,
+  );
+
+  await page.reload();
+  await expect(puck).toBeVisible();
+  await page.waitForTimeout(1200);
+  expect(await reachable()).toBe(true);
+});
+
+test("a ring opened under the host's own control keeps every colour pressable (#281)", async ({
+  page,
+}, testInfo) => {
+  // the playground's theme picker stands for a host's top bar
+  const control = (await page.locator("select").first().boundingBox())!;
+  await page.mouse.move(control.x + control.width / 2, control.y + 4);
+  await page.keyboard.press(",");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.screenshot({
+    path: testInfo.outputPath("ring-under-control.png"),
+  });
+
+  const lost = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid^="radial-color-"]')]
+      .map((swatch) => {
+        const box = swatch.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          box.left + box.width / 2,
+          box.top + box.height / 2,
+        );
+        return hit?.closest('[data-testid^="radial-color-"]') === swatch
+          ? null
+          : swatch.getAttribute("data-testid");
+      })
+      .filter(Boolean),
+  );
+  expect(lost).toEqual([]);
+});
+
 test("a held puck moves, tucks against a side, comes back, and stays put", async ({
   page,
 }, testInfo) => {
@@ -573,6 +657,9 @@ test("the hub opens the selection's menu, where two shapes line up", async ({
   const menu = page.locator(".context-menu");
   await expect(menu.getByTestId("deleteSelectedElements")).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("hub-selection.png") });
+  // the whole menu fits the screen, a phone's too, with nothing to scroll
+  const box = (await menu.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
 
   await menu.getByTestId("alignLeft").click();
   await expect

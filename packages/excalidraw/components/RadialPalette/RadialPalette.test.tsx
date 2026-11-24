@@ -10,7 +10,7 @@ import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
-import { act, render } from "../../tests/test-utils";
+import { GlobalTestState, act, render } from "../../tests/test-utils";
 
 import { LONG_PRESS_DELAY } from "../App.radialPalette";
 
@@ -587,6 +587,64 @@ describe("RadialPalette", () => {
         });
       });
 
+      describe.each([
+        ["the right button", { button: 2, buttons: 2 }],
+        [
+          "a pen's barrel button",
+          { button: 2, buttons: 2, pointerType: "pen" },
+        ],
+        ["the middle button", { button: 1, buttons: 4 }],
+      ])("when a tool is held with %s", (_, init) => {
+        let before: typeof h.state.activeTool;
+
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          before = h.state.activeTool;
+          fireEvent.pointerDown(byTestId("radial-tool-rectangle")!, init);
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY * 2);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("picks nothing: only the main button picks", () => {
+          expect(h.state.activeTool).toEqual(before);
+          expect(ring()).not.toBeNull();
+        });
+      });
+
+      describe.each([
+        ["the right button", { button: 2, buttons: 2 }],
+        [
+          "a pen's barrel button",
+          { button: 2, buttons: 2, pointerType: "pen" },
+        ],
+      ])("when the canvas off the ring is clicked with %s", (_, init) => {
+        beforeEach(() => {
+          const at = { ...init, clientX: 5, clientY: 5 };
+          fireEvent.pointerDown(byTestId("radial-palette-backdrop")!, at);
+          // the browser's menu event goes to whatever is under the pointer
+          // by then: the canvas, once the backdrop is gone
+          fireEvent.contextMenu(
+            byTestId("radial-palette-backdrop") ??
+              GlobalTestState.interactiveCanvas,
+            at,
+          );
+          fireEvent.pointerUp(window, { ...at, buttons: 0 });
+        });
+
+        it("closes the ring", () => {
+          expect(ring()).toBeNull();
+        });
+
+        it("opens no context menu: one click, one menu closed", () => {
+          expect(h.state.contextMenu).toBeNull();
+        });
+      });
+
       describe("when a held tool drifts past the flick distance", () => {
         beforeEach(() => {
           vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
@@ -770,6 +828,64 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when a pressed colour slice is picked", () => {
+      beforeEach(() => {
+        const rectangle = API.createElement({ type: "rectangle" });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        openRing();
+        // a press on a slice focuses it, as a browser does
+        (byTestId("radial-color-1") as unknown as HTMLElement).focus();
+        tap("radial-color-1");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+
+      it("gives focus back to the editor, so Ctrl+Z works at once", () => {
+        expect(document.activeElement).toBe(
+          document.querySelector("[data-excalidraw-id]"),
+        );
+      });
+    });
+
+    describe("when a pressed tool slice is picked", () => {
+      beforeEach(() => {
+        openRing();
+        (byTestId("radial-tool-rectangle") as unknown as HTMLElement).focus();
+        tap("radial-tool-rectangle");
+      });
+
+      it("gives focus back to the editor", () => {
+        expect(document.activeElement).toBe(
+          document.querySelector("[data-excalidraw-id]"),
+        );
+      });
+    });
+
+    describe("when the ring closes while a host's field has focus", () => {
+      let field: HTMLInputElement;
+
+      beforeEach(() => {
+        field = document.createElement("input");
+        document.body.append(field);
+        openRing();
+        field.focus();
+        act(() => {
+          h.app.radialPalette.api.close();
+        });
+      });
+
+      afterEach(() => {
+        field.remove();
+      });
+
+      it("leaves focus in the field", () => {
+        expect(document.activeElement).toBe(field);
+      });
+    });
+
     describe("when the ring opens on a color the theme lacks", () => {
       beforeEach(() => {
         API.setAppState({ currentItemStrokeColor: "#123456" });
@@ -884,6 +1000,67 @@ describe("RadialPalette", () => {
         it("wraps to the last item, not the editor", () => {
           expect(document.activeElement).toBe(items().at(-1));
         });
+      });
+    });
+
+    describe("when a host opens it for a pointer still down, which slides to the rectangle and lifts", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        const tip = { x: 500, y: 400 };
+        act(() => {
+          h.app.radialPalette.api.open({ at: tip, pointerId: 7 });
+        });
+        const layout = getRingLayout({
+          tools: RADIAL_TOOLS.length,
+          pens: getPenPresets(h.app.cssTheme).length + 1,
+          colors: 12,
+        });
+        const center = placeRing(tip, {
+          width: h.state.width,
+          height: h.state.height,
+        });
+        const target = polar(
+          (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+          sectorMiddle(layout.tools[RADIAL_TOOLS.indexOf("rectangle")]),
+        );
+        const at = {
+          pointerId: 7,
+          clientX: center.x + target.x * center.scale,
+          clientY: center.y + target.y * center.scale,
+        };
+        fireEvent.pointerMove(window, at);
+        fireEvent.pointerUp(window, at);
+      });
+
+      it("picks the rectangle", () => {
+        expect(h.state.activeTool.type).toBe("rectangle");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when a host opens it with no pointer down and a pointer lifts over the rectangle", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        act(() => {
+          h.app.radialPalette.api.open({ at: { x: 500, y: 400 } });
+        });
+        fireEvent.pointerMove(window, {
+          pointerId: 7,
+          clientX: 560,
+          clientY: 300,
+        });
+        fireEvent.pointerUp(window, {
+          pointerId: 7,
+          clientX: 560,
+          clientY: 300,
+        });
+      });
+
+      it("stays open", () => {
+        expect(ring()).not.toBeNull();
       });
     });
 
