@@ -184,19 +184,22 @@ export const hitTest = (
 
 /**
  * Where the ring goes: centered on `anchor` when it fits, else moved just
- * far enough to fit, and scaled down (to `MIN_RING_SCALE` at most) when the
- * editor is too small for it.
+ * far enough to fit, at the `preferred` size the person gave it, scaled
+ * down (to `MIN_RING_SCALE` at most) when the editor is too small for it,
+ * and clear of the bands the host's controls take (`insets`) when it fits
+ * between them.
  */
 export const placeRing = (
   anchor: { x: number; y: number },
   bounds: { width: number; height: number },
   margin = 8,
+  preferred = 1,
   /** bands along the top and bottom the host's controls take, which the
    * ring keeps clear of when there is room */
   insets: Readonly<{ top: number; bottom: number }> = { top: 0, bottom: 0 },
 ) => {
   const scale = Math.min(
-    1,
+    preferred,
     Math.max(
       MIN_RING_SCALE,
       (Math.min(bounds.width, bounds.height) / 2 - margin) / RING_RADIUS,

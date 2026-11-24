@@ -195,6 +195,22 @@ describe("the radial palette's puck", () => {
       });
     });
 
+    describe("when it is dragged and the browser takes the pointer", () => {
+      beforeEach(() => {
+        moveTo(250, 500);
+        moveTo(100, 600);
+        fireEvent.pointerCancel(window, pointer(100, 600));
+      });
+
+      it("leaves the puck where it was carried", () => {
+        expect(place()).toEqual({ x: "25%", y: "75%" });
+      });
+
+      it("sets it down", () => {
+        expect(has("moving")).toBe(false);
+      });
+    });
+
     describe("when it is dropped against a side", () => {
       beforeEach(() => {
         moveTo(400 - PUCK_EDGE + 2, 400);

@@ -150,6 +150,22 @@ describe("radialLayout", () => {
       });
     });
 
+    describe("when the person has scaled the ring up", () => {
+      it("draws it at their size where it fits", () => {
+        expect(
+          placeRing({ x: 500, y: 400 }, { width: 1000, height: 800 }, 8, 1.4)
+            .scale,
+        ).toBe(1.4);
+      });
+
+      it("draws it no bigger than the editor holds", () => {
+        expect(
+          placeRing({ x: 200, y: 200 }, { width: 400, height: 400 }, 8, 1.6)
+            .scale,
+        ).toBe((200 - 8) / RING_RADIUS);
+      });
+    });
+
     describe("when the editor has no size yet", () => {
       it("keeps the ring at its smallest usable size", () => {
         expect(placeRing({ x: 0, y: 0 }, { width: 0, height: 0 }).scale).toBe(
@@ -177,18 +193,18 @@ describe("placeRing with the host's bands", () => {
   const insets = { top: 60, bottom: 0 };
 
   it("opens below a top bar when opened under it", () => {
-    const placed = placeRing({ x: 195, y: 70 }, bounds, 8, insets);
+    const placed = placeRing({ x: 195, y: 70 }, bounds, 8, 1, insets);
     expect(placed.y - RING_RADIUS * placed.scale - 8).toBeGreaterThanOrEqual(
       60,
     );
   });
 
   it("opens where it was opened when clear of the bar", () => {
-    expect(placeRing({ x: 195, y: 500 }, bounds, 8, insets).y).toBe(500);
+    expect(placeRing({ x: 195, y: 500 }, bounds, 8, 1, insets).y).toBe(500);
   });
 
   it("ignores bands it cannot fit between", () => {
-    const placed = placeRing({ x: 195, y: 70 }, bounds, 8, {
+    const placed = placeRing({ x: 195, y: 70 }, bounds, 8, 1, {
       top: 400,
       bottom: 400,
     });
