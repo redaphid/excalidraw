@@ -263,6 +263,60 @@ describe("the radial palette's puck", () => {
     });
   });
 
+  describe("when the ring, clamped in from the corner, covers the puck", () => {
+    beforeEach(() => {
+      vi.spyOn(puck(), "getBoundingClientRect").mockReturnValue(
+        new DOMRect(350, 680, 40, 40),
+      );
+      press(370, 700);
+      lift(370, 700);
+    });
+
+    it("is open over the puck", () => {
+      expect(ring()).not.toBeNull();
+    });
+
+    describe("when the puck is pressed again, through the ring", () => {
+      let opacity: number;
+
+      beforeEach(() => {
+        opacity = window.h.state.currentItemOpacity;
+        // the test DOM knows no pointer 1 to capture
+        Object.defineProperty(ring()!.querySelector("svg")!, "setPointerCapture", {
+          value: () => {},
+        });
+        const covering = queryByTestId(document.body, "radial-opacity")!;
+        fireEvent.pointerDown(covering, pointer(370, 700));
+        fireEvent.pointerUp(window, pointer(370, 700));
+      });
+
+      it("closes the ring, as a press on the puck does", () => {
+        expect(ring()).toBeNull();
+      });
+
+      it("sets nothing", () => {
+        expect(window.h.state.currentItemOpacity).toBe(opacity);
+      });
+    });
+  });
+
+  describe("when the ring opens over the puck, its hub on it", () => {
+    beforeEach(() => {
+      vi.spyOn(puck(), "getBoundingClientRect").mockReturnValue(
+        new DOMRect(180, 380, 40, 40),
+      );
+      act(() => {
+        window.h.app.radialPalette.api.open({ at: { x: 200, y: 400 } });
+      });
+      const hub = ring()!.querySelector(".RadialPalette__hub")!;
+      fireEvent.pointerDown(hub, pointer(200, 400));
+    });
+
+    it("leaves the hub its own press", () => {
+      expect(ring()).not.toBeNull();
+    });
+  });
+
   describe("when it is pressed and moved before the hold", () => {
     beforeEach(() => {
       press(370, 700);
