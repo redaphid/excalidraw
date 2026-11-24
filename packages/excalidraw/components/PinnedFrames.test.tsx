@@ -49,7 +49,6 @@ describe("pin a frame to the screen (#240)", () => {
       y: 50,
       width: 200,
       height: 100,
-      name: "Legend",
     });
     const dot = API.createElement({
       type: "rectangle",
