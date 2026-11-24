@@ -61,6 +61,7 @@ import type Library from "./data/library";
 import type { ContextMenuItems } from "./components/ContextMenu";
 import type { RadialPaletteAPI } from "./components/RadialPalette/radialPaletteController";
 import type { SnapLine } from "./snapping";
+import type { FramePins } from "./pinnedFrames";
 import type { ImportedDataState } from "./data/types";
 import type { SetViewportOptions } from "./viewport";
 import type { MidiBinding, MidiEncoding, MidiTargetId } from "./midi";
@@ -628,6 +629,10 @@ export interface AppState {
   /** user-customized font-picker top picks (pinned via drag & drop from the
    * font picker popup). `null` means no customization (defaults are used) */
   fontTopPicks: readonly FontFamilyValues[] | null;
+  /** frames this viewer pinned to the screen (#240), by frame id: each keeps
+   * its screen place and size while the board pans and zooms. View state:
+   * never exported or sent to collaborators. */
+  pinnedFrames: FramePins;
 }
 
 export type SearchMatch = {

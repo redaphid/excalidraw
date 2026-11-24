@@ -136,6 +136,8 @@ export type ActionName =
   | "toggleElementLock"
   | "toggleLinearEditor"
   | "selectAllElementsInFrame"
+  | "pinFrame"
+  | "unpinFrame"
   | "removeAllElementsFromFrame"
   | "updateFrameRendering"
   | "createContainerFromText"
