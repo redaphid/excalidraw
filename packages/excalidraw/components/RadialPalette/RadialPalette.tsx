@@ -969,8 +969,7 @@ const Ring = ({
         data-testid="radial-palette-backdrop"
         onContextMenu={(event) => {
           event.preventDefault();
-          // a second finger while the hub is pressed, as when the other
-          // hand pans, leaves the ring with the first
+          // the menu event of a press that left the ring with a held hub
           if (endHubPress.current) {
             return;
           }
@@ -978,6 +977,11 @@ const Ring = ({
         }}
         onPointerDown={(event) => {
           event.preventDefault();
+          // a second finger while the hub is pressed, as when the other
+          // hand pans, leaves the ring with the first
+          if (endHubPress.current) {
+            return;
+          }
           // a right-click (or a pen's barrel button) closes on its menu
           // event, which must land here: with the backdrop gone it reaches
           // the canvas and opens the editor's menu on the same click
