@@ -582,7 +582,7 @@ describe("RadialPalette", () => {
         beforeEach(() => {
           const svg = ring()!.querySelector("svg")!;
           // the test DOM knows no pointer 1 to capture
-          svg.setPointerCapture = () => {};
+          Object.defineProperty(svg, "setPointerCapture", { value: () => {} });
           const { left, top, width, height } = ring()!.style;
           const center = {
             x: parseFloat(left) + parseFloat(width) / 2,
