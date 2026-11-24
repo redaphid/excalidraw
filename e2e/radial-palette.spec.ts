@@ -274,6 +274,44 @@ test("opens at the pointer on , and closes on Escape", async ({ page }) => {
   await expect(page.getByTestId("radial-palette")).toBeHidden();
 });
 
+test("Tab walks the ring opened on , and never reaches the shape behind it", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.use.hasTouch, "a keyboard gesture");
+  const { x, y } = await canvasCenter(page);
+  await page.keyboard.press("r");
+  await page.mouse.move(x - 60, y - 40);
+  await page.mouse.down();
+  await page.mouse.move(x + 60, y + 40, { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(async () => (await savedElements(page)).length).toBe(1);
+
+  await page.keyboard.press(",");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+
+  const inRing = () =>
+    page.evaluate(
+      () =>
+        !!document
+          .querySelector('[data-testid="radial-palette"]')
+          ?.contains(document.activeElement),
+    );
+  expect(await inRing(), "focus is on the ring's items").toBe(true);
+  await expect(page.locator(".ConvertElementTypePopup")).toHaveCount(0);
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  // past the last item it wraps, and never lands on the editor
+  for (let i = 0; i < 40; i++) {
+    await page.keyboard.press("Tab");
+  }
+  expect(await inRing(), "still in the ring after 40 Tabs").toBe(true);
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => (await savedElements(page))[0]?.type).toBe(
+    "rectangle",
+  );
+});
+
 test("a finger held still opens the ring under it, and a flick picks a shape", async ({
   page,
   browserName,

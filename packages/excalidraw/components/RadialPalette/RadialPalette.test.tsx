@@ -842,6 +842,51 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when , opens it from the editor with a rectangle selected, and Tab is pressed twice", () => {
+      const editor = () =>
+        document.querySelector<HTMLElement>("[data-excalidraw-id]")!;
+      const tab = (shiftKey = false) =>
+        fireEvent.keyDown(document.activeElement ?? document.body, {
+          key: KEYS.TAB,
+          shiftKey,
+        });
+      const items = () =>
+        Array.from(ring()!.querySelectorAll('[tabindex="0"]'));
+
+      beforeEach(() => {
+        const rectangle = API.createElement({ type: "rectangle" });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        editor().focus();
+        Keyboard.keyPress(KEYS.COMMA);
+        tab();
+        tab();
+      });
+
+      it("puts focus on the ring's second item", () => {
+        expect(document.activeElement).toBe(items()[1]);
+      });
+
+      it("leaves the rectangle a rectangle", () => {
+        expect(h.elements[0].type).toBe("rectangle");
+      });
+
+      it("keeps the ring open", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      describe("when Shift+Tab goes back past the first item", () => {
+        beforeEach(() => {
+          tab(true);
+          tab(true);
+        });
+
+        it("wraps to the last item, not the editor", () => {
+          expect(document.activeElement).toBe(items().at(-1));
+        });
+      });
+    });
+
     describe("when , is pressed with the pointer over the canvas", () => {
       beforeEach(() => {
         API.setAppState({ width: 1000, height: 800 });
