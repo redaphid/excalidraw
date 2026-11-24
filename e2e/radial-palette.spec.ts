@@ -383,9 +383,10 @@ test("every colour a finger can pick owns a 44px run each way, and nothing else'
     );
   expect(ids.length).toBeGreaterThan(1);
   // the colours, the empty recent slots and the fill chip share the top half;
-  // 44px across holds from where the sector is that wide, 3px to spare
+  // 44px across holds from where the sector is that wide; measured 6px past
+  // that, so its corners keep clear of the sector's edges in every browser
   const sectors = await page.locator('[data-testid^="radial-color-"]').count();
-  const wide = Math.ceil(22 / Math.sin(Math.PI / 2 / sectors)) + 3;
+  const wide = Math.ceil(22 / Math.sin(Math.PI / 2 / sectors)) + 6;
 
   for (const id of ids) {
     const swatch = await center(page, id);

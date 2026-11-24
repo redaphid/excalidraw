@@ -35,7 +35,8 @@ export const SWATCH_REACH = 210;
  * The colours (a theme's, the recent ones and the fill chip) share the top
  * half, so a sector is often under 14 degrees, only about 35px wide at the
  * swatch; it grows outward only, never into a neighbour or another band,
- * out to where the sector is 44px across plus 6 to spare (176 at the least,
+ * out to where the sector is 44px across plus 10 to spare (a finger near a
+ * corner of that run still lands inside) (176 at the least,
  * `SWATCH_REACH` at most).
  */
 export const swatchBand = (sectors: readonly Sector[]): Band => {
@@ -46,7 +47,7 @@ export const swatchBand = (sectors: readonly Sector[]): Band => {
   const across = 22 / Math.sin(((span / 2) * Math.PI) / 180);
   return {
     inner: OUTER_BAND.inner,
-    outer: Math.min(SWATCH_REACH, Math.max(176, Math.ceil(across + 6))),
+    outer: Math.min(SWATCH_REACH, Math.max(176, Math.ceil(across + 10))),
   };
 };
 
