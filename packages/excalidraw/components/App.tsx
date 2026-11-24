@@ -8599,12 +8599,6 @@ ${css}
     }
   };
 
-  /**
-   * The browser took the pointer over (scroll, pinch, palm rejection): no
-   * pointerup will follow, so the gesture is torn down here and now — the
-   * same cleanup a lost pointerup gets at the next press, only not left
-   * lying in wait for it, where its replay would tangle with that press.
-   */
   private onTouchLift = (event: PointerEvent) => {
     if (event.pointerType !== "touch") {
       return;
@@ -8626,6 +8620,12 @@ ${css}
     }
   };
 
+  /**
+   * The browser took the pointer over (scroll, pinch, palm rejection): no
+   * pointerup will follow, so the gesture is torn down here and now — the
+   * same cleanup a lost pointerup gets at the next press, only not left
+   * lying in wait for it, where its replay would tangle with that press.
+   */
   private handleCanvasPointerCancel = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
