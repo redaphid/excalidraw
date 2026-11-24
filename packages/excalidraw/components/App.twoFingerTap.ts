@@ -1,7 +1,7 @@
 /** a two-finger tap is both fingers down and up within this long */
 export const TWO_FINGER_TAP_MAX_DURATION = 250; // ms
-/** a finger that travels farther than this is a pinch or pan, not a tap */
-export const TWO_FINGER_TAP_MAX_TRAVEL = 10; // px
+/** a finger that travels this far is a pinch or pan, not a tap */
+export const TWO_FINGER_TAP_TRAVEL_LIMIT = 10; // px
 /** the second tap must land within this long of the first tap's lift */
 export const TWO_FINGER_DOUBLE_TAP_MAX_GAP = 350; // ms
 /** a touchdown this old whose fingers are not all heard lifting is dropped
@@ -73,8 +73,8 @@ export class TwoFingerDoubleTap {
     const contact = this.touchdown?.fingers.get(pointerId);
     if (
       contact &&
-      Math.hypot(x - contact.startX, y - contact.startY) >
-        TWO_FINGER_TAP_MAX_TRAVEL
+      Math.hypot(x - contact.startX, y - contact.startY) >=
+        TWO_FINGER_TAP_TRAVEL_LIMIT
     ) {
       this.touchdown!.spoiled = true;
     }

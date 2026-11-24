@@ -7,6 +7,7 @@ import { CLASSES } from "@excalidraw/common";
 import { CaptureUpdateAction } from "@excalidraw/element";
 
 import { Excalidraw } from "../index";
+import { TWO_FINGER_TAP_TRAVEL_LIMIT } from "../components/App.twoFingerTap";
 
 import { API } from "./helpers/api";
 import { Pointer, UI } from "./helpers/ui";
@@ -47,6 +48,17 @@ const twoFingerPinch = () => {
   b.downAt(140, 120);
   a.moveTo(60, 120);
   b.moveTo(180, 120);
+  wait(80);
+  a.up();
+  b.up();
+};
+
+const twoFingerPan = (distance: number) => {
+  const [a, b] = fingers();
+  a.downAt(100, 120);
+  b.downAt(140, 120);
+  a.moveTo(100, 120 - distance);
+  b.moveTo(140, 120 - distance);
   wait(80);
   a.up();
   b.up();
@@ -191,6 +203,17 @@ describe("double two-finger tap", () => {
     twoFingerPinch();
 
     expect(h.state.zoom.value).not.toBe(zoom);
+    expect(liveIds()).toEqual([first, second]);
+  });
+
+  it("does nothing for two quick two-finger pans of the travel limit", () => {
+    drawTwo("rectangle");
+    const scrollY = h.state.scrollY;
+    twoFingerPan(TWO_FINGER_TAP_TRAVEL_LIMIT);
+    wait(100);
+    twoFingerPan(TWO_FINGER_TAP_TRAVEL_LIMIT);
+
+    expect(h.state.scrollY).not.toBe(scrollY);
     expect(liveIds()).toEqual([first, second]);
   });
 
