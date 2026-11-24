@@ -6,7 +6,8 @@ import {
   OUTER_BAND,
   RING_RADIUS,
   SIZE_SLIDER,
-  SWATCH_BAND,
+  SWATCH_REACH,
+  swatchBand,
   TOOLS_BAND,
   getRingLayout,
   hitTest,
@@ -93,32 +94,41 @@ describe("radialLayout", () => {
 
     describe("past a colour's whole target", () => {
       it("hits nothing", () => {
-        const { x, y } = polar(SWATCH_BAND.outer + 1, 270);
+        const { x, y } = polar(swatchBand(layout.colors).outer + 1, 270);
         expect(hitTest(layout, x, y)).toBeNull();
       });
     });
   });
 
   describe("a colour's target", () => {
-    it("holds a 44px run both ways and never reaches another band", () => {
-      layout.colors.forEach((sector) => {
-        const span = ((sector.end - sector.start) * Math.PI) / 180;
-        expect(SWATCH_BAND.outer - SWATCH_BAND.inner).toBeGreaterThanOrEqual(
-          44,
-        );
-        // the chord across the sector, 4px in from the target's outer edge
+    /** `count` colours sharing the top half evenly, as the ring lays them */
+    const top = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        start: 180 + (180 / count) * index,
+        end: 180 + (180 / count) * (index + 1),
+      }));
+
+    it.each([12, 13, 14])(
+      "holds a 44px run both ways with %i colours, and never reaches another band",
+      (count) => {
+        const sectors = top(count);
+        const band = swatchBand(sectors);
+        const span = (Math.PI / 180) * (180 / count);
+        expect(band.outer - band.inner).toBeGreaterThanOrEqual(44);
+        // the chord across the sector, 6px in from the target's outer edge
         expect(
-          2 * (SWATCH_BAND.outer - 4) * Math.sin(span / 2),
+          2 * (band.outer - 6) * Math.sin(span / 2),
         ).toBeGreaterThanOrEqual(44);
-        expect(SWATCH_BAND.inner).toBeGreaterThan(MIDDLE_BAND.outer);
-      });
+        expect(band.inner).toBeGreaterThan(MIDDLE_BAND.outer);
+      },
+    );
+
+    it("never reaches past SWATCH_REACH, however many colours share the top", () => {
+      expect(swatchBand(top(40)).outer).toBe(SWATCH_REACH);
     });
 
-    it("still holds 44px across when twelve colours and the fill chip share the top", () => {
-      const span = Math.PI / 13;
-      expect(
-        2 * (SWATCH_BAND.outer - 6) * Math.sin(span / 2),
-      ).toBeGreaterThanOrEqual(44);
+    it("keeps a target as deep as before when few colours share the top", () => {
+      expect(swatchBand(top(6)).outer).toBe(176);
     });
   });
 

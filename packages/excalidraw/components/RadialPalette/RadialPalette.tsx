@@ -54,7 +54,7 @@ import {
   getRingLayout,
   hitTest,
   placeRing,
-  SWATCH_BAND,
+  swatchBand,
   polar,
   sectorMiddle,
   sectorPath,
@@ -1144,7 +1144,7 @@ const Ring = ({
                 fill={color ?? "none"}
               />,
               !color,
-              color ? sectorPath(SWATCH_BAND, sector) : undefined,
+              color ? sectorPath(swatchBand(layout.colors), sector) : undefined,
             );
           })}
 
@@ -1166,7 +1166,7 @@ const Ring = ({
                 {t("radialPalette.fill")}
               </text>,
               false,
-              sectorPath(SWATCH_BAND, sector),
+              sectorPath(swatchBand(layout.colors), sector),
             );
           })()}
 
