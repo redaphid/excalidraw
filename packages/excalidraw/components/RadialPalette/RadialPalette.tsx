@@ -43,6 +43,8 @@ import {
 
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
+import { EquippedChip } from "./EquippedChip";
+import { chipSpot, isEquipped } from "./equipped";
 import { measureHostInsets, takesNoTaps as reachesCanvas } from "./hostChrome";
 import { getActivePenPreset } from "./penPresets";
 import {
@@ -87,6 +89,7 @@ import { getStyleProperty } from "./styleProperties";
 import "./RadialPalette.scss";
 
 import type { ActionManager } from "../../actions/manager";
+import type { AppState } from "../../types";
 import type { PuckPlace } from "./puckPlace";
 import type { RingHit, Sector, Slider } from "./radialLayout";
 import type {
@@ -232,11 +235,14 @@ export const RadialPalette = React.memo(
     actionManager,
     phone,
     besideSidebar,
+    tool,
   }: {
     actionManager: ActionManager;
     phone: boolean;
     /** a sidebar is open on the editor's right, where the puck sits */
     besideSidebar: boolean;
+    /** the active tool, shown on the palette's edge while it is equipped */
+    tool: AppState["activeTool"]["type"];
   }) => {
     const app = useApp();
     const { container } = useExcalidrawContainer();
@@ -451,6 +457,51 @@ export const RadialPalette = React.memo(
     const shown = moving ?? place;
     const collapsed = !moving && !!place?.collapsed;
     const puckRef = useRef<HTMLButtonElement>(null);
+    const equipped = isEquipped(tool) ? tool : null;
+    const unequip = () => {
+      app.setActiveTool({ type: "hand" });
+      controller.close();
+    };
+
+    /** where the equipped chip sits beside the closed puck, in the puck's
+     * positioned parent; measured after layout, since CSS places the puck */
+    const [chipAt, setChipAt] = useState<ClientPoint | null>(null);
+    useLayoutEffect(() => {
+      const puck = puckRef.current;
+      const parent = puck && (puck.offsetParent ?? puck.parentElement);
+      if (!equipped || session || moving || !puck || !parent) {
+        setChipAt(null);
+        return;
+      }
+      const measure = () => {
+        const box = puck.getBoundingClientRect();
+        const frame = parent.getBoundingClientRect();
+        const next = chipSpot(
+          {
+            x: box.left + box.width / 2 - frame.left,
+            y: box.top + box.height / 2 - frame.top,
+          },
+          collapsed ? 10 : box.width / 2,
+          { width: frame.width, height: frame.height },
+        );
+        setChipAt((was) =>
+          was && was.x === next.x && was.y === next.y ? was : next,
+        );
+      };
+      measure();
+      const win = app.ownerWindow;
+      win.addEventListener("resize", measure);
+      return () => win.removeEventListener("resize", measure);
+    }, [
+      app,
+      equipped,
+      session,
+      moving,
+      collapsed,
+      place,
+      phone,
+      besideSidebar,
+    ]);
 
     return (
       <>
@@ -514,10 +565,15 @@ export const RadialPalette = React.memo(
             <circle r="2" className="RadialPalette__puck-dot" />
           </svg>
         </button>
+        {equipped && chipAt && (
+          <EquippedChip tool={equipped} at={chipAt} onUnequip={unequip} />
+        )}
         {session && (
           <Ring
             session={session}
             puck={puckRef}
+            equipped={equipped}
+            onUnequip={unequip}
             controller={controller}
             actionManager={actionManager}
             onMoved={(at) =>
@@ -537,10 +593,15 @@ const Ring = ({
   controller,
   actionManager,
   onMoved,
+  equipped,
+  onUnequip,
 }: {
   session: RadialSession;
   /** the puck, which the ring may cover where it is clamped in from an edge */
   puck: React.RefObject<HTMLButtonElement | null>;
+  /** the equipped tool, shown on the ring's outer edge, if any */
+  equipped: AppState["activeTool"]["type"] | null;
+  onUnequip: () => void;
   controller: RadialPaletteController;
   actionManager: ActionManager;
   /** the ring was dragged by its hub and dropped, centered at `at` */
@@ -1552,6 +1613,21 @@ const Ring = ({
             />
           </g>
         </svg>
+        {equipped &&
+          (() => {
+            // on the ring's rim, in the ring's own box
+            const spot = chipSpot(place, size / 2, { width, height });
+            return (
+              <EquippedChip
+                tool={equipped}
+                at={{
+                  x: spot.x - place.x + size / 2,
+                  y: spot.y - place.y + size / 2,
+                }}
+                onUnequip={onUnequip}
+              />
+            );
+          })()}
       </div>
     </>
   );
