@@ -31,8 +31,8 @@ export const EquippedChip = ({
     className="RadialPalette__equipped"
     data-testid="radial-palette-equipped"
     data-tool={tool}
-    aria-label={`${t("radialPalette.unequip")} — x`}
-    title={`${t("radialPalette.unequip")} — x`}
+    aria-label={t("radialPalette.unequip")}
+    title={t("radialPalette.unequip")}
     style={{
       left: at.x - CHIP_RADIUS,
       top: at.y - CHIP_RADIUS,

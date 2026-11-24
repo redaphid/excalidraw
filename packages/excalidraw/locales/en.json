@@ -776,7 +776,7 @@
     "distribute": "Distribute",
     "mainMenu": "Menu…",
     "textToDiagram": "Text to diagram",
-    "unequip": "Put the tool down"
+    "unequip": "Put the tool down — x"
   },
   "fontList": {
     "badge": {
