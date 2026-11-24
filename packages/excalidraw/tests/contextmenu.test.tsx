@@ -156,10 +156,13 @@ describe("contextMenu element", () => {
     ];
 
     expect(contextMenu).not.toBeNull();
-    expect(contextMenuOptions?.length).toBe(expectedContextMenuItems.length);
+    // undo and redo share a row, as do the four z-index moves
+    expect(contextMenuOptions?.length).toBe(
+      expectedContextMenuItems.length - 4,
+    );
     expectedContextMenuItems.forEach((item) => {
       expect(
-        contextMenu?.querySelector(`li[data-testid="${item}"]`),
+        contextMenu?.querySelector(`[data-testid="${item}"]`),
       ).not.toBeNull();
     });
   });
@@ -260,8 +263,9 @@ describe("contextMenu element", () => {
     ];
 
     expect(contextMenu).not.toBeNull();
-    // the six alignments share two rows, one per axis
-    expect(contextMenuOptions?.length).toBe(expectedShortcutNames.length - 4);
+    // the six alignments share two rows, one per axis; undo and redo one,
+    // and the four z-index moves one
+    expect(contextMenuOptions?.length).toBe(expectedShortcutNames.length - 8);
     expectedShortcutNames.forEach((shortcutName) => {
       expect(
         contextMenu?.querySelector(`[data-testid="${shortcutName}"]`),
@@ -329,9 +333,10 @@ describe("contextMenu element", () => {
     ];
 
     expect(contextMenu).not.toBeNull();
-    // the six alignments share two rows, one per axis
+    // the six alignments share two rows, one per axis; undo and redo one,
+    // and the four z-index moves one
     expect(contextMenuOptions?.length).toBe(
-      expectedContextMenuItems.length - 4,
+      expectedContextMenuItems.length - 8,
     );
     expectedContextMenuItems.forEach((item) => {
       expect(
@@ -525,7 +530,9 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
-    fireEvent.click(queryByText(contextMenu!, "Send backward")!);
+    fireEvent.click(
+      contextMenu!.querySelector<HTMLElement>('[data-testid="sendBackward"]')!,
+    );
     expect(elementsBefore[0].id).toEqual(h.elements[1].id);
     expect(elementsBefore[1].id).toEqual(h.elements[0].id);
   });
@@ -547,7 +554,9 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
-    fireEvent.click(queryByText(contextMenu!, "Bring forward")!);
+    fireEvent.click(
+      contextMenu!.querySelector<HTMLElement>('[data-testid="bringForward"]')!,
+    );
     expect(elementsBefore[0].id).toEqual(h.elements[1].id);
     expect(elementsBefore[1].id).toEqual(h.elements[0].id);
   });
@@ -569,7 +578,9 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
-    fireEvent.click(queryByText(contextMenu!, "Send to back")!);
+    fireEvent.click(
+      contextMenu!.querySelector<HTMLElement>('[data-testid="sendToBack"]')!,
+    );
     expect(elementsBefore[1].id).toEqual(h.elements[0].id);
   });
 
@@ -590,7 +601,9 @@ describe("contextMenu element", () => {
     });
     const contextMenu = UI.queryContextMenu();
     const elementsBefore = h.elements;
-    fireEvent.click(queryByText(contextMenu!, "Bring to front")!);
+    fireEvent.click(
+      contextMenu!.querySelector<HTMLElement>('[data-testid="bringToFront"]')!,
+    );
     expect(elementsBefore[0].id).toEqual(h.elements[1].id);
   });
 

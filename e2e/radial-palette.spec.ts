@@ -696,7 +696,7 @@ test("the hub's menu undoes a ring color on the selected shape", async ({
   await expect(
     page.locator('.context-menu li[data-testid="deleteSelectedElements"]'),
   ).toBeVisible();
-  const undo = page.locator('.context-menu li[data-testid="undo"]');
+  const undo = page.locator('.context-menu [data-testid="undo"]');
   await expect(undo, "an Undo in the menu the hub opens").toBeVisible();
   await undo.click();
   await expect.poll(strokeColor).toBe(drawn);

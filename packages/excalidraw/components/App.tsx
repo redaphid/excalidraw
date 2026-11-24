@@ -13417,19 +13417,30 @@ ${css}
       return [actionCopy, ...options];
     }
 
+    // one row of icons, so the menu of a selection still fits a phone
     const zIndexActions: ContextMenuItems = [
       CONTEXT_MENU_SEPARATOR,
-      actionSendBackward,
-      actionBringForward,
-      actionSendToBack,
-      actionBringToFront,
+      {
+        row: "zIndex",
+        actions: [
+          actionSendToBack,
+          actionSendBackward,
+          actionBringForward,
+          actionBringToFront,
+        ],
+      },
     ];
 
     return [
       // the hub opens this menu while a shape is selected, and on a phone it
       // is the only way to undo a change made to that shape
-      this.actionManager.actions.undo,
-      this.actionManager.actions.redo,
+      {
+        row: "history",
+        actions: [
+          this.actionManager.actions.undo,
+          this.actionManager.actions.redo,
+        ],
+      },
       CONTEXT_MENU_SEPARATOR,
       actionCut,
       actionCopy,
