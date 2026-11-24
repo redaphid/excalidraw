@@ -90,6 +90,9 @@ test("a double two-finger tap undoes the shape just drawn", async ({
   await twoFingerTap();
   await expect.poll(() => liveShapes(page)).toBe(1);
 
+  // touch input leaves the focus wherever it was, and the editor takes only
+  // bare tool keys from an unfocused page (#244): a shortcut needs the focus
+  await page.locator(".excalidraw-container").focus();
   await page.keyboard.press("Control+Shift+Z");
   await expect.poll(() => liveShapes(page)).toBe(2);
 });
