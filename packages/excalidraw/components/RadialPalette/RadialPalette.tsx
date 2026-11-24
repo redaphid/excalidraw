@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -39,8 +40,17 @@ import {
 
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
+import { measureHostInsets, takesNoTaps as reachesCanvas } from "./hostChrome";
 import { getActivePenPreset } from "./penPresets";
-import { dropPuck, loadPuckPlace, savePuckPlace } from "./puckPlace";
+import {
+  dropPuck,
+  forgetPuckPlace,
+  loadPuckPlace,
+  puckCenter as placedPuckCenter,
+  puckIsClear,
+  reachablePuckCenter,
+  savePuckPlace,
+} from "./puckPlace";
 import {
   FLICK_DISTANCE,
   HUB_RADIUS,
@@ -201,6 +211,10 @@ const holdMenusShut = (win: Window) => {
   };
 };
 
+/** how long after the editor opens to look again for host controls over
+ * the puck, as a host may draw them later */
+const PUCK_RECHECK_MS = 1000;
+
 /** keeps the browser's menu shut over the radial's own parts */
 const preventMenu = (event: React.MouseEvent) => event.preventDefault();
 
@@ -277,6 +291,50 @@ export const RadialPalette = React.memo(
       setPlace(next);
       savePuckPlace(app.ownerWindow, next);
     };
+
+    /** whether a press at `at` would reach the puck there: nothing above
+     * the canvas that takes taps (the host's top bar, a button) is there */
+    const takesNoTaps = (at: ClientPoint) =>
+      reachesCanvas(app.ownerDocument, container, at);
+
+    /** a placed puck the host's controls cover moves to the nearest spot
+     * that can be pressed, or back to its own corner when there is none */
+    const [checkAgain, setCheckAgain] = useState(0);
+    useEffect(() => {
+      // the host may draw its controls after the editor: look once more
+      const timer = app.ownerWindow.setTimeout(
+        () => setCheckAgain((count) => count + 1),
+        PUCK_RECHECK_MS,
+      );
+      return () => app.ownerWindow.clearTimeout(timer);
+    }, [app]);
+    useLayoutEffect(() => {
+      if (!place || moving || session || !container) {
+        return;
+      }
+      const { offsetLeft, offsetTop, width, height } = app.state;
+      if (!width || !height) {
+        // not laid out yet: the look after it decides
+        return;
+      }
+      const area = { left: offsetLeft, top: offsetTop, width, height };
+      const at = placedPuckCenter(place, area);
+      if (puckIsClear(at, takesNoTaps)) {
+        return;
+      }
+      const free = reachablePuckCenter(at, area, takesNoTaps);
+      if (free) {
+        keep({
+          x: (free.x - offsetLeft) / width,
+          y: (free.y - offsetTop) / height,
+          collapsed: false,
+        });
+      } else {
+        setPlace(null);
+        forgetPuckPlace(app.ownerWindow);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [place, moving, session, container, checkAgain]);
 
     const inEditor = (clientX: number, clientY: number) => {
       const { offsetLeft, offsetTop, width, height } = app.state;
@@ -478,6 +536,15 @@ const Ring = ({
   const setAppState = useExcalidrawSetAppState();
 
   const { offsetLeft, offsetTop, width, height } = appState;
+  const { container } = useExcalidrawContainer();
+  /** the bands the host's controls take along the editor's top and bottom,
+   * measured as the ring opens, before it is drawn over them */
+  const [insets] = useState(() =>
+    measureHostInsets(
+      { left: offsetLeft, top: offsetTop, width, height },
+      (at) => reachesCanvas(app.ownerDocument, container, at),
+    ),
+  );
   const [ringScale, setRingScale] = useState(() =>
     loadRingScale(app.ownerWindow),
   );
@@ -488,6 +555,7 @@ const Ring = ({
       { width, height },
       RING_MARGIN,
       ringScale,
+      insets,
     );
     return { x: placed.x + offsetLeft, y: placed.y + offsetTop };
   };
@@ -496,6 +564,7 @@ const Ring = ({
     { width, height },
     RING_MARGIN,
     ringScale,
+    insets,
   );
 
   /** which way the corner handle points: towards the most room, or, while
@@ -799,6 +868,21 @@ const Ring = ({
   }, [app, controller, flick, toolsRing]);
 
   const ringRef = useRef<HTMLDivElement>(null);
+
+  // a press on a slice focuses it; when the ring goes, that slice goes with
+  // it and focus would fall to the page, where the editor takes no Ctrl+Z.
+  // Focus goes back to the editor instead, unless it has moved elsewhere
+  // (redaphid/excalidraw#283)
+  useLayoutEffect(() => {
+    const ring = ringRef.current;
+    return () => {
+      const doc = app.ownerDocument;
+      const active = doc.activeElement;
+      if (!active || active === doc.body || ring?.contains(active)) {
+        app.focusContainer();
+      }
+    };
+  }, [app]);
   // a long press opens the ring under the finger, and the browser's click
   // on release lands on the hub or a slice; only a press made on the ring
   // counts
@@ -973,7 +1057,10 @@ const Ring = ({
         "RadialPalette__segment--disabled": disabled,
       })}
       onPointerDown={(event) =>
+        // only the main button picks: a right-click, a pen's barrel button
+        // or a middle-click held on a slice is not a hold
         !disabled &&
+        event.button === 0 &&
         controller.hold(ring, index, LONG_PRESS_DELAY, {
           x: event.clientX,
           y: event.clientY,
@@ -1118,7 +1205,14 @@ const Ring = ({
       <div
         className="RadialPalette__backdrop"
         data-testid="radial-palette-backdrop"
-        onContextMenu={preventMenu}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          // the menu event of a press that left the ring with a held hub
+          if (endHubPress.current) {
+            return;
+          }
+          controller.close();
+        }}
         onPointerDown={(event) => {
           event.preventDefault();
           // a second finger while the hub is pressed, as when the other
@@ -1126,7 +1220,12 @@ const Ring = ({
           if (endHubPress.current) {
             return;
           }
-          controller.close();
+          // a right-click (or a pen's barrel button) closes on its menu
+          // event, which must land here: with the backdrop gone it reaches
+          // the canvas and opens the editor's menu on the same click
+          if (event.button !== 2) {
+            controller.close();
+          }
         }}
       />
       <div
