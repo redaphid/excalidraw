@@ -5,7 +5,10 @@ import { fireEvent, queryByTestId } from "@testing-library/react";
 
 import { KEYS } from "@excalidraw/common";
 
-import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
+import type {
+  ExcalidrawFreeDrawElement,
+  NonDeleted,
+} from "@excalidraw/element/types";
 
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
@@ -982,6 +985,75 @@ describe("RadialPalette", () => {
 
       it("lowers the opacity of new elements", () => {
         expect(h.state.currentItemOpacity).toBe(95);
+      });
+    });
+
+    describe("when a stroke is selected", () => {
+      let drawn = 0;
+      beforeEach(() => {
+        // drawn, not set, so history holds the stroke as it was
+        API.setAppState({ currentItemFreedrawStrokeWidth: 0.2 });
+        const stroke = drawStroke();
+        API.setSelectedElements([stroke as NonDeleted<typeof stroke>]);
+        drawn = stroke.strokeWidth;
+        openRing();
+      });
+
+      const width = () => h.elements[0].strokeWidth;
+
+      describe("when the size arc is dragged", () => {
+        beforeEach(() => {
+          const svg = ring()!.querySelector("svg")!;
+          // the test DOM knows no pointer 1 to capture
+          Object.defineProperty(svg, "setPointerCapture", { value: () => {} });
+          const { left, top, width, height } = ring()!.style;
+          const center = {
+            x: parseFloat(left) + parseFloat(width) / 2,
+            y: parseFloat(top) + parseFloat(height) / 2,
+          };
+          // straight left of the center: past the arc's thick end, so the
+          // size clamps to its largest
+          const thick = { clientX: center.x - 300, clientY: center.y };
+          fireEvent.pointerDown(byTestId("radial-size")!, {
+            pointerId: 1,
+            ...thick,
+          });
+          fireEvent.pointerMove(svg, { pointerId: 1, ...thick });
+          fireEvent.pointerUp(svg, { pointerId: 1, ...thick });
+        });
+
+        it("moves the pen size", () => {
+          expect(h.state.currentItemFreedrawStrokeWidth).toBeGreaterThan(0.2);
+        });
+
+        it("gives the selected stroke the new width", () => {
+          expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
+        });
+
+        it("is one undo step", () => {
+          expect(width()).not.toBe(drawn);
+          // in the editor, as this host takes no keys from the page
+          Keyboard.withModifierKeys({ ctrl: true }, () => {
+            Keyboard.keyPress(
+              KEYS.Z,
+              document.querySelector<HTMLElement>(".excalidraw-container")!,
+            );
+          });
+          expect(width()).toBe(drawn);
+        });
+      });
+
+      describe("when the size arc is stepped up from the keyboard", () => {
+        beforeEach(() => {
+          fireEvent.keyDown(byTestId("radial-size")!, {
+            key: KEYS.ARROW_UP,
+          });
+        });
+
+        it("widens the selected stroke", () => {
+          expect(width()).not.toBe(drawn);
+          expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
+        });
       });
     });
 
