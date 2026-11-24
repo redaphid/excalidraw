@@ -8700,17 +8700,25 @@ ${css}
       this.scene.getNonDeletedElementsMap().has(line.id)
     ) {
       this.scene.mutateElement(line, { points: multiPoint.points });
-      this.setState({
-        activeTool,
-        selectionElement: null,
-        cursorButton: "up",
-        multiElement: line,
-        newElement: line,
-        selectedLinearElement: multiPoint.selectedLinearElement,
-      });
+      // applied now, before the palette opens: a tool change while it is
+      // open is a pick, and closes it
+      flushSync(() =>
+        this.setState({
+          activeTool,
+          selectionElement: null,
+          cursorButton: "up",
+          multiElement: line,
+          newElement: line,
+          selectedLinearElement: multiPoint.selectedLinearElement,
+        }),
+      );
       return;
     }
-    this.setState({ activeTool, selectionElement: null, cursorButton: "up" });
+    // applied now, before the palette opens: a tool change while it is open
+    // is a pick, and closes it
+    flushSync(() =>
+      this.setState({ activeTool, selectionElement: null, cursorButton: "up" }),
+    );
   };
 
   private resetContextMenuTimer = () => {
@@ -13446,14 +13454,24 @@ ${css}
       actionUngroup,
       actionArrangeElements,
       CONTEXT_MENU_SEPARATOR,
-      actionAlignLeft,
-      actionAlignHorizontallyCentered,
-      actionAlignRight,
-      actionAlignTop,
-      actionAlignVerticallyCentered,
-      actionAlignBottom,
-      distributeHorizontally,
-      distributeVertically,
+      {
+        row: "alignHorizontally",
+        actions: [
+          actionAlignLeft,
+          actionAlignHorizontallyCentered,
+          actionAlignRight,
+          distributeHorizontally,
+        ],
+      },
+      {
+        row: "alignVertically",
+        actions: [
+          actionAlignTop,
+          actionAlignVerticallyCentered,
+          actionAlignBottom,
+          distributeVertically,
+        ],
+      },
       CONTEXT_MENU_SEPARATOR,
       actionAddToLibrary,
       ...zIndexActions,

@@ -29,6 +29,7 @@ import {
   mockBoundingClientRect,
   restoreOriginalGetBoundingClientRect,
   GlobalTestState,
+  queryByLabelText,
   queryByText,
   queryAllByText,
   waitFor,
@@ -255,10 +256,11 @@ describe("contextMenu element", () => {
     ];
 
     expect(contextMenu).not.toBeNull();
-    expect(contextMenuOptions?.length).toBe(expectedShortcutNames.length);
+    // the six alignments share two rows, one per axis
+    expect(contextMenuOptions?.length).toBe(expectedShortcutNames.length - 4);
     expectedShortcutNames.forEach((shortcutName) => {
       expect(
-        contextMenu?.querySelector(`li[data-testid="${shortcutName}"]`),
+        contextMenu?.querySelector(`[data-testid="${shortcutName}"]`),
       ).not.toBeNull();
     });
   });
@@ -321,10 +323,13 @@ describe("contextMenu element", () => {
     ];
 
     expect(contextMenu).not.toBeNull();
-    expect(contextMenuOptions?.length).toBe(expectedContextMenuItems.length);
+    // the six alignments share two rows, one per axis
+    expect(contextMenuOptions?.length).toBe(
+      expectedContextMenuItems.length - 4,
+    );
     expectedContextMenuItems.forEach((item) => {
       expect(
-        contextMenu?.querySelector(`li[data-testid="${item}"]`),
+        contextMenu?.querySelector(`[data-testid="${item}"]`),
       ).not.toBeNull();
     });
   });
@@ -873,9 +878,20 @@ describe("contextMenu for shapes picked together", () => {
 
   const offeredArrangements = () =>
     Array.from(
-      UI.queryContextMenu()?.querySelectorAll(".context-menu li") ?? [],
+      UI.queryContextMenu()?.querySelectorAll(".context-menu [data-testid]") ??
+        [],
       (item) => item.getAttribute("data-testid"),
     ).filter((name) => /^(align|distribute)/.test(name ?? ""));
+
+  /** the arrangements that share a menu row with `name` */
+  const rowOf = (name: string) =>
+    Array.from(
+      UI.queryContextMenu()
+        ?.querySelector(`[data-testid="${name}"]`)
+        ?.closest("li")
+        ?.querySelectorAll("[data-testid]") ?? [],
+      (item) => item.getAttribute("data-testid"),
+    );
 
   beforeEach(async () => {
     localStorage.clear();
@@ -901,6 +917,14 @@ describe("contextMenu for shapes picked together", () => {
     it("offers the six alignments and no distribution", () => {
       expect(offeredArrangements()).toEqual(ALIGNMENTS);
     });
+
+    it("puts the top to bottom ones in a row of their own", () => {
+      expect(rowOf("alignTop")).toEqual([
+        "alignTop",
+        "alignVerticallyCentered",
+        "alignBottom",
+      ]);
+    });
   });
 
   describe("when three shapes are selected", () => {
@@ -908,17 +932,33 @@ describe("contextMenu for shapes picked together", () => {
       selectShapes(3);
     });
 
-    it("offers distribution after the alignments", () => {
+    it("offers each axis's distribution after its alignments", () => {
       expect(offeredArrangements()).toEqual([
-        ...ALIGNMENTS,
+        "alignLeft",
+        "alignHorizontallyCentered",
+        "alignRight",
         "distributeHorizontally",
+        "alignTop",
+        "alignVerticallyCentered",
+        "alignBottom",
         "distributeVertically",
+      ]);
+    });
+
+    it("puts the left to right ones in one row, one tap each", () => {
+      expect(rowOf("alignLeft")).toEqual([
+        "alignLeft",
+        "alignHorizontallyCentered",
+        "alignRight",
+        "distributeHorizontally",
       ]);
     });
 
     describe("when Align left is picked", () => {
       beforeEach(() => {
-        fireEvent.click(queryByText(UI.queryContextMenu()!, "Align left")!);
+        fireEvent.click(
+          queryByLabelText(UI.queryContextMenu()!, "Align left")!,
+        );
       });
 
       it("lines their left edges up", () => {
