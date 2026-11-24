@@ -14,6 +14,11 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import type { Distribution } from "@excalidraw/element";
 
+import {
+  DistributeHorizontallyIcon,
+  DistributeVerticallyIcon,
+} from "../components/icons";
+
 import { register } from "./register";
 
 import type { AppClassProperties, AppState, UIAppState } from "../types";
