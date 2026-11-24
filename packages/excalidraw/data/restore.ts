@@ -6,6 +6,7 @@ import {
 } from "@excalidraw/math";
 
 import {
+  DEFAULT_FILL_GRADIENT,
   colorToHex,
   COLOR_TOP_PICKS_SLOTS,
   type CombineBrandsIfNeeded,
@@ -443,6 +444,23 @@ const repairBinding = <T extends ExcalidrawArrowElement>(
   return null;
 };
 
+const restoreFillGradient = (
+  fillGradient: unknown,
+): ExcalidrawElement["fillGradient"] => {
+  if (!fillGradient || typeof fillGradient !== "object") {
+    return undefined;
+  }
+  const { type, color, angle } = fillGradient as Record<string, unknown>;
+  return {
+    type:
+      type === "linear" || type === "radial"
+        ? type
+        : DEFAULT_FILL_GRADIENT.type,
+    color: typeof color === "string" ? color : DEFAULT_FILL_GRADIENT.color,
+    angle: isFiniteNumber(angle) ? angle : DEFAULT_FILL_GRADIENT.angle,
+  };
+};
+
 const restoreElementWithProperties = <
   T extends Required<
     Omit<ExcalidrawElement, "customData" | "authoringScale" | "fillGradient">
@@ -534,6 +552,13 @@ const restoreElementWithProperties = <
     ret.authoringScale === 1
   ) {
     delete ret.authoringScale;
+  }
+
+  const fillGradient = restoreFillGradient(ret.fillGradient);
+  if (fillGradient) {
+    ret.fillGradient = fillGradient;
+  } else {
+    delete ret.fillGradient;
   }
 
   // strip legacy props (migrated in previous steps)

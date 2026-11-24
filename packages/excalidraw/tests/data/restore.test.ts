@@ -3,6 +3,7 @@ import { vi } from "vitest";
 
 import {
   COLOR_PALETTE,
+  DEFAULT_FILL_GRADIENT,
   DEFAULT_FONT_SIZE,
   DEFAULT_SIDEBAR,
   FONT_FAMILY,
@@ -37,6 +38,61 @@ import { serializeAsJSON } from "../../data/json";
 
 import type { ImportedDataState } from "../../data/types";
 import type { LibraryItem, LibraryItem_v1, LibraryItems } from "../../types";
+
+describe("restoring an element's fill gradient", () => {
+  const restoreWith = (fillGradient: unknown) =>
+    restore.restoreElements(
+      [
+        {
+          ...API.createElement({
+            type: "rectangle",
+            backgroundColor: "#ff0000",
+            fillStyle: "gradient",
+          }),
+          fillGradient,
+        } as ExcalidrawElement,
+      ],
+      null,
+    )[0];
+
+  it("keeps a valid gradient", () => {
+    expect(
+      restoreWith({ type: "radial", color: "#0000ff", angle: 45 }).fillGradient,
+    ).toEqual({ type: "radial", color: "#0000ff", angle: 45 });
+  });
+
+  it("leaves an element saved without a gradient without one", () => {
+    const element = API.createElement({
+      type: "rectangle",
+      backgroundColor: "#ff0000",
+      fillStyle: "hachure",
+    });
+
+    expect(restore.restoreElements([element], null)[0]).not.toHaveProperty(
+      "fillGradient",
+    );
+  });
+
+  it("replaces invalid parts of a gradient with the defaults", () => {
+    expect(
+      restoreWith({ type: "conic", color: 12, angle: "wide" }).fillGradient,
+    ).toEqual(DEFAULT_FILL_GRADIENT);
+  });
+
+  it("keeps the valid parts of a partly invalid gradient", () => {
+    expect(
+      restoreWith({ type: "radial", color: "#0000ff" }).fillGradient,
+    ).toEqual({
+      type: "radial",
+      color: "#0000ff",
+      angle: DEFAULT_FILL_GRADIENT.angle,
+    });
+  });
+
+  it("drops a gradient that isn't an object", () => {
+    expect(restoreWith("linear")).not.toHaveProperty("fillGradient");
+  });
+});
 
 describe("restoreElements", () => {
   const mockSizeHelper = vi.spyOn(sizeHelpers, "isInvisiblySmallElement");

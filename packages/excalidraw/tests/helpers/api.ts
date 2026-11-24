@@ -308,7 +308,7 @@ export class API {
       boundElements: rest.boundElements ?? null,
       locked: rest.locked ?? false,
       created: rest.created === undefined ? getUpdatedTimestamp() : rest.created,
-      fillGradient: rest.fillGradient,
+      ...(rest.fillGradient && { fillGradient: rest.fillGradient }),
     };
     switch (type) {
       case "rectangle":
