@@ -331,8 +331,10 @@ import { actionPaste } from "../actions/actionClipboard";
 import { actionCopyElementLink } from "../actions/actionElementLink";
 import { actionUnlockAllElements } from "../actions/actionElementLock";
 import {
+  actionPinFrame,
   actionRemoveAllElementsFromFrame,
   actionSelectAllElementsInFrame,
+  actionUnpinFrame,
   actionWrapSelectionInFrame,
 } from "../actions/actionFrame";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
@@ -451,6 +453,7 @@ import ConvertElementTypePopup, {
 } from "./ConvertElementTypePopup";
 
 import { activeConfirmDialogAtom } from "./ActiveConfirmDialog";
+import { PinnedFrames } from "./PinnedFrames";
 import { AppArrowText } from "./App.arrowText";
 import { AppClipboard } from "./App.clipboard";
 import { AppText } from "./App.text";
@@ -2939,6 +2942,17 @@ class App extends React.Component<AppProps, AppState> {
                               />
                             )}
                           {this.renderFrameNames()}
+                          <PinnedFrames
+                            pins={this.state.pinnedFrames}
+                            elements={this.scene.getElementsIncludingDeleted()}
+                            files={this.files}
+                            editor={{
+                              width: this.state.width,
+                              height: this.state.height,
+                            }}
+                            viewBackgroundColor={this.state.viewBackgroundColor}
+                            theme={this.state.theme}
+                          />
                           {this.isDefaultUIEnabled() &&
                             this.state.activeLockedId && (
                               <UnlockPopup
@@ -13426,6 +13440,8 @@ ${css}
       actionSelectAllElementsInFrame,
       actionRemoveAllElementsFromFrame,
       actionWrapSelectionInFrame,
+      actionPinFrame,
+      actionUnpinFrame,
       CONTEXT_MENU_SEPARATOR,
       actionToggleCropEditor,
       CONTEXT_MENU_SEPARATOR,
