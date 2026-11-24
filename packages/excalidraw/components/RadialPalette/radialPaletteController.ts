@@ -75,6 +75,10 @@ export type RadialPaletteOpenOptions = Readonly<{
   /** the ring's center, in client coordinates; the last pointer position,
    * else the middle of the editor, by default */
   at?: ClientPoint;
+  /** a pointer that is down as the ring opens, as when a host opens it on
+   * a pen's held side button: sliding it to an item and lifting picks
+   * that item, as a long press's flick does */
+  pointerId?: number;
 }>;
 
 /**
@@ -325,6 +329,14 @@ export class RadialPaletteController {
     }
   };
 
+  /** moves the open ring, as a drag of its hub does */
+  moveTo = (at: ClientPoint) => {
+    const { current } = this;
+    if (current && (current.at.x !== at.x || current.at.y !== at.y)) {
+      this.update({ ...current, at });
+    }
+  };
+
   /** the opening pointer was lifted or lost: no flick any more */
   endFlick = () => {
     if (this.current?.flick) {
@@ -443,6 +455,13 @@ export class RadialPaletteController {
     if (!this.enabled || !item?.id) {
       return false;
     }
+    if (ring === "tools" || ring === "pens") {
+      for (const pen of this.hostPens()) {
+        if (pen.active && `host-${pen.id}` !== item.id) {
+          pen.onLeave?.();
+        }
+      }
+    }
     if (ring === "tools") {
       this.pickTool(item.id as RadialTool, locked);
     } else if (ring === "pens") {
@@ -502,9 +521,11 @@ export class RadialPaletteController {
     }
   }
 
-  /** the active tool changed, from the ring or anywhere else: a pen
+  /** the active tool changed, from the ring or anywhere else (a tool's key,
+   * the host): the tool is picked, so the ring has done its job, and a pen
    * preset's see-through ink does not carry over to shapes */
   toolChanged() {
+    this.close();
     const { app, presetOpacity } = this;
     const { type } = app.state.activeTool;
     if (presetOpacity === null || type === "freedraw" || type === "eraser") {
@@ -546,7 +567,14 @@ export class RadialPaletteController {
   };
 
   readonly api: RadialPaletteAPI = {
-    open: ({ ring, at } = {}) => this.open({ ring, at }),
+    open: ({ ring, at, pointerId } = {}) => {
+      const point = at ?? this.defaultPoint();
+      this.open({
+        ring,
+        at: point,
+        flick: pointerId === undefined ? null : { pointerId, start: point },
+      });
+    },
     step: (delta) => this.step(delta),
     choose: () => this.choose(),
     close: () => this.close(),
