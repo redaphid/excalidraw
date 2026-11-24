@@ -581,18 +581,24 @@ describe("RadialPalette", () => {
       describe("when the size arc is dragged", () => {
         beforeEach(() => {
           const svg = ring()!.querySelector("svg")!;
+          const { left, top, width, height } = ring()!.style;
+          const center = {
+            x: parseFloat(left) + parseFloat(width) / 2,
+            y: parseFloat(top) + parseFloat(height) / 2,
+          };
+          // straight left of the center: past the arc's thick end, so the
+          // size clamps to its largest
+          const thick = { clientX: center.x - 300, clientY: center.y };
           fireEvent.pointerDown(byTestId("radial-size")!, {
             pointerId: 1,
-            clientX: 0,
-            clientY: 0,
+            ...thick,
           });
-          // straight below the center: the far end of the arc
-          fireEvent.pointerMove(svg, { pointerId: 1, clientX: 0, clientY: 400 });
-          fireEvent.pointerUp(svg, { pointerId: 1, clientX: 0, clientY: 400 });
+          fireEvent.pointerMove(svg, { pointerId: 1, ...thick });
+          fireEvent.pointerUp(svg, { pointerId: 1, ...thick });
         });
 
         it("moves the pen size", () => {
-          expect(h.state.currentItemFreedrawStrokeWidth).not.toBe(0.2);
+          expect(h.state.currentItemFreedrawStrokeWidth).toBeGreaterThan(0.2);
         });
 
         it("gives the selected stroke the new width", () => {
