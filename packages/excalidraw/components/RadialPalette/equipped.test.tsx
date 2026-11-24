@@ -39,6 +39,17 @@ describe("the equipped chip's spot", () => {
     expect(spot.x + CHIP_RADIUS).toBeLessThanOrEqual(screen.width);
     expect(spot.y).toBeLessThan(600);
   });
+
+  it("stays clear of the host's bars", () => {
+    // the puck against the right side, just under a 64px top bar
+    const center = { x: 400 - 38, y: 105 };
+    const insets = { top: 64, bottom: 0 };
+    const spot = chipSpot(center, 22, screen, insets);
+    expect(spot.y - CHIP_RADIUS).toBeGreaterThanOrEqual(insets.top);
+    expect(spot.x + CHIP_RADIUS).toBeLessThanOrEqual(screen.width);
+    // where the bar is not there, it would have gone above the puck
+    expect(chipSpot(center, 22, screen).y).toBeLessThan(center.y);
+  });
 });
 
 describe("putting the equipped tool down", () => {
@@ -72,6 +83,13 @@ describe("putting the equipped tool down", () => {
     expect(h.state.activeTool.type).toBe("hand");
     Keyboard.keyPress(KEYS.X);
     expect(h.state.activeTool.type).toBe("freedraw");
+  });
+
+  it("x puts the laser down in view mode", () => {
+    API.setAppState({ viewModeEnabled: true });
+    act(() => h.app.setActiveTool({ type: "laser" }));
+    Keyboard.keyPress(KEYS.X);
+    expect(h.state.activeTool.type).toBe("hand");
   });
 
   it("shift+x still picks the autoshape tool", () => {

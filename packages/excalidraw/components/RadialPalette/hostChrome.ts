@@ -13,7 +13,7 @@ export const TAKES_TAPS_SELECTOR =
 
 /** the palette's own parts, which never count as the host's */
 const PALETTE_SELECTOR =
-  ".RadialPalette, .RadialPalette__backdrop, .RadialPalette__puck";
+  ".RadialPalette, .RadialPalette__backdrop, .RadialPalette__puck, .RadialPalette__equipped";
 
 /**
  * Whether a press at `at` reaches the editor's canvas rather than a control

@@ -474,16 +474,27 @@ export const RadialPalette = React.memo(
         return;
       }
       const measure = () => {
+        const { offsetLeft, offsetTop, width, height } = app.state;
+        const area = { left: offsetLeft, top: offsetTop, width, height };
         const box = puck.getBoundingClientRect();
         const frame = parent.getBoundingClientRect();
-        const next = chipSpot(
+        // in the editor's terms, clear of the host's bars, then placed in
+        // the puck's positioned parent
+        const spot = chipSpot(
           {
-            x: box.left + box.width / 2 - frame.left,
-            y: box.top + box.height / 2 - frame.top,
+            x: box.left + box.width / 2 - offsetLeft,
+            y: box.top + box.height / 2 - offsetTop,
           },
           collapsed ? 10 : box.width / 2,
-          { width: frame.width, height: frame.height },
+          { width, height },
+          measureHostInsets(area, (at) =>
+            reachesCanvas(app.ownerDocument, container, at),
+          ),
         );
+        const next = {
+          x: spot.x + offsetLeft - frame.left,
+          y: spot.y + offsetTop - frame.top,
+        };
         setChipAt((was) =>
           was && was.x === next.x && was.y === next.y ? was : next,
         );
@@ -494,6 +505,7 @@ export const RadialPalette = React.memo(
       return () => win.removeEventListener("resize", measure);
     }, [
       app,
+      container,
       equipped,
       session,
       moving,
@@ -1616,7 +1628,7 @@ const Ring = ({
         {equipped &&
           (() => {
             // on the ring's rim, in the ring's own box
-            const spot = chipSpot(place, size / 2, { width, height });
+            const spot = chipSpot(place, size / 2, { width, height }, insets);
             return (
               <EquippedChip
                 tool={equipped}

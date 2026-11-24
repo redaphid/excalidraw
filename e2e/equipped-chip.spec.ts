@@ -101,3 +101,56 @@ test("a tap on the chip puts the tool down and picks up the hand", async ({
   await expect(chip(page)).toBeHidden();
   await page.screenshot({ path: testInfo.outputPath("4-put-down.png") });
 });
+
+/** a host's bar across the top, as draw's is on a phone: outside the
+ * editor, with buttons that take taps */
+const addHostBar = (page: Page, height: number) =>
+  page.evaluate((height) => {
+    const bar = document.createElement("div");
+    bar.dataset.testid = "host-bar";
+    bar.style.cssText = `position:fixed;top:0;left:0;right:0;height:${height}px;z-index:10000;display:flex;background:#ddd`;
+    for (let i = 0; i < 4; i++) {
+      const button = document.createElement("button");
+      button.textContent = `host ${i}`;
+      button.style.cssText = "flex:1;height:100%";
+      bar.appendChild(button);
+    }
+    document.body.appendChild(bar);
+  }, height);
+
+test("the chip stays clear of a host's bar along the top", async ({
+  page,
+}, testInfo) => {
+  // the puck against the right side, just under the bar
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "excalidraw-radial-puck",
+      JSON.stringify({ x: 0.9, y: 0.125, collapsed: false }),
+    ),
+  );
+  await page.reload();
+  await expect(page.getByTestId("radial-palette-puck")).toBeVisible();
+  await addHostBar(page, 64);
+  await page.keyboard.press("h");
+  await page.keyboard.press("r");
+  await expect(chip(page)).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("host-bar-closed.png") });
+
+  const clearOfBar = async () => {
+    const box = (await chip(page).boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(64);
+    // and a tap there reaches the chip, not the bar
+    const hit = await page.evaluate(
+      ({ x, y }) =>
+        document.elementFromPoint(x, y)?.closest("button")?.dataset.testid,
+      { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+    );
+    expect(hit).toBe("radial-palette-equipped");
+  };
+  await clearOfBar();
+
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("host-bar-open.png") });
+  await clearOfBar();
+});
