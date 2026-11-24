@@ -153,6 +153,11 @@
         grid-column: 1 / -1;
       }
 
+      // a hairline between groups, not a row's worth of gap
+      > .context-menu-item-separator {
+        margin: 0.125rem 0.75rem;
+      }
+
       .context-menu-item {
         min-width: 0;
         padding-inline: 0.75rem;
