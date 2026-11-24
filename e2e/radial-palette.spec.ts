@@ -279,15 +279,32 @@ test("Tab walks the ring opened on , and never reaches the shape behind it", asy
 }, testInfo) => {
   test.skip(testInfo.project.use.hasTouch, "a keyboard gesture");
   const { x, y } = await canvasCenter(page);
+  // the playground takes keys only inside the editor, as a host that does
+  // not handle them globally
+  await page.locator(".excalidraw-container").focus();
   await page.keyboard.press("r");
+  expect(await activeTool(page)).toBe("rectangle");
   await page.mouse.move(x - 60, y - 40);
   await page.mouse.down();
   await page.mouse.move(x + 60, y + 40, { steps: 4 });
   await page.mouse.up();
-  await expect.poll(async () => (await savedElements(page)).length).toBe(1);
+  await expect
+    .poll(async () => (await savedElements(page)).map(({ type }) => type))
+    .toEqual(["rectangle"]);
+  const before = await page.evaluate(() => ({
+    selected: Object.keys(
+      (window as Playground).excalidrawAPI?.getAppState().selectedElementIds ??
+        {},
+    ).length,
+    focus: document.activeElement?.className ?? null,
+  }));
+  expect(before.selected, "the new rectangle is selected").toBe(1);
 
   await page.keyboard.press(",");
-  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  await expect(
+    page.getByTestId("radial-palette"),
+    `ring after , with ${JSON.stringify(before)}`,
+  ).toBeVisible();
   await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
 
