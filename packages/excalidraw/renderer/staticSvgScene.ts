@@ -50,6 +50,7 @@ import { getContainingFrame } from "@excalidraw/element";
 import { getCornerRadius, isPathALoop } from "@excalidraw/element";
 
 import { ShapeCache } from "@excalidraw/element";
+import { getFillGradient, withFillPaint } from "@excalidraw/element";
 import {
   getStickyNoteFooter,
   getStickyNotePathCommands,
@@ -85,6 +86,63 @@ const roughSVGDrawWithPrecision = (
     options: { ...drawable.options, fixedDecimalPlaceDigits: precision },
   };
   return rsvg.draw(pshape);
+};
+
+const createFillGradientNode = (
+  element: NonDeletedExcalidrawElement,
+  svgRoot: SVGElement,
+  renderConfig: SVGRenderConfig,
+) => {
+  const gradient = getFillGradient(
+    element,
+    renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
+  );
+  if (!gradient) {
+    return null;
+  }
+  const { type, colors, ...geometry } = gradient;
+  const node = svgRoot.ownerDocument.createElementNS(
+    SVG_NS,
+    type === "radial" ? "radialGradient" : "linearGradient",
+  );
+  node.setAttribute("id", `fill-gradient-${element.id}`);
+  node.setAttribute("gradientUnits", "userSpaceOnUse");
+  Object.entries(geometry).forEach(([name, value]) => {
+    node.setAttribute(
+      name,
+      `${Number(value.toFixed(MAX_DECIMALS_FOR_SVG_EXPORT))}`,
+    );
+  });
+  colors.forEach((color, offset) => {
+    const stop = svgRoot.ownerDocument.createElementNS(SVG_NS, "stop");
+    stop.setAttribute("offset", `${offset}`);
+    stop.setAttribute("stop-color", color);
+    node.appendChild(stop);
+  });
+  return node;
+};
+
+const drawFillableShape = (
+  rsvg: RoughSVG,
+  shape: Drawable,
+  element: NonDeletedExcalidrawElement,
+  svgRoot: SVGElement,
+  renderConfig: SVGRenderConfig,
+) => {
+  const gradientNode = shape.sets.some((set) => set.type === "fillPath")
+    ? createFillGradientNode(element, svgRoot, renderConfig)
+    : null;
+  const node = roughSVGDrawWithPrecision(
+    rsvg,
+    withFillPaint(shape, gradientNode && `url(#${gradientNode.id})`),
+    MAX_DECIMALS_FOR_SVG_EXPORT,
+  );
+  if (gradientNode) {
+    const defs = svgRoot.ownerDocument.createElementNS(SVG_NS, "defs");
+    defs.appendChild(gradientNode);
+    node.appendChild(defs);
+  }
+  return node;
 };
 
 const maybeWrapNodesInFrameClipPath = (
@@ -315,10 +373,12 @@ const renderElementToSvg = (
     case "diamond":
     case "ellipse": {
       const shape = ShapeCache.generateElementShape(element, renderConfig);
-      const node = roughSVGDrawWithPrecision(
+      const node = drawFillableShape(
         rsvg,
         shape,
-        MAX_DECIMALS_FOR_SVG_EXPORT,
+        element,
+        svgRoot,
+        renderConfig,
       );
       if (opacity !== 1) {
         node.setAttribute("stroke-opacity", `${opacity}`);
@@ -523,12 +583,15 @@ const renderElementToSvg = (
       group.setAttribute("stroke-linecap", "round");
 
       const shapes = ShapeCache.generateElementShape(element, renderConfig);
-      shapes.forEach((shape) => {
-        const node = roughSVGDrawWithPrecision(
-          rsvg,
-          shape,
-          MAX_DECIMALS_FOR_SVG_EXPORT,
-        );
+      shapes.forEach((shape, index) => {
+        const node =
+          index === 0
+            ? drawFillableShape(rsvg, shape, element, svgRoot, renderConfig)
+            : roughSVGDrawWithPrecision(
+                rsvg,
+                shape,
+                MAX_DECIMALS_FOR_SVG_EXPORT,
+              );
         if (opacity !== 1) {
           node.setAttribute("stroke-opacity", `${opacity}`);
           node.setAttribute("fill-opacity", `${opacity}`);
@@ -587,10 +650,12 @@ const renderElementToSvg = (
         } else {
           // background (Drawable)
 
-          const bgNode = roughSVGDrawWithPrecision(
+          const bgNode = drawFillableShape(
             rsvg,
             shape,
-            MAX_DECIMALS_FOR_SVG_EXPORT,
+            element,
+            svgRoot,
+            renderConfig,
           );
 
           // if children wrapped in <g>, unwrap it
