@@ -23,7 +23,6 @@ import Footer from "./components/footer/FooterCenter";
 import LiveCollaborationTrigger from "./components/live-collaboration/LiveCollaborationTrigger";
 import MainMenu from "./components/main-menu/MainMenu";
 import WelcomeScreen from "./components/welcome-screen/WelcomeScreen";
-import { defaultLang } from "./i18n";
 import {
   useAppStateValue as _useAppStateValue,
   useOnAppStateChange as _useOnAppStateChange,
@@ -79,15 +78,10 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     onUnmount,
     onInitialize,
     isCollaborating = false,
-    authoringUnits,
     css,
-    freedrawStrokeWidth,
     radialPalette,
-    separateCanvasBackground,
     onPointerUpdate,
-    renderTopLeftUI,
     renderTopRightUI,
-    langCode = defaultLang.code,
     viewModeEnabled,
     interaction,
     ui,
@@ -117,7 +111,6 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
     children,
     validateEmbeddable,
     renderEmbeddable,
-    aiEnabled,
     showDeprecatedFonts,
     renderScrollbars,
     viewportStatusFrame,
@@ -215,7 +208,7 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
 
   return (
     <EditorJotaiProvider store={editorJotaiStore}>
-      <InitializeApp langCode={langCode} theme={theme}>
+      <InitializeApp theme={theme}>
         <App
           onExport={onExport}
           className={className}
@@ -230,15 +223,10 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           onUnmount={onUnmount}
           onInitialize={onInitialize}
           isCollaborating={isCollaborating}
-          authoringUnits={authoringUnits}
           css={css}
-          freedrawStrokeWidth={freedrawStrokeWidth}
           radialPalette={radialPalette}
-          separateCanvasBackground={separateCanvasBackground}
           onPointerUpdate={onPointerUpdate}
-          renderTopLeftUI={renderTopLeftUI}
           renderTopRightUI={renderTopRightUI}
-          langCode={langCode}
           viewModeEnabled={viewModeEnabled}
           interaction={interaction}
           ui={ui}
@@ -268,7 +256,6 @@ const ExcalidrawBase = (props: ExcalidrawProps) => {
           onDuplicate={onDuplicate}
           validateEmbeddable={validateEmbeddable}
           renderEmbeddable={renderEmbeddable}
-          aiEnabled={aiEnabled !== false}
           showDeprecatedFonts={showDeprecatedFonts}
           renderScrollbars={renderScrollbars}
           viewportStatusFrame={viewportStatusFrame}

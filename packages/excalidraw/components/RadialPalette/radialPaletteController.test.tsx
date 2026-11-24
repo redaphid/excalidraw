@@ -53,7 +53,6 @@ describe("the radial palette's controller API", () => {
       excalidrawAPI = null;
       await render(
         <Excalidraw
-          radialPalette
           onExcalidrawAPI={(value) => {
             excalidrawAPI = value;
           }}
@@ -314,7 +313,7 @@ describe("the style ring", () => {
   const ids = () => controller.state().items.map(({ id }) => id);
 
   beforeEach(async () => {
-    await render(<Excalidraw radialPalette />);
+    await render(<Excalidraw />);
     const rectangle = API.createElement({ type: "rectangle" });
     API.setElements([rectangle]);
     API.setSelectedElements([rectangle]);

@@ -1,9 +1,4 @@
-import {
-  DEFAULT_GRID_SIZE,
-  KEYS,
-  MOBILE_ACTION_BUTTON_BG,
-  arrayToMap,
-} from "@excalidraw/common";
+import { DEFAULT_GRID_SIZE, KEYS, arrayToMap } from "@excalidraw/common";
 
 import { getAuthoringScale, getNonDeletedElements } from "@excalidraw/element";
 
@@ -20,14 +15,7 @@ import { duplicateElements } from "@excalidraw/element";
 
 import { CaptureUpdateAction } from "@excalidraw/element";
 
-import { IconButton } from "../components/IconButton";
 import { DuplicateIcon } from "../components/icons";
-
-import { t } from "../i18n";
-import { isSomeElementSelected } from "../scene";
-import { getShortcutKey } from "../shortcut";
-
-import { useStylesPanelMode } from "../components/App";
 
 import { register } from "./register";
 
@@ -116,27 +104,4 @@ export const actionDuplicateSelection = register({
     };
   },
   keyTest: (event) => event[KEYS.CTRL_OR_CMD] && event.key === KEYS.D,
-  PanelComponent: ({ elements, appState, updateData, app }) => {
-    const isMobile = useStylesPanelMode() === "mobile";
-
-    return (
-      <IconButton
-        type="button"
-        icon={DuplicateIcon}
-        title={`${t("labels.duplicateSelection")} — ${getShortcutKey(
-          "CtrlOrCmd+D",
-        )}`}
-        aria-label={t("labels.duplicateSelection")}
-        onClick={() => updateData(null)}
-        disabled={
-          !isSomeElementSelected(getNonDeletedElements(elements), appState)
-        }
-        style={{
-          ...(isMobile && appState.openPopup !== "compactOtherProperties"
-            ? MOBILE_ACTION_BUTTON_BG
-            : {}),
-        }}
-      />
-    );
-  },
 });

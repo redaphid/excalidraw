@@ -130,7 +130,7 @@ describe("RadialPalette", () => {
 
   describe("when the host turns it on", () => {
     beforeEach(async () => {
-      await render(<Excalidraw radialPalette css={PARCHMENT} />);
+      await render(<Excalidraw css={PARCHMENT} />);
     });
 
     it("renders the puck alone while closed", () => {

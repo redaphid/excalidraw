@@ -2,8 +2,6 @@ import {
   COLOR_PALETTE,
   DEFAULT_CANVAS_BACKGROUND_PICKS,
   removeDarkModeFilter,
-  MAX_ZOOM,
-  MIN_ZOOM,
   THEME,
   ZOOM_STEP,
   CODES,
@@ -20,8 +18,6 @@ import type { Bounds } from "@excalidraw/common";
 
 import { getDefaultAppState } from "../appState";
 import { ColorPicker } from "../components/ColorPicker/ColorPicker";
-import { IconButton } from "../components/IconButton";
-import { Tooltip } from "../components/Tooltip";
 import {
   MoonIcon,
   SunIcon,
@@ -32,16 +28,14 @@ import {
   ZoomResetIcon,
 } from "../components/icons";
 import { getThemeCanvasBackground } from "../cssTheme";
-import { useAppStateValue } from "../hooks/useAppStateValue";
 
 import { t } from "../i18n";
-import { formatZoomPercent, getNormalizedZoom } from "../scene";
+import { getNormalizedZoom } from "../scene";
 import {
   constrainScrollState,
   getViewportForZoomWithScrollConstraints,
   zoomToFitBounds,
 } from "../viewport";
-import { getShortcutKey } from "../shortcut";
 
 import { register } from "./register";
 
@@ -176,29 +170,6 @@ export const actionZoomIn = register({
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
   },
-  PanelComponent: ({ updateData }) => {
-    const zoomValue = useAppStateValue((appState) => appState.zoom.value);
-    return (
-      <Tooltip
-        label={`${t("buttons.zoomIn")} — ${getShortcutKey("CtrlOrCmd++")}`}
-        className="zoom-in-button-wrapper"
-        delay
-      >
-        <IconButton
-          type="button"
-          className="zoom-in-button zoom-button"
-          icon={ZoomInIcon}
-          aria-label={t("buttons.zoomIn")}
-          // the shortcut used to reach AT via the (now removed) native title
-          aria-keyshortcuts={getShortcutKey("CtrlOrCmd++")}
-          disabled={zoomValue >= MAX_ZOOM}
-          onClick={() => {
-            updateData(null);
-          }}
-        />
-      </Tooltip>
-    );
-  },
   keyTest: (event) =>
     (event.code === CODES.EQUAL || event.code === CODES.NUM_ADD) &&
     (event[KEYS.CTRL_OR_CMD] || event.shiftKey),
@@ -229,29 +200,6 @@ export const actionZoomOut = register({
       appState: nextState,
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
-  },
-  PanelComponent: ({ updateData }) => {
-    const zoomValue = useAppStateValue((appState) => appState.zoom.value);
-    return (
-      <Tooltip
-        label={`${t("buttons.zoomOut")} — ${getShortcutKey("CtrlOrCmd+-")}`}
-        className="zoom-out-button-wrapper"
-        delay
-      >
-        <IconButton
-          type="button"
-          className="zoom-out-button zoom-button"
-          icon={ZoomOutIcon}
-          aria-label={t("buttons.zoomOut")}
-          // the shortcut used to reach AT via the (now removed) native title
-          aria-keyshortcuts={getShortcutKey("CtrlOrCmd+-")}
-          disabled={zoomValue <= MIN_ZOOM}
-          onClick={() => {
-            updateData(null);
-          }}
-        />
-      </Tooltip>
-    );
   },
   keyTest: (event) =>
     (event.code === CODES.MINUS || event.code === CODES.NUM_SUBTRACT) &&
@@ -290,28 +238,6 @@ export const actionResetZoom = register({
       appState: nextState,
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
-  },
-  PanelComponent: ({ updateData }) => {
-    const zoomValue = useAppStateValue((appState) => appState.zoom.value);
-    return (
-      <Tooltip
-        label={t("buttons.resetZoom")}
-        style={{ height: "100%" }}
-        className="reset-zoom-button-wrapper"
-        delay
-      >
-        <IconButton
-          type="button"
-          className="reset-zoom-button zoom-button"
-          aria-label={t("buttons.resetZoom")}
-          onClick={() => {
-            updateData(null);
-          }}
-        >
-          {formatZoomPercent(zoomValue)}%
-        </IconButton>
-      </Tooltip>
-    );
   },
   keyTest: (event) =>
     (event.code === CODES.ZERO || event.code === CODES.NUM_ZERO) &&

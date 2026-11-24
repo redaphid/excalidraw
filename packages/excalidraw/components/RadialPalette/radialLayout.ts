@@ -151,7 +151,6 @@ export const hitTest = (
   layout: RingLayout,
   dx: number,
   dy: number,
-  options: { size: boolean } = { size: true },
 ): RingHit | null => {
   const { radius, angle } = toPolar(dx, dy);
   if (radius <= HUB_RADIUS) {
@@ -171,7 +170,7 @@ export const hitTest = (
     return find("pen", layout.pens);
   }
   if (inBand(radius, OUTER_BAND)) {
-    if (options.size && onSlider(SIZE_SLIDER, angle)) {
+    if (onSlider(SIZE_SLIDER, angle)) {
       return { kind: "size", value: sliderValue(SIZE_SLIDER, angle) };
     }
     if (onSlider(OPACITY_SLIDER, angle)) {

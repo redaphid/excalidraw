@@ -551,14 +551,8 @@ describe("palette knobs", () => {
 
   const palette = () => h.app.radialPalette.api.state();
 
-  const renderWithPalette = (radialPalette = true, midi = options) =>
-    render(
-      <Excalidraw
-        handleKeyboardGlobally
-        midi={midi}
-        radialPalette={radialPalette}
-      />,
-    );
+  const renderWithPalette = (midi = options) =>
+    render(<Excalidraw handleKeyboardGlobally midi={midi} />);
 
   afterEach(async () => {
     await act(async () => {});
@@ -615,7 +609,7 @@ describe("palette knobs", () => {
 
   describe("with acceleration on", () => {
     beforeEach(async () => {
-      await renderWithPalette(true, { encoding: "relative" });
+      await renderWithPalette({ encoding: "relative" });
     });
 
     it("moves a slice per four clicks, however quick the hand", () => {
@@ -733,7 +727,7 @@ describe("palette knobs", () => {
     beforeEach(async () => {
       knobs.clear();
       plugIn();
-      await renderWithPalette(true, { acceleration: false });
+      await renderWithPalette({ acceleration: false });
       await act(async () => {
         await h.app.midi.connect();
       });
@@ -767,9 +761,7 @@ describe("palette knobs on another controller", () => {
 
   beforeEach(async () => {
     plugIn(MINI);
-    await render(
-      <Excalidraw handleKeyboardGlobally midi={options} radialPalette />,
-    );
+    await render(<Excalidraw handleKeyboardGlobally midi={options} />);
     await act(async () => {
       await h.app.midi.connect();
     });

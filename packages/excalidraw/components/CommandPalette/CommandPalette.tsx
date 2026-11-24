@@ -571,7 +571,6 @@ function CommandPaletteInner({
           category: DEFAULT_CATEGORIES.tools,
           icon: brainIconThin,
           viewMode: false,
-          predicate: appProps.aiEnabled,
           perform: () => {
             setAppState((state) => ({
               ...state,
@@ -587,7 +586,6 @@ function CommandPaletteInner({
           category: DEFAULT_CATEGORIES.tools,
           icon: mermaidLogoIcon,
           viewMode: false,
-          predicate: appProps.aiEnabled,
           perform: () => {
             setAppState((state) => ({
               ...state,
@@ -603,7 +601,6 @@ function CommandPaletteInner({
         //   category: DEFAULT_CATEGORIES.tools,
         //   icon: MagicIconThin,
         //   viewMode: false,
-        //   predicate: appProps.aiEnabled,
         //   perform: () => {
         //     app.onMagicframeToolSelect();
         //   },

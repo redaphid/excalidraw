@@ -547,7 +547,6 @@ export const Bench = () => {
       {mounted && (
         <Excalidraw
           key={mounted.name}
-          authoringUnits="screen"
           initialData={{
             elements: mounted.scene.elements,
             files: mounted.scene.files,

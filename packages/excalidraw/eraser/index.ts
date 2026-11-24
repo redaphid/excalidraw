@@ -203,24 +203,18 @@ const eraserTest = (
   pathSegment: LineSegment<GlobalPoint>,
   element: ExcalidrawElement,
   elementsMap: ElementsMap,
-  appState: Pick<AppState, "zoom" | "authoringUnits">,
+  appState: Pick<AppState, "zoom">,
 ): boolean => {
   const lastPoint = pathSegment[1];
   const zoom = appState.zoom.value;
-  // screen authoring keeps the reach on screen at any zoom; otherwise it
-  // bottoms out at a scene distance
-  const reach =
-    appState.authoringUnits === "screen" ? ERASER_REACH / zoom : null;
+  // the reach stays the same on screen at any zoom
+  const reach = ERASER_REACH / zoom;
 
   // PERF: Do a quick bounds intersection test first because it's cheap
   const threshold =
-    reach === null
-      ? isFreeDrawElement(element)
-        ? 15
-        : element.strokeWidth / 2
-      : (isFreeDrawElement(element)
-          ? getFreedrawMaxStrokeRadius(element)
-          : element.strokeWidth / 2) + reach;
+    (isFreeDrawElement(element)
+      ? getFreedrawMaxStrokeRadius(element)
+      : element.strokeWidth / 2) + reach;
   const segmentBounds = [
     Math.min(pathSegment[0][0], pathSegment[1][0]) - threshold,
     Math.min(pathSegment[0][1], pathSegment[1][1]) - threshold,
@@ -259,7 +253,7 @@ const eraserTest = (
       outlinePoints,
       elementsMap,
     );
-    const tolerance = reach ?? Math.max(2.25, ERASER_REACH / zoom); // NOTE: Visually fine-tuned approximation
+    const tolerance = reach;
 
     for (const seg of strokeSegments) {
       if (lineSegmentsDistance(seg, pathSegment) <= tolerance) {
@@ -286,10 +280,7 @@ const eraserTest = (
   const boundTextElement = getBoundTextElement(element, elementsMap);
 
   if (isArrowElement(element) || (isLineElement(element) && !element.polygon)) {
-    const tolerance =
-      reach === null
-        ? Math.max(element.strokeWidth, (element.strokeWidth * 2) / zoom)
-        : element.strokeWidth / 2 + reach;
+    const tolerance = element.strokeWidth / 2 + reach;
 
     // If the eraser movement is so fast that a large distance is covered
     // between the last two points, the distanceToElement miss, so we test

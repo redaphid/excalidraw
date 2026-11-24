@@ -62,7 +62,6 @@ import "./Toolbar.scss";
 
 import type { ActionManager } from "../actions/manager";
 
-import type { Language } from "../i18n";
 import type {
   AppProps,
   AppState,
@@ -81,8 +80,6 @@ interface LayerUIProps {
   elements: readonly NonDeletedExcalidrawElement[];
   onLockToggle: () => void;
   showExitZenModeBtn: boolean;
-  langCode: Language["code"];
-  renderTopLeftUI?: ExcalidrawProps["renderTopLeftUI"];
   renderTopRightUI?: ExcalidrawProps["renderTopRightUI"];
   renderCustomStats?: ExcalidrawProps["renderCustomStats"];
   UIOptions: AppProps["UIOptions"];
@@ -143,7 +140,6 @@ const LayerUI = ({
   canvas,
   onLockToggle,
   showExitZenModeBtn,
-  renderTopLeftUI,
   renderTopRightUI,
   renderCustomStats,
   UIOptions,
@@ -222,7 +218,6 @@ const LayerUI = ({
   const renderCanvasActions = () => (
     <div style={{ position: "relative" }}>
       <div className="excalidraw-ui-top-left">
-        {renderTopLeftUI?.(false, appState)}
         <tunnels.MainMenuTunnel.Out />
       </div>
     </div>
@@ -452,7 +447,6 @@ const LayerUI = ({
           renderJSONExportDialog={renderJSONExportDialog}
           renderImageExportDialog={renderImageExportDialog}
           setAppState={setAppState}
-          renderTopLeftUI={renderTopLeftUI}
           renderTopRightUI={renderTopRightUI}
           renderSidebars={renderSidebars}
           renderWelcomeScreen={renderWelcomeScreen}
@@ -494,43 +488,38 @@ const LayerUI = ({
               renderWelcomeScreen={renderWelcomeScreen}
               defaultUIEnabled={defaultUIEnabled}
             />
-            {(appState.toast ||
-              (scrollBackToContentUIEnabled && appState.scrolledOutside) ||
-              appProps.viewportStatusFrame?.label ||
-              appProps.frameNavigation) && (
-              <div className="floating-status-stack">
-                {appState.toast && (
-                  <Toast
-                    message={appState.toast.message}
-                    onClose={() => setAppState({ toast: null })}
-                    duration={appState.toast.duration}
-                    closable={appState.toast.closable}
-                  />
+            <div className="floating-status-stack">
+              {appState.toast && (
+                <Toast
+                  message={appState.toast.message}
+                  onClose={() => setAppState({ toast: null })}
+                  duration={appState.toast.duration}
+                  closable={appState.toast.closable}
+                />
+              )}
+              {!appState.toast &&
+                scrollBackToContentUIEnabled &&
+                appState.scrolledOutside && (
+                  <button
+                    type="button"
+                    className="scroll-back-to-content"
+                    onClick={() => {
+                      setAppState((appState) => ({
+                        ...getScrollToContentState(elements, appState),
+                      }));
+                    }}
+                  >
+                    {t("buttons.scrollBackToContent")}
+                  </button>
                 )}
-                {!appState.toast &&
-                  scrollBackToContentUIEnabled &&
-                  appState.scrolledOutside && (
-                    <button
-                      type="button"
-                      className="scroll-back-to-content"
-                      onClick={() => {
-                        setAppState((appState) => ({
-                          ...getScrollToContentState(elements, appState),
-                        }));
-                      }}
-                    >
-                      {t("buttons.scrollBackToContent")}
-                    </button>
-                  )}
-                {appProps.viewportStatusFrame?.label && (
-                  <ViewportStatusBadge
-                    label={appProps.viewportStatusFrame.label}
-                    border={appProps.viewportStatusFrame.border}
-                  />
-                )}
-                {appProps.frameNavigation && <FrameBreadcrumb />}
-              </div>
-            )}
+              {appProps.viewportStatusFrame?.label && (
+                <ViewportStatusBadge
+                  label={appProps.viewportStatusFrame.label}
+                  border={appProps.viewportStatusFrame.border}
+                />
+              )}
+              <FrameBreadcrumb />
+            </div>
           </div>
           {renderSidebars()}
         </>

@@ -17,10 +17,8 @@ import type {
 } from "@excalidraw/element";
 
 import { elkLayout } from "../arrange/elkLayout";
-import { IconButton } from "../components/IconButton";
 import { ArrangeIcon } from "../components/icons";
 import { t } from "../i18n";
-import { getShortcutKey } from "../shortcut";
 
 import { register } from "./register";
 
@@ -135,15 +133,4 @@ export const actionArrangeElements = register({
     !event.ctrlKey &&
     !event.repeat &&
     !("isComposing" in event && event.isComposing),
-  PanelComponent: ({ updateData }) => (
-    <IconButton
-      type="button"
-      icon={ArrangeIcon}
-      onClick={() => updateData(null)}
-      title={`${t("labels.arrangeElements")} — ${getShortcutKey(
-        "Shift+Alt+A",
-      )}`}
-      aria-label={t("labels.arrangeElements")}
-    />
-  ),
 });

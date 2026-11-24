@@ -436,8 +436,6 @@ const Ring = ({
   const colors = controller.colorSlots();
   const presets = controller.getPresets();
   const hostPens = controller.hostPens();
-  // a host pen width replaces the user's, so the size arc would do nothing
-  const showSize = app.props.freedrawStrokeWidth === undefined;
   const layout = getRingLayout({
     tools: styleRing ? styleItems.length : RADIAL_TOOLS.length,
     pens: presets.length + hostPens.length + 1,
@@ -457,7 +455,7 @@ const Ring = ({
 
   const hitAt = (clientX: number, clientY: number) => {
     const { dx, dy } = toLocal(clientX, clientY);
-    return hitTest(layout, dx, dy, { size: showSize });
+    return hitTest(layout, dx, dy);
   };
 
   /** highlights what a pointer is over, as a knob would */
@@ -1019,14 +1017,13 @@ const Ring = ({
             );
           })()}
 
-          {showSize &&
-            slider(
-              "size",
-              SIZE_SLIDER,
-              sizeValue,
-              t("labels.penSize"),
-              penSize.toFixed(2),
-            )}
+          {slider(
+            "size",
+            SIZE_SLIDER,
+            sizeValue,
+            t("labels.penSize"),
+            penSize.toFixed(2),
+          )}
           {slider(
             "opacity",
             OPACITY_SLIDER,

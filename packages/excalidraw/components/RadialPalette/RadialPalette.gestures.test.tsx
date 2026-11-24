@@ -98,7 +98,7 @@ describe("opening the radial palette from the canvas", () => {
 
   describe("with the palette on", () => {
     beforeEach(async () => {
-      await render(<Excalidraw radialPalette />);
+      await render(<Excalidraw />);
       API.setAppState({ width: 1000, height: 800 });
     });
 

@@ -2,19 +2,13 @@ import { KEYS, THEME } from "@excalidraw/common";
 
 import { CaptureUpdateAction } from "@excalidraw/element";
 
-import type { ExcalidrawElement, Theme } from "@excalidraw/element/types";
+import type { ExcalidrawElement } from "@excalidraw/element/types";
 
-import { useEditorInterface } from "../components/App";
-import { CheckboxItem } from "../components/CheckboxItem";
-import { DarkModeToggle } from "../components/DarkModeToggle";
 import { ProjectName } from "../components/ProjectName";
 import { Toast } from "../components/Toast";
-import { IconButton } from "../components/IconButton";
-import { Tooltip } from "../components/Tooltip";
-import { ExportIcon, questionCircle, saveAs } from "../components/icons";
+import { ExportIcon } from "../components/icons";
 import { loadFromJSON, saveAsJSON } from "../data";
 import { isImageFileHandle } from "../data/blob";
-import { nativeFileSystemSupported } from "../data/filesystem";
 
 import { resaveAsImageWithScene } from "../data/resave";
 
@@ -78,14 +72,6 @@ export const actionChangeExportBackground = register<
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
   },
-  PanelComponent: ({ appState, updateData }) => (
-    <CheckboxItem
-      checked={appState.exportBackground}
-      onChange={(checked) => updateData(checked)}
-    >
-      {t("imageExportDialog.label.withBackground")}
-    </CheckboxItem>
-  ),
 });
 
 export const actionChangeExportEmbedScene = register<
@@ -100,17 +86,6 @@ export const actionChangeExportEmbedScene = register<
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
   },
-  PanelComponent: ({ appState, updateData }) => (
-    <CheckboxItem
-      checked={appState.exportEmbedScene}
-      onChange={(checked) => updateData(checked)}
-    >
-      {t("imageExportDialog.label.embedScene")}
-      <Tooltip label={t("imageExportDialog.tooltip.embedScene")} long={true}>
-        <div className="excalidraw-tooltip-icon">{questionCircle}</div>
-      </Tooltip>
-    </CheckboxItem>
-  ),
 });
 
 // ---------------------------------------------------------------------------
@@ -376,18 +351,6 @@ export const actionSaveFileToDisk = register({
     event.key.toLowerCase() === KEYS.S &&
     event.shiftKey &&
     event[KEYS.CTRL_OR_CMD],
-  PanelComponent: ({ updateData }) => (
-    <IconButton
-      type="button"
-      icon={saveAs}
-      title={t("buttons.saveAs")}
-      aria-label={t("buttons.saveAs")}
-      showAriaLabel={useEditorInterface().formFactor === "phone"}
-      hidden={!nativeFileSystemSupported}
-      onClick={() => updateData(null)}
-      data-testid="save-as-button"
-    />
-  ),
 });
 
 export const actionLoadScene = register({
@@ -441,22 +404,4 @@ export const actionExportWithDarkMode = register<
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };
   },
-  PanelComponent: ({ appState, updateData }) => (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "flex-end",
-        marginTop: "-45px",
-        marginBottom: "10px",
-      }}
-    >
-      <DarkModeToggle
-        value={appState.exportWithDarkMode ? THEME.DARK : THEME.LIGHT}
-        onChange={(theme: Theme) => {
-          updateData(theme === THEME.DARK);
-        }}
-        title={t("imageExportDialog.label.darkMode")}
-      />
-    </div>
-  ),
 });

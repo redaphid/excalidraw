@@ -25,7 +25,7 @@ const TOOL_KEYS = [
 
 describe("tool shortcuts with nothing focused", () => {
   beforeEach(async () => {
-    await render(<Excalidraw radialPalette />);
+    await render(<Excalidraw />);
   });
 
   describe.each(TOOL_KEYS)("when %s is pressed on the body", (key, tool) => {
