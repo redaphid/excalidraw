@@ -378,6 +378,68 @@ test("a held hub carries the open ring, which stays open where it lands", async 
   expect(Math.hypot(puckAt.x - to.x, puckAt.y - to.y)).toBeLessThan(2);
 });
 
+test("a ring carried by its hub keeps its finger when another lands, and opens there after a reload", async ({
+  page,
+  browserName,
+}, testInfo) => {
+  test.skip(
+    browserName !== "chromium" || !testInfo.project.use.hasTouch,
+    "two real fingers need Chromium's CDP touch",
+  );
+  const viewport = page.viewportSize()!;
+  const to = { x: viewport.width / 2, y: viewport.height / 2 };
+  await tap(page, testInfo, "radial-palette-puck");
+  const ring = page.getByTestId("radial-palette");
+  await expect(ring).toBeVisible();
+  const from = await center(page, "radial-palette-menu");
+  const cdp = await page.context().newCDPSession(page);
+  // the other hand's finger rests near the bottom left corner, off the ring
+  const other = { x: 24, y: viewport.height - 24, id: 2 };
+  const fingers = (points: { x: number; y: number; id: number }[]) =>
+    points.map(({ x, y, id }) => ({ x, y, id }));
+  const send = (type: string, points: { x: number; y: number; id: number }[]) =>
+    cdp.send("Input.dispatchTouchEvent", {
+      type,
+      touchPoints: fingers(points),
+    });
+
+  await send("touchStart", [{ ...from, id: 1 }]);
+  await page.waitForTimeout(700);
+  await expect(ring).toHaveClass(/RadialPalette--moving/);
+  const half = {
+    x: from.x + (to.x - from.x) / 2,
+    y: from.y + (to.y - from.y) / 2,
+  };
+  await send("touchMove", [{ ...half, id: 1 }]);
+  await send("touchStart", [{ ...half, id: 1 }, other]);
+  await expect(ring).toBeVisible();
+  for (let step = 1; step <= 6; step++) {
+    const at = {
+      x: half.x + ((to.x - half.x) * step) / 6,
+      y: half.y + ((to.y - half.y) * step) / 6,
+    };
+    await send("touchMove", [
+      { ...at, id: 1 },
+      { ...other, x: other.x + step * 4 },
+    ]);
+  }
+  await page.screenshot({ path: testInfo.outputPath("two-fingers.png") });
+  await send("touchEnd", [{ ...other, x: other.x + 24 }]);
+  await send("touchEnd", []);
+
+  await expect(ring).toBeVisible();
+  const landed = await ringCenter(page);
+  expect(Math.hypot(landed.x - to.x, landed.y - to.y)).toBeLessThan(2);
+  await expect(page.locator(".context-menu")).toHaveCount(0);
+
+  await page.reload();
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(ring).toBeVisible();
+  const reopened = await ringCenter(page);
+  expect(Math.hypot(reopened.x - to.x, reopened.y - to.y)).toBeLessThan(2);
+  await page.screenshot({ path: testInfo.outputPath("after-reload.png") });
+});
+
 test("a finger held on a selected shape and lifted leaves only the ring", async ({
   page,
   browserName,
