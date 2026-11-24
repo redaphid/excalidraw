@@ -26,6 +26,7 @@ import {
   getSettledBitmapCount,
   resolveElementRenderState,
   endBitmapBuildBudget,
+  frameOutOfTime,
   renderElement,
   startBitmapBuildBudget,
 } from "@excalidraw/element";
@@ -361,7 +362,11 @@ export const getStaticSceneAppState = (
 };
 /**
  * Paints elements as the static scene does: the painted ones in order, then
- * the iframe-like ones over all of them, then pending flowchart nodes.
+ * the iframe-like ones over all of them, then pending flowchart nodes. In a
+ * static frame that may stop ({@link frameOutOfTime}), once past `reach`,
+ * it returns the index, among the painted ones, of the first it left for the
+ * next frame, which passes it back as `from`; null once everything is
+ * painted.
  */
 export const renderSceneElements = ({
   context,
@@ -371,6 +376,8 @@ export const renderSceneElements = ({
   allElementsMap,
   appState,
   renderConfig,
+  from = 0,
+  reach = 0,
 }: {
   context: CanvasRenderingContext2D;
   rc: StaticSceneRenderConfig["rc"];
@@ -379,7 +386,9 @@ export const renderSceneElements = ({
   allElementsMap: StaticSceneRenderConfig["allElementsMap"];
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
-}) => {
+  from?: number;
+  reach?: number;
+}): number | null => {
   const { isExporting } = renderConfig;
 
   const inFrameGroupsMap = new Map<string, boolean>();
@@ -430,64 +439,69 @@ export const renderSceneElements = ({
   };
 
   // Paint visible elements
-  visibleElements
-    .filter((el) => !isIframeLikeElement(el))
-    .forEach((element) => {
+  const painting = visibleElements.filter((el) => !isIframeLikeElement(el));
+  for (let index = from; index < painting.length; index++) {
+    const element = painting[index];
+    if (
+      isTextElement(element) &&
+      element.containerId &&
+      elementsMap.has(element.containerId)
+    ) {
+      // will be rendered with the container
+      continue;
+    }
+    if (
+      index >= reach &&
+      frameOutOfTime(element, elementsMap, renderConfig, appState)
+    ) {
+      return index;
+    }
+    try {
+      const renderState = getRenderState(element);
+      context.save();
       try {
-        if (
-          isTextElement(element) &&
-          element.containerId &&
-          elementsMap.has(element.containerId)
-        ) {
-          // will be rendered with the container
-          return;
-        }
+        const boundTextElement = getBoundTextElement(element, elementsMap);
+        clipElementToFrame(element, renderState);
+        renderElement(
+          element,
+          elementsMap,
+          allElementsMap,
+          rc,
+          context,
+          renderConfig,
+          appState,
+          renderState,
+        );
 
-        const renderState = getRenderState(element);
-        context.save();
-        try {
-          const boundTextElement = getBoundTextElement(element, elementsMap);
-          clipElementToFrame(element, renderState);
+        if (boundTextElement) {
           renderElement(
-            element,
+            boundTextElement,
             elementsMap,
             allElementsMap,
             rc,
             context,
             renderConfig,
             appState,
-            renderState,
           );
-
-          if (boundTextElement) {
-            renderElement(
-              boundTextElement,
-              elementsMap,
-              allElementsMap,
-              rc,
-              context,
-              renderConfig,
-              appState,
-            );
-          }
-        } finally {
-          context.restore();
         }
-
-        if (!isExporting && renderConfig.renderLinks !== false) {
-          renderLinkIcon(element, context, appState, elementsMap, renderState);
-        }
-      } catch (error: any) {
-        console.error(
-          error,
-          element.id,
-          element.x,
-          element.y,
-          element.width,
-          element.height,
-        );
+      } finally {
+        context.restore();
       }
-    });
+
+      if (!isExporting && renderConfig.renderLinks !== false) {
+        renderLinkIcon(element, context, appState, elementsMap, renderState);
+      }
+    } catch (error: any) {
+      console.error(
+        error,
+        element.id,
+        element.x,
+        element.y,
+        element.width,
+        element.height,
+      );
+    }
+  }
 
   // render embeddables on top
   visibleElements
@@ -568,6 +582,7 @@ export const renderSceneElements = ({
       console.error(error);
     }
   });
+  return null;
 };
 
 type PaintedUnderNewElement = {
@@ -682,6 +697,96 @@ const elementsToPaintOver = (
     : null;
 };
 
+/** A static frame that stopped with elements left: the frames that follow
+ * paint them, from `from`, over what it painted, until none is left. */
+type Unfinished = {
+  config: StaticSceneRenderConfig;
+  appState: StaticCanvasAppState;
+  from: number;
+  frame: number;
+};
+
+const unfinished = new WeakMap<HTMLCanvasElement, Unfinished>();
+
+/**
+ * How far the canvas's last paint got, and at what zoom and stretch. A paint
+ * at the same goes at least as far before it stops: what was painted has
+ * its bitmaps, so it costs little, and a stream of paints (a redraw per move,
+ * or the sharp redraw while the rest is still coming) gets further each time
+ * instead of starting over. A new zoom, or the stretched bitmaps' end, starts
+ * from nothing.
+ */
+const reached = new WeakMap<
+  HTMLCanvasElement,
+  { zoom: number; stretched: boolean; index: number }
+>();
+
+const reachOf = (canvas: HTMLCanvasElement, appState: StaticCanvasAppState) => {
+  const last = reached.get(canvas);
+  return last &&
+    last.zoom === appState.zoom.value &&
+    last.stretched === !!appState.shouldCacheIgnoreZoom
+    ? last.index
+    : 0;
+};
+
+const markReached = (
+  canvas: HTMLCanvasElement,
+  appState: StaticCanvasAppState,
+  stopped: number | null,
+) => {
+  reached.set(canvas, {
+    zoom: appState.zoom.value,
+    stretched: !!appState.shouldCacheIgnoreZoom,
+    index: stopped ?? Infinity,
+  });
+};
+
+const finishLater = (left: Omit<Unfinished, "frame">) => {
+  const canvas = left.config.canvas!;
+  const pending: Unfinished = {
+    ...left,
+    frame: requestAnimationFrame(() => {
+      if (unfinished.get(canvas) !== pending) {
+        return;
+      }
+      unfinished.delete(canvas);
+      startBitmapBuildBudget(true);
+      try {
+        paintRest(pending);
+      } finally {
+        endBitmapBuildBudget();
+      }
+    }),
+  };
+  unfinished.set(canvas, pending);
+};
+
+const paintRest = ({ config, appState, from }: Unfinished) => {
+  const { canvas, rc, elementsMap, allElementsMap, visibleElements, scale } =
+    config;
+  const context = canvas!.getContext("2d")!;
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.scale(scale, scale);
+  context.scale(appState.zoom.value, appState.zoom.value);
+  const stopped = renderSceneElements({
+    context,
+    rc,
+    elements: visibleElements,
+    elementsMap,
+    allElementsMap,
+    appState,
+    renderConfig: config.renderConfig,
+    from,
+  });
+  markReached(canvas!, appState, stopped);
+  if (stopped !== null) {
+    finishLater({ config, appState, from: stopped });
+    return;
+  }
+  config.onPainted?.(config.appState);
+};
+
 const paintStaticScene = (config: StaticSceneRenderConfig) => {
   const {
     canvas,
@@ -724,6 +829,7 @@ const paintStaticScene = (config: StaticSceneRenderConfig) => {
       allElementsMap,
       appState,
       renderConfig,
+      reach: Infinity,
     });
     cacheSettledBitmaps(
       canvas,
@@ -817,7 +923,7 @@ const paintStaticScene = (config: StaticSceneRenderConfig) => {
     }
   });
 
-  renderSceneElements({
+  const stopped = renderSceneElements({
     context,
     rc,
     elements: visibleElements,
@@ -825,7 +931,9 @@ const paintStaticScene = (config: StaticSceneRenderConfig) => {
     allElementsMap,
     appState,
     renderConfig,
+    reach: reachOf(canvas, appState),
   });
+  markReached(canvas, appState, stopped);
 
   cacheSettledBitmaps(
     canvas,
@@ -836,6 +944,10 @@ const paintStaticScene = (config: StaticSceneRenderConfig) => {
     appState,
   );
 
+  if (stopped !== null) {
+    finishLater({ config, appState, from: stopped });
+    return;
+  }
   onPainted?.(unsnappedAppState);
 };
 
@@ -844,7 +956,16 @@ const _renderStaticScene = (config: StaticSceneRenderConfig) => {
     paintStaticScene(config);
     return;
   }
-  startBitmapBuildBudget();
+  // A new paint replaces the frames still to come of the last one, and
+  // paints over nothing it left unfinished (`reachOf` keeps it from losing
+  // ground).
+  const left = config.canvas && unfinished.get(config.canvas);
+  if (left) {
+    cancelAnimationFrame(left.frame);
+    unfinished.delete(config.canvas!);
+    paintedUnderNewElement.delete(config.canvas!);
+  }
+  startBitmapBuildBudget(true);
   try {
     paintStaticScene(config);
   } finally {
