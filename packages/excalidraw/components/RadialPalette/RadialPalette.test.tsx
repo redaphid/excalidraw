@@ -257,6 +257,20 @@ describe("RadialPalette", () => {
       expect(ring()).toBeNull();
     });
 
+    describe("when , is pressed in the focused editor, a host that takes no keys from the page", () => {
+      beforeEach(() => {
+        const editor = document.querySelector<HTMLElement>(
+          ".excalidraw-container",
+        )!;
+        editor.focus();
+        fireEvent.keyDown(editor, { key: KEYS.COMMA });
+      });
+
+      it("opens the ring", () => {
+        expect(ring()).not.toBeNull();
+      });
+    });
+
     describe("when the puck is pressed", () => {
       beforeEach(() => {
         openRing();
