@@ -5,7 +5,7 @@ import { API } from "../../tests/helpers/api";
 import { act, render, unmountComponent } from "../../tests/test-utils";
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
-import { PUCK_EDGE } from "./puckPlace";
+import { PUCK_EDGE, PUCK_RADIUS, PUCK_STORAGE_KEY } from "./puckPlace";
 import {
   OUTER_BAND,
   RING_RADIUS,
@@ -73,6 +73,84 @@ describe("the radial palette's puck", () => {
 
     it("opens nothing until it moves or lifts", () => {
       expect(ring()).toBeNull();
+    });
+  });
+
+  describe("when the host's top bar takes the top of the editor", () => {
+    /** the bar's height, in CSS px */
+    const BAR = 60;
+    const original = document.elementsFromPoint;
+    /** px down the editor (800 tall) the puck's center is at */
+    const puckY = () => (parseFloat(place().y) / 100) * 800;
+
+    beforeEach(() => {
+      const bar = document.createElement("button");
+      bar.textContent = "Send to Claude";
+      document.body.appendChild(bar);
+      // the editor as it is now: it is drawn again when it reopens
+      const editor = () => document.querySelector(".excalidraw")!;
+      document.elementsFromPoint = (_x: number, y: number) =>
+        y < BAR ? [bar, editor()] : [editor()];
+    });
+
+    afterEach(() => {
+      document.elementsFromPoint = original;
+      document.body
+        .querySelectorAll("body > button")
+        .forEach((b) => b.remove());
+    });
+
+    describe("when it is dropped on the bar's corner", () => {
+      beforeEach(() => {
+        press(370, 700);
+        wait(LONG_PRESS_DELAY);
+        moveTo(380, 400);
+        moveTo(390, 15);
+        lift(390, 15);
+      });
+
+      it("lands clear of the bar, where it can be pressed", () => {
+        expect(puckY()).toBeGreaterThanOrEqual(BAR + PUCK_RADIUS);
+      });
+
+      it("lands as a puck, not a dot under the bar", () => {
+        expect(has("collapsed")).toBe(false);
+      });
+
+      it("keeps the place it lands at", () => {
+        const kept = JSON.parse(localStorage.getItem(PUCK_STORAGE_KEY)!);
+        expect(kept.y * 800).toBeGreaterThanOrEqual(BAR + PUCK_RADIUS);
+      });
+    });
+
+    describe("when it is dropped in the open", () => {
+      beforeEach(() => {
+        press(370, 700);
+        wait(LONG_PRESS_DELAY);
+        moveTo(100, 600);
+        lift(100, 600);
+      });
+
+      it("stays where it was dropped", () => {
+        expect(place()).toEqual({ x: "25%", y: "75%" });
+      });
+    });
+
+    describe("when the editor opens with a place kept under the bar", () => {
+      beforeEach(async () => {
+        unmountComponent();
+        localStorage.setItem(
+          PUCK_STORAGE_KEY,
+          JSON.stringify({ x: 0.9, y: 0.01, collapsed: false }),
+        );
+        await renderEditor();
+        // the host's bar may come after the editor: the puck looks again
+        wait(1000);
+      });
+
+      it("moves the puck out from under the bar", () => {
+        expect(puckY()).toBeGreaterThanOrEqual(BAR + PUCK_RADIUS);
+      });
     });
   });
 
