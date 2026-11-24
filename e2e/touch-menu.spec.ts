@@ -83,17 +83,18 @@ test("on a phone the hub's menu for three shapes ends on the screen, rows still 
   await page.screenshot({ path: testInfo.outputPath("hub-three-shapes.png") });
 
   const box = (await menu.boundingBox())!;
-  expect({ bottom: box.y + box.height <= height, right: box.x + box.width <= width }).toEqual({
+  expect({
+    bottom: box.y + box.height <= height,
+    right: box.x + box.width <= width,
+  }).toEqual({
     bottom: true,
     right: true,
   });
-  const small = await page
-    .locator(".context-menu-item")
-    .evaluateAll((items) =>
-      items
-        .map((item) => item.getBoundingClientRect())
-        .filter((r) => r.height < 44 || r.width < 44)
-        .map((r) => `${Math.round(r.width)}x${Math.round(r.height)}`),
-    );
+  const small = await page.locator(".context-menu-item").evaluateAll((items) =>
+    items
+      .map((item) => item.getBoundingClientRect())
+      .filter((r) => r.height < 44 || r.width < 44)
+      .map((r) => `${Math.round(r.width)}x${Math.round(r.height)}`),
+  );
   expect(small).toEqual([]);
 });
