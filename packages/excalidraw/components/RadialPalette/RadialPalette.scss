@@ -3,7 +3,10 @@
 .excalidraw {
   .RadialPalette__puck {
     position: absolute;
-    right: calc(1rem + env(safe-area-inset-right, 0px));
+    right: calc(
+      1rem + var(--radial-puck-inset-right, 0px) +
+        env(safe-area-inset-right, 0px)
+    );
     bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
     z-index: var(--zIndex-ui-bottom);
     width: 2.75rem;
@@ -30,6 +33,11 @@
       bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
     }
 
+    // an open sidebar covers the editor's right, docked or not
+    &--beside-sidebar {
+      --radial-puck-inset-right: var(--right-sidebar-width);
+    }
+
     // moved by a hold and a drag: centered on a place kept as fractions of
     // the editor, and never past its edges
     &--placed {
@@ -39,7 +47,10 @@
       left: clamp(
         calc(var(--radial-puck-radius) + env(safe-area-inset-left, 0px)),
         var(--radial-puck-x),
-        calc(100% - var(--radial-puck-radius) - env(safe-area-inset-right, 0px))
+        calc(
+          100% - var(--radial-puck-radius) - var(--radial-puck-inset-right, 0px) -
+            env(safe-area-inset-right, 0px)
+        )
       );
       top: clamp(
         calc(var(--radial-puck-radius) + env(safe-area-inset-top, 0px)),
