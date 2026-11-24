@@ -608,6 +608,59 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when a host opens it for a pointer still down, which slides to the rectangle and lifts", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        const tip = { x: 500, y: 400 };
+        act(() => {
+          h.app.radialPalette.api.open({ at: tip, pointerId: 7 });
+        });
+        const layout = getRingLayout({
+          tools: RADIAL_TOOLS.length,
+          pens: getPenPresets(h.app.cssTheme).length + 1,
+          colors: 12,
+        });
+        const center = placeRing(tip, {
+          width: h.state.width,
+          height: h.state.height,
+        });
+        const target = polar(
+          (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+          sectorMiddle(layout.tools[RADIAL_TOOLS.indexOf("rectangle")]),
+        );
+        const at = {
+          pointerId: 7,
+          clientX: center.x + target.x * center.scale,
+          clientY: center.y + target.y * center.scale,
+        };
+        fireEvent.pointerMove(window, at);
+        fireEvent.pointerUp(window, at);
+      });
+
+      it("picks the rectangle", () => {
+        expect(h.state.activeTool.type).toBe("rectangle");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when a host opens it with no pointer down and a pointer lifts over the rectangle", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        act(() => {
+          h.app.radialPalette.api.open({ at: { x: 500, y: 400 } });
+        });
+        fireEvent.pointerMove(window, { pointerId: 7, clientX: 560, clientY: 300 });
+        fireEvent.pointerUp(window, { pointerId: 7, clientX: 560, clientY: 300 });
+      });
+
+      it("stays open", () => {
+        expect(ring()).not.toBeNull();
+      });
+    });
+
     describe("when , is pressed with the pointer over the canvas", () => {
       beforeEach(() => {
         API.setAppState({ width: 1000, height: 800 });
