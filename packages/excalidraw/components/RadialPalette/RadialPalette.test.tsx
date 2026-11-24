@@ -291,6 +291,36 @@ describe("RadialPalette", () => {
         expect(puck().getAttribute("aria-expanded")).toBe("true");
       });
 
+      describe.each([
+        [KEYS.R, "rectangle"],
+        [KEYS.O, "ellipse"],
+        [KEYS.A, "arrow"],
+        [KEYS.P, "freedraw"],
+        [KEYS.E, "eraser"],
+        [KEYS.H, "hand"],
+        ["5", "arrow"],
+      ])("when the %s key picks a tool", (key, type) => {
+        beforeEach(() => {
+          // as on the board: nothing in the editor has focus
+          Keyboard.keyPress(key, document.body);
+        });
+
+        it("picks it and closes, as a tap on the ring does", () => {
+          expect(h.state.activeTool.type).toBe(type);
+          expect(ring()).toBeNull();
+        });
+      });
+
+      describe("when a key that is not a tool's is pressed", () => {
+        beforeEach(() => {
+          Keyboard.keyPress(KEYS.W, document.body);
+        });
+
+        it("stays open", () => {
+          expect(ring()).not.toBeNull();
+        });
+      });
+
       it("opens the context menu from the hub, in place of itself", () => {
         tap("radial-palette-menu");
         expect(ring()).toBeNull();
@@ -523,7 +553,9 @@ describe("RadialPalette", () => {
 
       describe("when a tool is locked and another is tapped", () => {
         beforeEach(() => {
+          // a tool picked elsewhere closes the ring: open it again on it
           act(() => h.app.setActiveTool({ type: "ellipse", locked: true }));
+          openRing();
           tap("radial-tool-rectangle");
         });
 
