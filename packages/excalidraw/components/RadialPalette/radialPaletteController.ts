@@ -348,6 +348,14 @@ export class RadialPaletteController {
     }
   };
 
+  /** moves the open ring, as a drag of its hub does */
+  moveTo = (at: ClientPoint) => {
+    const { current } = this;
+    if (current && (current.at.x !== at.x || current.at.y !== at.y)) {
+      this.update({ ...current, at });
+    }
+  };
+
   /** the opening pointer was lifted or lost: no flick any more */
   endFlick = () => {
     if (this.current?.flick) {
@@ -465,6 +473,13 @@ export class RadialPaletteController {
     const item = this.items(ring)[index];
     if (!this.enabled || !item?.id) {
       return false;
+    }
+    if (ring === "tools" || ring === "pens") {
+      for (const pen of this.hostPens()) {
+        if (pen.active && `host-${pen.id}` !== item.id) {
+          pen.onLeave?.();
+        }
+      }
     }
     if (ring === "tools") {
       this.pickTool(item.id as RadialTool, locked);

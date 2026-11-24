@@ -80,6 +80,9 @@ export type RadialHostPen = {
   active?: boolean;
   /** called when picked; the ring then closes */
   onPick: () => void;
+  /** called while it is active when another pen, the eraser or a tool is
+   * picked on the ring, since only one pen is in use at a time */
+  onLeave?: () => void;
 };
 
 /** a suggestion of the host's in one of the radial palette's slots, round
