@@ -1,4 +1,3 @@
-import { t } from "../../i18n";
 import { ArrowRightIcon } from "../icons";
 
 import { TTDDialogPanel } from "./TTDDialogPanel";
@@ -24,7 +23,7 @@ export const TTDPreviewPanel = ({
   const actions: TTDPanelAction[] = [
     {
       action: onInsert,
-      label: t("chat.insert"),
+      label: "Insert",
       icon: ArrowRightIcon,
       variant: "button",
     },

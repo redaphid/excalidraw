@@ -1,7 +1,5 @@
 import { VERSIONS } from "@excalidraw/common";
 
-import { t } from "../i18n";
-
 import type { ExcalidrawProps, UIAppState } from "../types";
 
 const LibraryMenuBrowseButton = ({
@@ -25,7 +23,7 @@ const LibraryMenuBrowseButton = ({
       }`}
       target="_excalidraw_libraries"
     >
-      {t("labels.libraries")}
+      {"Browse libraries"}
     </a>
   );
 };

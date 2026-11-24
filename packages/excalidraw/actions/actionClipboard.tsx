@@ -15,7 +15,6 @@ import {
 } from "../clipboard";
 import { DuplicateIcon, cutIcon, pngIcon, svgIcon } from "../components/icons";
 import { exportCanvas, prepareElementsForExport } from "../data/index";
-import { t } from "../i18n";
 
 import { actionDeleteSelected } from "./actionDeleteSelected";
 import { register } from "./register";
@@ -74,7 +73,8 @@ export const actionPaste = register({
           captureUpdate: CaptureUpdateAction.EVENTUALLY,
           appState: {
             ...appState,
-            errorMessage: t("hints.firefox_clipboard_write"),
+            errorMessage:
+              'This feature can likely be enabled by setting the "dom.events.asyncClipboard.clipboardItem" flag to "true". To change the browser flags in Firefox, visit the "about:config" page.',
           },
         };
       }
@@ -83,7 +83,7 @@ export const actionPaste = register({
         captureUpdate: CaptureUpdateAction.EVENTUALLY,
         appState: {
           ...appState,
-          errorMessage: t("errors.asyncPasteFailedOnRead"),
+          errorMessage: "Couldn't paste (couldn't read from system clipboard).",
         },
       };
     }
@@ -96,7 +96,7 @@ export const actionPaste = register({
         captureUpdate: CaptureUpdateAction.EVENTUALLY,
         appState: {
           ...appState,
-          errorMessage: t("errors.asyncPasteFailedOnParse"),
+          errorMessage: "Couldn't paste.",
         },
       };
     }
@@ -162,14 +162,10 @@ export const actionCopyAsSvg = register({
       return {
         appState: {
           toast: {
-            message: t("toast.copyToClipboardAsSvg", {
-              exportSelection: selectedElements.length
-                ? t("toast.selection")
-                : t("toast.canvas"),
-              exportColorScheme: appState.exportWithDarkMode
-                ? t("buttons.darkMode")
-                : t("buttons.lightMode"),
-            }),
+            message: `Copied ${
+              selectedElements.length ? "selection" : "canvas"
+            } to clipboard as SVG
+(${appState.exportWithDarkMode ? "Dark mode" : "Light mode"})`,
           },
         },
         captureUpdate: CaptureUpdateAction.EVENTUALLY,
@@ -223,14 +219,10 @@ export const actionCopyAsPng = register({
         appState: {
           ...appState,
           toast: {
-            message: t("toast.copyToClipboardAsPng", {
-              exportSelection: selectedElements.length
-                ? t("toast.selection")
-                : t("toast.canvas"),
-              exportColorScheme: appState.exportWithDarkMode
-                ? t("buttons.darkMode")
-                : t("buttons.lightMode"),
-            }),
+            message: `Copied ${
+              selectedElements.length ? "selection" : "canvas"
+            } to clipboard as PNG
+(${appState.exportWithDarkMode ? "Dark mode" : "Light mode"})`,
           },
         },
         captureUpdate: CaptureUpdateAction.EVENTUALLY,
@@ -266,7 +258,7 @@ export const copyText = register({
     try {
       copyTextToSystemClipboard(getTextFromElements(selectedElements));
     } catch (e) {
-      throw new Error(t("errors.copyToSystemClipboardFailed"));
+      throw new Error("Couldn't copy to clipboard.");
     }
     return {
       captureUpdate: CaptureUpdateAction.EVENTUALLY,

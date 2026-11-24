@@ -5,7 +5,6 @@ import { KEYS, normalizeInputColor } from "@excalidraw/common";
 
 import { getShortcutKey } from "../..//shortcut";
 import { useAtom } from "../../editor-jotai";
-import { t } from "../../i18n";
 import { useEditorInterface } from "../App";
 import { activeEyeDropperAtom } from "../EyeDropper";
 import { eyeDropperIcon } from "../icons";
@@ -49,9 +48,9 @@ export const ColorInput = ({
       } else if (value.length === 0) {
         setErrorMessage(null);
       } else if (/^#?[0-9a-f]+$/.test(value)) {
-        setErrorMessage(t("colorPicker.invalidHexLength"));
+        setErrorMessage("Hex code must be 3, 4, 6, or 8 characters");
       } else {
-        setErrorMessage(t("colorPicker.invalidColor"));
+        setErrorMessage("Not a valid color");
       }
       setInnerValue(value);
     },
@@ -136,9 +135,9 @@ export const ColorInput = ({
                       },
                 )
               }
-              title={`${t(
-                "labels.eyeDropper",
-              )} — ${KEYS.I.toLocaleUpperCase()} or ${getShortcutKey("Alt")} `}
+              title={`${"Pick color from canvas"} — ${KEYS.I.toLocaleUpperCase()} or ${getShortcutKey(
+                "Alt",
+              )} `}
             >
               {eyeDropperIcon}
             </div>

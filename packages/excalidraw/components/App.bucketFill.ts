@@ -25,7 +25,6 @@ import type {
 
 import { actionChangeBucketFillBackgroundColor } from "../actions";
 import { editorJotaiStore } from "../editor-jotai";
-import { t } from "../i18n";
 
 import { activeEyeDropperAtom, type EyeDropperProperties } from "./EyeDropper";
 
@@ -181,7 +180,7 @@ export class AppBucketFill {
       }
       if (result.reason === "too_complex") {
         this.app.setToast({
-          message: t("bucketfill.tooComplex"),
+          message: "This region is too complex to fill.",
           duration: 3000,
         });
       } else if (
@@ -190,7 +189,7 @@ export class AppBucketFill {
         result.reason === "invalid_polygon"
       ) {
         this.app.setToast({
-          message: t("bucketfill.noRegion"),
+          message: "Couldn't find an enclosed region to fill here.",
           duration: 3000,
         });
       }

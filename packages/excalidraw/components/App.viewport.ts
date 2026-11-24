@@ -21,7 +21,7 @@ import type {
   NonDeletedSceneElementsMap,
 } from "@excalidraw/element/types";
 
-import { getLanguage, t } from "../i18n";
+import { getLanguage } from "../i18n";
 import { AnimationController } from "../renderer/animation";
 import { flightPath } from "../viewportFlight";
 import {
@@ -784,7 +784,7 @@ export class AppViewport {
       if (type === "link") {
         this.app.setState({
           toast: {
-            message: t("elementLink.notFound"),
+            message: "Linked object wasn't found on canvas.",
             duration: 3000,
             closable: true,
           },

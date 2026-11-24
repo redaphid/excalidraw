@@ -1,6 +1,5 @@
 import clsx from "clsx";
 
-import { t } from "../../../i18n";
 import { historyIcon, TrashIcon } from "../../icons";
 import DropdownMenu from "../../dropdownMenu/DropdownMenu";
 
@@ -37,7 +36,7 @@ export const ChatHistoryMenu = ({
     <div className="ttd-chat-history-menu">
       {isNewChatBtnVisible && (
         <FilledButton onClick={onNewChat} disabled={disabled}>
-          {t("chat.newChat")}
+          {"New Chat"}
         </FilledButton>
       )}
       {savedChats.length > 0 && (
@@ -47,8 +46,8 @@ export const ChatHistoryMenu = ({
               onToggle={onToggle}
               className="ttd-dialog-menu-trigger"
               disabled={disabled}
-              title={t("chat.menu")}
-              aria-label={t("chat.menu")}
+              title={"Menu"}
+              aria-label={"Menu"}
             >
               {historyIcon}
             </DropdownMenu.Trigger>
@@ -70,8 +69,8 @@ export const ChatHistoryMenu = ({
                     <button
                       className="ttd-chat-menu-item__delete"
                       onClick={(e) => onDeleteChat(chat.id, e)}
-                      title={t("chat.deleteChat")}
-                      aria-label={t("chat.deleteChat")}
+                      title={"Delete chat"}
+                      aria-label={"Delete chat"}
                       type="button"
                     >
                       {TrashIcon}

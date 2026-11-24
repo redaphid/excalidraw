@@ -29,7 +29,6 @@ import { atom, editorJotaiStore } from "../editor-jotai";
 
 import { AbortError } from "../errors";
 import { libraryItemSvgsCache } from "../hooks/useLibraryItemSvg";
-import { t } from "../i18n";
 
 import { loadLibraryFromBlob } from "./blob";
 import { restoreLibraryItems } from "./restore";
@@ -321,9 +320,7 @@ class Library {
           if (
             !prompt ||
             window.confirm(
-              t("alerts.confirmAddLibrary", {
-                numShapes: nextItems.length,
-              }),
+              `This will add ${nextItems.length} shape(s) to your library. Are you sure?`,
             )
           ) {
             if (prompt) {
@@ -971,7 +968,8 @@ export const useHandleLibrary = (
             if (isLoaded && optsRef.current.excalidrawAPI) {
               optsRef.current.excalidrawAPI.updateScene({
                 appState: {
-                  errorMessage: t("errors.saveLibraryError"),
+                  errorMessage:
+                    "Couldn't save library to storage. Please save your library to a file locally to make sure you don't lose changes.",
                 },
               });
             }

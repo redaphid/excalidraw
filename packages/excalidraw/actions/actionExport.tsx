@@ -12,8 +12,6 @@ import { isImageFileHandle } from "../data/blob";
 
 import { resaveAsImageWithScene } from "../data/resave";
 
-import { t } from "../i18n";
-
 import "../components/ToolIcon.scss";
 
 import { register } from "./register";
@@ -40,7 +38,7 @@ export const actionChangeProjectName = register<AppState["name"]>({
   },
   PanelComponent: ({ appState, updateData, appProps, data, app }) => (
     <ProjectName
-      label={t("labels.fileTitle")}
+      label={"File name"}
       value={app.getName()}
       onChange={(name: string) => updateData(name)}
       ignoreFocus={data?.ignoreFocus ?? false}
@@ -101,7 +99,7 @@ const onProgressToast = (
     progress?: number | null;
   },
 ) => {
-  const message = progress.message ?? t("progressDialog.defaultMessage");
+  const message = progress.message ?? "Preparing to save...";
   app.setAppState({
     toast: {
       message:
@@ -269,11 +267,11 @@ export const actionSaveToActiveFile = register({
           toast: {
             message:
               previousFileHandle && fileHandle?.name
-                ? t("toast.fileSavedToFilename").replace(
+                ? "Saved to {filename}".replace(
                     "{filename}",
                     `"${fileHandle.name}"`,
                   )
-                : t("toast.fileSaved"),
+                : "File saved.",
             duration: 1500,
           },
         },
@@ -327,7 +325,7 @@ export const actionSaveFileToDisk = register({
         appState: {
           openDialog: null,
           fileHandle: savedFileHandle,
-          toast: { message: t("toast.fileSaved"), duration: 3000 },
+          toast: { message: "File saved.", duration: 3000 },
         },
       };
     } catch (error: any) {

@@ -10,7 +10,6 @@ import {
 import { serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 import { isInvisiblySmallElement } from "@excalidraw/element";
 import { isInitializedImageElement } from "@excalidraw/element";
-import { t } from "@excalidraw/excalidraw/i18n";
 import { bytesToHexString } from "@excalidraw/common";
 
 import type { UserIdleState } from "@excalidraw/common";
@@ -139,7 +138,9 @@ export const getCollaborationLinkData = (link: string) => {
   const hash = new URL(link).hash;
   const match = hash.match(RE_COLLAB_LINK);
   if (match && match[2].length !== 22) {
-    window.alert(t("alerts.invalidEncryptionKey"));
+    window.alert(
+      "Encryption key must be of 22 characters. Live collaboration is disabled.",
+    );
     return null;
   }
   return match ? { roomId: match[1], roomKey: match[2] } : null;
@@ -207,7 +208,7 @@ export const importFromBackend = async (
     const response = await fetch(`${BACKEND_V2_GET}${id}`);
 
     if (!response.ok) {
-      window.alert(t("alerts.importBackendFailed"));
+      window.alert("Importing from backend failed.");
       return {};
     }
     const buffer = await response.arrayBuffer();
@@ -235,7 +236,7 @@ export const importFromBackend = async (
       return legacy_decodeFromBackend({ buffer, decryptionKey });
     }
   } catch (error: any) {
-    window.alert(t("alerts.importBackendFailed"));
+    window.alert("Importing from backend failed.");
     console.error(error);
     return {};
   }
@@ -294,14 +295,14 @@ export const exportToBackend = async (
     } else if (json.error_class === "RequestTooLargeError") {
       return {
         url: null,
-        errorMessage: t("alerts.couldNotCreateShareableLinkTooBig"),
+        errorMessage: "Couldn't create shareable link: the scene is too big",
       };
     }
 
-    return { url: null, errorMessage: t("alerts.couldNotCreateShareableLink") };
+    return { url: null, errorMessage: "Couldn't create shareable link." };
   } catch (error: any) {
     console.error(error);
 
-    return { url: null, errorMessage: t("alerts.couldNotCreateShareableLink") };
+    return { url: null, errorMessage: "Couldn't create shareable link." };
   }
 };

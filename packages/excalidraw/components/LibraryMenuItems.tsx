@@ -21,7 +21,6 @@ import { deburr } from "../deburr";
 
 import { useLibraryCache } from "../hooks/useLibraryItemSvg";
 import { useScrollPosition } from "../hooks/useScrollPosition";
-import { t } from "../i18n";
 
 import { LibraryMenuControlButtons } from "./LibraryMenuControlButtons";
 import { LibraryDropdownMenu } from "./LibraryMenuHeaderContent";
@@ -268,20 +267,20 @@ export default function LibraryMenuItems({
     <>
       {!IS_LIBRARY_EMPTY && (
         <div className="library-menu-items-container__header">
-          {t("labels.personalLib")}
+          {"Personal Library"}
         </div>
       )}
       {!pendingElements.length && !unpublishedItems.length ? (
         <div className="library-menu-items__no-items">
           {!publishedItems.length && (
             <div className="library-menu-items__no-items__label">
-              {t("library.noItems")}
+              {"No items added yet..."}
             </div>
           )}
           <div className="library-menu-items__no-items__hint">
             {publishedItems.length > 0
-              ? t("library.hint_emptyPrivateLibrary")
-              : t("library.hint_emptyLibrary")}
+              ? "Select an item on canvas to add it here."
+              : "Select an item on canvas to add it here, or install a library from the public repository, below."}
           </div>
         </div>
       ) : (
@@ -314,7 +313,7 @@ export default function LibraryMenuItems({
           className="library-menu-items-container__header"
           style={{ marginTop: "0.75rem" }}
         >
-          {t("labels.excalidrawLib")}
+          {"Excalidraw Library"}
         </div>
       )}
       {publishedItems.length > 0 && (
@@ -336,7 +335,7 @@ export default function LibraryMenuItems({
   const JSX_whenSearching = IS_SEARCHING && (
     <>
       <div className="library-menu-items-container__header">
-        {t("library.search.heading")}
+        {"Library matches"}
         {!isLoading && (
           <div
             className="library-menu-items-container__header__hint"
@@ -366,7 +365,7 @@ export default function LibraryMenuItems({
       ) : (
         <div className="library-menu-items__no-items">
           <div className="library-menu-items__no-items__hint">
-            {t("library.search.noResults")}
+            {"No matching items found..."}
           </div>
           <Button
             onPointerDown={(e) => e.preventDefault()}
@@ -375,7 +374,7 @@ export default function LibraryMenuItems({
             }}
             style={{ width: "auto", marginTop: "1rem" }}
           >
-            {t("library.search.clearSearch")}
+            {"Clear search"}
           </Button>
         </div>
       )}
@@ -401,7 +400,7 @@ export default function LibraryMenuItems({
             className={clsx("library-menu-items-container__search", {
               hideCancelButton: editorInterface.formFactor !== "phone",
             })}
-            placeholder={t("library.search.inputPlaceholder")}
+            placeholder={"Search library"}
             value={searchInputValue}
             onChange={(value) => setSearchInputValue(value)}
             onKeyDown={(event) => {

@@ -10,7 +10,6 @@ import {
 import type { Theme } from "@excalidraw/element/types";
 
 import { useAtom } from "../../editor-jotai";
-import { t } from "../../i18n";
 
 import HotkeyLabel from "./HotkeyLabel";
 import {
@@ -130,7 +129,7 @@ export const ShadeList = ({
           fontSize: "0.75rem",
         }}
       >
-        {t("colorPicker.noShades")}
+        {"No shades available for this color"}
       </div>
     </div>
   );

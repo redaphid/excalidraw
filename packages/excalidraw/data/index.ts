@@ -27,7 +27,6 @@ import {
   copyTextToSystemClipboard,
 } from "../clipboard";
 
-import { t } from "../i18n";
 import { getSelectedElements, isSomeElementSelected } from "../scene";
 import { exportToCanvas, exportToSvg } from "../scene/export";
 
@@ -121,7 +120,7 @@ export const exportCanvas = async (
   },
 ) => {
   if (elements.length === 0) {
-    throw new Error(t("alerts.cannotExportEmptyCanvas"));
+    throw new Error("Cannot export empty canvas.");
   }
   if (type === "svg" || type === "clipboard-svg") {
     const svgPromise = exportToSvg(
@@ -162,7 +161,7 @@ export const exportCanvas = async (
       try {
         await copyTextToSystemClipboard(svg);
       } catch (e) {
-        throw new Error(t("errors.copyToSystemClipboardFailed"));
+        throw new Error("Couldn't copy to clipboard.");
       }
       return;
     }
@@ -204,18 +203,16 @@ export const exportCanvas = async (
     } catch (error: any) {
       console.warn(error);
       if (error.name === "CANVAS_POSSIBLY_TOO_BIG") {
-        throw new Error(t("canvasError.canvasTooBig"));
+        throw new Error("The canvas may be too big.");
       }
       // TypeError *probably* suggests ClipboardItem not defined, which
       // people on Firefox can enable through a flag, so let's tell them.
       if (isFirefox && error.name === "TypeError") {
         throw new Error(
-          `${t("alerts.couldNotCopyToClipboard")}\n\n${t(
-            "hints.firefox_clipboard_write",
-          )}`,
+          `${"Couldn't copy to clipboard."}\n\n${'This feature can likely be enabled by setting the "dom.events.asyncClipboard.clipboardItem" flag to "true". To change the browser flags in Firefox, visit the "about:config" page.'}`,
         );
       } else {
-        throw new Error(t("alerts.couldNotCopyToClipboard"));
+        throw new Error("Couldn't copy to clipboard.");
       }
     }
   } else {

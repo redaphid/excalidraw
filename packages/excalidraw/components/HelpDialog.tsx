@@ -7,7 +7,6 @@ import { KEYS } from "@excalidraw/common";
 import { actionToggleFramesMenu, actionToggleTheme } from "../actions";
 import { getShortcutFromShortcutName } from "../actions/shortcuts";
 import { probablySupportsClipboardBlob } from "../clipboard";
-import { t } from "../i18n";
 import { getShortcutKey } from "../shortcut";
 
 import { useExcalidrawActionManager } from "./App";
@@ -27,7 +26,7 @@ const Header = () => (
       rel="noopener"
     >
       <div className="HelpDialog__link-icon">{ExternalLinkIcon}</div>
-      {t("helpDialog.documentation")}
+      {"Documentation"}
     </a>
     <a
       className="HelpDialog__btn"
@@ -36,7 +35,7 @@ const Header = () => (
       rel="noopener"
     >
       <div className="HelpDialog__link-icon">{ExternalLinkIcon}</div>
-      {t("helpDialog.blog")}
+      {"Read our blog"}
     </a>
     <a
       className="HelpDialog__btn"
@@ -45,7 +44,7 @@ const Header = () => (
       rel="noopener noreferrer"
     >
       <div className="HelpDialog__link-icon">{GithubIcon}</div>
-      {t("helpDialog.github")}
+      {"Found an issue? Submit"}
     </a>
     <a
       className="HelpDialog__btn"
@@ -115,7 +114,7 @@ const Shortcut = ({
     <div className="HelpDialog__shortcut">
       <div>{label}</div>
       <div className="HelpDialog__key-container">
-        {[...intersperse(splitShortcutKeys, isOr ? t("helpDialog.or") : "")]}
+        {[...intersperse(splitShortcutKeys, isOr ? "or" : "")]}
       </div>
     </div>
   );
@@ -137,202 +136,159 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
     <>
       <Dialog
         onCloseRequest={handleClose}
-        title={t("helpDialog.title")}
+        title={"Help"}
         className={"HelpDialog"}
       >
         <Header />
-        <Section title={t("helpDialog.shortcuts")}>
+        <Section title={"Keyboard shortcuts"}>
           <ShortcutIsland
             className="HelpDialog__island--tools"
-            caption={t("helpDialog.tools")}
+            caption={"Tools"}
           >
-            <Shortcut label={t("toolBar.hand")} shortcuts={[KEYS.H]} />
+            <Shortcut label={"Hand (panning tool)"} shortcuts={[KEYS.H]} />
+            <Shortcut label={"Selection"} shortcuts={[KEYS.V, KEYS["1"]]} />
+            <Shortcut label={"Rectangle"} shortcuts={[KEYS.R, KEYS["2"]]} />
+            <Shortcut label={"Diamond"} shortcuts={[KEYS.D, KEYS["3"]]} />
+            <Shortcut label={"Ellipse"} shortcuts={[KEYS.O, KEYS["4"]]} />
+            <Shortcut label={"Arrow"} shortcuts={[KEYS.A, KEYS["5"]]} />
+            <Shortcut label={"Line"} shortcuts={[KEYS.L, KEYS["6"]]} />
+            <Shortcut label={"Draw"} shortcuts={[KEYS.P, KEYS["7"]]} />
+            <Shortcut label={"Text"} shortcuts={[KEYS.T, KEYS["8"]]} />
+            <Shortcut label={"Sticky note"} shortcuts={[KEYS.N]} />
+            <Shortcut label={"Insert image"} shortcuts={[KEYS["9"]]} />
+            <Shortcut label={"Eraser"} shortcuts={[KEYS.E, KEYS["0"]]} />
+            <Shortcut label={"Frame tool"} shortcuts={[KEYS.F]} />
+            <Shortcut label={"Laser pointer"} shortcuts={[KEYS.K]} />
+            <Shortcut label={"Bucket fill"} shortcuts={[KEYS.B]} />
             <Shortcut
-              label={t("toolBar.selection")}
-              shortcuts={[KEYS.V, KEYS["1"]]}
-            />
-            <Shortcut
-              label={t("toolBar.rectangle")}
-              shortcuts={[KEYS.R, KEYS["2"]]}
-            />
-            <Shortcut
-              label={t("toolBar.diamond")}
-              shortcuts={[KEYS.D, KEYS["3"]]}
-            />
-            <Shortcut
-              label={t("toolBar.ellipse")}
-              shortcuts={[KEYS.O, KEYS["4"]]}
-            />
-            <Shortcut
-              label={t("toolBar.arrow")}
-              shortcuts={[KEYS.A, KEYS["5"]]}
-            />
-            <Shortcut
-              label={t("toolBar.line")}
-              shortcuts={[KEYS.L, KEYS["6"]]}
-            />
-            <Shortcut
-              label={t("toolBar.freedraw")}
-              shortcuts={[KEYS.P, KEYS["7"]]}
-            />
-            <Shortcut
-              label={t("toolBar.text")}
-              shortcuts={[KEYS.T, KEYS["8"]]}
-            />
-            <Shortcut label={t("toolBar.stickynote")} shortcuts={[KEYS.N]} />
-            <Shortcut label={t("toolBar.image")} shortcuts={[KEYS["9"]]} />
-            <Shortcut
-              label={t("toolBar.eraser")}
-              shortcuts={[KEYS.E, KEYS["0"]]}
-            />
-            <Shortcut label={t("toolBar.frame")} shortcuts={[KEYS.F]} />
-            <Shortcut label={t("toolBar.laser")} shortcuts={[KEYS.K]} />
-            <Shortcut label={t("toolBar.bucketfill")} shortcuts={[KEYS.B]} />
-            <Shortcut
-              label={t("labels.eyeDropper")}
+              label={"Pick color from canvas"}
               shortcuts={[KEYS.I, "Shift+S", "Shift+G"]}
             />
             <Shortcut
-              label={t("helpDialog.editLineArrowPoints")}
+              label={"Edit line/arrow points"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Enter")]}
             />
             <Shortcut
-              label={t("helpDialog.editText")}
+              label={"Edit text / add label"}
               shortcuts={[getShortcutKey("Enter")]}
             />
             <Shortcut
-              label={t("helpDialog.textNewLine")}
+              label={"Add new line (text editor)"}
               shortcuts={[
                 getShortcutKey("Enter"),
                 getShortcutKey("Shift+Enter"),
               ]}
             />
             <Shortcut
-              label={t("helpDialog.textFinish")}
+              label={"Finish editing (text editor)"}
               shortcuts={[
                 getShortcutKey("Esc"),
                 getShortcutKey("CtrlOrCmd+Enter"),
               ]}
             />
             <Shortcut
-              label={t("helpDialog.curvedArrow")}
-              shortcuts={[
-                "A",
-                t("helpDialog.click"),
-                t("helpDialog.click"),
-                t("helpDialog.click"),
-              ]}
+              label={"Curved arrow"}
+              shortcuts={["A", "click", "click", "click"]}
               isOr={false}
             />
             <Shortcut
-              label={t("helpDialog.curvedLine")}
-              shortcuts={[
-                "L",
-                t("helpDialog.click"),
-                t("helpDialog.click"),
-                t("helpDialog.click"),
-              ]}
+              label={"Curved line"}
+              shortcuts={["L", "click", "click", "click"]}
               isOr={false}
             />
             <Shortcut
-              label={t("helpDialog.cropStart")}
-              shortcuts={[t("helpDialog.doubleClick"), getShortcutKey("Enter")]}
+              label={"Crop image"}
+              shortcuts={["double-click", getShortcutKey("Enter")]}
               isOr={true}
             />
             <Shortcut
-              label={t("helpDialog.cropFinish")}
+              label={"Finish image cropping"}
               shortcuts={[getShortcutKey("Enter"), getShortcutKey("Escape")]}
               isOr={true}
             />
-            <Shortcut label={t("toolBar.lock")} shortcuts={[KEYS.Q]} />
             <Shortcut
-              label={t("helpDialog.preventBinding")}
+              label={"Keep selected tool active after drawing"}
+              shortcuts={[KEYS.Q]}
+            />
+            <Shortcut
+              label={"Prevent arrow binding"}
               shortcuts={[getShortcutKey("CtrlOrCmd")]}
             />
             <Shortcut
-              label={t("toolBar.link")}
+              label={"Add / Update link for a selected shape"}
               shortcuts={[getShortcutKey("CtrlOrCmd+K")]}
             />
             <Shortcut
-              label={t("toolBar.convertElementType")}
+              label={"Toggle shape type"}
               shortcuts={["Tab", "Shift+Tab"]}
               isOr={true}
             />
           </ShortcutIsland>
-          <ShortcutIsland
-            className="HelpDialog__island--view"
-            caption={t("helpDialog.view")}
-          >
+          <ShortcutIsland className="HelpDialog__island--view" caption={"View"}>
             <Shortcut
-              label={t("buttons.zoomIn")}
+              label={"Zoom in"}
               shortcuts={[getShortcutKey("CtrlOrCmd++")]}
             />
             <Shortcut
-              label={t("buttons.zoomOut")}
+              label={"Zoom out"}
               shortcuts={[getShortcutKey("CtrlOrCmd+-")]}
             />
             <Shortcut
-              label={t("buttons.resetZoom")}
+              label={"Reset zoom"}
               shortcuts={[getShortcutKey("CtrlOrCmd+0")]}
             />
             <Shortcut
-              label={t("helpDialog.zoomToFit")}
+              label={"Zoom to fit all elements"}
               shortcuts={["Shift+1"]}
             />
+            <Shortcut label={"Zoom to selection"} shortcuts={["Shift+2"]} />
+            <Shortcut label={"Move page up/down"} shortcuts={["PgUp/PgDn"]} />
             <Shortcut
-              label={t("helpDialog.zoomToSelection")}
-              shortcuts={["Shift+2"]}
-            />
-            <Shortcut
-              label={t("helpDialog.movePageUpDown")}
-              shortcuts={["PgUp/PgDn"]}
-            />
-            <Shortcut
-              label={t("helpDialog.movePageLeftRight")}
+              label={"Move page left/right"}
               shortcuts={["Shift+PgUp/PgDn"]}
             />
             <Shortcut
-              label={t("buttons.zenMode")}
+              label={"Zen mode"}
               shortcuts={[getShortcutKey("Alt+Z")]}
             />
             <Shortcut
-              label={t("buttons.objectsSnapMode")}
+              label={"Snap to objects"}
               shortcuts={[getShortcutKey("Alt+S")]}
             />
             <Shortcut
-              label={t("labels.toggleGrid")}
+              label={"Snap to grid"}
               shortcuts={[getShortcutKey("CtrlOrCmd+'")]}
             />
             <Shortcut
-              label={t("labels.viewMode")}
+              label={"View mode"}
               shortcuts={[getShortcutKey("Alt+R")]}
             />
             <Shortcut
-              label={t("labels.showFrames")}
+              label={"Show frames"}
               shortcuts={[getShortcutKey("Shift+Alt+F")]}
             />
             {actionManager.isActionEnabled(actionToggleTheme) && (
               <Shortcut
-                label={t("labels.toggleTheme")}
+                label={"Toggle light/dark theme"}
                 shortcuts={[getShortcutKey("Alt+Shift+D")]}
               />
             )}
             <Shortcut
-              label={t("stats.fullTitle")}
+              label={"Canvas & Shape properties"}
               shortcuts={[getShortcutKey("Alt+/")]}
             />
             <Shortcut
-              label={t("search.title")}
+              label={"Find on canvas"}
               shortcuts={[getShortcutFromShortcutName("searchMenu")]}
             />
             {actionManager.isActionEnabled(actionToggleFramesMenu) && (
               <Shortcut
-                label={t("frameNavigation.title")}
+                label={"Frames"}
                 shortcuts={[getShortcutFromShortcutName("framesMenu")]}
               />
             )}
             <Shortcut
-              label={t("commandPalette.title")}
+              label={"Command palette"}
               shortcuts={
                 isFirefox
                   ? [getShortcutFromShortcutName("commandPalette")]
@@ -345,96 +301,93 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
           </ShortcutIsland>
           <ShortcutIsland
             className="HelpDialog__island--editor"
-            caption={t("helpDialog.editor")}
+            caption={"Editor"}
           >
             <Shortcut
-              label={t("helpDialog.createFlowchart")}
+              label={"Create a flowchart from a generic element"}
               shortcuts={[getShortcutKey(`CtrlOrCmd+Arrow Key`)]}
               isOr={true}
             />
             <Shortcut
-              label={t("helpDialog.navigateFlowchart")}
+              label={"Navigate a flowchart"}
               shortcuts={[getShortcutKey(`Alt+Arrow Key`)]}
               isOr={true}
             />
             {actionManager.isActionEnabled(actionToggleFramesMenu) && (
               <>
                 <Shortcut
-                  label={t("frameNavigation.stepHelp")}
+                  label={"Step between frames"}
                   shortcuts={[getShortcutKey("Arrow Key")]}
                 />
                 <Shortcut
-                  label={t("frameNavigation.bookmarkHelp")}
+                  label={"Fly to a bookmarked frame"}
                   shortcuts={[getShortcutKey("Alt+1…9")]}
                 />
               </>
             )}
             <Shortcut
-              label={t("labels.moveCanvas")}
+              label={"Move canvas"}
               shortcuts={[
-                getShortcutKey(`Space+${t("helpDialog.drag")}`),
-                getShortcutKey(`Wheel+${t("helpDialog.drag")}`),
+                getShortcutKey(`Space+${"drag"}`),
+                getShortcutKey(`Wheel+${"drag"}`),
               ]}
               isOr={true}
             />
             <Shortcut
-              label={t("buttons.clearReset")}
+              label={"Reset the canvas"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Delete")]}
             />
+            <Shortcut label={"Delete"} shortcuts={[getShortcutKey("Delete")]} />
             <Shortcut
-              label={t("labels.delete")}
-              shortcuts={[getShortcutKey("Delete")]}
-            />
-            <Shortcut
-              label={t("labels.cut")}
+              label={"Cut"}
               shortcuts={[getShortcutKey("CtrlOrCmd+X")]}
             />
             <Shortcut
-              label={t("labels.copy")}
+              label={"Copy"}
               shortcuts={[getShortcutKey("CtrlOrCmd+C")]}
             />
             <Shortcut
-              label={t("labels.paste")}
+              label={"Paste"}
               shortcuts={[getShortcutKey("CtrlOrCmd+V")]}
             />
             <Shortcut
-              label={t("labels.pasteAsPlaintext")}
+              label={"Paste as plaintext"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+V")]}
             />
             <Shortcut
-              label={t("labels.selectAll")}
+              label={"Select all"}
               shortcuts={[getShortcutKey("CtrlOrCmd+A")]}
             />
             <Shortcut
-              label={t("labels.multiSelect")}
-              shortcuts={[getShortcutKey(`Shift+${t("helpDialog.click")}`)]}
+              label={"Add element to selection"}
+              shortcuts={[getShortcutKey(`Shift+${"click"}`)]}
             />
             <Shortcut
-              label={t("helpDialog.deepSelect")}
-              shortcuts={[getShortcutKey(`CtrlOrCmd+${t("helpDialog.click")}`)]}
+              label={"Deep select"}
+              shortcuts={[getShortcutKey(`CtrlOrCmd+${"click"}`)]}
             />
             <Shortcut
-              label={t("helpDialog.deepBoxSelect")}
-              shortcuts={[getShortcutKey(`CtrlOrCmd+${t("helpDialog.drag")}`)]}
+              label={"Deep select within box, and prevent dragging"}
+              shortcuts={[getShortcutKey(`CtrlOrCmd+${"drag"}`)]}
             />
             {/* firefox supports clipboard API under a flag, so we'll
                 show users what they can do in the error message */}
             {(probablySupportsClipboardBlob || isFirefox) && (
               <Shortcut
-                label={t("labels.copyAsPng")}
+                label={"Copy to clipboard as PNG"}
                 shortcuts={[getShortcutKey("Shift+Alt+C")]}
               />
             )}
             <Shortcut
-              label={t("labels.copyStyles")}
+              label={"Copy styles"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Alt+C")]}
             />
             <Shortcut
-              label={t("labels.pasteStyles")}
+              label={"Paste styles"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Alt+V")]}
             />
             <Shortcut
-              label={t("labels.sendToBack")}
+              label={"Send to back"}
               shortcuts={[
                 isDarwin
                   ? getShortcutKey("CtrlOrCmd+Alt+[")
@@ -442,7 +395,7 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
               ]}
             />
             <Shortcut
-              label={t("labels.bringToFront")}
+              label={"Bring to front"}
               shortcuts={[
                 isDarwin
                   ? getShortcutKey("CtrlOrCmd+Alt+]")
@@ -450,50 +403,50 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
               ]}
             />
             <Shortcut
-              label={t("labels.sendBackward")}
+              label={"Send backward"}
               shortcuts={[getShortcutKey("CtrlOrCmd+[")]}
             />
             <Shortcut
-              label={t("labels.bringForward")}
+              label={"Bring forward"}
               shortcuts={[getShortcutKey("CtrlOrCmd+]")]}
             />
             <Shortcut
-              label={t("labels.alignTop")}
+              label={"Align top"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Up")]}
             />
             <Shortcut
-              label={t("labels.alignBottom")}
+              label={"Align bottom"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Down")]}
             />
             <Shortcut
-              label={t("labels.alignLeft")}
+              label={"Align left"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Left")]}
             />
             <Shortcut
-              label={t("labels.alignRight")}
+              label={"Align right"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+Right")]}
             />
             <Shortcut
-              label={t("labels.arrangeElements")}
+              label={"Auto-arrange"}
               shortcuts={[getShortcutKey("Shift+Alt+A")]}
             />
             <Shortcut
-              label={t("labels.duplicateSelection")}
+              label={"Duplicate"}
               shortcuts={[
                 getShortcutKey("CtrlOrCmd+D"),
-                getShortcutKey(`Alt+${t("helpDialog.drag")}`),
+                getShortcutKey(`Alt+${"drag"}`),
               ]}
             />
             <Shortcut
-              label={t("helpDialog.toggleElementLock")}
+              label={"Lock/unlock selection"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+L")]}
             />
             <Shortcut
-              label={t("buttons.undo")}
+              label={"Undo"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Z")]}
             />
             <Shortcut
-              label={t("buttons.redo")}
+              label={"Redo"}
               shortcuts={
                 isWindows
                   ? [
@@ -504,39 +457,39 @@ export const HelpDialog = ({ onClose }: { onClose?: () => void }) => {
               }
             />
             <Shortcut
-              label={t("labels.group")}
+              label={"Group selection"}
               shortcuts={[getShortcutKey("CtrlOrCmd+G")]}
             />
             <Shortcut
-              label={t("labels.ungroup")}
+              label={"Ungroup selection"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+G")]}
             />
             <Shortcut
-              label={t("labels.flipHorizontal")}
+              label={"Flip horizontal"}
               shortcuts={[getShortcutKey("Shift+H")]}
             />
             <Shortcut
-              label={t("labels.flipVertical")}
+              label={"Flip vertical"}
               shortcuts={[getShortcutKey("Shift+V")]}
             />
             <Shortcut
-              label={t("labels.showStroke")}
+              label={"Show stroke color picker"}
               shortcuts={[getShortcutKey("S")]}
             />
             <Shortcut
-              label={t("labels.showBackground")}
+              label={"Show background color picker"}
               shortcuts={[getShortcutKey("G")]}
             />
             <Shortcut
-              label={t("labels.showFonts")}
+              label={"Show font picker"}
               shortcuts={[getShortcutKey("Shift+F")]}
             />
             <Shortcut
-              label={t("labels.decreaseFontSize")}
+              label={"Decrease font size"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+<")]}
             />
             <Shortcut
-              label={t("labels.increaseFontSize")}
+              label={"Increase font size"}
               shortcuts={[getShortcutKey("CtrlOrCmd+Shift+>")]}
             />
           </ShortcutIsland>

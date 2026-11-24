@@ -1,6 +1,5 @@
 import { loginIcon } from "@excalidraw/excalidraw/components/icons";
 import { POINTER_EVENTS } from "@excalidraw/common";
-import { useI18n } from "@excalidraw/excalidraw/i18n";
 import { WelcomeScreen } from "@excalidraw/excalidraw/index";
 import React from "react";
 
@@ -10,11 +9,10 @@ export const AppWelcomeScreen: React.FC<{
   onCollabDialogOpen: () => any;
   isCollabEnabled: boolean;
 }> = React.memo((props) => {
-  const { t } = useI18n();
   let headingContent;
 
   if (isExcalidrawPlusSignedUser) {
-    headingContent = t("welcomeScreen.app.center_heading_plus")
+    headingContent = "Did you want to go to the Excalidraw+ instead?"
       .split(/(Excalidraw\+)/)
       .map((bit, idx) => {
         if (bit === "Excalidraw+") {
@@ -35,11 +33,11 @@ export const AppWelcomeScreen: React.FC<{
   } else {
     headingContent = (
       <>
-        {t("welcomeScreen.app.center_heading")}
+        {"Your drawings are saved in your browser's storage."}
         <br />
-        {t("welcomeScreen.app.center_heading_line2")}
+        {"Browser storage can be cleared unexpectedly."}
         <br />
-        {t("welcomeScreen.app.center_heading_line3")}
+        {"Save your work to a file regularly to avoid losing it."}
       </>
     );
   }
@@ -67,7 +65,7 @@ export const AppWelcomeScreen: React.FC<{
               shortcut={null}
               icon={loginIcon}
             >
-              {t("labels.signUp")}
+              {"Sign up"}
             </WelcomeScreen.Center.MenuItemLink>
           )}
         </WelcomeScreen.Center.Menu>

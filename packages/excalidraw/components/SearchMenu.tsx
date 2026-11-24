@@ -37,7 +37,6 @@ import type {
 import { atom, useAtom } from "../editor-jotai";
 
 import { useStable } from "../hooks/useStable";
-import { t } from "../i18n";
 
 import { useApp, useExcalidrawSetAppState } from "./App";
 import { Button } from "./Button";
@@ -336,9 +335,7 @@ export const SearchMenu = () => {
   }, [setAppState, stableState, app]);
 
   const matchCount = `${searchMatches.items.length} ${
-    searchMatches.items.length === 1
-      ? t("search.singleResult")
-      : t("search.multipleResults")
+    searchMatches.items.length === 1 ? "result" : "results"
   }`;
 
   return (
@@ -348,7 +345,7 @@ export const SearchMenu = () => {
           className={CLASSES.SEARCH_MENU_INPUT_WRAPPER}
           value={inputValue}
           ref={searchInputRef}
-          placeholder={t("search.placeholder")}
+          placeholder={"Find text on canvas..."}
           icon={searchIcon}
           onChange={(value) => {
             setInputValue(value);
@@ -416,7 +413,7 @@ export const SearchMenu = () => {
         {searchMatches.items.length === 0 &&
           searchQuery &&
           searchedQueryRef.current && (
-            <div style={{ margin: "1rem auto" }}>{t("search.noMatch")}</div>
+            <div style={{ margin: "1rem auto" }}>{"No matches found..."}</div>
           )}
       </div>
 
@@ -496,7 +493,7 @@ const MatchListBase = (props: MatchListProps) => {
         <div className="layer-ui__search-result-container">
           <div className="layer-ui__search-result-title">
             <div className="title-icon">{frameToolIcon}</div>
-            <div>{t("search.frames")}</div>
+            <div>{"Frames"}</div>
           </div>
           {frameNameMatches.map((searchMatch, index) => (
             <ListItem
@@ -516,7 +513,7 @@ const MatchListBase = (props: MatchListProps) => {
         <div className="layer-ui__search-result-container">
           <div className="layer-ui__search-result-title">
             <div className="title-icon">{TextIcon}</div>
-            <div>{t("search.texts")}</div>
+            <div>{"Texts"}</div>
           </div>
           {textMatches.map((searchMatch, index) => (
             <ListItem

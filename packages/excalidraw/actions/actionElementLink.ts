@@ -8,7 +8,6 @@ import { CaptureUpdateAction } from "@excalidraw/element";
 
 import { copyTextToSystemClipboard } from "../clipboard";
 import { copyIcon, elementLinkIcon } from "../components/icons";
-import { t } from "../i18n";
 import { getSelectedElements } from "../scene";
 
 import { register } from "./register";
@@ -41,7 +40,7 @@ export const actionCopyElementLink = register({
           return {
             appState: {
               toast: {
-                message: t("toast.elementLinkCopied"),
+                message: "Link copied to clipboard",
                 closable: true,
               },
             },

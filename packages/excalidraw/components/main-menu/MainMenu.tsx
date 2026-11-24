@@ -4,7 +4,6 @@ import { composeEventHandlers } from "@excalidraw/common";
 
 import { useTunnels } from "../../context/tunnels";
 import { useUIAppState } from "../../context/ui-appState";
-import { t } from "../../i18n";
 import {
   useAppProps,
   useEditorInterface,
@@ -63,7 +62,7 @@ const MainMenu = Object.assign(
               {editorInterface.formFactor === "phone" &&
                 appState.collaborators.size > 0 && (
                   <fieldset className="UserList-Wrapper">
-                    <legend>{t("labels.collaborators")}</legend>
+                    <legend>{"Collaborators"}</legend>
                     <UserList
                       mobile={true}
                       collaborators={appState.collaborators}

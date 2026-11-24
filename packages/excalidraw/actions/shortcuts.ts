@@ -2,7 +2,6 @@ import { isDarwin } from "@excalidraw/common";
 
 import type { SubtypeOf } from "@excalidraw/common/utility-types";
 
-import { t } from "../i18n";
 import { getShortcutKey } from "../shortcut";
 
 import type { ActionName } from "./types";
@@ -77,7 +76,7 @@ const shortcutMap: Record<ShortcutName, string[]> = {
   deleteSelectedElements: [getShortcutKey("Delete")],
   duplicateSelection: [
     getShortcutKey("CtrlOrCmd+D"),
-    getShortcutKey(`Alt+${t("helpDialog.drag")}`),
+    getShortcutKey(`Alt+${"drag"}`),
   ],
   sendBackward: [getShortcutKey("CtrlOrCmd+[")],
   bringForward: [getShortcutKey("CtrlOrCmd+]")],

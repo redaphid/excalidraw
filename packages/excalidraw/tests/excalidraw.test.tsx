@@ -3,7 +3,6 @@ import { useMemo } from "react";
 
 import { THEME } from "@excalidraw/common";
 
-import { t } from "../i18n";
 import { Excalidraw, Footer, MainMenu } from "../index";
 import { actionExportWithDarkMode } from "../actions/actionExport";
 import { actionOpenMainMenu } from "../actions/actionMenu";
@@ -368,7 +367,7 @@ describe("<Excalidraw/>", () => {
       const textInput: HTMLInputElement | null = document.querySelector(
         ".ImageExportModal .ImageExportModal__preview__filename .TextInput",
       );
-      expect(textInput?.value).toContain(`${t("labels.untitled")}`);
+      expect(textInput?.value).toContain(`${"Untitled"}`);
       expect(textInput?.nodeName).toBe("INPUT");
     });
 
@@ -454,13 +453,13 @@ describe("<Excalidraw/>", () => {
 
       expect(
         queryByTestId(container, "toggle-dark-mode")?.textContent,
-      ).toContain(t("buttons.darkMode"));
+      ).toContain("Dark mode");
 
       fireEvent.click(queryByTestId(container, "toggle-dark-mode")!);
 
       expect(
         queryByTestId(container, "toggle-dark-mode")?.textContent,
-      ).toContain(t("buttons.lightMode"));
+      ).toContain("Light mode");
     });
 
     it("should show theme toggle when the theme prop and onThemeChange are defined", async () => {

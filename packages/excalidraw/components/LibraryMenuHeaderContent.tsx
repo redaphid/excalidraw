@@ -9,7 +9,6 @@ import { saveLibraryAsJSON } from "../data/json";
 import { libraryItemsAtom } from "../data/library";
 import { useAtom } from "../editor-jotai";
 import { useLibraryCache } from "../hooks/useLibraryItemSvg";
-import { t } from "../i18n";
 
 import { useApp, useExcalidrawSetAppState } from "./App";
 import ConfirmDialog from "./ConfirmDialog";
@@ -61,11 +60,11 @@ export const LibraryDropdownMenuButton: React.FC<{
 
   const renderRemoveLibAlert = () => {
     const content = selectedItems.length
-      ? t("alerts.removeItemsFromsLibrary", { count: selectedItems.length })
-      : t("alerts.resetLibrary");
+      ? `Delete ${selectedItems.length} item(s) from library?`
+      : "This will clear your library. Are you sure?";
     const title = selectedItems.length
-      ? t("confirmDialog.removeItemsFromLib")
-      : t("confirmDialog.resetLibrary");
+      ? "Remove selected items from library"
+      : "Reset library";
     return (
       <ConfirmDialog
         onConfirm={() => {
@@ -94,9 +93,7 @@ export const LibraryDropdownMenuButton: React.FC<{
         selectedItems.includes(item.id),
       )
     : libraryItemsData.libraryItems;
-  const resetLabel = itemsSelected
-    ? t("buttons.remove")
-    : t("buttons.resetLibrary");
+  const resetLabel = itemsSelected ? "Remove" : "Reset library";
 
   const [showPublishLibraryDialog, setShowPublishLibraryDialog] =
     useState(false);
@@ -108,7 +105,7 @@ export const LibraryDropdownMenuButton: React.FC<{
     return (
       <Dialog
         onCloseRequest={() => setPublishLibSuccess(null)}
-        title={t("publishSuccessDialog.title")}
+        title={"Library submitted"}
         className="publish-library-success"
         size="small"
       >
@@ -129,9 +126,9 @@ export const LibraryDropdownMenuButton: React.FC<{
         </p>
         <IconButton
           type="button"
-          title={t("buttons.close")}
-          aria-label={t("buttons.close")}
-          label={t("buttons.close")}
+          title={"Close"}
+          aria-label={"Close"}
+          label={"Close"}
           onClick={() => setPublishLibSuccess(null)}
           data-testid="publish-library-success-close"
           className="publish-library-success-close"
@@ -174,7 +171,7 @@ export const LibraryDropdownMenuButton: React.FC<{
         console.warn(error);
         return;
       }
-      setAppState({ errorMessage: t("errors.importLibraryError") });
+      setAppState({ errorMessage: "Couldn't load library" });
     }
   };
 
@@ -208,7 +205,7 @@ export const LibraryDropdownMenuButton: React.FC<{
               icon={LoadIcon}
               data-testid="lib-dropdown--load"
             >
-              {t("buttons.load")}
+              {"Open"}
             </DropdownMenu.Item>
           )}
           {!!items.length && (
@@ -217,7 +214,7 @@ export const LibraryDropdownMenuButton: React.FC<{
               icon={ExportIcon}
               data-testid="lib-dropdown--export"
             >
-              {t("buttons.export")}
+              {"Save to..."}
             </DropdownMenu.Item>
           )}
           {itemsSelected && (
@@ -226,7 +223,7 @@ export const LibraryDropdownMenuButton: React.FC<{
               onSelect={() => setShowPublishLibraryDialog(true)}
               data-testid="lib-dropdown--remove"
             >
-              {t("buttons.publishLibrary")}
+              {"Rename or publish"}
             </DropdownMenu.Item>
           )}
           {!!items.length && (
@@ -295,7 +292,7 @@ export const LibraryDropdownMenu = ({
       (item) => !selectedItems.includes(item.id),
     );
     library.setLibrary(nextItems).catch(() => {
-      setAppState({ errorMessage: t("alerts.errorRemovingFromLibrary") });
+      setAppState({ errorMessage: "Couldn't remove item from the library" });
     });
 
     deleteItemsFromLibraryCache(selectedItems);

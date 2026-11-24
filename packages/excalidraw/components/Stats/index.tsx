@@ -193,14 +193,14 @@ export const StatsInner = memo(
       >
         <Island padding={3}>
           <div className="title">
-            <h2>{t("stats.title")}</h2>
+            <h2>{"Properties"}</h2>
             <div className="close" onClick={onClose}>
               {CloseIcon}
             </div>
           </div>
 
           <Collapsible
-            label={<h3>{t("stats.generalStats")}</h3>}
+            label={<h3>{"General"}</h3>}
             open={!!(appState.stats.panels & STATS_PANELS.generalStats)}
             openTrigger={() =>
               setAppState((state) => {
@@ -214,17 +214,17 @@ export const StatsInner = memo(
             }
           >
             <StatsRows>
-              <StatsRow heading>{t("stats.scene")}</StatsRow>
+              <StatsRow heading>{"Scene"}</StatsRow>
               <StatsRow columns={2}>
-                <div>{t("stats.shapes")}</div>
+                <div>{"Shapes"}</div>
                 <div>{elements.length}</div>
               </StatsRow>
               <StatsRow columns={2}>
-                <div>{t("stats.width")}</div>
+                <div>{"Width"}</div>
                 <div>{sceneDimension.width}</div>
               </StatsRow>
               <StatsRow columns={2}>
-                <div>{t("stats.height")}</div>
+                <div>{"Height"}</div>
                 <div>{sceneDimension.height}</div>
               </StatsRow>
               {gridStepShown && (
@@ -253,7 +253,7 @@ export const StatsInner = memo(
               }}
             >
               <Collapsible
-                label={<h3>{t("stats.elementProperties")}</h3>}
+                label={<h3>{"Shape properties"}</h3>}
                 open={
                   !!(appState.stats.panels & STATS_PANELS.elementProperties)
                 }
@@ -273,16 +273,14 @@ export const StatsInner = memo(
                   {singleElement && (
                     <>
                       {cropMode && (
-                        <StatsRow heading>
-                          {t("labels.unCroppedDimension")}
-                        </StatsRow>
+                        <StatsRow heading>{"Uncropped dimension"}</StatsRow>
                       )}
 
                       {appState.croppingElementId &&
                         isImageElement(singleElement) &&
                         unCroppedDimension && (
                           <StatsRow columns={2}>
-                            <div>{t("stats.width")}</div>
+                            <div>{"Width"}</div>
                             <div>{round(unCroppedDimension.width, 2)}</div>
                           </StatsRow>
                         )}
@@ -291,7 +289,7 @@ export const StatsInner = memo(
                         isImageElement(singleElement) &&
                         unCroppedDimension && (
                           <StatsRow columns={2}>
-                            <div>{t("stats.height")}</div>
+                            <div>{"Height"}</div>
                             <div>{round(unCroppedDimension.height, 2)}</div>
                           </StatsRow>
                         )}
@@ -302,7 +300,7 @@ export const StatsInner = memo(
                         style={{ margin: "0.3125rem 0" }}
                       >
                         {appState.croppingElementId
-                          ? t("labels.imageCropping")
+                          ? "Image cropping"
                           : t(`element.${singleElement.type}`)}
                       </StatsRow>
 
@@ -362,11 +360,11 @@ export const StatsInner = memo(
                   {multipleElements && (
                     <>
                       {elementsAreInSameGroup(multipleElements) && (
-                        <StatsRow heading>{t("element.group")}</StatsRow>
+                        <StatsRow heading>{"Group"}</StatsRow>
                       )}
 
                       <StatsRow columns={2} style={{ margin: "0.3125rem 0" }}>
-                        <div>{t("stats.shapes")}</div>
+                        <div>{"Shapes"}</div>
                         <div>{selectedElements.length}</div>
                       </StatsRow>
 

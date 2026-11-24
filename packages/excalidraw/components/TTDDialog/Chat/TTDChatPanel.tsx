@@ -1,4 +1,3 @@
-import { t } from "../../../i18n";
 import { ArrowRightIcon } from "../../icons";
 
 import { InlineIcon } from "../../InlineIcon";
@@ -78,9 +77,7 @@ export const TTDChatPanel = ({
     const actions: TTDPanelAction[] = [];
     if (rateLimits) {
       actions.push({
-        label: t("chat.rateLimitRemaining", {
-          count: rateLimits.rateLimitRemaining,
-        }),
+        label: `${rateLimits.rateLimitRemaining} requests left today`,
         variant: "rateLimit",
         className:
           rateLimits.rateLimitRemaining < 5
@@ -92,7 +89,7 @@ export const TTDChatPanel = ({
     if (generatedResponse) {
       actions.push({
         action: onViewAsMermaid,
-        label: t("chat.viewAsMermaid"),
+        label: "View as Mermaid",
         icon: <InlineIcon icon={ArrowRightIcon} />,
         variant: "link",
       });

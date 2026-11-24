@@ -11,7 +11,6 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import type { Scene } from "@excalidraw/element";
 
-import { t } from "../i18n";
 import { getSelectedElements } from "../scene";
 
 import DialogActionButton from "./DialogActionButton";
@@ -114,8 +113,8 @@ const ElementLinkDialog = ({
   return (
     <div className="ElementLinkDialog">
       <div className="ElementLinkDialog__header">
-        <h2>{t("elementLink.title")}</h2>
-        <p>{t("elementLink.desc")}</p>
+        <h2>{"Link to object"}</h2>
+        <p>{"Click on a shape on canvas or paste a link."}</p>
       </div>
 
       <div className="ElementLinkDialog__input">
@@ -139,9 +138,9 @@ const ElementLinkDialog = ({
         {originalLink && nextLink && (
           <IconButton
             type="button"
-            title={t("buttons.remove")}
-            aria-label={t("buttons.remove")}
-            label={t("buttons.remove")}
+            title={"Remove"}
+            aria-label={"Remove"}
+            label={"Remove"}
             onClick={() => {
               // removes the link from the input
               // but doesn't update the element
@@ -158,7 +157,7 @@ const ElementLinkDialog = ({
 
       <div className="ElementLinkDialog__actions">
         <DialogActionButton
-          label={t("buttons.cancel")}
+          label={"Cancel"}
           onClick={() => {
             onClose?.();
           }}
@@ -168,7 +167,7 @@ const ElementLinkDialog = ({
         />
 
         <DialogActionButton
-          label={t("buttons.confirm")}
+          label={"Confirm"}
           onClick={handleConfirm}
           actionType="primary"
         />

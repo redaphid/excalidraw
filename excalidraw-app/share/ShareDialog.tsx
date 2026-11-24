@@ -14,7 +14,6 @@ import {
 } from "@excalidraw/excalidraw/components/icons";
 import { useUIAppState } from "@excalidraw/excalidraw/context/ui-appState";
 import { useCopyStatus } from "@excalidraw/excalidraw/hooks/useCopiedIndicator";
-import { useI18n } from "@excalidraw/excalidraw/i18n";
 import { KEYS, getFrame } from "@excalidraw/common";
 import { useEffect, useRef, useState } from "react";
 
@@ -63,7 +62,6 @@ const ActiveRoomDialog = ({
   activeRoomLink: string;
   handleClose: () => void;
 }) => {
-  const { t } = useI18n();
   const [, setJustCopied] = useState(false);
   const timerRef = useRef<number>(0);
   const ref = useRef<HTMLInputElement>(null);
@@ -74,7 +72,7 @@ const ActiveRoomDialog = ({
     try {
       await copyTextToSystemClipboard(activeRoomLink);
     } catch (e) {
-      collabAPI.setCollabError(t("errors.copyToSystemClipboardFailed"));
+      collabAPI.setCollabError("Couldn't copy to clipboard.");
     }
 
     setJustCopied(true);
@@ -93,8 +91,8 @@ const ActiveRoomDialog = ({
   const shareRoomLink = async () => {
     try {
       await navigator.share({
-        title: t("roomDialog.shareTitle"),
-        text: t("roomDialog.shareTitle"),
+        title: "Join a live collaboration session on Excalidraw",
+        text: "Join a live collaboration session on Excalidraw",
         url: activeRoomLink,
       });
     } catch (error: any) {
@@ -105,7 +103,7 @@ const ActiveRoomDialog = ({
   return (
     <>
       <h3 className="ShareDialog__active__header">
-        {t("labels.liveCollaboration").replace(/\./g, "")}
+        {"Live collaboration...".replace(/\./g, "")}
       </h3>
       <TextField
         defaultValue={collabAPI.getUsername()}
@@ -134,7 +132,7 @@ const ActiveRoomDialog = ({
         )}
         <FilledButton
           size="large"
-          label={t("buttons.copyLink")}
+          label={"Copy link"}
           icon={copyIcon}
           status={copyStatus}
           onClick={() => {
@@ -153,9 +151,15 @@ const ActiveRoomDialog = ({
           >
             🔒{" "}
           </span>
-          {t("roomDialog.desc_privacy")}
+          {
+            "Don't worry, the session is end-to-end encrypted, and fully private. Not even our server can see what you draw."
+          }
         </p>
-        <p>{t("roomDialog.desc_exitSession")}</p>
+        <p>
+          {
+            "Stopping the session will disconnect you from the room, but you'll be able to continue working with the scene, locally. Note that this won't affect other people, and they'll still be able to collaborate on their version."
+          }
+        </p>
       </div>
 
       <div className="ShareDialog__active__actions">
@@ -163,7 +167,7 @@ const ActiveRoomDialog = ({
           size="large"
           variant="outlined"
           color="danger"
-          label={t("roomDialog.button_stopSession")}
+          label={"Stop session"}
           icon={playerStopFilledIcon}
           onClick={() => {
             trackEvent("share", "room closed");
@@ -179,25 +183,27 @@ const ActiveRoomDialog = ({
 };
 
 const ShareDialogPicker = (props: ShareDialogProps) => {
-  const { t } = useI18n();
-
   const { collabAPI } = props;
 
   const startCollabJSX = collabAPI ? (
     <>
       <div className="ShareDialog__picker__header">
-        {t("labels.liveCollaboration").replace(/\./g, "")}
+        {"Live collaboration...".replace(/\./g, "")}
       </div>
 
       <div className="ShareDialog__picker__description">
-        <div style={{ marginBottom: "1em" }}>{t("roomDialog.desc_intro")}</div>
-        {t("roomDialog.desc_privacy")}
+        <div style={{ marginBottom: "1em" }}>
+          {"Invite people to collaborate on your drawing."}
+        </div>
+        {
+          "Don't worry, the session is end-to-end encrypted, and fully private. Not even our server can see what you draw."
+        }
       </div>
 
       <div className="ShareDialog__picker__button">
         <FilledButton
           size="large"
-          label={t("roomDialog.button_startSession")}
+          label={"Start session"}
           icon={playerPlayIcon}
           onClick={() => {
             trackEvent("share", "room creation", `ui (${getFrame()})`);
@@ -208,7 +214,7 @@ const ShareDialogPicker = (props: ShareDialogProps) => {
 
       {props.type === "share" && (
         <div className="ShareDialog__separator">
-          <span>{t("shareDialog.or")}</span>
+          <span>{"Or"}</span>
         </div>
       )}
     </>
@@ -220,17 +226,15 @@ const ShareDialogPicker = (props: ShareDialogProps) => {
 
       {props.type === "share" && (
         <>
-          <div className="ShareDialog__picker__header">
-            {t("exportDialog.link_title")}
-          </div>
+          <div className="ShareDialog__picker__header">{"Shareable link"}</div>
           <div className="ShareDialog__picker__description">
-            {t("exportDialog.link_details")}
+            {"Export as a read-only link."}
           </div>
 
           <div className="ShareDialog__picker__button">
             <FilledButton
               size="large"
-              label={t("exportDialog.link_button")}
+              label={"Export to Link"}
               icon={LinkIcon}
               onClick={async () => {
                 await props.onExportToBackend();

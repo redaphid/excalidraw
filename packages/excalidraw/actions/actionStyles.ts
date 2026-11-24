@@ -40,7 +40,6 @@ import type { ExcalidrawTextElement } from "@excalidraw/element/types";
 
 import { paintIcon } from "../components/icons";
 
-import { t } from "../i18n";
 import { getSelectedElements } from "../scene";
 
 import { register } from "./register";
@@ -70,7 +69,7 @@ export const actionCopyStyles = register({
     return {
       appState: {
         ...appState,
-        toast: { message: t("toast.copyStyles") },
+        toast: { message: "Copied styles." },
       },
       captureUpdate: CaptureUpdateAction.EVENTUALLY,
     };

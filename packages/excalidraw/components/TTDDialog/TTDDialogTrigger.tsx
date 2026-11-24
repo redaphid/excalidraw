@@ -1,6 +1,5 @@
 import { trackEvent } from "../../analytics";
 import { useTunnels } from "../../context/tunnels";
-import { useI18n } from "../../i18n";
 import { useExcalidrawSetAppState } from "../App";
 import DropdownMenu from "../dropdownMenu/DropdownMenu";
 import { brainIcon } from "../icons";
@@ -14,7 +13,6 @@ export const TTDDialogTrigger = ({
   children?: ReactNode;
   icon?: JSX.Element;
 }) => {
-  const { t } = useI18n();
   const { TTDDialogTriggerTunnel } = useTunnels();
   const setAppState = useExcalidrawSetAppState();
 
@@ -28,7 +26,7 @@ export const TTDDialogTrigger = ({
         icon={icon ?? brainIcon}
         badge={<DropdownMenu.Item.Badge>AI</DropdownMenu.Item.Badge>}
       >
-        {children ?? t("labels.textToDiagram")}
+        {children ?? "Text to diagram"}
       </DropdownMenu.Item>
     </TTDDialogTriggerTunnel.In>
   );

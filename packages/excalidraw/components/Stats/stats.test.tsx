@@ -1,6 +1,5 @@
 import { degreesToRadians, pointFrom, pointRotateRads } from "@excalidraw/math";
 import { act, fireEvent, queryByTestId } from "@testing-library/react";
-import React from "react";
 import { vi } from "vitest";
 
 import { setDateTimeForTests, reseed } from "@excalidraw/common";
@@ -20,7 +19,6 @@ import type {
 
 import { Excalidraw, getCommonBounds } from "../..";
 import { actionGroup } from "../../actions";
-import { t } from "../../i18n";
 import * as StaticScene from "../../renderer/staticScene";
 import { API } from "../../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
@@ -194,12 +192,12 @@ describe("stats for a generic element", () => {
 
     // title
     const title = elementStats?.querySelector("h3");
-    expect(title?.lastChild?.nodeValue)?.toBe(t("stats.elementProperties"));
+    expect(title?.lastChild?.nodeValue)?.toBe("Shape properties");
 
     // element type
     const elementType = queryByTestId(elementStats!, "stats-element-type");
     expect(elementType).toBeDefined();
-    expect(elementType?.lastChild?.nodeValue).toBe(t("element.rectangle"));
+    expect(elementType?.lastChild?.nodeValue).toBe("Rectangle");
 
     // properties
     ["X", "Y", "W", "H", "A"].forEach((label) => () => {

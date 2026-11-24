@@ -2,7 +2,6 @@ import { useId } from "react";
 
 import clsx from "clsx";
 
-import { t } from "../../i18n";
 import { CloseIcon } from "../icons";
 
 import "./ViewportStatusFrame.scss";
@@ -71,7 +70,7 @@ export const ViewportStatusBadge = ({
         <button
           type="button"
           className="viewport-status-frame__badge-close"
-          aria-label={t("buttons.close")}
+          aria-label={"Close"}
           onClick={label.onClose}
         >
           {CloseIcon}

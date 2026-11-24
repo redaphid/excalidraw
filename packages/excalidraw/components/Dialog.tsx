@@ -5,7 +5,6 @@ import { KEYS, queryFocusableElements } from "@excalidraw/common";
 
 import { useSetAtom } from "../editor-jotai";
 import { useCallbackRefState } from "../hooks/useCallbackRefState";
-import { t } from "../i18n";
 
 import {
   useExcalidrawContainer,
@@ -123,8 +122,8 @@ export const Dialog = (props: DialogProps) => {
           <button
             className="Dialog__close"
             onClick={onClose}
-            title={t("buttons.close")}
-            aria-label={t("buttons.close")}
+            title={"Close"}
+            aria-label={"Close"}
             type="button"
           >
             {CloseIcon}

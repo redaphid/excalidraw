@@ -11,7 +11,6 @@ import {
   microphoneIcon,
   microphoneMutedIcon,
 } from "../components/icons";
-import { t } from "../i18n";
 
 import { register } from "./register";
 
@@ -76,7 +75,7 @@ export const actionGoToCollaborator = register<Collaborator>({
       collaborator.isSpeaking ? (
         <div
           className="UserList__collaborator-status-icon-speaking-indicator"
-          title={t("userList.hint.isSpeaking")}
+          title={"User is speaking"}
         >
           <div />
           <div />
@@ -85,12 +84,12 @@ export const actionGoToCollaborator = register<Collaborator>({
       ) : collaborator.isMuted ? (
         <div
           className="UserList__collaborator-status-icon-microphone-muted"
-          title={t("userList.hint.micMuted")}
+          title={"User's microphone is muted"}
         >
           {microphoneMutedIcon}
         </div>
       ) : (
-        <div title={t("userList.hint.inCall")}>{microphoneIcon}</div>
+        <div title={"User is in a voice call"}>{microphoneIcon}</div>
       )
     ) : null;
 
@@ -118,12 +117,12 @@ export const actionGoToCollaborator = register<Collaborator>({
           {isBeingFollowed && (
             <div
               className="UserList__collaborator-status-icon-is-followed"
-              title={t("userList.hint.followStatus")}
+              title={"You're currently following this user"}
             >
               {eyeIcon}
             </div>
           )}
-          {collaborator.isCurrentUser && ` (${t("labels.you")})`}
+          {collaborator.isCurrentUser && ` (${"You"})`}
           {statusIconJSX}
         </div>
       </div>

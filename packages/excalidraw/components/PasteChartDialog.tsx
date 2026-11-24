@@ -6,7 +6,6 @@ import type { ChartType } from "@excalidraw/element/types";
 
 import { trackEvent } from "../analytics";
 import { isSpreadsheetValidForChartType, renderSpreadsheet } from "../charts";
-import { t } from "../i18n";
 import { exportToSvg } from "../scene/export";
 
 import { useUIAppState } from "../context/ui-appState";
@@ -27,11 +26,11 @@ type OnInsertChart = (chartType: ChartType, elements: ChartElements) => void;
 const getChartTypeLabel = (chartType: ChartType) => {
   switch (chartType) {
     case "bar":
-      return t("labels.chartType_bar");
+      return "Bar chart";
     case "line":
-      return t("labels.chartType_line");
+      return "Line chart";
     case "radar":
-      return t("labels.chartType_radar");
+      return "Radar chart";
     default:
       return chartType;
   }
@@ -160,15 +159,13 @@ const PlainTextPreviewBtn = (props: {
     <button
       type="button"
       className="ChartPreview"
-      aria-label={t("labels.chartType_plaintext")}
+      aria-label={"Plain text"}
       onClick={() => {
         props.onClick(props.rawText);
       }}
     >
       <div className="ChartPreview__canvas" ref={previewRef} />
-      <div className="ChartPreview__label">
-        {t("labels.chartType_plaintext")}
-      </div>
+      <div className="ChartPreview__label">{"Plain text"}</div>
     </button>
   );
 };
@@ -220,9 +217,7 @@ export const PasteChartDialog = ({
       onCloseRequest={handleClose}
       title={
         <div className="PasteChartDialog__title">
-          <div className="PasteChartDialog__titleText">
-            {t("labels.pasteCharts")}
-          </div>
+          <div className="PasteChartDialog__titleText">{"Paste charts"}</div>
           <div
             className="PasteChartDialog__reshuffleBtn"
             onClick={handleReshuffleColors}

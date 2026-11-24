@@ -4,8 +4,6 @@ import React, { useLayoutEffect } from "react";
 
 import { isShallowEqual } from "@excalidraw/common";
 
-import { t } from "../i18n";
-
 import { useExcalidrawActionManager } from "./App";
 import { chevronDownIcon } from "./icons";
 import { Island } from "./Island";
@@ -241,19 +239,19 @@ export const UserList = React.memo(
             <Island padding={2}>
               {collaboratorsArray.length >= SHOW_COLLABORATORS_FILTER_AT && (
                 <QuickSearch
-                  placeholder={t("quickSearch.placeholder")}
+                  placeholder={"Quick search"}
                   onChange={setSearchTerm}
                 />
               )}
               <ScrollableList
                 className={"dropdown-menu UserList__collaborators"}
-                placeholder={t("userList.empty")}
+                placeholder={"No users found"}
               >
                 {/* The list checks for `Children.count()`, hence defensively returning empty list */}
                 {filteredCollaborators.length > 0
                   ? [
                       <div key="hint" className="hint">
-                        {t("userList.hint.text")}
+                        {"Click on user to follow"}
                       </div>,
                       filteredCollaborators.map((c) =>
                         renderCollaborator({

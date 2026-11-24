@@ -6,7 +6,6 @@ import {
   getVersion,
   nFormatter,
 } from "@excalidraw/common";
-import { t } from "@excalidraw/excalidraw/i18n";
 import { useEffect, useState } from "react";
 
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
@@ -54,34 +53,34 @@ const CustomStats = (props: Props) => {
     timestamp = version.slice(0, 16).replace("T", " ");
     hash = version.slice(21);
   } else {
-    timestamp = t("stats.versionNotAvailable");
+    timestamp = "Version not available";
   }
 
   return (
     <Stats.StatsRows order={-1}>
-      <Stats.StatsRow heading>{t("stats.version")}</Stats.StatsRow>
+      <Stats.StatsRow heading>{"Version"}</Stats.StatsRow>
       <Stats.StatsRow
         style={{ textAlign: "center", cursor: "pointer" }}
         onClick={async () => {
           try {
             await copyTextToSystemClipboard(getVersion());
-            props.setToast(t("toast.copyToClipboard"));
+            props.setToast("Copied to clipboard.");
           } catch {}
         }}
-        title={t("stats.versionCopy")}
+        title={"Click to copy"}
       >
         {timestamp}
         <br />
         {hash}
       </Stats.StatsRow>
 
-      <Stats.StatsRow heading>{t("stats.storage")}</Stats.StatsRow>
+      <Stats.StatsRow heading>{"Storage"}</Stats.StatsRow>
       <Stats.StatsRow columns={2}>
-        <div>{t("stats.scene")}</div>
+        <div>{"Scene"}</div>
         <div>{nFormatter(storageSizes.scene, 1)}</div>
       </Stats.StatsRow>
       <Stats.StatsRow columns={2}>
-        <div>{t("stats.total")}</div>
+        <div>{"Total"}</div>
         <div>{nFormatter(storageSizes.total, 1)}</div>
       </Stats.StatsRow>
     </Stats.StatsRows>

@@ -21,7 +21,6 @@ import type {
   Theme,
 } from "@excalidraw/element/types";
 
-import { t } from "../../i18n";
 import { DEFAULT_SELECTION_COLOR } from "../../renderer/helpers";
 import { renderInteractiveScene } from "../../renderer/interactiveScene";
 
@@ -234,7 +233,7 @@ const InteractiveCanvas = (props: InteractiveCanvasProps) => {
         props.appState.viewModeEnabled ? undefined : props.onDoubleClick
       }
     >
-      {t("labels.drawingCanvas")}
+      {"Drawing canvas"}
     </canvas>
   );
 };

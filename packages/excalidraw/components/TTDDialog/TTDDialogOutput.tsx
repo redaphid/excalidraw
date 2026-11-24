@@ -2,7 +2,6 @@ import clsx from "clsx";
 
 import { Button } from "../Button";
 import Spinner from "../Spinner";
-import { t } from "../../i18n";
 import { alertTriangleIcon } from "../icons";
 
 import {
@@ -32,7 +31,7 @@ export const TTDDialogOutput = ({
 }: TTDDialogOutputProps) => {
   const errorMessage = error
     ? hideErrorDetails
-      ? t("chat.errors.mermaidParseError")
+      ? "Mermaid syntax error"
       : formatMermaidParseErrorMessage(error.message)
     : null;
   const syntaxGuidance =
@@ -97,7 +96,7 @@ export const TTDDialogOutput = ({
                     className="ttd-dialog-panel-button ttd-dialog-output-error-autofix"
                     onSelect={onApplyAutoFix}
                   >
-                    {t("mermaid.autoFixAvailable")}
+                    {"Auto-fix is available"}
                   </Button>
                 ) : null}
               </div>

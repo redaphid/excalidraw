@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import { useContext } from "react";
 
-import { t } from "../../i18n";
 import { useEditorInterface } from "../App";
 import { Button } from "../Button";
 import { Tooltip } from "../Tooltip";
@@ -31,13 +30,13 @@ export const SidebarHeader = ({
       {children}
       <div className="sidebar__header__buttons">
         {renderDockButton && (
-          <Tooltip label={t("labels.sidebarLock")}>
+          <Tooltip label={"Keep sidebar open"}>
             <Button
               onSelect={() => props.onDock?.(!props.docked)}
               selected={!!props.docked}
               className="sidebar__dock"
               data-testid="sidebar-dock"
-              aria-label={t("labels.sidebarLock")}
+              aria-label={"Keep sidebar open"}
             >
               {PinIcon}
             </Button>
@@ -47,7 +46,7 @@ export const SidebarHeader = ({
           data-testid="sidebar-close"
           className="sidebar__close"
           onSelect={props.onCloseRequest}
-          aria-label={t("buttons.close")}
+          aria-label={"Close"}
         >
           {CloseIcon}
         </Button>

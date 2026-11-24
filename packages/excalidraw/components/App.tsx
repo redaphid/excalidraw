@@ -379,7 +379,6 @@ import {
   getElementRenderOffsets,
 } from "../renderOverrides";
 import { History } from "../history";
-import { t } from "../i18n";
 
 import {
   getScrollToContentState,
@@ -929,7 +928,7 @@ class App extends React.Component<AppProps, AppState> {
       gridModeEnabled = false,
       objectsSnapModeEnabled = false,
       theme = defaultAppState.theme,
-      name = `${t("labels.untitled")}-${getDateTime()}`,
+      name = `${"Untitled"}-${getDateTime()}`,
     } = props;
 
     // seed the host-forced tool so the first render already has it
@@ -2112,7 +2111,7 @@ class App extends React.Component<AppProps, AppState> {
               >
                 {isHovered && (
                   <div className="excalidraw__embeddable-hint">
-                    {t("buttons.embeddableInteractionButton")}
+                    {"Click to interact"}
                   </div>
                 )}
                 <div
@@ -2739,7 +2738,7 @@ class App extends React.Component<AppProps, AppState> {
                                 elementsMap={renderableElementsMap}
                               >
                                 <ElementCanvasButton
-                                  title={t("labels.convertToCode")}
+                                  title={"Convert to code"}
                                   icon={MagicIcon}
                                   checked={false}
                                   onChange={() =>
@@ -2761,7 +2760,7 @@ class App extends React.Component<AppProps, AppState> {
                                 elementsMap={renderableElementsMap}
                               >
                                 <ElementCanvasButton
-                                  title={t("labels.copySource")}
+                                  title={"Copy source to clipboard"}
                                   icon={copyIcon}
                                   checked={false}
                                   onChange={() =>
@@ -5149,9 +5148,7 @@ class App extends React.Component<AppProps, AppState> {
 
   private showSceneReplacedToast() {
     this.setToast({
-      message: t("fileDrop.replacedToast", {
-        shortcut: getShortcutKey("CtrlOrCmd+Z"),
-      }),
+      message: `Content replaced. ${getShortcutKey("CtrlOrCmd+Z")} to undo`,
       closable: true,
       duration: 8000,
     });
@@ -5596,9 +5593,9 @@ ${css}
         !event.altKey
       ) {
         this.setToast({
-          message: t("commandPalette.shortcutHint", {
-            shortcut: getShortcutFromShortcutName("commandPalette"),
-          }),
+          message: `For Command palette, use ${getShortcutFromShortcutName(
+            "commandPalette",
+          )}`,
         });
         event.preventDefault();
         return;
@@ -6302,9 +6299,7 @@ ${css}
 
   public getName = () => {
     return (
-      this.state.name ||
-      this.props.name ||
-      `${t("labels.untitled")}-${getDateTime()}`
+      this.state.name || this.props.name || `${"Untitled"}-${getDateTime()}`
     );
   };
 
@@ -9559,7 +9554,8 @@ ${css}
 
     if (embedLink.error instanceof URIError) {
       this.setToast({
-        message: t("toast.unrecognizedLinkFormat"),
+        message:
+          "The link you embedded does not match the expected format. Please try to paste the 'embed' string provided by the source site",
         closable: true,
       });
     }
@@ -12211,7 +12207,7 @@ ${css}
     // at this point this should be guaranteed image file, but we do this check
     // to satisfy TS down the line
     if (!isSupportedImageFile(imageFile)) {
-      throw new Error(t("errors.unsupportedFileType"));
+      throw new Error("Unsupported file type.");
     }
     const mimeType = imageFile.type;
 
@@ -12225,7 +12221,9 @@ ${css}
         );
       } catch (error: any) {
         console.warn(error);
-        throw new Error(t("errors.svgImageInsertError"));
+        throw new Error(
+          "Couldn't insert SVG image. The SVG markup looks invalid.",
+        );
       }
     }
 
@@ -12239,7 +12237,7 @@ ${css}
       console.warn(
         "Couldn't generate file id or the supplied `generateIdForFile` didn't resolve to one.",
       );
-      throw new Error(t("errors.imageInsertError"));
+      throw new Error("Couldn't insert image. Try again later...");
     }
 
     const existingFileData = this.files[fileId];
@@ -12259,9 +12257,9 @@ ${css}
 
       if (imageFile.size > maxFileSizeBytes) {
         throw new Error(
-          t("errors.fileTooBig", {
-            maxSize: `${Math.trunc(maxFileSizeBytes / 1024 / 1024)}MB`,
-          }),
+          `File is too big. Maximum allowed size is ${`${Math.trunc(
+            maxFileSizeBytes / 1024 / 1024,
+          )}MB`}.`,
         );
       }
     }
@@ -12322,7 +12320,7 @@ ${css}
           resolve(initializedImageElement);
         } catch (error: any) {
           console.error(error);
-          reject(new Error(t("errors.imageInsertError")));
+          reject(new Error("Couldn't insert image. Try again later..."));
         }
       },
     );
@@ -12564,7 +12562,8 @@ ${css}
           );
         } catch (error: any) {
           this.setState({
-            errorMessage: error.message || t("errors.imageInsertError"),
+            errorMessage:
+              error.message || "Couldn't insert image. Try again later...",
           });
           return newElementWith(placeholder as ExcalidrawImageElement, {
             isDeleted: true,
@@ -12635,7 +12634,7 @@ ${css}
           );
         } catch (error: any) {
           if (error.name !== "EncodingError") {
-            throw new Error(t("alerts.couldNotLoadInvalidFile"));
+            throw new Error("Couldn't load invalid file");
           }
           // if EncodingError, fall through to insert as regular image
         }
@@ -12776,13 +12775,13 @@ ${css}
         ) {
           this.setState({
             isLoading: false,
-            errorMessage: t("errors.imageToolNotSupported"),
+            errorMessage: "Images are disabled.",
           });
           return;
         }
         const errorMessage = imageSceneDataError
-          ? t("alerts.cannotRestoreFromImage")
-          : t("alerts.couldNotLoadInvalidFile");
+          ? "Scene couldn't be restored from this image file"
+          : "Couldn't load invalid file";
         this.setState({
           isLoading: false,
           errorMessage,
@@ -12834,7 +12833,7 @@ ${css}
           })
           .catch((error) => {
             console.error(error);
-            this.setState({ errorMessage: t("errors.importLibraryError") });
+            this.setState({ errorMessage: "Couldn't load library" });
           });
       }
     } catch (error: any) {

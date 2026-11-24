@@ -23,7 +23,6 @@ import { getVisibleSceneBounds } from "@excalidraw/element";
 import { newElementWith } from "@excalidraw/element";
 import { isImageElement, isInitializedImageElement } from "@excalidraw/element";
 import { AbortError } from "@excalidraw/excalidraw/errors";
-import { t } from "@excalidraw/excalidraw/i18n";
 import { withBatchedUpdates } from "@excalidraw/excalidraw/reactUtils";
 
 import throttle from "lodash.throttle";
@@ -338,8 +337,8 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       }
     } catch (error: any) {
       const errorMessage = /is longer than.*?bytes/.test(error.message)
-        ? t("errors.collabSaveFailed_sizeExceeded")
-        : t("errors.collabSaveFailed");
+        ? "Couldn't save to the backend database, the canvas seems to be too big. You should save the file locally to ensure you don't lose your work."
+        : "Couldn't save to the backend database. If problems persist, you should save your file locally to ensure you don't lose your work.";
 
       if (
         !this.state.dialogNotifiedErrors[errorMessage] ||
@@ -384,7 +383,11 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     if (!keepRemoteState) {
       LocalData.fileStorage.reset();
       this.destroySocketClient();
-    } else if (window.confirm(t("alerts.collabStopOverridePrompt"))) {
+    } else if (
+      window.confirm(
+        "Stopping the session will overwrite your previous, locally stored drawing. Are you sure?\n\n(If you want to keep your local drawing, simply close the browser tab instead.)",
+      )
+    ) {
       // hack to ensure that we prefer we disregard any new browser state
       // that could have been saved in other tabs while we were collaborating
       resetBrowserStateVersions();
@@ -468,7 +471,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       );
       return JSON.parse(decodedData);
     } catch (error) {
-      window.alert(t("alerts.decryptFailed"));
+      window.alert("Couldn't decrypt data.");
       console.error(error);
       return {
         type: WS_SUBTYPES.INVALID_RESPONSE,

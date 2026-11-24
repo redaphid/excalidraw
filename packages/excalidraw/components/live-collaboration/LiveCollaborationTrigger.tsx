@@ -2,7 +2,6 @@ import clsx from "clsx";
 
 import { MQ_MIN_WIDTH_DESKTOP, type EditorInterface } from "@excalidraw/common";
 
-import { t } from "../../i18n";
 import { Button } from "../Button";
 import { share } from "../icons";
 import { useUIAppState } from "../../context/ui-appState";
@@ -32,9 +31,9 @@ const LiveCollaborationTrigger = ({
       type="button"
       onSelect={onSelect}
       style={{ position: "relative", width: showIconOnly ? undefined : "auto" }}
-      title={t("labels.liveCollaboration")}
+      title={"Live collaboration..."}
     >
-      {showIconOnly ? share : t("labels.share")}
+      {showIconOnly ? share : "Share"}
       {appState.collaborators.size > 0 && (
         <div className="CollabButton-collaborators">
           {appState.collaborators.size}
