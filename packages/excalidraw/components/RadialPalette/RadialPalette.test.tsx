@@ -563,13 +563,11 @@ describe("RadialPalette", () => {
     });
 
     describe("when a stroke is selected", () => {
-      let stroke: ExcalidrawFreeDrawElement;
-
       beforeEach(() => {
-        stroke = API.createElement({
+        const stroke = API.createElement({
           type: "freedraw",
           strokeWidth: 0.2,
-        }) as ExcalidrawFreeDrawElement;
+        });
         API.setElements([stroke]);
         API.setSelectedElements([stroke]);
         API.setAppState({ currentItemFreedrawStrokeWidth: 0.2 });
