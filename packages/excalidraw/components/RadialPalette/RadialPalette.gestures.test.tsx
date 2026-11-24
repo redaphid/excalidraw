@@ -177,7 +177,44 @@ describe("opening the radial palette from the canvas", () => {
       });
     });
 
+    describe("when the host hides a drag's moves from the editor, not from the window", () => {
+      const hide = (event: Event) => event.stopPropagation();
+
+      beforeEach(() => {
+        window.addEventListener("pointermove", hide, { capture: true });
+        down(400, 300);
+        move(400 + LONG_PRESS_TOLERANCE + 5, 300);
+        wait(LONG_PRESS_DELAY * 2);
+      });
+
+      afterEach(() => {
+        window.removeEventListener("pointermove", hide, { capture: true });
+      });
+
+      it("does not open: it is a drag", () => {
+        expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when a long press with the hand tool opens the ring and the finger moves on", () => {
+      let scroll: { x: number; y: number };
+
+      beforeEach(() => {
+        act(() => h.app.setActiveTool({ type: "hand" }));
+        scroll = { x: h.state.scrollX, y: h.state.scrollY };
+        down(400, 300);
+        wait(LONG_PRESS_DELAY);
+        move(460, 340);
+        up(460, 340);
+      });
+
+      it("pans nothing", () => {
+        expect({ x: h.state.scrollX, y: h.state.scrollY }).toEqual(scroll);
+      });
+    });
+
     describe.each<ToolType>([
+      "hand",
       "selection",
       "freedraw",
       "rectangle",
