@@ -40,6 +40,7 @@ import {
 
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
+import { measureHostInsets, takesNoTaps as reachesCanvas } from "./hostChrome";
 import { getActivePenPreset } from "./penPresets";
 import {
   dropPuck,
@@ -197,10 +198,6 @@ const holdMenusShut = (win: Window) => {
   };
 };
 
-/** what takes a tap that lands on it, so a puck under it is out of reach */
-const TAKES_TAPS_SELECTOR =
-  'button, a[href], input, select, textarea, [role="button"], [role="menuitem"], [role="dialog"], [contenteditable]:not([contenteditable="false"])';
-
 /** how long after the editor opens to look again for host controls over
  * the puck, as a host may draw them later */
 const PUCK_RECHECK_MS = 1000;
@@ -279,26 +276,10 @@ export const RadialPalette = React.memo(
       savePuckPlace(app.ownerWindow, next);
     };
 
-    const puckRef = useRef<HTMLButtonElement>(null);
-
     /** whether a press at `at` would reach the puck there: nothing above
      * the canvas that takes taps (the host's top bar, a button) is there */
-    const takesNoTaps = (at: ClientPoint) => {
-      const doc = app.ownerDocument;
-      if (typeof doc.elementsFromPoint !== "function") {
-        return true;
-      }
-      const above = doc
-        .elementsFromPoint(at.x, at.y)
-        .find((element) => !puckRef.current?.contains(element));
-      if (!above) {
-        // nothing measured there, so nothing known to be in the way
-        return true;
-      }
-      return (
-        !!container?.contains(above) && !above.closest(TAKES_TAPS_SELECTOR)
-      );
-    };
+    const takesNoTaps = (at: ClientPoint) =>
+      reachesCanvas(app.ownerDocument, container, at);
 
     /** a placed puck the host's controls cover moves to the nearest spot
      * that can be pressed, or back to its own corner when there is none */
@@ -444,7 +425,6 @@ export const RadialPalette = React.memo(
     return (
       <>
         <button
-          ref={puckRef}
           type="button"
           className={clsx("RadialPalette__puck", {
             "RadialPalette__puck--phone": phone,
@@ -535,17 +515,30 @@ const Ring = ({
   const setAppState = useExcalidrawSetAppState();
 
   const { offsetLeft, offsetTop, width, height } = appState;
+  const { container } = useExcalidrawContainer();
+  /** the bands the host's controls take along the editor's top and bottom,
+   * measured as the ring opens, before it is drawn over them */
+  const [insets] = useState(() =>
+    measureHostInsets(
+      { left: offsetLeft, top: offsetTop, width, height },
+      (at) => reachesCanvas(app.ownerDocument, container, at),
+    ),
+  );
   /** where the ring is drawn when it is open at `at`, in client terms */
   const drawnAt = (at: ClientPoint) => {
     const placed = placeRing(
       { x: at.x - offsetLeft, y: at.y - offsetTop },
       { width, height },
+      undefined,
+      insets,
     );
     return { x: placed.x + offsetLeft, y: placed.y + offsetTop };
   };
   const place = placeRing(
     { x: session.at.x - offsetLeft, y: session.at.y - offsetTop },
     { width, height },
+    undefined,
+    insets,
   );
 
   // the style ring shows its properties, or one's options, in the tools band

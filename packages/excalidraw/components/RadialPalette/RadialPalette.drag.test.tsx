@@ -92,6 +92,54 @@ describe("dragging the radial palette", () => {
     });
   });
 
+  describe("when the host's top bar takes the top of the editor", () => {
+    /** the bar's height, in CSS px */
+    const BAR = 60;
+    const original = document.elementsFromPoint;
+
+    beforeEach(() => {
+      const bar = document.createElement("button");
+      bar.textContent = "Send to Claude";
+      document.body.appendChild(bar);
+      const editor = () => document.querySelector(".excalidraw")!;
+      document.elementsFromPoint = (_x: number, y: number) =>
+        y < BAR ? [bar, editor()] : [editor()];
+    });
+
+    afterEach(() => {
+      document.elementsFromPoint = original;
+      document.body
+        .querySelectorAll("body > button")
+        .forEach((button) => button.remove());
+    });
+
+    describe("and the ring opens under it", () => {
+      beforeEach(() => {
+        act(() => h.app.radialPalette.open({ at: { x: 500, y: 20 } }));
+      });
+
+      it("opens below the bar, so every slice can be pressed", () => {
+        const top = parseFloat(ring()!.style.top);
+        expect(top).toBeGreaterThanOrEqual(BAR);
+      });
+    });
+
+    describe("and the ring is carried up under it by its hub", () => {
+      beforeEach(() => {
+        act(() => h.app.radialPalette.open({ at: { x: 500, y: 400 } }));
+        fireEvent.pointerDown(hub(), touch(500, 400));
+        wait(LONG_PRESS_DELAY);
+        moveTo(500, 10);
+        lift(500, 10);
+      });
+
+      it("stays below the bar", () => {
+        const top = parseFloat(ring()!.style.top);
+        expect(top).toBeGreaterThanOrEqual(BAR);
+      });
+    });
+  });
+
   describe("when the ring is open against a corner", () => {
     beforeEach(() => {
       act(() => h.app.radialPalette.open({ at: { x: 20, y: 20 } }));

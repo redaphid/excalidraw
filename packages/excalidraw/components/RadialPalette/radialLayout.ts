@@ -191,6 +191,9 @@ export const placeRing = (
   anchor: { x: number; y: number },
   bounds: { width: number; height: number },
   margin = 8,
+  /** bands along the top and bottom the host's controls take, which the
+   * ring keeps clear of when there is room */
+  insets: Readonly<{ top: number; bottom: number }> = { top: 0, bottom: 0 },
 ) => {
   const scale = Math.min(
     1,
@@ -204,9 +207,15 @@ export const placeRing = (
     size < reach * 2
       ? size / 2
       : Math.min(size - reach, Math.max(reach, value));
+  const low = reach + insets.top;
+  const high = bounds.height - reach - insets.bottom;
   return {
     x: fit(anchor.x, bounds.width),
-    y: fit(anchor.y, bounds.height),
+    // clear of the host's bands, unless the ring cannot fit between them
+    y:
+      low <= high
+        ? Math.min(high, Math.max(low, anchor.y))
+        : fit(anchor.y, bounds.height),
     scale,
   };
 };

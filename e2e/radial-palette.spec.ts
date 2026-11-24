@@ -348,6 +348,36 @@ test("a puck dropped on the host's own control lands where it can still be press
   expect(await reachable()).toBe(true);
 });
 
+test("a ring opened under the host's own control keeps every colour pressable (#281)", async ({
+  page,
+}, testInfo) => {
+  // the playground's theme picker stands for a host's top bar
+  const control = (await page.locator("select").first().boundingBox())!;
+  await page.mouse.move(control.x + control.width / 2, control.y + 4);
+  await page.keyboard.press(",");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  await page.waitForTimeout(400);
+  await page.screenshot({
+    path: testInfo.outputPath("ring-under-control.png"),
+  });
+
+  const lost = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid^="radial-color-"]')]
+      .map((swatch) => {
+        const box = swatch.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          box.left + box.width / 2,
+          box.top + box.height / 2,
+        );
+        return hit?.closest('[data-testid^="radial-color-"]') === swatch
+          ? null
+          : swatch.getAttribute("data-testid");
+      })
+      .filter(Boolean),
+  );
+  expect(lost).toEqual([]);
+});
+
 test("a held puck moves, tucks against a side, comes back, and stays put", async ({
   page,
 }, testInfo) => {
