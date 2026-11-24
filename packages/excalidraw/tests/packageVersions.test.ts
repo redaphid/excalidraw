@@ -20,7 +20,8 @@ const read = (name: string) =>
 describe("package versions", () => {
   it("publishes the lockstep packages at one version, depending on each other at it", () => {
     const { version } = read("excalidraw");
-    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    // semver: X.Y.Z, or a prerelease such as the hard fork's 2.0.0-hardfork.N
+    expect(version).toMatch(/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/);
     for (const name of LOCKSTEP) {
       const pkg = read(name);
       expect(pkg.version).toBe(version);
