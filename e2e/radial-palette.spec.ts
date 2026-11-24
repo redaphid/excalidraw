@@ -240,6 +240,27 @@ const activeTool = (page: Page) =>
     () => (window as Playground).excalidrawAPI?.getAppState().activeTool.type,
   );
 
+test("the puck stays in reach beside an open sidebar", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name.endsWith("-phone"),
+    "a phone's sidebar covers the whole editor",
+  );
+  await page.evaluate(() =>
+    (
+      window as Window & {
+        excalidrawAPI?: {
+          toggleSidebar: (opts: { name: string; force: boolean }) => void;
+        };
+      }
+    ).excalidrawAPI!.toggleSidebar({ name: "default", force: true }),
+  );
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+});
+
 test("opens at the pointer on , and closes on Escape", async ({ page }) => {
   const { x, y } = await canvasCenter(page);
   await page.mouse.move(x, y);
@@ -378,6 +399,68 @@ test("a held hub carries the open ring, which stays open where it lands", async 
   expect(Math.hypot(puckAt.x - to.x, puckAt.y - to.y)).toBeLessThan(2);
 });
 
+test("a ring carried by its hub keeps its finger when another lands, and opens there after a reload", async ({
+  page,
+  browserName,
+}, testInfo) => {
+  test.skip(
+    browserName !== "chromium" || !testInfo.project.use.hasTouch,
+    "two real fingers need Chromium's CDP touch",
+  );
+  const viewport = page.viewportSize()!;
+  const to = { x: viewport.width / 2, y: viewport.height / 2 };
+  await tap(page, testInfo, "radial-palette-puck");
+  const ring = page.getByTestId("radial-palette");
+  await expect(ring).toBeVisible();
+  const from = await center(page, "radial-palette-menu");
+  const cdp = await page.context().newCDPSession(page);
+  // the other hand's finger rests near the bottom left corner, off the ring
+  const other = { x: 24, y: viewport.height - 24, id: 2 };
+  const fingers = (points: { x: number; y: number; id: number }[]) =>
+    points.map(({ x, y, id }) => ({ x, y, id }));
+  const send = (type: string, points: { x: number; y: number; id: number }[]) =>
+    cdp.send("Input.dispatchTouchEvent", {
+      type,
+      touchPoints: fingers(points),
+    });
+
+  await send("touchStart", [{ ...from, id: 1 }]);
+  await page.waitForTimeout(700);
+  await expect(ring).toHaveClass(/RadialPalette--moving/);
+  const half = {
+    x: from.x + (to.x - from.x) / 2,
+    y: from.y + (to.y - from.y) / 2,
+  };
+  await send("touchMove", [{ ...half, id: 1 }]);
+  await send("touchStart", [{ ...half, id: 1 }, other]);
+  await expect(ring).toBeVisible();
+  for (let step = 1; step <= 6; step++) {
+    const at = {
+      x: half.x + ((to.x - half.x) * step) / 6,
+      y: half.y + ((to.y - half.y) * step) / 6,
+    };
+    await send("touchMove", [
+      { ...at, id: 1 },
+      { ...other, x: other.x + step * 4 },
+    ]);
+  }
+  await page.screenshot({ path: testInfo.outputPath("two-fingers.png") });
+  await send("touchEnd", [{ ...other, x: other.x + 24 }]);
+  await send("touchEnd", []);
+
+  await expect(ring).toBeVisible();
+  const landed = await ringCenter(page);
+  expect(Math.hypot(landed.x - to.x, landed.y - to.y)).toBeLessThan(2);
+  await expect(page.locator(".context-menu")).toHaveCount(0);
+
+  await page.reload();
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(ring).toBeVisible();
+  const reopened = await ringCenter(page);
+  expect(Math.hypot(reopened.x - to.x, reopened.y - to.y)).toBeLessThan(2);
+  await page.screenshot({ path: testInfo.outputPath("after-reload.png") });
+});
+
 test("a finger held on a selected shape and lifted leaves only the ring", async ({
   page,
   browserName,
@@ -450,4 +533,51 @@ test("the hub opens the selection's menu, where two shapes line up", async ({
       ),
     )
     .toBe(1);
+});
+
+test("its corner scales the ring as a frame's does, and the size stays", async ({
+  page,
+}, testInfo) => {
+  const ring = page.getByTestId("radial-palette");
+  const handle = page.getByTestId("radial-palette-scale");
+  // its layout width: the box also has the opening animation's scale in it
+  const width = () =>
+    ring.evaluate((element) => (element as HTMLElement).offsetWidth);
+  const middleOf = async (target: typeof ring) => {
+    const box = (await target.boundingBox())!;
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(ring).toBeVisible();
+  await ring.evaluate((element) =>
+    Promise.all(
+      element.getAnimations({ subtree: true }).map(({ finished }) => finished),
+    ),
+  );
+  const before = await width();
+  const from = await middleOf(handle);
+  const center = await middleOf(ring);
+  const out = {
+    x: Math.sign(from.x - center.x),
+    y: Math.sign(from.y - center.y),
+  };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + out.x, from.y);
+  expect(Math.abs((await width()) - before)).toBeLessThan(2);
+
+  const to = { x: from.x + out.x * 30, y: from.y + out.y * 30 };
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  const held = await middleOf(handle);
+  expect(Math.hypot(held.x - to.x, held.y - to.y)).toBeLessThan(2);
+  await page.mouse.up();
+  await page.screenshot({ path: testInfo.outputPath("ring-scaled.png") });
+  const scaled = await width();
+  expect(scaled).toBeGreaterThan(before);
+
+  await page.reload();
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(ring).toBeVisible();
+  expect(await width()).toBeCloseTo(scaled, 0);
 });

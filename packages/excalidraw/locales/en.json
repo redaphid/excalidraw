@@ -758,6 +758,7 @@
     "open": "Palette",
     "expand": "Show the palette",
     "menu": "Menu",
+    "scale": "Resize the palette",
     "library": "Library",
     "emptyRecent": "Recent color",
     "pen_liner": "Fine liner",
