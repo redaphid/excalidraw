@@ -1160,7 +1160,7 @@ const Ring = ({
         <div
           role="button"
           tabIndex={0}
-          aria-label={t("radialPalette.scale")}
+          aria-label={"Resize the palette"}
           data-testid="radial-palette-scale"
           className={clsx("RadialPalette__scale", {
             "RadialPalette__scale--left": corner.x < 0,
