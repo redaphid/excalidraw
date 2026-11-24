@@ -609,7 +609,13 @@ describe("RadialPalette", () => {
 
         it("is one undo step", () => {
           expect(width()).not.toBe(drawn);
-          Keyboard.undo();
+          // in the editor, as this host takes no keys from the page
+          Keyboard.withModifierKeys({ ctrl: true }, () => {
+            Keyboard.keyPress(
+              KEYS.Z,
+              document.querySelector<HTMLElement>(".excalidraw-container")!,
+            );
+          });
           expect(width()).toBe(drawn);
         });
       });
