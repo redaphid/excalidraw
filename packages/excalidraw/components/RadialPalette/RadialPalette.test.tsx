@@ -564,13 +564,10 @@ describe("RadialPalette", () => {
 
     describe("when a stroke is selected", () => {
       beforeEach(() => {
-        const stroke = API.createElement({
-          type: "freedraw",
-          strokeWidth: 0.2,
-        });
-        API.setElements([stroke]);
-        API.setSelectedElements([stroke]);
+        // drawn, not set, so history holds the stroke as it was
         API.setAppState({ currentItemFreedrawStrokeWidth: 0.2 });
+        const stroke = drawStroke();
+        API.setSelectedElements([stroke]);
         openRing();
       });
 
@@ -607,7 +604,7 @@ describe("RadialPalette", () => {
 
         it("is one undo step", () => {
           Keyboard.undo();
-          expect(width()).toBe(0.2);
+          expect(width()).toBeCloseTo(0.2, 9);
         });
       });
 
@@ -619,7 +616,7 @@ describe("RadialPalette", () => {
         });
 
         it("widens the selected stroke", () => {
-          expect(width()).toBeGreaterThan(0.2);
+          expect(width()).toBeGreaterThan(0.2 + 1e-9);
           expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
         });
       });
