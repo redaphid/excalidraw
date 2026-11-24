@@ -815,7 +815,7 @@ describe("RadialPalette", () => {
       });
 
       it("puts the shape's color back with one Undo", () => {
-        expect(menuItem("undo"), "an Undo in the shape's menu").not.toBeNull();
+        expect(menuItem("undo")).not.toBeNull();
         fireEvent.click(menuItem("undo")!);
         expect(h.elements[0].strokeColor).toBe(drawn);
       });
