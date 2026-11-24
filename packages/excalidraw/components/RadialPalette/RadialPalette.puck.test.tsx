@@ -282,9 +282,13 @@ describe("the radial palette's puck", () => {
       beforeEach(() => {
         opacity = window.h.state.currentItemOpacity;
         // the test DOM knows no pointer 1 to capture
-        Object.defineProperty(ring()!.querySelector("svg")!, "setPointerCapture", {
-          value: () => {},
-        });
+        Object.defineProperty(
+          ring()!.querySelector("svg")!,
+          "setPointerCapture",
+          {
+            value: () => {},
+          },
+        );
         const covering = queryByTestId(document.body, "radial-opacity")!;
         fireEvent.pointerDown(covering, pointer(370, 700));
         fireEvent.pointerUp(window, pointer(370, 700));

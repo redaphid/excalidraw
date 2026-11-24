@@ -775,7 +775,8 @@
     "verticalAlign": "Vertical align",
     "distribute": "Distribute",
     "mainMenu": "Menu…",
-    "textToDiagram": "Text to diagram"
+    "textToDiagram": "Text to diagram",
+    "unequip": "Put the tool down — x"
   },
   "fontList": {
     "badge": {
