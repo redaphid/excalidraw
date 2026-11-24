@@ -363,25 +363,60 @@ test("a finger a little past a colour still picks it", async ({
     .toBe(color);
 });
 
-test("every colour a finger can pick is at least 44px each way", async ({
+test("every colour a finger can pick owns a 44px run each way, and nothing else's", async ({
   page,
 }, testInfo) => {
   test.skip(!testInfo.project.use.hasTouch, "a touch target");
   await tap(page, testInfo, "radial-palette-puck");
   await expect(page.getByTestId("radial-palette")).toBeVisible();
-  const swatches = page.locator(
-    '[data-testid^="radial-color-"]:not([aria-disabled="true"])',
-  );
-  await expect(swatches.first()).toBeVisible();
+  const ring = await ringCenter(page);
+  const scale =
+    (await page.getByTestId("radial-palette").boundingBox())!.width / 316;
+  const ids = await page
+    .locator('[data-testid^="radial-color-"]:not([aria-disabled="true"])')
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("data-testid")!),
+    );
+  expect(ids.length).toBeGreaterThan(1);
 
-  const sizes = await swatches.evaluateAll((elements) =>
-    elements.map((element) => {
-      const { width, height } = element.getBoundingClientRect();
-      return Math.min(width, height);
-    }),
-  );
+  for (const id of ids) {
+    const swatch = await center(page, id);
+    const angle = Math.atan2(swatch.y - ring.y, swatch.x - ring.x);
+    /** the test id of what owns the point `radius` out and `across` along */
+    const owner = (radius: number, across: number) =>
+      page.evaluate(
+        ([x, y]) =>
+          document
+            .elementFromPoint(x, y)
+            ?.closest("[data-testid]")
+            ?.getAttribute("data-testid") ?? null,
+        [
+          ring.x +
+            (Math.cos(angle) * radius - Math.sin(angle) * across) * scale,
+          ring.y +
+            (Math.sin(angle) * radius + Math.cos(angle) * across) * scale,
+        ],
+      );
 
-  expect(Math.min(...sizes)).toBeGreaterThanOrEqual(44);
+    // out through the swatch: 44px of it, from the ring's colour band out
+    for (let radius = 126; radius <= 170; radius += 4) {
+      expect(`${id} at ${radius}: ${await owner(radius, 0)}`).toBe(
+        `${id} at ${radius}: ${id}`,
+      );
+    }
+    // across its outer part: 44px of it
+    for (let across = -22; across <= 22; across += 4) {
+      expect(`${id} across ${across}: ${await owner(170, across)}`).toBe(
+        `${id} across ${across}: ${id}`,
+      );
+    }
+    // a finger nearer this swatch than its neighbours never picks one of them
+    const step = await owner(141, 14);
+    const back = await owner(141, -14);
+    expect([step, back]).toEqual([id, id]);
+    // and the pen band just inside keeps its own pixels
+    expect(await owner(118, 0)).not.toMatch(/^radial-color-/);
+  }
 });
 
 test("a held hub carries the open ring, which stays open where it lands", async ({

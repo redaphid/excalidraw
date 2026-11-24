@@ -6,6 +6,7 @@ import {
   OUTER_BAND,
   RING_RADIUS,
   SIZE_SLIDER,
+  SWATCH_BAND,
   TOOLS_BAND,
   getRingLayout,
   hitTest,
@@ -72,6 +73,45 @@ describe("radialLayout", () => {
   describe("when a pointer lands past the ring", () => {
     it("hits nothing", () => {
       expect(hitTest(layout, RING_RADIUS + 5, 0)).toBeNull();
+    });
+
+    describe("just outside a colour", () => {
+      it("hits that colour, as a tap there does", () => {
+        layout.colors.forEach((sector, index) => {
+          const { x, y } = polar(RING_RADIUS + 12, sectorMiddle(sector));
+          expect(hitTest(layout, x, y)).toEqual({ kind: "color", index });
+        });
+      });
+    });
+
+    describe("just outside the size arc", () => {
+      it("hits nothing", () => {
+        const { x, y } = polar(RING_RADIUS + 12, 135);
+        expect(hitTest(layout, x, y)).toBeNull();
+      });
+    });
+
+    describe("past a colour's whole target", () => {
+      it("hits nothing", () => {
+        const { x, y } = polar(SWATCH_BAND.outer + 1, 270);
+        expect(hitTest(layout, x, y)).toBeNull();
+      });
+    });
+  });
+
+  describe("a colour's target", () => {
+    it("holds a 44px run both ways and never reaches another band", () => {
+      layout.colors.forEach((sector) => {
+        const span = ((sector.end - sector.start) * Math.PI) / 180;
+        expect(SWATCH_BAND.outer - SWATCH_BAND.inner).toBeGreaterThanOrEqual(
+          44,
+        );
+        // the chord across the sector, 4px in from the target's outer edge
+        expect(
+          2 * (SWATCH_BAND.outer - 4) * Math.sin(span / 2),
+        ).toBeGreaterThanOrEqual(44);
+        expect(SWATCH_BAND.inner).toBeGreaterThan(MIDDLE_BAND.outer);
+      });
     });
   });
 
