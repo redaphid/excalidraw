@@ -16,6 +16,7 @@ import {
   sectorMiddle,
   sliderValue,
   slotCenters,
+  slotsToward,
   toPolar,
 } from "./radialLayout";
 
@@ -199,8 +200,24 @@ describe("slotCenters", () => {
     }
   });
 
-  it("centers them on the bottom when the ring is too near the top", () => {
-    expect(slotCenters(1, true).map(angleOf)).toEqual([90]);
+  it("centers them on the angle they fan out at", () => {
+    expect(slotCenters(1, 90).map(angleOf)).toEqual([90]);
+  });
+});
+
+describe("slotsToward", () => {
+  const bounds = { width: 1200, height: 800 };
+
+  it("fans the slots up from a ring near the middle", () => {
+    expect(slotsToward({ x: 600, y: 420 }, bounds)).toBe(270);
+  });
+
+  it("fans them toward the middle from a ring in a corner", () => {
+    expect(Math.round(slotsToward({ x: 1000, y: 600 }, bounds))).toBe(207);
+  });
+
+  it("fans them down from a ring at the top", () => {
+    expect(slotsToward({ x: 600, y: 160 }, bounds)).toBe(90);
   });
 
   it("shows at most MAX_SLOTS", () => {

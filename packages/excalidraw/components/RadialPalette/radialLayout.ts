@@ -222,14 +222,28 @@ const SLOT_STEP = 26;
 
 /**
  * Where each of `count` suggested slots sits round the outside of the ring,
- * as a center in palette units: an arc centered on the top, or on the bottom
- * when `below` (the ring is too near the editor's top for the slots to
- * show above it).
+ * as a center in palette units: an arc centered on `toward` degrees, the top
+ * by default.
  */
-export const slotCenters = (count: number, below = false) => {
-  const middle = below ? 90 : 270;
+export const slotCenters = (count: number, toward = 270) => {
   const shown = Math.min(count, MAX_SLOTS);
   return Array.from({ length: shown }, (_, index) =>
-    polar(SLOT_RADIUS, middle + (index - (shown - 1) / 2) * SLOT_STEP),
+    polar(SLOT_RADIUS, toward + (index - (shown - 1) / 2) * SLOT_STEP),
   );
+};
+
+/**
+ * Which way the slots fan out from a ring placed at `center` in an editor of
+ * `bounds`: up from a ring near the middle, else toward the middle, where
+ * there is room for them.
+ */
+export const slotsToward = (
+  center: { x: number; y: number },
+  bounds: { width: number; height: number },
+) => {
+  const dx = bounds.width / 2 - center.x;
+  const dy = bounds.height / 2 - center.y;
+  return Math.hypot(dx, dy) < SLOT_RADIUS / 2
+    ? 270
+    : normalizeAngle((Math.atan2(dy, dx) * 180) / Math.PI);
 };
