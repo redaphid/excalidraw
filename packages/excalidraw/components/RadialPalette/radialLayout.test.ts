@@ -14,7 +14,6 @@ import {
   placeRing,
   placeSlots,
   SLOT_INSET,
-  SLOT_SIZE,
   polar,
   sectorMiddle,
   sliderValue,
