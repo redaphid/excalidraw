@@ -733,7 +733,9 @@ describe("contextMenu on a phone", () => {
 
     expect(
       ["Bring forward", "Send backward"].map(
-        (label) => queryByText(contextMenu!, label) !== null,
+        // a row of icons, each named for its action
+        (label) =>
+          contextMenu!.querySelector(`[aria-label="${label}"]`) !== null,
       ),
     ).toEqual([true, true]);
   });
