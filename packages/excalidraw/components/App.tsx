@@ -254,6 +254,8 @@ import {
   getTextWidth,
 } from "@excalidraw/element";
 
+import { getCurrentItemFill } from "@excalidraw/element";
+
 import type { GlobalPoint, LocalPoint } from "@excalidraw/math";
 
 import type {
@@ -9555,7 +9557,7 @@ ${css}
       y: gridY,
       strokeColor: this.state.currentItemStrokeColor,
       backgroundColor: this.state.currentItemBackgroundColor,
-      fillStyle: this.state.currentItemFillStyle,
+      ...getCurrentItemFill(this.state),
       ...this.getCurrentItemScale("freedraw"),
       strokeStyle: this.state.currentItemStrokeStyle,
       roughness: this.state.currentItemRoughness,
@@ -9930,7 +9932,7 @@ ${css}
               y: gridY,
               strokeColor: this.state.currentItemStrokeColor,
               backgroundColor: this.state.currentItemBackgroundColor,
-              fillStyle: this.state.currentItemFillStyle,
+              ...getCurrentItemFill(this.state),
               ...this.getCurrentItemScale(elementType),
               strokeStyle: this.state.currentItemStrokeStyle,
               roughness: this.state.currentItemRoughness,
@@ -10119,7 +10121,7 @@ ${css}
         elementType === "stickynote"
           ? this.state.currentItemStickynoteBackgroundColor
           : this.state.currentItemBackgroundColor,
-      fillStyle: this.state.currentItemFillStyle,
+      ...getCurrentItemFill(this.state),
       ...this.getCurrentItemScale(elementType),
       strokeStyle: this.state.currentItemStrokeStyle,
       roughness: this.state.currentItemRoughness,

@@ -4,6 +4,8 @@ import {
   isTransparent,
 } from "@excalidraw/common";
 
+import type { AppState } from "@excalidraw/excalidraw/types";
+
 import { isFreeDrawElement, isLinearElement } from "./typeChecks";
 
 import type { ExcalidrawElement } from "./types";
@@ -86,6 +88,16 @@ export const getFillGradient = (
     colors,
   };
 };
+
+export const getCurrentItemFill = (
+  appState: Pick<AppState, "currentItemFillStyle" | "currentItemFillGradient">,
+): Pick<ExcalidrawElement, "fillStyle" | "fillGradient"> =>
+  appState.currentItemFillStyle === "gradient"
+    ? {
+        fillStyle: appState.currentItemFillStyle,
+        fillGradient: appState.currentItemFillGradient,
+      }
+    : { fillStyle: appState.currentItemFillStyle };
 
 export const withFillPaint = <Paint>(
   drawable: Drawable,

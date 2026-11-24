@@ -1055,6 +1055,26 @@ export const UngroupIcon = React.memo(({ theme }: { theme: Theme }) =>
   ),
 );
 
+export const FillGradientIcon = createIcon(
+  <g strokeWidth={1.25}>
+    <path d="M5.879 2.625h8.242a3.27 3.27 0 0 1 3.254 3.254v8.242a3.27 3.27 0 0 1-3.254 3.254H5.88a3.27 3.27 0 0 1-3.254-3.254V5.88A3.27 3.27 0 0 1 5.88 2.626l-.001-.001Z" />
+    <path d="M5.5 5v10" strokeWidth={2.5} />
+    <path d="M9 5v10" strokeWidth={1.75} />
+    <path d="M12 5v10" strokeWidth={1} />
+    <path d="M14.5 5v10" strokeWidth={0.5} />
+  </g>,
+  modifiedTablerIconProps,
+);
+
+export const FillGradientRadialIcon = createIcon(
+  <g strokeWidth={1.25}>
+    <path d="M5.879 2.625h8.242a3.27 3.27 0 0 1 3.254 3.254v8.242a3.27 3.27 0 0 1-3.254 3.254H5.88a3.27 3.27 0 0 1-3.254-3.254V5.88A3.27 3.27 0 0 1 5.88 2.626l-.001-.001Z" />
+    <circle cx="10" cy="10" r="1.5" strokeWidth={3} />
+    <circle cx="10" cy="10" r="5" strokeWidth={0.75} />
+  </g>,
+  modifiedTablerIconProps,
+);
+
 export const FillZigZagIcon = createIcon(
   <g strokeWidth={1.25}>
     <path d="M5.879 2.625h8.242a3.27 3.27 0 0 1 3.254 3.254v8.242a3.27 3.27 0 0 1-3.254 3.254H5.88a3.27 3.27 0 0 1-3.254-3.254V5.88A3.27 3.27 0 0 1 5.88 2.626l-.001-.001ZM4.518 16.118l7.608-12.83m.198 13.934 5.051-9.897M2.778 9.675l9.348-6.387m-7.608 12.83 12.857-8.793" />

@@ -29,6 +29,11 @@ exports[`exportToSvg > with default arguments 1`] = `
   "currentItemArrowType": "round",
   "currentItemBackgroundColor": "transparent",
   "currentItemEndArrowhead": "arrow",
+  "currentItemFillGradient": {
+    "angle": 90,
+    "color": "#ffffff",
+    "type": "linear",
+  },
   "currentItemFillStyle": "solid",
   "currentItemFontFamily": 5,
   "currentItemFontSize": 20,
