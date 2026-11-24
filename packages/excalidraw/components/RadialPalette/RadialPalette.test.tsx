@@ -828,6 +828,64 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when a pressed colour slice is picked", () => {
+      beforeEach(() => {
+        const rectangle = API.createElement({ type: "rectangle" });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        openRing();
+        // a press on a slice focuses it, as a browser does
+        (byTestId("radial-color-1") as unknown as HTMLElement).focus();
+        tap("radial-color-1");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+
+      it("gives focus back to the editor, so Ctrl+Z works at once", () => {
+        expect(document.activeElement).toBe(
+          document.querySelector("[data-excalidraw-id]"),
+        );
+      });
+    });
+
+    describe("when a pressed tool slice is picked", () => {
+      beforeEach(() => {
+        openRing();
+        (byTestId("radial-tool-rectangle") as unknown as HTMLElement).focus();
+        tap("radial-tool-rectangle");
+      });
+
+      it("gives focus back to the editor", () => {
+        expect(document.activeElement).toBe(
+          document.querySelector("[data-excalidraw-id]"),
+        );
+      });
+    });
+
+    describe("when the ring closes while a host's field has focus", () => {
+      let field: HTMLInputElement;
+
+      beforeEach(() => {
+        field = document.createElement("input");
+        document.body.append(field);
+        openRing();
+        field.focus();
+        act(() => {
+          h.app.radialPalette.api.close();
+        });
+      });
+
+      afterEach(() => {
+        field.remove();
+      });
+
+      it("leaves focus in the field", () => {
+        expect(document.activeElement).toBe(field);
+      });
+    });
+
     describe("when the ring opens on a color the theme lacks", () => {
       beforeEach(() => {
         API.setAppState({ currentItemStrokeColor: "#123456" });

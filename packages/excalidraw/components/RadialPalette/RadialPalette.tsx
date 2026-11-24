@@ -876,6 +876,21 @@ const Ring = ({
   }, [app, controller, flick, toolsRing]);
 
   const ringRef = useRef<HTMLDivElement>(null);
+
+  // a press on a slice focuses it; when the ring goes, that slice goes with
+  // it and focus would fall to the page, where the editor takes no Ctrl+Z.
+  // Focus goes back to the editor instead, unless it has moved elsewhere
+  // (redaphid/excalidraw#283)
+  useLayoutEffect(() => {
+    const ring = ringRef.current;
+    return () => {
+      const doc = app.ownerDocument;
+      const active = doc.activeElement;
+      if (!active || active === doc.body || ring?.contains(active)) {
+        app.focusContainer();
+      }
+    };
+  }, [app]);
   // a long press opens the ring under the finger, and the browser's click
   // on release lands on the hub or a slice; only a press made on the ring
   // counts
