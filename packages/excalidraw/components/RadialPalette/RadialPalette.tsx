@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -39,8 +40,17 @@ import {
 
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
+import { measureHostInsets, takesNoTaps as reachesCanvas } from "./hostChrome";
 import { getActivePenPreset } from "./penPresets";
-import { dropPuck, loadPuckPlace, savePuckPlace } from "./puckPlace";
+import {
+  dropPuck,
+  forgetPuckPlace,
+  loadPuckPlace,
+  puckCenter as placedPuckCenter,
+  puckIsClear,
+  reachablePuckCenter,
+  savePuckPlace,
+} from "./puckPlace";
 import {
   FLICK_DISTANCE,
   HUB_RADIUS,
@@ -201,6 +211,10 @@ const holdMenusShut = (win: Window) => {
   };
 };
 
+/** how long after the editor opens to look again for host controls over
+ * the puck, as a host may draw them later */
+const PUCK_RECHECK_MS = 1000;
+
 /** keeps the browser's menu shut over the radial's own parts */
 const preventMenu = (event: React.MouseEvent) => event.preventDefault();
 
@@ -277,6 +291,50 @@ export const RadialPalette = React.memo(
       setPlace(next);
       savePuckPlace(app.ownerWindow, next);
     };
+
+    /** whether a press at `at` would reach the puck there: nothing above
+     * the canvas that takes taps (the host's top bar, a button) is there */
+    const takesNoTaps = (at: ClientPoint) =>
+      reachesCanvas(app.ownerDocument, container, at);
+
+    /** a placed puck the host's controls cover moves to the nearest spot
+     * that can be pressed, or back to its own corner when there is none */
+    const [checkAgain, setCheckAgain] = useState(0);
+    useEffect(() => {
+      // the host may draw its controls after the editor: look once more
+      const timer = app.ownerWindow.setTimeout(
+        () => setCheckAgain((count) => count + 1),
+        PUCK_RECHECK_MS,
+      );
+      return () => app.ownerWindow.clearTimeout(timer);
+    }, [app]);
+    useLayoutEffect(() => {
+      if (!place || moving || session || !container) {
+        return;
+      }
+      const { offsetLeft, offsetTop, width, height } = app.state;
+      if (!width || !height) {
+        // not laid out yet: the look after it decides
+        return;
+      }
+      const area = { left: offsetLeft, top: offsetTop, width, height };
+      const at = placedPuckCenter(place, area);
+      if (puckIsClear(at, takesNoTaps)) {
+        return;
+      }
+      const free = reachablePuckCenter(at, area, takesNoTaps);
+      if (free) {
+        keep({
+          x: (free.x - offsetLeft) / width,
+          y: (free.y - offsetTop) / height,
+          collapsed: false,
+        });
+      } else {
+        setPlace(null);
+        forgetPuckPlace(app.ownerWindow);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [place, moving, session, container, checkAgain]);
 
     const inEditor = (clientX: number, clientY: number) => {
       const { offsetLeft, offsetTop, width, height } = app.state;
@@ -484,6 +542,15 @@ const Ring = ({
   const setAppState = useExcalidrawSetAppState();
 
   const { offsetLeft, offsetTop, width, height } = appState;
+  const { container } = useExcalidrawContainer();
+  /** the bands the host's controls take along the editor's top and bottom,
+   * measured as the ring opens, before it is drawn over them */
+  const [insets] = useState(() =>
+    measureHostInsets(
+      { left: offsetLeft, top: offsetTop, width, height },
+      (at) => reachesCanvas(app.ownerDocument, container, at),
+    ),
+  );
   const [ringScale, setRingScale] = useState(() =>
     loadRingScale(app.ownerWindow),
   );
@@ -494,6 +561,7 @@ const Ring = ({
       { width, height },
       RING_MARGIN,
       ringScale,
+      insets,
     );
     return { x: placed.x + offsetLeft, y: placed.y + offsetTop };
   };
@@ -502,6 +570,7 @@ const Ring = ({
     { width, height },
     RING_MARGIN,
     ringScale,
+    insets,
   );
 
   /** which way the corner handle points: towards the most room, or, while
