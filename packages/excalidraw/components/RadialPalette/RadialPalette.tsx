@@ -981,7 +981,10 @@ const Ring = ({
         "RadialPalette__segment--disabled": disabled,
       })}
       onPointerDown={(event) =>
+        // only the main button picks: a right-click, a pen's barrel button
+        // or a middle-click held on a slice is not a hold
         !disabled &&
+        event.button === 0 &&
         controller.hold(ring, index, LONG_PRESS_DELAY, {
           x: event.clientX,
           y: event.clientY,
@@ -1126,7 +1129,14 @@ const Ring = ({
       <div
         className="RadialPalette__backdrop"
         data-testid="radial-palette-backdrop"
-        onContextMenu={preventMenu}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          // the menu event of a press that left the ring with a held hub
+          if (endHubPress.current) {
+            return;
+          }
+          controller.close();
+        }}
         onPointerDown={(event) => {
           event.preventDefault();
           // a second finger while the hub is pressed, as when the other
@@ -1134,7 +1144,12 @@ const Ring = ({
           if (endHubPress.current) {
             return;
           }
-          controller.close();
+          // a right-click (or a pen's barrel button) closes on its menu
+          // event, which must land here: with the backdrop gone it reaches
+          // the canvas and opens the editor's menu on the same click
+          if (event.button !== 2) {
+            controller.close();
+          }
         }}
       />
       <div

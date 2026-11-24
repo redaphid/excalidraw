@@ -10,7 +10,7 @@ import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
-import { act, render } from "../../tests/test-utils";
+import { GlobalTestState, act, render } from "../../tests/test-utils";
 
 import { LONG_PRESS_DELAY } from "../App.radialPalette";
 
@@ -584,6 +584,64 @@ describe("RadialPalette", () => {
             type: "rectangle",
             locked: true,
           });
+        });
+      });
+
+      describe.each([
+        ["the right button", { button: 2, buttons: 2 }],
+        [
+          "a pen's barrel button",
+          { button: 2, buttons: 2, pointerType: "pen" },
+        ],
+        ["the middle button", { button: 1, buttons: 4 }],
+      ])("when a tool is held with %s", (_, init) => {
+        let before: typeof h.state.activeTool;
+
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          before = h.state.activeTool;
+          fireEvent.pointerDown(byTestId("radial-tool-rectangle")!, init);
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY * 2);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("picks nothing: only the main button picks", () => {
+          expect(h.state.activeTool).toEqual(before);
+          expect(ring()).not.toBeNull();
+        });
+      });
+
+      describe.each([
+        ["the right button", { button: 2, buttons: 2 }],
+        [
+          "a pen's barrel button",
+          { button: 2, buttons: 2, pointerType: "pen" },
+        ],
+      ])("when the canvas off the ring is clicked with %s", (_, init) => {
+        beforeEach(() => {
+          const at = { ...init, clientX: 5, clientY: 5 };
+          fireEvent.pointerDown(byTestId("radial-palette-backdrop")!, at);
+          // the browser's menu event goes to whatever is under the pointer
+          // by then: the canvas, once the backdrop is gone
+          fireEvent.contextMenu(
+            byTestId("radial-palette-backdrop") ??
+              GlobalTestState.interactiveCanvas,
+            at,
+          );
+          fireEvent.pointerUp(window, { ...at, buttons: 0 });
+        });
+
+        it("closes the ring", () => {
+          expect(ring()).toBeNull();
+        });
+
+        it("opens no context menu: one click, one menu closed", () => {
+          expect(h.state.contextMenu).toBeNull();
         });
       });
 
