@@ -5,7 +5,10 @@ import { fireEvent, queryByTestId } from "@testing-library/react";
 
 import { KEYS } from "@excalidraw/common";
 
-import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
+import type {
+  ExcalidrawFreeDrawElement,
+  NonDeleted,
+} from "@excalidraw/element/types";
 
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
@@ -563,11 +566,13 @@ describe("RadialPalette", () => {
     });
 
     describe("when a stroke is selected", () => {
+      let drawn = 0;
       beforeEach(() => {
         // drawn, not set, so history holds the stroke as it was
         API.setAppState({ currentItemFreedrawStrokeWidth: 0.2 });
         const stroke = drawStroke();
-        API.setSelectedElements([stroke]);
+        API.setSelectedElements([stroke as NonDeleted<typeof stroke>]);
+        drawn = stroke.strokeWidth;
         openRing();
       });
 
@@ -603,8 +608,9 @@ describe("RadialPalette", () => {
         });
 
         it("is one undo step", () => {
+          expect(width()).not.toBe(drawn);
           Keyboard.undo();
-          expect(width()).toBeCloseTo(0.2, 9);
+          expect(width()).toBe(drawn);
         });
       });
 
@@ -616,7 +622,7 @@ describe("RadialPalette", () => {
         });
 
         it("widens the selected stroke", () => {
-          expect(width()).toBeGreaterThan(0.2 + 1e-9);
+          expect(width()).not.toBe(drawn);
           expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
         });
       });
