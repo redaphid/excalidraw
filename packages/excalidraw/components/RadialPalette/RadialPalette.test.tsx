@@ -58,6 +58,9 @@ const drawStroke = () => {
   return h.elements[h.elements.length - 1] as ExcalidrawFreeDrawElement;
 };
 
+/** a host's icon given as a component, not a bare svg */
+const HostMark = () => <svg data-testid="host-pen-icon-marked" />;
+
 describe("RadialPalette", () => {
   afterEach(async () => {
     await act(async () => {});
@@ -85,11 +88,24 @@ describe("RadialPalette", () => {
                 active: true,
                 onPick: () => {},
               },
+              {
+                id: "marked",
+                label: "Marked",
+                icon: <HostMark />,
+                onPick: () => {},
+              },
             ],
           }}
         />,
       );
       openRing();
+    });
+
+    it("draws a component's icon in its segment, as a bare svg's", () => {
+      const placed = byTestId("host-pen-icon-marked")!.closest(
+        ".RadialPalette__icon",
+      );
+      expect(placed?.getAttribute("width")).toBe("18");
     });
 
     it("draws them after the presets and before the eraser", () => {
@@ -103,6 +119,7 @@ describe("RadialPalette", () => {
         ...h.app.radialPalette.getPresets().map(({ id }) => `radial-pen-${id}`),
         "radial-pen-host-doodle",
         "radial-pen-host-sketchy",
+        "radial-pen-host-marked",
         "radial-tool-eraser",
       ]);
     });
