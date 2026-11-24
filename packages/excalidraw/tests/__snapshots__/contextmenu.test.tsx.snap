@@ -138,6 +138,24 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
           "category": "element",
         },
       },
+      {
+        "label": "labels.pinFrame",
+        "name": "pinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
+      {
+        "label": "labels.unpinFrame",
+        "name": "unpinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -1346,6 +1364,7 @@ exports[`contextMenu element > right-clicking on a group should select whole gro
   },
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -1561,6 +1580,7 @@ exports[`contextMenu element > selecting 'Add to library' in context menu adds e
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -1794,6 +1814,7 @@ exports[`contextMenu element > selecting 'Bring forward' in context menu brings 
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -2146,6 +2167,7 @@ exports[`contextMenu element > selecting 'Bring to front' in context menu brings
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -2498,6 +2520,7 @@ exports[`contextMenu element > selecting 'Copy styles' in context menu copies st
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -2731,6 +2754,7 @@ exports[`contextMenu element > selecting 'Delete' in context menu deletes elemen
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -2991,6 +3015,7 @@ exports[`contextMenu element > selecting 'Duplicate' in context menu duplicates 
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -3310,6 +3335,7 @@ exports[`contextMenu element > selecting 'Group selection' in context menu group
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -3703,6 +3729,7 @@ exports[`contextMenu element > selecting 'Paste styles' in context menu pastes s
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -4244,6 +4271,7 @@ exports[`contextMenu element > selecting 'Send backward' in context menu sends e
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -4588,6 +4616,7 @@ exports[`contextMenu element > selecting 'Send to back' in context menu sends el
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -4932,6 +4961,7 @@ exports[`contextMenu element > selecting 'Ungroup selection' in context menu ung
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -5410,6 +5440,24 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
           "category": "element",
         },
       },
+      {
+        "label": "labels.pinFrame",
+        "name": "pinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
+      {
+        "label": "labels.unpinFrame",
+        "name": "unpinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -6615,6 +6663,7 @@ exports[`contextMenu element > shows 'Group selection' in context menu for multi
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -7025,6 +7074,24 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
           "category": "element",
         },
       },
+      {
+        "label": "labels.pinFrame",
+        "name": "pinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
+      {
+        "label": "labels.unpinFrame",
+        "name": "unpinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
       "separator",
       {
         "PanelComponent": [Function],
@@ -8230,6 +8297,7 @@ exports[`contextMenu element > shows 'Ungroup selection' in context menu for gro
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -9495,6 +9563,7 @@ exports[`contextMenu element > shows context menu for canvas > [end of test] app
   },
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -9679,6 +9748,24 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "predicate": [Function],
         "trackEvent": {
           "category": "element",
+        },
+      },
+      {
+        "label": "labels.pinFrame",
+        "name": "pinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
+      {
+        "label": "labels.unpinFrame",
+        "name": "unpinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
         },
       },
       "separator",
@@ -10886,6 +10973,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   "originSnapOffset": null,
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",
@@ -11064,6 +11152,24 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
         "predicate": [Function],
         "trackEvent": {
           "category": "element",
+        },
+      },
+      {
+        "label": "labels.pinFrame",
+        "name": "pinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
+        },
+      },
+      {
+        "label": "labels.unpinFrame",
+        "name": "unpinFrame",
+        "perform": [Function],
+        "predicate": [Function],
+        "trackEvent": {
+          "category": "canvas",
         },
       },
       "separator",
@@ -12274,6 +12380,7 @@ exports[`contextMenu element > shows context menu for element > [end of test] ap
   },
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": true,
     "type": "selection",

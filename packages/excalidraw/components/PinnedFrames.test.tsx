@@ -1,5 +1,7 @@
 import React from "react";
 
+import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
+
 import { Excalidraw } from "../index";
 import { actionPinFrame, actionUnpinFrame } from "../actions/actionFrame";
 import {
@@ -10,6 +12,10 @@ import { API } from "../tests/helpers/api";
 import { act, fireEvent, render, waitFor } from "../tests/test-utils";
 
 const { h } = window;
+
+/** an element as the scene holds it now */
+const sceneElement = (id: string) =>
+  h.elements.find((e) => e.id === id)! as NonDeletedExcalidrawElement;
 
 const shown = () => document.querySelector<HTMLElement>(".PinnedFrame");
 
@@ -71,7 +77,7 @@ describe("pin a frame to the screen (#240)", () => {
   });
 
   it("does not offer it for a plain shape", () => {
-    API.setSelectedElements([h.elements.find((e) => e.id === "dot")!]);
+    API.setSelectedElements([sceneElement("dot")]);
     expect(h.app.actionManager.isActionEnabled(actionPinFrame)).toBe(false);
   });
 
@@ -171,7 +177,7 @@ describe("pin a frame to the screen (#240)", () => {
     });
 
     it("unpins from the menu", () => {
-      API.setSelectedElements([h.elements.find((e) => e.id === "legend")!]);
+      API.setSelectedElements([sceneElement("legend")]);
       expect(h.app.actionManager.isActionEnabled(actionUnpinFrame)).toBe(true);
       API.executeAction(actionUnpinFrame);
       expect(h.state.pinnedFrames.legend).toBeUndefined();

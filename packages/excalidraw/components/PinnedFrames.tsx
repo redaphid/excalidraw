@@ -7,6 +7,7 @@ import type {
   ExcalidrawElement,
   ExcalidrawFrameLikeElement,
   NonDeleted,
+  NonDeletedExcalidrawElement,
 } from "@excalidraw/element/types";
 
 import { exportToSvg } from "../scene/export";
@@ -83,7 +84,7 @@ const PinnedFrame = ({
   const drawing = useRef<HTMLDivElement>(null);
 
   const contents = getFrameChildren(elements, frame.id).filter(
-    (el) => !el.isDeleted,
+    (el): el is NonDeletedExcalidrawElement => !el.isDeleted,
   );
   // redraw when the frame or anything in it changes
   const version = [frame, ...contents]
