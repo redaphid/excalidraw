@@ -80,14 +80,22 @@ import type {
 type Icon = React.ReactElement<React.SVGProps<SVGSVGElement>>;
 
 /** an icon as a square of `--control-icon-size` centered on `x, y` */
-const placeIcon = (icon: Icon, x: number, y: number) =>
-  React.cloneElement(icon, {
+/** puts an icon in its segment: a bare svg takes the place itself, anything
+ * else (a host's component, say) fills a placed svg around it */
+const placeIcon = (icon: Icon, x: number, y: number) => {
+  const place = {
     x: x - 9,
     y: y - 9,
     width: 18,
     height: 18,
     className: "RadialPalette__icon",
-  });
+  };
+  return icon.type === "svg" ? (
+    React.cloneElement(icon, place)
+  ) : (
+    <svg {...place}>{icon}</svg>
+  );
+};
 
 const TOOL_ICONS: Record<RadialTool, Icon> = {
   selection: SelectionIcon,
@@ -1071,12 +1079,14 @@ const Ring = ({
 
           {[...presets, ...hostPens, null].map((preset, index) => {
             const sector = layout.pens[index];
-            const sample = at(MIDDLE_BAND.inner + 17, sector);
-            const label = at(MIDDLE_BAND.outer - 10, sector);
             const icon = at(
               (MIDDLE_BAND.inner + MIDDLE_BAND.outer) / 2,
               sector,
             );
+            // stacked, not along the radius: side by side, the two would
+            // overlap on the ring's left and right
+            const sample = { x: icon.x, y: icon.y + 7 };
+            const label = { x: icon.x, y: icon.y - 12 };
             if (preset && "onPick" in preset) {
               return button(
                 `host-${preset.id}`,

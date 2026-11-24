@@ -223,9 +223,16 @@ export class AppRadialPaletteGestures {
       }
     };
     const onBlur = () => this.cancel();
-    win.addEventListener(EVENT.POINTER_MOVE, onMove, { passive: true });
-    win.addEventListener(EVENT.POINTER_UP, onEnd);
-    win.addEventListener(EVENT.POINTER_CANCEL, onEnd);
+    // in the capture phase: a host that takes the drag from the editor (its
+    // own pan) may stop the moves on their way, and the timer must still see
+    // the finger travel
+    const capture = { capture: true };
+    win.addEventListener(EVENT.POINTER_MOVE, onMove, {
+      ...capture,
+      passive: true,
+    });
+    win.addEventListener(EVENT.POINTER_UP, onEnd, capture);
+    win.addEventListener(EVENT.POINTER_CANCEL, onEnd, capture);
     win.addEventListener(EVENT.BLUR, onBlur);
     this.press = {
       pointerId,
@@ -236,9 +243,9 @@ export class AppRadialPaletteGestures {
       multiPoint: multiPointLine(this.app.state),
       timer: win.setTimeout(this.fire, LONG_PRESS_DELAY),
       detach: () => {
-        win.removeEventListener(EVENT.POINTER_MOVE, onMove);
-        win.removeEventListener(EVENT.POINTER_UP, onEnd);
-        win.removeEventListener(EVENT.POINTER_CANCEL, onEnd);
+        win.removeEventListener(EVENT.POINTER_MOVE, onMove, capture);
+        win.removeEventListener(EVENT.POINTER_UP, onEnd, capture);
+        win.removeEventListener(EVENT.POINTER_CANCEL, onEnd, capture);
         win.removeEventListener(EVENT.BLUR, onBlur);
       },
     };
@@ -252,11 +259,13 @@ export class AppRadialPaletteGestures {
       !press ||
       !this.enabled ||
       this.dependencies.getPointerCount() > 1 ||
-      this.app.pan.isActive() ||
       this.app.radialPalette.session
     ) {
       return;
     }
+    // a press is armed only while no pan runs, so a pan now is this finger's
+    // own (the hand tool's): it held still, and the ring takes it from here
+    this.app.pan.end();
     this.dependencies.abandonPress(
       press.pointerId,
       press.activeTool,

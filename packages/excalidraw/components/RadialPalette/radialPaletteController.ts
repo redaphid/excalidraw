@@ -451,6 +451,13 @@ export class RadialPaletteController {
     if (!this.enabled || !item?.id) {
       return false;
     }
+    if (ring === "tools" || ring === "pens") {
+      for (const pen of this.hostPens()) {
+        if (pen.active && `host-${pen.id}` !== item.id) {
+          pen.onLeave?.();
+        }
+      }
+    }
     if (ring === "tools") {
       this.pickTool(item.id as RadialTool, locked);
     } else if (ring === "pens") {
