@@ -4,6 +4,9 @@ export const TWO_FINGER_TAP_MAX_DURATION = 250; // ms
 export const TWO_FINGER_TAP_MAX_TRAVEL = 10; // px
 /** the second tap must land within this long of the first tap's lift */
 export const TWO_FINGER_DOUBLE_TAP_MAX_GAP = 350; // ms
+/** a touchdown this old whose fingers are not all heard lifting is dropped
+ * when the next finger lands, so a lost lift cannot wedge the recogniser */
+const STALE_TOUCHDOWN_AGE = 1000; // ms
 
 type Contact = { startX: number; startY: number };
 
@@ -32,6 +35,13 @@ export class TwoFingerDoubleTap {
 
   down(pointerId: number, x: number, y: number, time: number): boolean {
     let startsSequence = false;
+    if (
+      this.touchdown &&
+      time - this.touchdown.startTime > STALE_TOUCHDOWN_AGE
+    ) {
+      this.touchdown = null;
+      this.lastTapEnd = null;
+    }
     if (!this.touchdown) {
       if (
         this.lastTapEnd !== null &&
@@ -100,9 +110,14 @@ export class TwoFingerDoubleTap {
   }
 
   cancel(pointerId: number) {
-    if (this.touchdown) {
-      this.touchdown.spoiled = true;
+    const touchdown = this.touchdown;
+    if (!touchdown || !touchdown.fingers.delete(pointerId)) {
+      return;
     }
-    this.up(pointerId, Infinity);
+    touchdown.spoiled = true;
+    if (touchdown.fingers.size === 0) {
+      this.touchdown = null;
+      this.lastTapEnd = null;
+    }
   }
 }
