@@ -247,12 +247,12 @@ export const RadialPalette = React.memo(
       const onKeyDown = (event: KeyboardEvent) => {
         const { target } = event;
         const doc = app.ownerDocument;
-        // like the editor's own shortcuts: from inside the editor, or from
-        // anywhere with `handleKeyboardGlobally`, but never from a host's
-        // focused control while nothing in the editor has focus
         // the editor's element as it is now: the context's value is filled
         // in after this effect first runs, and is the same object after
         const editor = app.excalidrawContainerValue.container;
+        // like the editor's own shortcuts: from inside the editor, or from
+        // anywhere with `handleKeyboardGlobally`, but never from a host's
+        // focused control while nothing in the editor has focus
         const fromHost =
           target instanceof Element &&
           target !== doc.body &&
@@ -450,6 +450,7 @@ export const RadialPalette = React.memo(
 
     const shown = moving ?? place;
     const collapsed = !moving && !!place?.collapsed;
+    const puckRef = useRef<HTMLButtonElement>(null);
 
     return (
       <>
@@ -479,6 +480,7 @@ export const RadialPalette = React.memo(
               : `${t("radialPalette.open")} — ,`
           }
           aria-expanded={!!session}
+          ref={puckRef}
           data-testid="radial-palette-puck"
           onContextMenu={preventMenu}
           onPointerDown={(event) => {
@@ -515,6 +517,7 @@ export const RadialPalette = React.memo(
         {session && (
           <Ring
             session={session}
+            puck={puckRef}
             controller={controller}
             actionManager={actionManager}
             onMoved={(at) =>
@@ -530,11 +533,14 @@ RadialPalette.displayName = "RadialPalette";
 
 const Ring = ({
   session,
+  puck,
   controller,
   actionManager,
   onMoved,
 }: {
   session: RadialSession;
+  /** the puck, which the ring may cover where it is clamped in from an edge */
+  puck: React.RefObject<HTMLButtonElement | null>;
   controller: RadialPaletteController;
   actionManager: ActionManager;
   /** the ring was dragged by its hub and dropped, centered at `at` */
@@ -1274,7 +1280,26 @@ const Ring = ({
         data-testid="radial-palette"
         data-ring={session.ring}
         onContextMenu={preventMenu}
-        onPointerDownCapture={() => {
+        onPointerDownCapture={(event) => {
+          // clamped in from an edge, the ring can cover the puck: a press
+          // where the puck is closes it, as a press on the puck does, and
+          // sets nothing; the hub, over the puck when the ring is not
+          // clamped, keeps its own press (redaphid/excalidraw#284)
+          const rect = puck.current?.getBoundingClientRect();
+          if (
+            rect &&
+            rect.width > 0 &&
+            event.clientX >= rect.left &&
+            event.clientX <= rect.right &&
+            event.clientY >= rect.top &&
+            event.clientY <= rect.bottom &&
+            hitAt(event.clientX, event.clientY)?.kind !== "hub"
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            controller.close();
+            return;
+          }
           pressedOnRing.current = true;
         }}
         onClickCapture={(event) => {

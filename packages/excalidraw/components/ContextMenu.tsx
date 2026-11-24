@@ -1,5 +1,7 @@
 import clsx from "clsx";
-import React from "react";
+import React, { useEffect } from "react";
+
+import { KEYS } from "@excalidraw/common";
 
 import { getShortcutFromShortcutName } from "../actions/shortcuts";
 import { t } from "../i18n";
@@ -44,6 +46,26 @@ export const ContextMenu = React.memo(
   ({ actionManager, items, top, left, onClose }: ContextMenuProps) => {
     const appState = useExcalidrawAppState();
     const elements = useExcalidrawElements();
+
+    // Escape closes the menu, as it closes the radial palette, before the
+    // editor sees it: the menu holds the focus, and the editor's Escape would
+    // otherwise act behind it (deselect) and leave the menu open
+    const ownerDocument = actionManager.app.ownerDocument;
+    useEffect(() => {
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== KEYS.ESCAPE) {
+          return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        onClose();
+      };
+      ownerDocument.addEventListener("keydown", onKeyDown, { capture: true });
+      return () =>
+        ownerDocument.removeEventListener("keydown", onKeyDown, {
+          capture: true,
+        });
+    }, [ownerDocument, onClose]);
 
     const offered = (action: Action) =>
       !action.predicate ||
