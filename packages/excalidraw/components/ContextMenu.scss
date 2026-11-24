@@ -23,6 +23,37 @@
     color: var(--popup-text-color);
   }
 
+  // icon buttons side by side, each a finger's size
+  .context-menu-row {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0 0.75rem;
+  }
+
+  .context-menu-row__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: var(--border-radius-md, 0.375rem);
+    background-color: transparent;
+    cursor: pointer;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background-color: var(--button-hover-bg, var(--color-surface-high));
+    }
+  }
+
   .context-menu-item {
     position: relative;
     width: 100%;
