@@ -562,6 +562,63 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when a stroke is selected", () => {
+      let stroke: ExcalidrawFreeDrawElement;
+
+      beforeEach(() => {
+        stroke = API.createElement({
+          type: "freedraw",
+          strokeWidth: 0.2,
+        }) as ExcalidrawFreeDrawElement;
+        API.setElements([stroke]);
+        API.setSelectedElements([stroke]);
+        API.setAppState({ currentItemFreedrawStrokeWidth: 0.2 });
+        openRing();
+      });
+
+      const width = () => h.elements[0].strokeWidth;
+
+      describe("when the size arc is dragged", () => {
+        beforeEach(() => {
+          const svg = ring()!.querySelector("svg")!;
+          fireEvent.pointerDown(byTestId("radial-size")!, {
+            pointerId: 1,
+            clientX: 0,
+            clientY: 0,
+          });
+          // straight below the center: the far end of the arc
+          fireEvent.pointerMove(svg, { pointerId: 1, clientX: 0, clientY: 400 });
+          fireEvent.pointerUp(svg, { pointerId: 1, clientX: 0, clientY: 400 });
+        });
+
+        it("moves the pen size", () => {
+          expect(h.state.currentItemFreedrawStrokeWidth).not.toBe(0.2);
+        });
+
+        it("gives the selected stroke the new width", () => {
+          expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
+        });
+
+        it("is one undo step", () => {
+          Keyboard.undo();
+          expect(width()).toBe(0.2);
+        });
+      });
+
+      describe("when the size arc is stepped up from the keyboard", () => {
+        beforeEach(() => {
+          fireEvent.keyDown(byTestId("radial-size")!, {
+            key: KEYS.ARROW_UP,
+          });
+        });
+
+        it("widens the selected stroke", () => {
+          expect(width()).toBeGreaterThan(0.2);
+          expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
+        });
+      });
+    });
+
     describe("when the puck is flicked to the rectangle", () => {
       beforeEach(() => {
         API.setAppState({ width: 1000, height: 800 });

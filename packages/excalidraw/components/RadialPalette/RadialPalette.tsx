@@ -8,7 +8,10 @@ import React, {
 
 import { KEYS, isWritableElement } from "@excalidraw/common";
 
-import { actionChangeOpacity } from "../../actions";
+import {
+  actionChangeFreedrawStrokeWidth,
+  actionChangeOpacity,
+} from "../../actions";
 import { useUIAppState } from "../../context/ui-appState";
 import { t } from "../../i18n";
 import {
@@ -549,9 +552,27 @@ const Ring = ({
     );
   };
 
+  const commitSize = () => {
+    // as opacity: one history entry, and the selected strokes take the width
+    actionManager.executeAction(
+      actionChangeFreedrawStrokeWidth,
+      "ui",
+      app.state.currentItemFreedrawStrokeWidth,
+    );
+  };
+
+  /** a slider drag ended: what it previewed becomes the selection's too */
+  const commitSlider = (kind: RingHit["kind"] | null | undefined) => {
+    if (kind === "opacity") {
+      commitOpacity();
+    } else if (kind === "size") {
+      commitSize();
+    }
+  };
+
   // the handlers a flick calls, current as of the last render
-  const latest = useRef({ hitAt, follow, previewSlider, commitOpacity });
-  latest.current = { hitAt, follow, previewSlider, commitOpacity };
+  const latest = useRef({ hitAt, follow, previewSlider, commitSlider });
+  latest.current = { hitAt, follow, previewSlider, commitSlider };
 
   // a flick: press, drag to a segment, lift to pick it
   const { flick } = session;
@@ -599,9 +620,7 @@ const Ring = ({
         return;
       }
       const hit: RingHit | null = last;
-      if (hit?.kind === "opacity") {
-        latest.current.commitOpacity();
-      }
+      latest.current.commitSlider(hit?.kind);
       const picked =
         (hit?.kind === "tool" ||
           hit?.kind === "pen" ||
@@ -847,11 +866,11 @@ const Ring = ({
     );
     const step = (delta: number) =>
       kind === "size"
-        ? setAppState({
-            currentItemFreedrawStrokeWidth: toPenSize(
-              Math.min(1, Math.max(0, value + delta)),
-            ),
-          })
+        ? actionManager.executeAction(
+            actionChangeFreedrawStrokeWidth,
+            "ui",
+            toPenSize(Math.min(1, Math.max(0, value + delta))),
+          )
         : actionManager.executeAction(
             actionChangeOpacity,
             "ui",
@@ -1006,9 +1025,7 @@ const Ring = ({
             );
           }}
           onPointerUp={() => {
-            if (dragging === "opacity") {
-              commitOpacity();
-            }
+            commitSlider(dragging);
             setDragging(null);
           }}
         >
