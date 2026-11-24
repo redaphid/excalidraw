@@ -59,6 +59,7 @@ const distributeSelectedElements = (
 export const distributeHorizontally = register({
   name: "distributeHorizontally",
   label: "labels.distributeHorizontally",
+  icon: DistributeHorizontallyIcon,
   trackEvent: { category: "element" },
   predicate: (elements, appState, appProps, app) =>
     enableActionGroup(appState, app),
@@ -79,6 +80,7 @@ export const distributeHorizontally = register({
 export const distributeVertically = register({
   name: "distributeVertically",
   label: "labels.distributeVertically",
+  icon: DistributeVerticallyIcon,
   trackEvent: { category: "element" },
   predicate: (elements, appState, appProps, app) =>
     enableActionGroup(appState, app),

@@ -527,6 +527,9 @@ const LayerUI = ({
         <RadialPalette
           actionManager={actionManager}
           phone={editorInterface.formFactor === "phone"}
+          besideSidebar={
+            editorInterface.formFactor !== "phone" && !!appState.openSidebar
+          }
         />
       )}
     </>
