@@ -830,6 +830,30 @@ const Ring = ({
         controller.close();
         return;
       }
+      // Tab walks the ring's items and wraps, from wherever focus was when
+      // it opened (the editor, after ","), so it never reaches the editor
+      // behind the ring, whose Tab would switch the selected shape
+      if (event.key === KEYS.TAB) {
+        const items = Array.from(
+          ringRef.current?.querySelectorAll<HTMLElement | SVGElement>(
+            '[tabindex="0"]',
+          ) ?? [],
+        );
+        if (items.length) {
+          event.preventDefault();
+          event.stopPropagation();
+          const at = items.findIndex((item) => item === event.target);
+          const step = event.shiftKey ? -1 : 1;
+          const next =
+            at < 0
+              ? event.shiftKey
+                ? items.length - 1
+                : 0
+              : (at + step + items.length) % items.length;
+          items[next].focus();
+        }
+        return;
+      }
       // a focused segment or slider handles its own keys
       if (
         event.target instanceof Node &&
