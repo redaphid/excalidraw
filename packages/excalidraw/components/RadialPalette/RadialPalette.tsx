@@ -456,7 +456,7 @@ const Ring = ({
 }: {
   session: RadialSession;
   /** the puck, which the ring may cover where it is clamped in from an edge */
-  puck: React.RefObject<HTMLButtonElement>;
+  puck: React.RefObject<HTMLButtonElement | null>;
   controller: RadialPaletteController;
   actionManager: ActionManager;
   /** the ring was dragged by its hub and dropped, centered at `at` */
