@@ -193,6 +193,7 @@ export class API {
     strokeColor?: ExcalidrawGenericElement["strokeColor"];
     backgroundColor?: ExcalidrawGenericElement["backgroundColor"];
     fillStyle?: ExcalidrawGenericElement["fillStyle"];
+    fillGradient?: ExcalidrawGenericElement["fillGradient"];
     strokeWidth?: ExcalidrawGenericElement["strokeWidth"];
     strokeStyle?: ExcalidrawGenericElement["strokeStyle"];
     roundness?: ExcalidrawGenericElement["roundness"];
@@ -307,6 +308,7 @@ export class API {
       boundElements: rest.boundElements ?? null,
       locked: rest.locked ?? false,
       created: rest.created === undefined ? getUpdatedTimestamp() : rest.created,
+      fillGradient: rest.fillGradient,
     };
     switch (type) {
       case "rectangle":

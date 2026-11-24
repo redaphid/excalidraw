@@ -8,6 +8,8 @@ import { isFreeDrawElement, isLinearElement } from "./typeChecks";
 
 import type { ExcalidrawElement } from "./types";
 
+import type { Drawable } from "roughjs/bin/core";
+
 type GradientColors = readonly [start: string, end: string];
 
 export type ElementFillGradient =
@@ -83,4 +85,45 @@ export const getFillGradient = (
     y2: cy + directionY * halfLength,
     colors,
   };
+};
+
+export const withFillPaint = <Paint>(
+  drawable: Drawable,
+  paint: Paint | null,
+): Drawable =>
+  paint === null
+    ? drawable
+    : {
+        ...drawable,
+        options: { ...drawable.options, fill: paint as unknown as string },
+      };
+
+export const createCanvasFillGradient = (
+  context: CanvasRenderingContext2D,
+  element: ExcalidrawElement,
+  isDarkMode: boolean,
+): CanvasGradient | null => {
+  const gradient = getFillGradient(element, isDarkMode);
+  if (!gradient) {
+    return null;
+  }
+  const canvasGradient =
+    gradient.type === "radial"
+      ? context.createRadialGradient(
+          gradient.cx,
+          gradient.cy,
+          0,
+          gradient.cx,
+          gradient.cy,
+          gradient.r,
+        )
+      : context.createLinearGradient(
+          gradient.x1,
+          gradient.y1,
+          gradient.x2,
+          gradient.y2,
+        );
+  canvasGradient.addColorStop(0, gradient.colors[0]);
+  canvasGradient.addColorStop(1, gradient.colors[1]);
+  return canvasGradient;
 };
