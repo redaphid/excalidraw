@@ -136,6 +136,22 @@ export class History {
     );
   }
 
+  /**
+   * Drops the entries recorded since the stack was `depth` deep that change
+   * no element (selection and the like): side effects of a gesture that
+   * turned out not to be a click.
+   */
+  public dropAppStateEntriesSince(depth: number) {
+    for (let index = this.undoStack.length - 1; index >= depth; index--) {
+      if (this.undoStack[index].elements.isEmpty()) {
+        this.undoStack.splice(index, 1);
+      }
+    }
+    this.onHistoryChangedEmitter.trigger(
+      new HistoryChangedEvent(this.isUndoStackEmpty, this.isRedoStackEmpty),
+    );
+  }
+
   public undo(elements: SceneElementsMap, appState: AppState) {
     return this.perform(
       elements,
