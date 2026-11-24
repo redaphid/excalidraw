@@ -23,6 +23,37 @@
     color: var(--popup-text-color);
   }
 
+  // icon buttons side by side, each a finger's size
+  .context-menu-row {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0 0.75rem;
+  }
+
+  .context-menu-row__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: var(--border-radius-md, 0.375rem);
+    background-color: transparent;
+    cursor: pointer;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background-color: var(--button-hover-bg, var(--color-surface-high));
+    }
+  }
+
   .context-menu-item {
     position: relative;
     width: 100%;
@@ -105,6 +136,28 @@
 
       .context-menu-item__shortcut {
         display: none;
+      }
+    }
+  }
+
+  // a phone: thumb rows a whole menu would stack past the screen, so they
+  // pair up in two columns; a separator and a row of icons span both
+  @media (pointer: coarse) and (max-height: 1000px) {
+    .context-menu {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-width: calc(100vw - 1rem);
+
+      > .context-menu-item-separator,
+      > .context-menu-row {
+        grid-column: 1 / -1;
+      }
+
+      .context-menu-item {
+        min-width: 0;
+        padding-inline: 0.75rem;
+        white-space: normal;
+        line-height: 1.2;
       }
     }
   }
