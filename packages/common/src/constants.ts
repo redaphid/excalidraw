@@ -556,6 +556,14 @@ export const DEFAULT_ELEMENT_PROPS: {
   locked: false,
 };
 
+export const DEFAULT_FILL_GRADIENT: NonNullable<
+  ExcalidrawElement["fillGradient"]
+> = {
+  type: "linear",
+  color: COLOR_PALETTE.white,
+  angle: 90,
+};
+
 export const LIBRARY_SIDEBAR_TAB = "library";
 export const CANVAS_SEARCH_TAB = "search";
 export const FRAMES_SIDEBAR_TAB = "frames";

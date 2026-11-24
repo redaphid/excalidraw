@@ -17,7 +17,17 @@ import type {
 } from "@excalidraw/common/utility-types";
 
 export type ChartType = "bar" | "line" | "radar";
-export type FillStyle = "hachure" | "cross-hatch" | "solid" | "zigzag";
+export type FillStyle =
+  | "hachure"
+  | "cross-hatch"
+  | "solid"
+  | "zigzag"
+  | "gradient";
+export type FillGradient = Readonly<{
+  type: "linear" | "radial";
+  color: string;
+  angle: number;
+}>;
 export type FontFamilyKeys = keyof typeof FONT_FAMILY;
 export type FontFamilyValues = typeof FONT_FAMILY[FontFamilyKeys];
 export type Theme = typeof THEME[keyof typeof THEME];
@@ -89,6 +99,7 @@ type _ExcalidrawElementBase = Readonly<{
       `authoringUnits: "screen"` (1 / zoom), which sizes the details drawn
       around it (`getElementDetailScale`). Absent means 1. */
   authoringScale?: number;
+  fillGradient?: FillGradient;
 }>;
 
 export type ExcalidrawSelectionElement = _ExcalidrawElementBase & {

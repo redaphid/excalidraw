@@ -445,10 +445,11 @@ const repairBinding = <T extends ExcalidrawArrowElement>(
 
 const restoreElementWithProperties = <
   T extends Required<
-    Omit<ExcalidrawElement, "customData" | "authoringScale">
+    Omit<ExcalidrawElement, "customData" | "authoringScale" | "fillGradient">
   > & {
     customData?: ExcalidrawElement["customData"];
     authoringScale?: ExcalidrawElement["authoringScale"];
+    fillGradient?: ExcalidrawElement["fillGradient"];
     /** @deprecated */
     boundElementIds?: readonly ExcalidrawElement["id"][];
     /** @deprecated */
