@@ -210,3 +210,26 @@ export const placeRing = (
     scale,
   };
 };
+
+/** the most suggestions a host can put round the ring */
+export const MAX_SLOTS = 6;
+/** a suggested slot's side, in palette units: a thumb wide at full size */
+export const SLOT_SIZE = 40;
+/** how far a slot's center sits from the ring's: just outside it */
+export const SLOT_RADIUS = RING_RADIUS + SLOT_SIZE / 2 + 8;
+/** the angle between two neighbouring slots' centers */
+const SLOT_STEP = 26;
+
+/**
+ * Where each of `count` suggested slots sits round the outside of the ring,
+ * as a center in palette units: an arc centered on the top, or on the bottom
+ * when `below` (the ring is too near the editor's top for the slots to
+ * show above it).
+ */
+export const slotCenters = (count: number, below = false) => {
+  const middle = below ? 90 : 270;
+  const shown = Math.min(count, MAX_SLOTS);
+  return Array.from({ length: shown }, (_, index) =>
+    polar(SLOT_RADIUS, middle + (index - (shown - 1) / 2) * SLOT_STEP),
+  );
+};

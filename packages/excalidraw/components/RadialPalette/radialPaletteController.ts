@@ -14,7 +14,7 @@ import {
   rememberColor,
 } from "./themeInks";
 
-import { FLICK_DISTANCE } from "./radialLayout";
+import { FLICK_DISTANCE, MAX_SLOTS } from "./radialLayout";
 
 import {
   STYLE_PROPERTIES,
@@ -22,7 +22,12 @@ import {
   styleOptionId,
 } from "./styleProperties";
 
-import type { RadialHostPen, ToolType, UnsubscribeCallback } from "../../types";
+import type {
+  RadialHostPen,
+  RadialHostSlot,
+  ToolType,
+  UnsubscribeCallback,
+} from "../../types";
 import type App from "../App";
 import type { PenPreset } from "./penPresets";
 
@@ -170,6 +175,24 @@ export class RadialPaletteController {
   hostPens(): readonly RadialHostPen[] {
     const { radialPalette } = this.app.props;
     return typeof radialPalette === "object" ? radialPalette.pens ?? [] : [];
+  }
+
+  /** the host's suggestions for the slots round the ring, from
+   * `radialPalette={{ slots }}`, asked anew on every call */
+  hostSlots(): readonly RadialHostSlot[] {
+    const { radialPalette } = this.app.props;
+    const slots =
+      typeof radialPalette === "object" ? radialPalette.slots?.() ?? [] : [];
+    return slots.slice(0, MAX_SLOTS);
+  }
+
+  /** places a slot's suggestion at `at`, in client coordinates, and closes */
+  pickSlot(slot: RadialHostSlot, at: ClientPoint) {
+    if (!this.enabled) {
+      return;
+    }
+    this.close();
+    slot.onPick({ x: at.x, y: at.y });
   }
 
   getPresets(): readonly PenPreset[] {

@@ -1,11 +1,13 @@
 import {
   HUB_RADIUS,
+  MAX_SLOTS,
   MIDDLE_BAND,
   MIN_RING_SCALE,
   OPACITY_SLIDER,
   OUTER_BAND,
   RING_RADIUS,
   SIZE_SLIDER,
+  SLOT_SIZE,
   TOOLS_BAND,
   getRingLayout,
   hitTest,
@@ -13,6 +15,8 @@ import {
   polar,
   sectorMiddle,
   sliderValue,
+  slotCenters,
+  toPolar,
 } from "./radialLayout";
 
 import type { RingLayout } from "./radialLayout";
@@ -169,5 +173,37 @@ describe("radialLayout", () => {
         expect(x + RING_RADIUS * scale).toBeCloseTo(300 - 8, 9);
       });
     });
+  });
+});
+
+describe("slotCenters", () => {
+  const angleOf = ({ x, y }: { x: number; y: number }) =>
+    Math.round(toPolar(x, y).angle);
+
+  it("centers the slots on the top of the ring, left to right", () => {
+    const angles = slotCenters(3).map(angleOf);
+    expect(angles[1]).toBe(270);
+    expect(angles[0]).toBeLessThan(angles[1]);
+    expect(angles[2]).toBeGreaterThan(angles[1]);
+  });
+
+  it("puts them just outside the ring, clear of each other", () => {
+    const centers = slotCenters(MAX_SLOTS);
+    for (const { x, y } of centers) {
+      expect(Math.hypot(x, y) - SLOT_SIZE / 2).toBeGreaterThan(RING_RADIUS);
+    }
+    for (let index = 1; index < centers.length; index++) {
+      const a = centers[index - 1];
+      const b = centers[index];
+      expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(SLOT_SIZE);
+    }
+  });
+
+  it("centers them on the bottom when the ring is too near the top", () => {
+    expect(slotCenters(1, true).map(angleOf)).toEqual([90]);
+  });
+
+  it("shows at most MAX_SLOTS", () => {
+    expect(slotCenters(MAX_SLOTS + 3)).toHaveLength(MAX_SLOTS);
   });
 });

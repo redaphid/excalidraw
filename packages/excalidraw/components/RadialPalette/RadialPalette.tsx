@@ -49,6 +49,8 @@ import {
   OUTER_BAND,
   RING_RADIUS,
   SIZE_SLIDER,
+  SLOT_RADIUS,
+  SLOT_SIZE,
   TOOLS_BAND,
   arcPath,
   getRingLayout,
@@ -59,6 +61,7 @@ import {
   sectorPath,
   sliderAngle,
   sliderValue,
+  slotCenters,
   toPolar,
 } from "./radialLayout";
 import { RADIAL_TOOLS } from "./radialPaletteController";
@@ -67,6 +70,7 @@ import { getStyleProperty } from "./styleProperties";
 import "./RadialPalette.scss";
 
 import type { ActionManager } from "../../actions/manager";
+import type { RadialHostSlot } from "../../types";
 import type { PuckPlace } from "./puckPlace";
 import type { RingHit, Sector, Slider } from "./radialLayout";
 import type {
@@ -1060,7 +1064,114 @@ const Ring = ({
             />
           </g>
         </svg>
+        <Slots
+          controller={controller}
+          center={{ x: place.x + offsetLeft, y: place.y + offsetTop }}
+          scale={place.scale}
+          below={place.y < (SLOT_RADIUS + SLOT_SIZE / 2) * place.scale}
+        />
       </div>
     </>
+  );
+};
+
+/**
+ * The host's suggestions round the outside of the ring. A tap or a key
+ * places one at the ring's center; a drag out of its slot places it where it
+ * is let go. Asked for once each time the ring opens.
+ */
+const Slots = ({
+  controller,
+  center,
+  scale,
+  below,
+}: {
+  controller: RadialPaletteController;
+  /** the ring's center, in client coordinates */
+  center: ClientPoint;
+  scale: number;
+  below: boolean;
+}) => {
+  const [slots] = useState(() => controller.hostSlots());
+  const [drag, setDrag] = useState<{
+    id: string;
+    start: ClientPoint;
+    at: ClientPoint;
+    moved: boolean;
+  } | null>(null);
+  // the click a drag's release would also fire places nothing
+  const dropped = useRef(false);
+  if (!slots.length) {
+    return null;
+  }
+  const centers = slotCenters(slots.length, below);
+  const side = SLOT_SIZE * scale;
+  const radius = RING_RADIUS * scale;
+  return (
+    <div className="RadialPalette__slots" data-testid="radial-palette-slots">
+      {slots.map((slot: RadialHostSlot, index) => {
+        const { x, y } = centers[index];
+        const dragged = drag?.id === slot.id && drag.moved ? drag : null;
+        return (
+          <button
+            key={slot.id}
+            type="button"
+            aria-label={slot.label}
+            title={slot.label}
+            data-testid={`radial-palette-slot-${slot.id}`}
+            className={clsx("RadialPalette__slot", {
+              "RadialPalette__slot--dragged": dragged,
+            })}
+            style={{
+              left: radius + x * scale - side / 2,
+              top: radius + y * scale - side / 2,
+              width: side,
+              height: side,
+              transform: dragged
+                ? `translate(${dragged.at.x - dragged.start.x}px, ${
+                    dragged.at.y - dragged.start.y
+                  }px)`
+                : undefined,
+            }}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture?.(event.pointerId);
+              const at = { x: event.clientX, y: event.clientY };
+              setDrag({ id: slot.id, start: at, at, moved: false });
+            }}
+            onPointerMove={(event) => {
+              if (drag?.id !== slot.id) {
+                return;
+              }
+              const at = { x: event.clientX, y: event.clientY };
+              const moved =
+                drag.moved ||
+                Math.hypot(at.x - drag.start.x, at.y - drag.start.y) >
+                  FLICK_DISTANCE;
+              setDrag({ ...drag, at, moved });
+            }}
+            onPointerUp={(event) => {
+              if (drag?.id === slot.id && drag.moved) {
+                dropped.current = true;
+                controller.pickSlot(slot, {
+                  x: event.clientX,
+                  y: event.clientY,
+                });
+              }
+              setDrag(null);
+            }}
+            onPointerCancel={() => setDrag(null)}
+            onClick={() => {
+              if (dropped.current) {
+                dropped.current = false;
+                return;
+              }
+              controller.pickSlot(slot, center);
+            }}
+          >
+            {slot.icon}
+          </button>
+        );
+      })}
+    </div>
   );
 };

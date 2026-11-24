@@ -128,6 +128,159 @@ describe("RadialPalette", () => {
     });
   });
 
+  describe("when the host suggests what fills the slots", () => {
+    const onPick = vi.fn();
+    const slots = vi.fn();
+    const suggestion = (id: string) => ({
+      id,
+      label: id.replace("-", " "),
+      icon: <svg data-testid={`slot-icon-${id}`} />,
+      onPick: (at: { x: number; y: number }) => onPick(id, at),
+    });
+    const slotIds = () =>
+      Array.from(
+        byTestId("radial-palette-slots")?.querySelectorAll("button") ?? [],
+        (node) => node.getAttribute("data-testid"),
+      );
+    const ringCenter = () => {
+      const { offsetLeft, offsetTop, width, height } = h.state;
+      const place = placeRing({ x: 0, y: 0 }, { width, height });
+      return { x: place.x + offsetLeft, y: place.y + offsetTop };
+    };
+
+    beforeEach(async () => {
+      onPick.mockReset();
+      slots.mockReset();
+      slots.mockReturnValue(
+        [
+          "status-card",
+          "bar-chart",
+          "progress-bar",
+          "sticky-note",
+          "portal",
+          "phone-frame",
+          "one-too-many",
+        ].map(suggestion),
+      );
+      await render(<Excalidraw radialPalette={{ slots }} />);
+    });
+
+    it("asks for nothing while the ring is closed", () => {
+      expect(slots).not.toHaveBeenCalled();
+      expect(byTestId("radial-palette-slots")).toBeNull();
+    });
+
+    describe("when the ring opens", () => {
+      beforeEach(() => {
+        openRing();
+      });
+
+      it("shows the first six, in the host's order, with their icons", () => {
+        expect(slotIds()).toEqual([
+          "radial-palette-slot-status-card",
+          "radial-palette-slot-bar-chart",
+          "radial-palette-slot-progress-bar",
+          "radial-palette-slot-sticky-note",
+          "radial-palette-slot-portal",
+          "radial-palette-slot-phone-frame",
+        ]);
+        expect(byTestId("slot-icon-status-card")).not.toBeNull();
+        expect(
+          byTestId("radial-palette-slot-bar-chart")!.getAttribute("aria-label"),
+        ).toBe("bar chart");
+      });
+
+      it("asks the host once", () => {
+        expect(slots).toHaveBeenCalledTimes(1);
+      });
+
+      describe("when one is tapped", () => {
+        beforeEach(() => {
+          tap("radial-palette-slot-bar-chart");
+        });
+
+        it("places it at the ring's center", () => {
+          expect(onPick).toHaveBeenCalledTimes(1);
+          expect(onPick).toHaveBeenCalledWith("bar-chart", ringCenter());
+        });
+
+        it("closes the ring", () => {
+          expect(ring()).toBeNull();
+        });
+
+        describe("when the ring opens again", () => {
+          beforeEach(() => {
+            slots.mockReturnValue([suggestion("portal")]);
+            openRing();
+          });
+
+          it("asks the host again, so a deleted source drops out", () => {
+            expect(slots).toHaveBeenCalledTimes(2);
+            expect(slotIds()).toEqual(["radial-palette-slot-portal"]);
+          });
+        });
+      });
+
+      describe("when one is dragged out of its slot", () => {
+        beforeEach(() => {
+          const slot = byTestId("radial-palette-slot-portal")!;
+          fireEvent.pointerDown(slot, { pointerId: 7, clientX: 50, clientY: 50 });
+          fireEvent.pointerMove(slot, {
+            pointerId: 7,
+            clientX: 50 + FLICK_DISTANCE * 4,
+            clientY: 50 + FLICK_DISTANCE * 6,
+          });
+          fireEvent.pointerUp(slot, {
+            pointerId: 7,
+            clientX: 50 + FLICK_DISTANCE * 4,
+            clientY: 50 + FLICK_DISTANCE * 6,
+          });
+          // the browser's click after the release
+          fireEvent.click(slot);
+        });
+
+        it("places it once, where it was let go", () => {
+          expect(onPick).toHaveBeenCalledTimes(1);
+          expect(onPick).toHaveBeenCalledWith("portal", {
+            x: 50 + FLICK_DISTANCE * 4,
+            y: 50 + FLICK_DISTANCE * 6,
+          });
+        });
+
+        it("closes the ring", () => {
+          expect(ring()).toBeNull();
+        });
+      });
+
+      describe("when a press on one barely moves", () => {
+        beforeEach(() => {
+          const slot = byTestId("radial-palette-slot-portal")!;
+          fireEvent.pointerDown(slot, { pointerId: 7, clientX: 50, clientY: 50 });
+          fireEvent.pointerMove(slot, { pointerId: 7, clientX: 53, clientY: 52 });
+          fireEvent.pointerUp(slot, { pointerId: 7, clientX: 53, clientY: 52 });
+          fireEvent.click(slot);
+        });
+
+        it("is a tap: it places it at the ring's center", () => {
+          expect(onPick).toHaveBeenCalledTimes(1);
+          expect(onPick).toHaveBeenCalledWith("portal", ringCenter());
+        });
+      });
+    });
+  });
+
+  describe("when the host suggests nothing", () => {
+    beforeEach(async () => {
+      await render(<Excalidraw radialPalette={{ slots: () => [] }} />);
+      openRing();
+    });
+
+    it("draws no slots", () => {
+      expect(ring()).not.toBeNull();
+      expect(byTestId("radial-palette-slots")).toBeNull();
+    });
+  });
+
   describe("when the host turns it on", () => {
     beforeEach(async () => {
       await render(<Excalidraw radialPalette css={PARCHMENT} />);
