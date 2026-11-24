@@ -518,6 +518,9 @@ test("the hub opens the selection's menu, where two shapes line up", async ({
   const menu = page.locator(".context-menu");
   await expect(menu.getByTestId("deleteSelectedElements")).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("hub-selection.png") });
+  // the whole menu fits the screen, a phone's too, with nothing to scroll
+  const box = (await menu.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
 
   await menu.getByTestId("alignLeft").click();
   await expect
