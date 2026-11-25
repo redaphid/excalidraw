@@ -172,7 +172,6 @@ import {
   getContainerElement,
   getSettledBitmapCount,
   cancelSettledBitmaps,
-  elementWithCanvasCache,
   getColorUpdate,
   getStickyNoteMinSize,
   isValidTextContainer,
@@ -374,8 +373,8 @@ import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
 import { EMPTY_CSS_THEME, readCssTheme, themeDrawsGrid } from "../cssTheme";
-import { forgetBackdropRasters, loadBackdrop } from "../renderer/backdrop";
-import { forgetLinkIconCanvases } from "../renderer/staticScene";
+import { loadBackdrop } from "../renderer/backdrop";
+import { forgetContextCaches } from "../renderer/contextCaches";
 import { getFrameStyle } from "../frameStyle";
 import { getCenter, getDistance } from "../gesture";
 import {
@@ -12674,17 +12673,9 @@ ${css}
     }
   };
 
-  /**
-   * A lost 2D context (a GPU process crash, say) comes back blank, and so do
-   * the bitmaps cached from it, which a repaint would otherwise draw as they
-   * are: drop them all and repaint every canvas.
-   */
+  /** a lost context comes back blank, and so do the canvases cached from it */
   private onCanvasContextRestored = () => {
-    for (const element of this.scene.getElementsIncludingDeleted()) {
-      elementWithCanvasCache.delete(element);
-    }
-    forgetLinkIconCanvases();
-    forgetBackdropRasters();
+    forgetContextCaches(this.scene.getElementsIncludingDeleted());
     this.triggerRender(true);
   };
 

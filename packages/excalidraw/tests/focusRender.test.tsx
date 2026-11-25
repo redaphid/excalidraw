@@ -3,6 +3,10 @@ import React from "react";
 import { elementWithCanvasCache } from "@excalidraw/element";
 
 import { Excalidraw } from "../index";
+import {
+  getContextCacheNames,
+  registerContextCache,
+} from "../renderer/contextCaches";
 import * as InteractiveScene from "../renderer/interactiveScene";
 import * as StaticScene from "../renderer/staticScene";
 
@@ -37,6 +41,22 @@ const focusWindow = () => {
     window.dispatchEvent(new FocusEvent("focus"));
   });
 };
+
+const restoreContext = (canvas: HTMLCanvasElement) => {
+  act(() => {
+    canvas.dispatchEvent(new Event("contextrestored"));
+  });
+};
+
+describe("the caches a lost context blanks", () => {
+  it("are all registered to be dropped", () => {
+    expect(getContextCacheNames()).toEqual([
+      "backdrop rasters",
+      "element bitmaps",
+      "link icons",
+    ]);
+  });
+});
 
 describe("repainting the canvases after focus, visibility or context changes", () => {
   beforeEach(async () => {
@@ -97,8 +117,12 @@ describe("repainting the canvases after focus, visibility or context changes", (
   // a GPU process crash blanks every canvas, the cached bitmaps too
   describe("when the static canvas's context is restored after a loss", () => {
     let bitmapBefore: HTMLCanvasElement;
+    let forget: ReturnType<typeof vi.fn>;
+    let unregister: () => void;
 
     beforeEach(() => {
+      forget = vi.fn();
+      unregister = registerContextCache("cache-sly-heron", forget);
       // a bitmap that holds the element as drawn before the loss
       bitmapBefore = document.createElement("canvas");
       elementWithCanvasCache.set(h.elements[0], {
@@ -115,9 +139,17 @@ describe("repainting the canvases after focus, visibility or context changes", (
         containingFrameOpacity: 100,
         canvasTheme: undefined,
       });
-      act(() => {
-        h.app.canvas.dispatchEvent(new Event("contextrestored"));
-      });
+      restoreContext(h.app.canvas);
+    });
+
+    afterEach(() => {
+      unregister();
+    });
+
+    it("drops every registered cache, given the scene's elements", () => {
+      expect(forget).toHaveBeenCalledWith(
+        h.app.scene.getElementsIncludingDeleted(),
+      );
     });
 
     it("repaints the static scene", () => {
@@ -130,15 +162,66 @@ describe("repainting the canvases after focus, visibility or context changes", (
   });
 
   describe("when the interactive canvas's context is restored after a loss", () => {
+    let forget: ReturnType<typeof vi.fn>;
+    let unregister: () => void;
+
     beforeEach(() => {
+      forget = vi.fn();
+      unregister = registerContextCache("cache-sly-heron", forget);
       renderInteractiveScene.mockClear();
-      act(() => {
-        h.app.interactiveCanvas!.dispatchEvent(new Event("contextrestored"));
-      });
+      restoreContext(h.app.interactiveCanvas!);
+    });
+
+    afterEach(() => {
+      unregister();
+    });
+
+    it("drops every registered cache", () => {
+      expect(forget).toHaveBeenCalled();
     });
 
     it("repaints the interactive scene", async () => {
       await waitFor(() => expect(renderInteractiveScene).toHaveBeenCalled());
+    });
+  });
+});
+
+describe("a host that paints the background on its own canvas", () => {
+  beforeEach(async () => {
+    await render(
+      <Excalidraw
+        separateCanvasBackground
+        initialData={{
+          elements: [
+            API.createElement({ type: "rectangle", id: "rect-quiet-lynx" }),
+          ],
+        }}
+      />,
+    );
+  });
+
+  describe("when the background canvas's context is restored after a loss", () => {
+    let forget: ReturnType<typeof vi.fn>;
+    let unregister: () => void;
+
+    beforeEach(() => {
+      forget = vi.fn();
+      unregister = registerContextCache("cache-sly-heron", forget);
+      renderStaticScene.mockClear();
+      // eslint-disable-next-line dot-notation -- the private background canvas
+      restoreContext(h.app["separateBackgroundCanvas"]);
+    });
+
+    afterEach(() => {
+      unregister();
+    });
+
+    it("drops every registered cache", () => {
+      expect(forget).toHaveBeenCalled();
+    });
+
+    it("repaints the static scene, which paints the background", () => {
+      expect(renderStaticScene).toHaveBeenCalled();
     });
   });
 });
