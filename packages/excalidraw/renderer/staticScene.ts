@@ -6,7 +6,6 @@ import {
   THEME,
   throttleRAF,
 } from "@excalidraw/common";
-import { isElementLink } from "@excalidraw/element";
 import { createPlaceholderEmbeddableLabel } from "@excalidraw/element";
 import { getBoundTextElement } from "@excalidraw/element";
 import {
@@ -43,9 +42,10 @@ import type {
 } from "@excalidraw/element/types";
 
 import {
-  EXTERNAL_LINK_IMG,
-  ELEMENT_LINK_IMG,
   getLinkHandleFromCoords,
+  LINK_BADGE,
+  linkKindOf,
+  showsLinkBadge,
 } from "../components/hyperlink/helpers";
 import { getThemeCanvasBackground } from "../cssTheme";
 
@@ -61,6 +61,7 @@ import type {
   StaticCanvasRenderConfig,
   StaticSceneRenderConfig,
 } from "../scene/types";
+import type { LinkBadgeLook } from "../components/hyperlink/helpers";
 import type { AppState, StaticCanvasAppState, Zoom } from "../types";
 
 const GridLineColor = {
@@ -246,14 +247,76 @@ export const frameClip = (
   );
 };
 
-type LinkIconCanvas = HTMLCanvasElement & { zoom: number };
+/** CSS px of glow around a link badge's disc. */
+const LINK_BADGE_GLOW = 6;
 
-const linkIconCanvasCache: {
-  regularLink: LinkIconCanvas | null;
-  elementLink: LinkIconCanvas | null;
-} = {
-  regularLink: null,
-  elementLink: null,
+/**
+ * Each link badge look painted once, at the screen's density and in screen
+ * px, so a frame of linked cards costs one `drawImage` per card and zooming
+ * paints nothing new.
+ */
+const linkBadges = new Map<string, HTMLCanvasElement>();
+
+const linkBadgeBitmap = (
+  look: LinkBadgeLook,
+  accent: string,
+  paper: string,
+  dpr: number,
+) => {
+  const key = `${look}|${accent}|${paper}|${dpr}`;
+  const cached = linkBadges.get(key);
+  if (cached) {
+    return cached;
+  }
+  const mark = look === "pip" ? LINK_BADGE.PIP : LINK_BADGE.MARK;
+  const side = mark + LINK_BADGE_GLOW * 2;
+  const bitmap = document.createElement("canvas");
+  bitmap.width = bitmap.height = Math.ceil(side * dpr);
+  const context = bitmap.getContext("2d")!;
+  context.scale(dpr, dpr);
+  context.translate(side / 2, side / 2);
+  // The canvas silently ignores an invalid color; seed sane ones first.
+  context.fillStyle = COLOR_WHITE;
+  context.strokeStyle = "#6965db";
+  context.shadowColor = "#6965db";
+  context.shadowColor = accent;
+  context.shadowBlur = LINK_BADGE_GLOW;
+  context.beginPath();
+  context.arc(0, 0, mark / 2 - 1, 0, Math.PI * 2);
+  if (look === "pip") {
+    context.fillStyle = accent;
+    context.fill();
+  } else {
+    context.fillStyle = paper;
+    context.fill();
+    context.shadowBlur = 0;
+    context.strokeStyle = accent;
+    context.lineWidth = 2;
+    context.stroke();
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.beginPath();
+    if (look === "web") {
+      context.moveTo(-4, 4);
+      context.lineTo(4, -4);
+      context.moveTo(-1, -4);
+      context.lineTo(4, -4);
+      context.lineTo(4, 1);
+      context.stroke();
+    } else {
+      context.arc(0, 0, 5, 0, Math.PI * 2);
+      context.stroke();
+      context.fillStyle = accent;
+      context.beginPath();
+      context.arc(0, 0, 2, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  if (linkBadges.size >= 32) {
+    linkBadges.clear();
+  }
+  linkBadges.set(key, bitmap);
+  return bitmap;
 };
 
 registerContextCache("link icons", () => {
@@ -275,72 +338,50 @@ const renderLinkIcon = (
   appState: StaticCanvasAppState,
   elementsMap: ElementsMap,
   renderState: ElementRenderState,
+  renderConfig: StaticCanvasRenderConfig,
 ) => {
-  if (element.link && !appState.selectedElementIds[element.id]) {
-    const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
-    const [x, y, width, height] = getLinkHandleFromCoords(
-      [
-        x1 + renderState.offset.x,
-        y1 + renderState.offset.y,
-        x2 + renderState.offset.x,
-        y2 + renderState.offset.y,
-      ],
-      element.angle,
-      appState,
-    );
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-    context.save();
-    context.translate(appState.scrollX + centerX, appState.scrollY + centerY);
-    context.rotate(element.angle);
-
-    const canvasKey = isElementLink(element.link)
-      ? "elementLink"
-      : "regularLink";
-
-    let linkCanvas = linkIconCanvasCache[canvasKey];
-
-    if (!linkCanvas || linkCanvas.zoom !== appState.zoom.value) {
-      linkCanvas = Object.assign(document.createElement("canvas"), {
-        zoom: appState.zoom.value,
-      });
-      linkCanvas.width = width * window.devicePixelRatio * appState.zoom.value;
-      linkCanvas.height =
-        height * window.devicePixelRatio * appState.zoom.value;
-      linkIconCanvasCache[canvasKey] = linkCanvas;
-
-      const linkCanvasCacheContext = linkCanvas.getContext("2d")!;
-      linkCanvasCacheContext.scale(
-        window.devicePixelRatio * appState.zoom.value,
-        window.devicePixelRatio * appState.zoom.value,
-      );
-
-      // Seed a sane default so a corrupted color (silently rejected by the
-      // canvas) falls back to white instead of a stale fillStyle.
-      linkCanvasCacheContext.fillStyle = COLOR_WHITE;
-      linkCanvasCacheContext.fillStyle =
-        appState.viewBackgroundColor || COLOR_WHITE;
-
-      linkCanvasCacheContext.fillRect(0, 0, width, height);
-
-      if (canvasKey === "elementLink") {
-        linkCanvasCacheContext.drawImage(ELEMENT_LINK_IMG, 0, 0, width, height);
-      } else {
-        linkCanvasCacheContext.drawImage(
-          EXTERNAL_LINK_IMG,
-          0,
-          0,
-          width,
-          height,
-        );
-      }
-
-      linkCanvasCacheContext.restore();
-    }
-    context.globalAlpha = renderState.opacity;
-    context.drawImage(linkCanvas, x - centerX, y - centerY, width, height);
-    context.restore();
+  if (!element.link || appState.selectedElementIds[element.id]) {
+    return;
   }
+  const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
+  const bounds: [number, number, number, number] = [
+    x1 + renderState.offset.x,
+    y1 + renderState.offset.y,
+    x2 + renderState.offset.x,
+    y2 + renderState.offset.y,
+  ];
+  const zoom = appState.zoom.value;
+  const [x, y, size] = getLinkHandleFromCoords(bounds, element.angle, appState);
+  const isDark = renderConfig.theme === THEME.DARK;
+  const accent =
+    renderConfig.canvasTheme?.selectionColor ??
+    (isDark ? "#b4b0ff" : "#6965db");
+  const paper =
+    getThemeCanvasBackground(appState, renderConfig.canvasTheme) ??
+    applyDarkModeFilter(
+      appState.viewBackgroundColor === "transparent"
+        ? COLOR_WHITE
+        : appState.viewBackgroundColor || COLOR_WHITE,
+      isDark,
+    );
+  const dpr = window.devicePixelRatio || 1;
+  const bitmap = linkBadgeBitmap(
+    showsLinkBadge(bounds, zoom) ? linkKindOf(element.link) : "pip",
+    accent,
+    paper,
+    dpr,
+  );
+  const side = bitmap.width / dpr / zoom;
+  context.save();
+  context.globalAlpha = renderState.opacity;
+  context.drawImage(
+    bitmap,
+    appState.scrollX + x + size / 2 - side / 2,
+    appState.scrollY + y + size / 2 - side / 2,
+    side,
+    side,
+  );
+  context.restore();
 };
 
 export const getStaticSceneAppState = (
@@ -490,7 +531,14 @@ export const renderSceneElements = ({
         }
 
         if (!isExporting && renderConfig.renderLinks !== false) {
-          renderLinkIcon(element, context, appState, elementsMap, renderState);
+          renderLinkIcon(
+            element,
+            context,
+            appState,
+            elementsMap,
+            renderState,
+            renderConfig,
+          );
         }
       } catch (error: any) {
         console.error(
@@ -557,6 +605,7 @@ export const renderSceneElements = ({
               appState,
               elementsMap,
               renderState,
+              renderConfig,
             );
           }
         } finally {
