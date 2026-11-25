@@ -53,7 +53,7 @@ describe("the caches a lost context blanks", () => {
     expect(getContextCacheNames()).toEqual([
       "backdrop rasters",
       "element bitmaps",
-      "link icons",
+      "link badges",
     ]);
   });
 });

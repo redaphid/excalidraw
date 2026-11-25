@@ -319,10 +319,7 @@ const linkBadgeBitmap = (
   return bitmap;
 };
 
-registerContextCache("link icons", () => {
-  linkIconCanvasCache.regularLink = null;
-  linkIconCanvasCache.elementLink = null;
-});
+registerContextCache("link badges", () => linkBadges.clear());
 
 // the element package cannot reach this registry, so the renderer that
 // draws its bitmaps registers them
