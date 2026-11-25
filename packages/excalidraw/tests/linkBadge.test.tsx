@@ -109,6 +109,37 @@ describe("the link badge", () => {
     });
   });
 
+  it("should open the nearer of two overlapping badges, not the one drawn on top", async () => {
+    const opened = await renderWithLinkSpy();
+    const make = (box: typeof CARD) =>
+      API.createElement({
+        type: "rectangle",
+        backgroundColor: "#e7f5ff",
+        fillStyle: "solid",
+        ...box,
+      });
+    const lowerBox = { x: 230, y: 60, width: 115, height: 30 };
+    const lower = make(lowerBox);
+    const upper = make(CARD);
+    API.setElements([lower, upper]);
+    API.updateElement(lower, { link: "https://example.com/lower" });
+    API.updateElement(upper, { link: "https://example.com/upper" });
+    atZoom(1);
+    const near = badgeCentre(lowerBox);
+    const far = badgeCentre();
+    const apart = Math.hypot(far.x - near.x, far.y - near.y);
+    const toward = (d: number) => ({
+      x: near.x + ((far.x - near.x) / apart) * d,
+      y: near.y + ((far.y - near.y) / apart) * d,
+    });
+
+    const tap = toward(18);
+    tapAt(tap.x, tap.y);
+
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(opened).toHaveBeenCalledWith(lower.id);
+  });
+
   it("should leave a card smaller than 64 CSS px its own taps", async () => {
     const opened = await renderWithLinkSpy();
     const small = { x: 100, y: 100, width: 40, height: 30 };
