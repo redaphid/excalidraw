@@ -59,6 +59,7 @@ import type {
   StaticCanvasRenderConfig,
   StaticSceneRenderConfig,
 } from "../scene/types";
+import type { LinkBadgeLook } from "../components/hyperlink/helpers";
 import type { AppState, StaticCanvasAppState, Zoom } from "../types";
 
 const GridLineColor = {
@@ -255,7 +256,7 @@ const LINK_BADGE_GLOW = 6;
 const linkBadges = new Map<string, HTMLCanvasElement>();
 
 const linkBadgeBitmap = (
-  look: "place" | "web" | "pip",
+  look: LinkBadgeLook,
   accent: string,
   paper: string,
   dpr: number,

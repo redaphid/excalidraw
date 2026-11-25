@@ -488,7 +488,7 @@ import { isSidebarDockedAtom } from "./Sidebar/Sidebar";
 import { hideTooltip } from "./Tooltip";
 import { StaticCanvas, InteractiveCanvas } from "./canvases";
 import NewElementCanvas from "./canvases/NewElementCanvas";
-import { isPointHittingLink, linkBadgeDistance } from "./hyperlink/helpers";
+import { isPointHittingLink, linkHitDistance } from "./hyperlink/helpers";
 import { CursorHint, CursorHints } from "./CursorHint";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
@@ -6978,26 +6978,16 @@ ${css}
 
     for (let index = elements.length - 1; index >= 0; index--) {
       const element = elements[index];
-      if (
-        element.link &&
-        isPointHittingLink(
-          element,
-          elementsMap,
-          this.state,
-          point,
-          this.editorInterface.formFactor === "phone",
-        )
-      ) {
-        const distance = linkBadgeDistance(
-          element,
-          elementsMap,
-          this.state,
-          point,
-        );
-        if (!nearest || distance < nearestDistance) {
-          nearest = element;
-          nearestDistance = distance;
-        }
+      const distance = linkHitDistance(
+        element,
+        elementsMap,
+        this.state,
+        point,
+        this.editorInterface.formFactor === "phone",
+      );
+      if (distance < nearestDistance) {
+        nearest = element;
+        nearestDistance = distance;
       }
       // Nothing under the element the pointer is on can take its tap, but a
       // frame is see-through: a badge on its border is still its child's.

@@ -1,4 +1,4 @@
-import { pointFrom, pointRotateRads } from "@excalidraw/math";
+import { pointDistance, pointFrom, pointRotateRads } from "@excalidraw/math";
 
 import { isLocalLink } from "@excalidraw/common";
 import {
@@ -20,8 +20,10 @@ import type { AppState } from "../../types";
 /**
  * The badge an element with a link wears at its top-right corner, in CSS px,
  * the same on screen at any zoom: a `MARK` disc that a tap anywhere within
- * `HIT` across follows, a finger's width. An element whose longest side shows
- * under `MIN_ELEMENT` wears a `PIP` dot instead and keeps all of its taps.
+ * `HIT` across follows, a finger's width, except over the element itself,
+ * where only the disc does so a press near the corner still selects or drags
+ * it. An element whose longest side shows under `MIN_ELEMENT` wears a `PIP`
+ * dot instead and keeps all of its taps.
  */
 export const LINK_BADGE = {
   MARK: 24,
@@ -35,22 +37,44 @@ export const LINK_BADGE = {
 /** A place on the board or this site (a portal, a frame), or the wider web. */
 export type LinkKind = "place" | "web";
 
-export const linkKindOf = (link: string): LinkKind =>
-  isElementLink(link) || isLocalLink(link) ? "place" : "web";
+/** What a badge shows: where its link goes, or only that there is one. */
+export type LinkBadgeLook = LinkKind | "pip";
+
+const linkKinds = new Map<string, LinkKind>();
+
+/** Painted every frame for every linked element, so a link is parsed once. */
+export const linkKindOf = (link: string): LinkKind => {
+  let kind = linkKinds.get(link);
+  if (!kind) {
+    kind = isLocalLink(link) || isElementLink(link) ? "place" : "web";
+    if (linkKinds.size >= 512) {
+      linkKinds.clear();
+    }
+    linkKinds.set(link, kind);
+  }
+  return kind;
+};
 
 export const showsLinkBadge = ([x1, y1, x2, y2]: Bounds, zoom: number) =>
   Math.max(x2 - x1, y2 - y1) * zoom >= LINK_BADGE.MIN_ELEMENT;
 
-const linkBadgeCentre = (
-  [x1, y1, x2, y2]: Bounds,
-  angle: Radians,
-  zoom: number,
-) =>
+const centreOf = ([x1, y1, x2, y2]: Bounds) =>
+  pointFrom<GlobalPoint>((x1 + x2) / 2, (y1 + y2) / 2);
+
+const linkBadgeCentre = (bounds: Bounds, angle: Radians, zoom: number) =>
   pointRotateRads(
-    pointFrom(x2 + LINK_BADGE.OUT / zoom, y1 - LINK_BADGE.OUT / zoom),
-    pointFrom((x1 + x2) / 2, (y1 + y2) / 2),
+    pointFrom<GlobalPoint>(
+      bounds[2] + LINK_BADGE.OUT / zoom,
+      bounds[1] - LINK_BADGE.OUT / zoom,
+    ),
+    centreOf(bounds),
     angle,
   );
+
+const isOverElement = (bounds: Bounds, angle: Radians, point: GlobalPoint) => {
+  const [x, y] = pointRotateRads(point, centreOf(bounds), -angle as Radians);
+  return x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3];
+};
 
 /** The badge's visible mark (or pip) as `[x, y, width, height]` in scene units. */
 export const getLinkHandleFromCoords = (
@@ -65,52 +89,49 @@ export const getLinkHandleFromCoords = (
   return [x - size / 2, y - size / 2, size, size];
 };
 
-/** How far a point is from the element's link badge, in scene units; Infinity when it wears only a pip. */
-export const linkBadgeDistance = (
-  element: NonDeletedExcalidrawElement,
-  elementsMap: ElementsMap,
-  appState: Pick<AppState, "zoom">,
-  [x, y]: GlobalPoint,
-) => {
-  const zoom = appState.zoom.value;
-  const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
-  if (!showsLinkBadge([x1, y1, x2, y2], zoom)) {
-    return Infinity;
-  }
-  const [cx, cy] = linkBadgeCentre([x1, y1, x2, y2], element.angle, zoom);
-  return Math.hypot(x - cx, y - cy);
-};
-
-export const isPointHittingLinkIcon = (
+/**
+ * How far a point is from the element's link badge, in scene units, when a
+ * tap there follows the link; Infinity when it does not.
+ */
+export const linkHitDistance = (
   element: NonDeletedExcalidrawElement,
   elementsMap: ElementsMap,
   appState: AppState,
   point: GlobalPoint,
-) =>
-  linkBadgeDistance(element, elementsMap, appState, point) <=
-  LINK_BADGE.HIT / 2 / appState.zoom.value;
+  isMobile: boolean,
+) => {
+  if (!element.link || appState.selectedElementIds[element.id]) {
+    return Infinity;
+  }
+  const zoom = appState.zoom.value;
+  const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
+  const bounds: Bounds = [x1, y1, x2, y2];
+  const distance = pointDistance(
+    point,
+    linkBadgeCentre(bounds, element.angle, zoom),
+  );
+  if (
+    !isMobile &&
+    appState.viewModeEnabled &&
+    hitElementBoundingBox(point, element, elementsMap)
+  ) {
+    return distance;
+  }
+  if (!showsLinkBadge(bounds, zoom)) {
+    return Infinity;
+  }
+  const reach = isOverElement(bounds, element.angle, point)
+    ? LINK_BADGE.MARK
+    : LINK_BADGE.HIT;
+  return distance <= reach / 2 / zoom ? distance : Infinity;
+};
 
 export const isPointHittingLink = (
   element: NonDeletedExcalidrawElement,
   elementsMap: ElementsMap,
   appState: AppState,
-  [x, y]: GlobalPoint,
+  point: GlobalPoint,
   isMobile: boolean,
-) => {
-  if (!element.link || appState.selectedElementIds[element.id]) {
-    return false;
-  }
-  if (
-    !isMobile &&
-    appState.viewModeEnabled &&
-    hitElementBoundingBox(pointFrom(x, y), element, elementsMap)
-  ) {
-    return true;
-  }
-  return isPointHittingLinkIcon(
-    element,
-    elementsMap,
-    appState,
-    pointFrom(x, y),
-  );
-};
+) =>
+  linkHitDistance(element, elementsMap, appState, point, isMobile) !==
+  Infinity;
