@@ -20,10 +20,11 @@ import type { AppState } from "../../types";
 /**
  * The badge an element with a link wears at its top-right corner, in CSS px,
  * the same on screen at any zoom: a `MARK` disc that a tap anywhere within
- * `HIT` across follows, a finger's width, except over the element itself,
- * where only the disc does so a press near the corner still selects or drags
- * it. An element whose longest side shows under `MIN_ELEMENT` wears a `PIP`
- * dot instead and keeps all of its taps.
+ * `HIT` across follows, a finger's width, except on an element's body (its
+ * own or a neighbour's), where only the disc does so a press there still
+ * selects or drags that element. In view mode nothing drags, so the full
+ * reach holds everywhere. An element whose longest side shows under
+ * `MIN_ELEMENT` wears a `PIP` dot instead and keeps all of its taps.
  */
 export const LINK_BADGE = {
   MARK: 24,
@@ -71,11 +72,6 @@ const linkBadgeCentre = (bounds: Bounds, angle: Radians, zoom: number) =>
     angle,
   );
 
-const isOverElement = (bounds: Bounds, angle: Radians, point: GlobalPoint) => {
-  const [x, y] = pointRotateRads(point, centreOf(bounds), -angle as Radians);
-  return x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3];
-};
-
 /** The badge's visible mark (or pip) as `[x, y, width, height]` in scene units. */
 export const getLinkHandleFromCoords = (
   bounds: Bounds,
@@ -91,7 +87,8 @@ export const getLinkHandleFromCoords = (
 
 /**
  * How far a point is from the element's link badge, in scene units, when a
- * tap there follows the link; Infinity when it does not.
+ * tap there follows the link; Infinity when it does not. `onABody`: the point
+ * hits some element other than a frame, by the real hit test.
  */
 export const linkHitDistance = (
   element: NonDeletedExcalidrawElement,
@@ -99,6 +96,7 @@ export const linkHitDistance = (
   appState: AppState,
   point: GlobalPoint,
   isMobile: boolean,
+  onABody: boolean,
 ) => {
   if (!element.link || appState.selectedElementIds[element.id]) {
     return Infinity;
@@ -120,17 +118,7 @@ export const linkHitDistance = (
   if (!showsLinkBadge(bounds, zoom)) {
     return Infinity;
   }
-  const reach = isOverElement(bounds, element.angle, point)
-    ? LINK_BADGE.MARK
-    : LINK_BADGE.HIT;
+  const reach =
+    onABody && !appState.viewModeEnabled ? LINK_BADGE.MARK : LINK_BADGE.HIT;
   return distance <= reach / 2 / zoom ? distance : Infinity;
 };
-
-export const isPointHittingLink = (
-  element: NonDeletedExcalidrawElement,
-  elementsMap: ElementsMap,
-  appState: AppState,
-  point: GlobalPoint,
-  isMobile: boolean,
-) =>
-  linkHitDistance(element, elementsMap, appState, point, isMobile) !== Infinity;

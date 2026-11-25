@@ -174,7 +174,8 @@ describe("the link badge", () => {
         fillStyle: "solid",
         ...box,
       });
-    const lowerBox = { x: 230, y: 60, width: 115, height: 30 };
+    // the tap lands on the canvas, 8 px clear of both cards
+    const lowerBox = { x: 230, y: 60, width: 100, height: 30 };
     const lower = make(lowerBox);
     const upper = make(CARD);
     API.setElements([lower, upper]);

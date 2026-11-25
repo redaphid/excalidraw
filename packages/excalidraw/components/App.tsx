@@ -488,7 +488,7 @@ import { isSidebarDockedAtom } from "./Sidebar/Sidebar";
 import { hideTooltip } from "./Tooltip";
 import { StaticCanvas, InteractiveCanvas } from "./canvases";
 import NewElementCanvas from "./canvases/NewElementCanvas";
-import { isPointHittingLink, linkHitDistance } from "./hyperlink/helpers";
+import { linkHitDistance } from "./hyperlink/helpers";
 import { CursorHint, CursorHints } from "./CursorHint";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
@@ -6971,6 +6971,10 @@ ${css}
     const elements = this.scene.getNonDeletedElements();
     const elementsMap = this.scene.getNonDeletedElementsMap();
     const point = pointFrom<GlobalPoint>(scenePointer.x, scenePointer.y);
+    // On an element's body only a badge's disc takes the tap; that element
+    // keeps the rest. A frame is see-through.
+    const onABody =
+      !!hitElementMightBeLocked && !isFrameLikeElement(hitElementMightBeLocked);
     // Badges of neighbouring elements can overlap: the nearest one wins, so a
     // finger a little off one badge never lands on the next one's link.
     let nearest: NonDeletedExcalidrawElement | undefined;
@@ -6984,6 +6988,7 @@ ${css}
         this.state,
         point,
         this.editorInterface.formFactor === "phone",
+        onABody,
       );
       if (distance < nearestDistance) {
         nearest = element;
@@ -7017,29 +7022,17 @@ ${css}
     if (!this.hitLinkElement || draggedDistance > DRAGGING_THRESHOLD) {
       return;
     }
-    const lastPointerDownCoords = viewportCoordsToSceneCoords(
-      this.lastPointerDownEvent!,
-      this.state,
-    );
-    const elementsMap = this.scene.getNonDeletedElementsMap();
-    const lastPointerDownHittingLinkIcon = isPointHittingLink(
-      this.hitLinkElement,
-      elementsMap,
-      this.state,
-      pointFrom(lastPointerDownCoords.x, lastPointerDownCoords.y),
-      this.editorInterface.formFactor === "phone",
-    );
-    const lastPointerUpCoords = viewportCoordsToSceneCoords(
-      this.lastPointerUpEvent!,
-      this.state,
-    );
-    const lastPointerUpHittingLinkIcon = isPointHittingLink(
-      this.hitLinkElement,
-      elementsMap,
-      this.state,
-      pointFrom(lastPointerUpCoords.x, lastPointerUpCoords.y),
-      this.editorInterface.formFactor === "phone",
-    );
+    const isLinkAt = (event: { clientX: number; clientY: number }) => {
+      const { x, y } = viewportCoordsToSceneCoords(event, this.state);
+      return (
+        this.getElementLinkAtPosition(
+          { x, y },
+          this.getElementAtPosition(x, y, { includeLockedElements: true }),
+        )?.id === this.hitLinkElement?.id
+      );
+    };
+    const lastPointerDownHittingLinkIcon = isLinkAt(this.lastPointerDownEvent!);
+    const lastPointerUpHittingLinkIcon = isLinkAt(this.lastPointerUpEvent!);
     if (lastPointerDownHittingLinkIcon && lastPointerUpHittingLinkIcon) {
       hideHyperlinkToolip();
       let url = this.hitLinkElement.link;
