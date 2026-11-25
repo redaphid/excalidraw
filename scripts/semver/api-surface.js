@@ -313,6 +313,8 @@ const targetVersion = ({ version, base, sha, title }) => {
   const repository = readRepository({ sha, cwd: ROOT });
   if (title !== undefined) {
     repository.commits.push({ hash: "(this PR)", subject: title, body: "" });
+    // The PR adds a commit past sha, so a tag on sha does not contain it.
+    repository.containingTag = undefined;
   }
   const result = plan(repository);
   return result.version ?? result.pending ?? version;
