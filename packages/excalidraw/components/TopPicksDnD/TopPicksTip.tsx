@@ -2,8 +2,6 @@ import clsx from "clsx";
 
 import { KEYS } from "@excalidraw/common";
 
-import { t } from "../../i18n";
-
 /**
  * "drag to pin" hint shown in a picker popup whose top picks are
  * customizable — with a reset link while the picks are customized
@@ -52,7 +50,7 @@ export const TopPicksTip = ({
             }
           }}
         >
-          {t("buttons.reset")}
+          {"Reset"}
         </button>
       </>
     )}

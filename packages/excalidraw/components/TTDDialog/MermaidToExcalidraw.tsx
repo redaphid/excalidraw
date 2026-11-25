@@ -7,7 +7,6 @@ import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 import { useApp } from "../App";
 import { ArrowRightIcon } from "../icons";
 import { EditorLocalStorage } from "../../data/EditorLocalStorage";
-import { t } from "../../i18n";
 import Trans from "../Trans";
 
 import { useUIAppState } from "../../context/ui-appState";
@@ -279,7 +278,7 @@ const MermaidToExcalidraw = ({
         <TTDDialogPanel>
           <TTDDialogInput
             input={text}
-            placeholder={t("mermaid.inputPlaceholder")}
+            placeholder={"Write Mermaid diagram definition here..."}
             onChange={(value) => setText(value)}
             errorLine={errorLine}
             onKeyboardSubmit={() => {
@@ -293,7 +292,7 @@ const MermaidToExcalidraw = ({
               action: () => {
                 onInsertToEditor();
               },
-              label: t("mermaid.button"),
+              label: "Insert",
               icon: ArrowRightIcon,
               variant: "button",
             },

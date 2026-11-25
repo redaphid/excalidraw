@@ -11,7 +11,6 @@ import { flushSync } from "react-dom";
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
 import { actionToggleElementLock } from "../actions";
-import { t } from "../i18n";
 
 import "./UnlockPopup.scss";
 
@@ -81,7 +80,7 @@ const UnlockPopup = ({
         });
         app.actionManager.executeAction(actionToggleElementLock);
       }}
-      title={t("labels.elementLock.unlock")}
+      title={"Unlock"}
     >
       {LockedIconFilled}
     </div>

@@ -1,7 +1,6 @@
 import { KEYS } from "@excalidraw/common";
 
 import { actionSelectAll } from "../actions";
-import { t } from "../i18n";
 import { Excalidraw } from "../index";
 
 import { API } from "../tests/helpers/api";
@@ -164,7 +163,7 @@ describe("element locking", () => {
       contextMenu?.querySelector(
         `li[data-testid="toggleElementLock"] .context-menu-item__label`,
       ),
-    ).toHaveTextContent(t("labels.elementLock.unlock"));
+    ).toHaveTextContent("Unlock");
   });
 
   it("right-clicking on element covered by locked element should ignore the locked element", () => {

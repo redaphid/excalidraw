@@ -1,5 +1,4 @@
 import Trans from "@excalidraw/excalidraw/components/Trans";
-import { t } from "@excalidraw/excalidraw/i18n";
 import * as Sentry from "@sentry/browser";
 import React from "react";
 
@@ -107,7 +106,7 @@ export class TopErrorBoundary extends React.Component<
               <span role="img" aria-label="warning">
                 ⚠️
               </span>
-              {t("errorSplash.clearCanvasCaveat")}
+              {" This will result in loss of work "}
               <span role="img" aria-hidden="true">
                 ⚠️
               </span>
@@ -115,9 +114,7 @@ export class TopErrorBoundary extends React.Component<
           </div>
           <div>
             <div className="ErrorSplash-paragraph">
-              {t("errorSplash.trackedToSentry", {
-                eventId: this.state.sentryEventId,
-              })}
+              {`The error with identifier ${this.state.sentryEventId} was tracked on our system.`}
             </div>
             <div className="ErrorSplash-paragraph">
               <Trans
@@ -129,7 +126,7 @@ export class TopErrorBoundary extends React.Component<
             </div>
             <div className="ErrorSplash-paragraph">
               <div className="ErrorSplash-details">
-                <label>{t("errorSplash.sceneContent")}</label>
+                <label>{"Scene content:"}</label>
                 <textarea
                   rows={5}
                   onPointerDown={this.selectTextArea}

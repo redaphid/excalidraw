@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 import { useUIAppState } from "../../context/ui-appState";
-import { t } from "../../i18n";
 import { useApp } from "../App";
 import { Dialog } from "../Dialog";
 import { withInternalFallback } from "../hoc/withInternalFallback";
@@ -94,19 +93,19 @@ const TTDDialogBase = withInternalFallback(
       >
         <TTDDialogTabs dialog="ttd" tab={tab}>
           {"__fallback" in rest && rest.__fallback ? (
-            <p className="dialog-mermaid-title">{t("mermaid.title")}</p>
+            <p className="dialog-mermaid-title">{"Mermaid to Excalidraw"}</p>
           ) : (
             <TTDDialogTabTriggers>
               <TTDDialogTabTrigger tab="text-to-diagram">
                 <div className="ttd-dialog-tab-trigger__content">
-                  {t("labels.textToDiagram")}
+                  {"Text to diagram"}
                   <div className="ttd-dialog-tab-trigger__badge">
-                    {t("chat.aiBeta")}
+                    {"AI Beta"}
                   </div>
                 </div>
               </TTDDialogTabTrigger>
               <TTDDialogTabTrigger tab="mermaid">
-                {t("mermaid.label")}
+                {"Mermaid"}
               </TTDDialogTabTrigger>
             </TTDDialogTabTriggers>
           )}

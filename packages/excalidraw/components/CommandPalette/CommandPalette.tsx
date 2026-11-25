@@ -403,7 +403,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: t("buttons.exportImage"),
+          label: "Export image...",
           category: DEFAULT_CATEGORIES.export,
           icon: ExportImageIcon,
           shortcut: getShortcutFromShortcutName("imageExport"),
@@ -427,7 +427,7 @@ function CommandPaletteInner({
         actionToCommand(actionToggleTheme, DEFAULT_CATEGORIES.app),
         actionToCommand(actionToggleFramesMenu, DEFAULT_CATEGORIES.app),
         {
-          label: t("toolBar.library"),
+          label: "Library",
           category: DEFAULT_CATEGORIES.app,
           icon: LibraryIcon,
           viewMode: false,
@@ -447,7 +447,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: t("search.title"),
+          label: "Find on canvas",
           category: DEFAULT_CATEGORIES.app,
           icon: searchIcon,
           viewMode: true,
@@ -456,7 +456,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: t("labels.shapeSwitch"),
+          label: "Switch shape",
           category: DEFAULT_CATEGORIES.elements,
           icon: boltIcon,
           perform: () => {
@@ -464,7 +464,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: t("labels.changeStroke"),
+          label: "Change stroke color",
           keywords: ["color", "outline"],
           category: DEFAULT_CATEGORIES.elements,
           icon: bucketFillIcon,
@@ -483,7 +483,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: t("labels.changeBackground"),
+          label: "Change background color",
           keywords: ["color", "fill"],
           icon: bucketFillIcon,
           category: DEFAULT_CATEGORIES.elements,
@@ -506,7 +506,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: t("labels.canvasBackground"),
+          label: "Canvas background",
           keywords: ["color"],
           icon: bucketFillIcon,
           category: DEFAULT_CATEGORIES.editor,
@@ -557,7 +557,7 @@ function CommandPaletteInner({
           [],
         ),
         {
-          label: t("toolBar.lock"),
+          label: "Keep selected tool active after drawing",
           category: DEFAULT_CATEGORIES.tools,
           icon: uiAppState.activeTool.locked ? LockedIcon : UnlockedIcon,
           shortcut: KEYS.Q.toLocaleUpperCase(),
@@ -567,7 +567,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: `${t("labels.textToDiagram")}...`,
+          label: `${"Text to diagram"}...`,
           category: DEFAULT_CATEGORIES.tools,
           icon: brainIconThin,
           viewMode: false,
@@ -582,7 +582,7 @@ function CommandPaletteInner({
           },
         },
         {
-          label: `${t("toolBar.mermaidToExcalidraw")}...`,
+          label: `${"Mermaid to Excalidraw"}...`,
           category: DEFAULT_CATEGORIES.tools,
           icon: mermaidLogoIcon,
           viewMode: false,
@@ -894,7 +894,7 @@ function CommandPaletteInner({
     >
       <TextField
         value={commandSearch}
-        placeholder={t("commandPalette.search.placeholder")}
+        placeholder={"Search menus, commands, and discover hidden gems"}
         onChange={(value) => {
           setCommandSearch(value);
         }}
@@ -904,14 +904,10 @@ function CommandPaletteInner({
 
       {app.editorInterface.formFactor !== "phone" && (
         <div className="shortcuts-wrapper">
-          <CommandShortcutHint shortcut="↑↓">
-            {t("commandPalette.shortcuts.select")}
-          </CommandShortcutHint>
-          <CommandShortcutHint shortcut="↵">
-            {t("commandPalette.shortcuts.confirm")}
-          </CommandShortcutHint>
+          <CommandShortcutHint shortcut="↑↓">{"Select"}</CommandShortcutHint>
+          <CommandShortcutHint shortcut="↵">{"Confirm"}</CommandShortcutHint>
           <CommandShortcutHint shortcut={getShortcutKey("Esc")}>
-            {t("commandPalette.shortcuts.close")}
+            {"Close"}
           </CommandShortcutHint>
         </div>
       )}
@@ -920,7 +916,7 @@ function CommandPaletteInner({
         {lastUsed && !commandSearch && (
           <div className="command-category">
             <div className="command-category-title">
-              {t("commandPalette.recents")}
+              {"Recently used"}
               <div
                 className="icon"
                 style={{
@@ -964,8 +960,7 @@ function CommandPaletteInner({
           })
         ) : allCommands ? (
           <div className="no-match">
-            <div className="icon">{searchIcon}</div>{" "}
-            {t("commandPalette.search.noMatch")}
+            <div className="icon">{searchIcon}</div> {"No matching commands..."}
           </div>
         ) : null}
       </div>
@@ -1024,7 +1019,7 @@ const CommandItem = ({
       }}
       onClick={disabled ? noop : onClick}
       onMouseMove={disabled ? noop : onMouseMove}
-      title={disabled ? t("commandPalette.itemNotAvailable") : ""}
+      title={disabled ? "Command is not available..." : ""}
     >
       <div className="name">
         {command.icon && (

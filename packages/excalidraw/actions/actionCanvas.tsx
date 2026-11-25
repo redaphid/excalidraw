@@ -29,7 +29,6 @@ import {
 } from "../components/icons";
 import { getThemeCanvasBackground } from "../cssTheme";
 
-import { t } from "../i18n";
 import { getNormalizedZoom } from "../scene";
 import {
   constrainScrollState,
@@ -71,7 +70,7 @@ export const actionChangeViewBackgroundColor = register<Partial<AppState>>({
       <ColorPicker
         palette={null}
         topPicks={DEFAULT_CANVAS_BACKGROUND_PICKS}
-        label={t("labels.canvasBackground")}
+        label={"Canvas background"}
         type="canvasBackground"
         color={
           themeBackground &&

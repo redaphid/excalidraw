@@ -112,7 +112,7 @@ const LibraryMenuContent = memo(
           ];
           onAddToLibrary();
           library.setLibrary(nextItems).catch(() => {
-            setAppState({ errorMessage: t("alerts.errorAddingToLibrary") });
+            setAppState({ errorMessage: "Couldn't add item to the library" });
           });
         };
         addToLibrary(elements, libraryItemsData.libraryItems);
@@ -134,7 +134,7 @@ const LibraryMenuContent = memo(
           <div className="layer-ui__library-message">
             <div>
               <Spinner size="2em" />
-              <span>{t("labels.libraryLoadingMessage")}</span>
+              <span>{"Loading library…"}</span>
             </div>
           </div>
         </LibraryMenuWrapper>

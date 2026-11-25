@@ -2,7 +2,6 @@ import React from "react";
 
 import { actionSaveFileToDisk } from "../../actions";
 import { actionChangeExportEmbedScene } from "../../actions/actionExport";
-import { useI18n } from "../../i18n";
 import { useExcalidrawActionManager, useExcalidrawSetAppState } from "../App";
 import { FilledButton } from "../FilledButton";
 
@@ -38,37 +37,35 @@ export const Action = ({
 };
 
 export const ExportToImage = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const setAppState = useExcalidrawSetAppState();
 
   return (
     <Action
-      title={t("overwriteConfirm.action.exportToImage.title")}
-      actionLabel={t("overwriteConfirm.action.exportToImage.button")}
+      title={"Export as image"}
+      actionLabel={"Export as image"}
       onClick={() => {
         actionManager.executeAction(actionChangeExportEmbedScene, "ui", true);
         setAppState({ openDialog: { name: "imageExport" } });
       }}
     >
-      {t("overwriteConfirm.action.exportToImage.description")}
+      {"Export the scene data as an image from which you can import later."}
     </Action>
   );
 };
 
 export const SaveToDisk = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
 
   return (
     <Action
-      title={t("overwriteConfirm.action.saveToDisk.title")}
-      actionLabel={t("overwriteConfirm.action.saveToDisk.button")}
+      title={"Save to disk"}
+      actionLabel={"Save to disk"}
       onClick={() => {
         actionManager.executeAction(actionSaveFileToDisk, "ui");
       }}
     >
-      {t("overwriteConfirm.action.saveToDisk.description")}
+      {"Export the scene data to a file from which you can import later."}
     </Action>
   );
 };

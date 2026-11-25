@@ -12,7 +12,6 @@ import {
 
 import type { Theme } from "@excalidraw/element/types";
 
-import { t } from "../../i18n";
 import { TopPicksContextMenu } from "../TopPicksDnD/TopPicksContextMenu";
 import {
   getTopPickReorderOffset,
@@ -75,7 +74,7 @@ export const TopPicks = ({
     <TopPicksContextMenu
       onReset={onReset}
       isCustomized={!!isCustomized}
-      resetLabel={t("colorPicker.resetTopPicks")}
+      resetLabel={"Reset to default top picks"}
     >
       <div
         className={clsx("color-picker__top-picks top-picks-dnd", {

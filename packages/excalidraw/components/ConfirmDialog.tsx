@@ -1,7 +1,6 @@
 import { flushSync } from "react-dom";
 
 import { useSetAtom } from "../editor-jotai";
-import { t } from "../i18n";
 
 import { Dialog } from "./Dialog";
 import DialogActionButton from "./DialogActionButton";
@@ -23,8 +22,8 @@ const ConfirmDialog = (props: Props) => {
     onConfirm,
     onCancel,
     children,
-    confirmText = t("buttons.confirm"),
-    cancelText = t("buttons.cancel"),
+    confirmText = "Confirm",
+    cancelText = "Cancel",
     className = "",
     ...rest
   } = props;

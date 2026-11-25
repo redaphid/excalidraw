@@ -4,8 +4,6 @@ import clsx from "clsx";
 
 import { KEYS, MIME_TYPES } from "@excalidraw/common";
 
-import { useI18n } from "../i18n";
-
 import { useApp, useExcalidrawContainer } from "./App";
 import Trans from "./Trans";
 
@@ -21,7 +19,6 @@ type FileDropState = {
 export const FileDropOverlay = () => {
   const app = useApp();
   const { container } = useExcalidrawContainer();
-  const { t } = useI18n();
   const [dragState, setDragState] = useState<FileDropState | null>(null);
 
   useEffect(() => {
@@ -132,17 +129,15 @@ export const FileDropOverlay = () => {
       <div className="file-drop-overlay__card">
         <div role="status" aria-live="polite" aria-atomic="true">
           <div className="file-drop-overlay__title">
-            {t(
-              dragState.kind === "library"
-                ? "fileDrop.importLibrary"
-                : dragState.shiftKey
-                ? "fileDrop.add"
-                : "fileDrop.replace",
-            )}
+            {dragState.kind === "library"
+              ? "Drop to import library"
+              : dragState.shiftKey
+              ? "Drop to add to canvas"
+              : "Drop to replace content"}
           </div>
           <div className="file-drop-overlay__hint">
             {keepsContent ? (
-              t("fileDrop.keepHint")
+              "Your existing content will be kept"
             ) : (
               <Trans
                 i18nKey="fileDrop.replaceHint"
@@ -152,7 +147,7 @@ export const FileDropOverlay = () => {
           </div>
           {dragState.kind === "unknown" && (
             <div className="file-drop-overlay__hint file-drop-overlay__hint--secondary">
-              ({t("fileDrop.libraryHint")})
+              ({"Library files will append"})
             </div>
           )}
         </div>

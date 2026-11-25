@@ -4,7 +4,6 @@ import { isFiniteNumber } from "@excalidraw/math";
 import { useAtom } from "../../../editor-jotai";
 
 import { trackEvent } from "../../../analytics";
-import { t } from "../../../i18n";
 
 import { errorAtom, rateLimitsAtom, chatHistoryAtom } from "../TTDContext";
 import { useChatAgent } from "../Chat";
@@ -53,13 +52,13 @@ export const useTextGeneration = ({
       if (prompt.length < MIN_PROMPT_LENGTH) {
         setError(
           new Error(
-            t("chat.errors.promptTooShort", { min: MIN_PROMPT_LENGTH }),
+            `Prompt is too short (min ${MIN_PROMPT_LENGTH} characters)`,
           ),
         );
       }
       if (prompt.length > MAX_PROMPT_LENGTH) {
         setError(
-          new Error(t("chat.errors.promptTooLong", { max: MAX_PROMPT_LENGTH })),
+          new Error(`Prompt is too long (max ${MAX_PROMPT_LENGTH} characters)`),
         );
       }
 
@@ -184,9 +183,7 @@ export const useTextGeneration = ({
           return;
         }
 
-        const _error = new Error(
-          error.message || t("chat.errors.requestFailed"),
-        );
+        const _error = new Error(error.message || "Request failed");
         if (error.status !== 429) {
           setAssistantError(_error.message, "network");
         }
@@ -198,9 +195,7 @@ export const useTextGeneration = ({
       // a library that fails to load is a network error, which offers a retry,
       // not a parse error, which asks the model to repair a valid definition
       const api = await mermaidToExcalidrawLib.api.catch((error: Error) => {
-        const _error = new Error(
-          error.message || t("chat.errors.requestFailed"),
-        );
+        const _error = new Error(error.message || "Request failed");
         setAssistantError(_error.message, "network");
         setError(_error);
         return null;
@@ -214,16 +209,12 @@ export const useTextGeneration = ({
         trackEvent("ai", "mermaid parse success", "ttd");
       } catch (error: any) {
         trackEvent("ai", "mermaid parse failed", "ttd");
-        const _error = new Error(
-          error.message || t("chat.errors.mermaidParseError"),
-        );
+        const _error = new Error(error.message || "Mermaid syntax error");
         setAssistantError(_error.message, "parse");
         setError(_error);
       }
     } catch (error: any) {
-      const _error = new Error(
-        error.message || t("chat.errors.generationFailed"),
-      );
+      const _error = new Error(error.message || "Generation failed");
       setAssistantError(_error.message, "other");
       setError(_error);
     } finally {

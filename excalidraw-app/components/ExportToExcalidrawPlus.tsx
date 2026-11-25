@@ -13,7 +13,6 @@ import {
 } from "@excalidraw/excalidraw/data/encryption";
 import { serializeAsJSON } from "@excalidraw/excalidraw/data/json";
 import { isInitializedImageElement } from "@excalidraw/element";
-import { useI18n } from "@excalidraw/excalidraw/i18n";
 
 import type {
   FileId,
@@ -95,7 +94,6 @@ export const ExportToExcalidrawPlus: React.FC<{
   onError: (error: Error) => void;
   onSuccess: () => void;
 }> = ({ elements, appState, files, name, onError, onSuccess }) => {
-  const { t } = useI18n();
   return (
     <Card color="primary">
       <div className="Card-icon">
@@ -109,13 +107,13 @@ export const ExportToExcalidrawPlus: React.FC<{
       </div>
       <h2>Excalidraw+</h2>
       <div className="Card-details">
-        {t("exportDialog.excalidrawplus_description")}
+        {"Save the scene to your Excalidraw+ workspace."}
       </div>
       <IconButton
         className="Card-button"
         type="button"
-        title={t("exportDialog.excalidrawplus_button")}
-        aria-label={t("exportDialog.excalidrawplus_button")}
+        title={"Export"}
+        aria-label={"Export"}
         showAriaLabel={true}
         onClick={async () => {
           try {
@@ -125,7 +123,9 @@ export const ExportToExcalidrawPlus: React.FC<{
           } catch (error: any) {
             console.error(error);
             if (error.name !== "AbortError") {
-              onError(new Error(t("exportDialog.excalidrawplus_exportError")));
+              onError(
+                new Error("Couldn't export to Excalidraw+ at this moment..."),
+              );
             }
           }
         }}

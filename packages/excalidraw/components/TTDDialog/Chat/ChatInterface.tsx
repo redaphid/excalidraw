@@ -4,8 +4,6 @@ import { KEYS } from "@excalidraw/common";
 import { ArrowRightIcon, stop as StopIcon } from "../../icons";
 import { InlineIcon } from "../../InlineIcon";
 
-import { t } from "../../../i18n";
-
 import { TTDWelcomeMessage } from "../TTDWelcomeMessage";
 
 import { ChatMessage } from "./ChatMessage";
@@ -160,12 +158,12 @@ export const ChatInterface = ({
               onKeyDown={handleKeyDown}
               placeholder={
                 isGenerating
-                  ? t("chat.generating")
+                  ? "Generating..."
                   : rateLimits?.rateLimitRemaining === 0
-                  ? t("chat.rateLimit.messageLimitInputPlaceholder")
+                  ? "You've reached your message limit"
                   : messages.length > 0
-                  ? t("chat.inputPlaceholderWithMessages")
-                  : t("chat.inputPlaceholder", { shortcut: "Shift + Enter" })
+                  ? "Continue refining your diagram..."
+                  : `Start typing your diagram idea here... (${"Shift + Enter"} for new line)`
               }
               disabled={rateLimits?.rateLimitRemaining === 0}
               rows={1}

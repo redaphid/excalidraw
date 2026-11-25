@@ -2,7 +2,6 @@ import { actionLoadScene, actionShortcuts } from "../../actions";
 import { getShortcutFromShortcutName } from "../../actions/shortcuts";
 import { useTunnels } from "../../context/tunnels";
 import { useUIAppState } from "../../context/ui-appState";
-import { t, useI18n } from "../../i18n";
 import { useEditorInterface, useExcalidrawActionManager } from "../App";
 import { ExcalidrawLogo } from "../ExcalidrawLogo";
 import { HelpIcon, LoadIcon, usersIcon } from "../icons";
@@ -96,7 +95,7 @@ const Center = ({ children }: { children?: React.ReactNode }) => {
         {children || (
           <>
             <Logo />
-            <Heading>{t("welcomeScreen.defaults.center_heading")}</Heading>
+            <Heading>{"Diagrams. Made. Simple."}</Heading>
             <Menu>
               <MenuItemLoadScene />
               <MenuItemHelp />
@@ -141,7 +140,7 @@ const MenuItemHelp = () => {
       shortcut="?"
       icon={HelpIcon}
     >
-      {t("helpDialog.title")}
+      {"Help"}
     </WelcomeScreenMenuItem>
   );
 };
@@ -161,7 +160,7 @@ const MenuItemLoadScene = () => {
       shortcut={getShortcutFromShortcutName("loadScene")}
       icon={LoadIcon}
     >
-      {t("buttons.load")}
+      {"Open"}
     </WelcomeScreenMenuItem>
   );
 };
@@ -172,10 +171,9 @@ const MenuItemLiveCollaborationTrigger = ({
 }: {
   onSelect: () => any;
 }) => {
-  const { t } = useI18n();
   return (
     <WelcomeScreenMenuItem shortcut={null} onSelect={onSelect} icon={usersIcon}>
-      {t("labels.liveCollaboration")}
+      {"Live collaboration..."}
     </WelcomeScreenMenuItem>
   );
 };

@@ -36,7 +36,6 @@ import {
 import polyfill from "@excalidraw/excalidraw/polyfill";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadFromBlob } from "@excalidraw/excalidraw/data/blob";
-import { t } from "@excalidraw/excalidraw/i18n";
 
 import {
   GithubIcon,
@@ -202,7 +201,7 @@ if (window.self !== window.top) {
 }
 
 const shareableLinkConfirmDialog = {
-  title: t("overwriteConfirm.modal.shareableLink.title"),
+  title: "Load from link",
   description: (
     <Trans
       i18nKey="overwriteConfirm.modal.shareableLink.description"
@@ -210,7 +209,7 @@ const shareableLinkConfirmDialog = {
       br={() => <br />}
     />
   ),
-  actionLabel: t("overwriteConfirm.modal.shareableLink.button"),
+  actionLabel: "Replace my content",
   color: "danger",
 } as const;
 
@@ -318,7 +317,8 @@ const initializeScene = async (opts: {
       return {
         scene: {
           appState: {
-            errorMessage: t("alerts.invalidSceneUrl"),
+            errorMessage:
+              "Couldn't import scene from the supplied URL. It's either malformed, or doesn't contain valid Excalidraw JSON data.",
           },
         },
         isExternalScene,
@@ -772,7 +772,7 @@ const ExcalidrawWrapper = () => {
     files: BinaryFiles,
   ) => {
     if (exportedElements.length === 0) {
-      throw new Error(t("alerts.cannotExportEmptyCanvas"));
+      throw new Error("Cannot export empty canvas.");
     }
     try {
       const { url, errorMessage } = await exportToBackend(
@@ -1041,8 +1041,8 @@ const ExcalidrawWrapper = () => {
           <OverwriteConfirmDialog.Actions.SaveToDisk />
           {excalidrawAPI && (
             <OverwriteConfirmDialog.Action
-              title={t("overwriteConfirm.action.excalidrawPlus.title")}
-              actionLabel={t("overwriteConfirm.action.excalidrawPlus.button")}
+              title={"Excalidraw+"}
+              actionLabel={"Export to Excalidraw+"}
               onClick={() => {
                 exportToExcalidrawPlus(
                   excalidrawAPI.getSceneElements(),
@@ -1052,7 +1052,7 @@ const ExcalidrawWrapper = () => {
                 );
               }}
             >
-              {t("overwriteConfirm.action.excalidrawPlus.description")}
+              {"Save the scene to your Excalidraw+ workspace."}
             </OverwriteConfirmDialog.Action>
           )}
         </OverwriteConfirmDialog>
@@ -1062,12 +1062,14 @@ const ExcalidrawWrapper = () => {
         <TTDDialogTrigger />
         {isCollaborating && isOffline && (
           <div className="alertalert--warning">
-            {t("alerts.collabOfflineWarning")}
+            {
+              "No internet connection available.\nYour changes will not be saved!"
+            }
           </div>
         )}
         {localStorageQuotaExceeded && (
           <div className="alert alert--danger">
-            {t("alerts.localStorageQuotaExceeded")}
+            {"Browser storage quota exceeded. Changes will not be saved."}
           </div>
         )}
         {latestShareableLink && (
@@ -1109,7 +1111,7 @@ const ExcalidrawWrapper = () => {
         <CommandPalette
           customCommandPaletteItems={[
             {
-              label: t("labels.liveCollaboration"),
+              label: "Live collaboration...",
               category: DEFAULT_CATEGORIES.app,
               keywords: [
                 "team",
@@ -1128,7 +1130,7 @@ const ExcalidrawWrapper = () => {
               },
             },
             {
-              label: t("roomDialog.button_stopSession"),
+              label: "Stop session",
               category: DEFAULT_CATEGORIES.app,
               predicate: () => !!collabAPI?.isCollaborating(),
               keywords: [
@@ -1150,7 +1152,7 @@ const ExcalidrawWrapper = () => {
               },
             },
             {
-              label: t("labels.share"),
+              label: "Share",
               category: DEFAULT_CATEGORIES.app,
               predicate: true,
               icon: share,
@@ -1192,7 +1194,7 @@ const ExcalidrawWrapper = () => {
               },
             },
             {
-              label: t("labels.followUs"),
+              label: "Follow us",
               icon: XBrandIcon,
               category: DEFAULT_CATEGORIES.links,
               predicate: true,
@@ -1206,7 +1208,7 @@ const ExcalidrawWrapper = () => {
               },
             },
             {
-              label: t("labels.discordChat"),
+              label: "Discord chat",
               category: DEFAULT_CATEGORIES.links,
               predicate: true,
               icon: DiscordIcon,
@@ -1254,7 +1256,7 @@ const ExcalidrawWrapper = () => {
               : [ExcalidrawPlusCommand, ExcalidrawPlusAppCommand]),
 
             {
-              label: t("overwriteConfirm.action.excalidrawPlus.button"),
+              label: "Export to Excalidraw+",
               category: DEFAULT_CATEGORIES.export,
               icon: exportToPlus,
               predicate: true,
@@ -1271,7 +1273,7 @@ const ExcalidrawWrapper = () => {
               },
             },
             {
-              label: t("labels.installPWA"),
+              label: "Install Excalidraw locally (PWA)",
               category: DEFAULT_CATEGORIES.app,
               predicate: () => !!pwaEvent,
               perform: () => {

@@ -8,7 +8,6 @@ import { actionSaveFileToDisk } from "../actions/actionExport";
 
 import { trackEvent } from "../analytics";
 import { nativeFileSystemSupported } from "../data/filesystem";
-import { t } from "../i18n";
 
 import { Card } from "./Card";
 import { Dialog } from "./Dialog";
@@ -52,17 +51,19 @@ const JSONExportModal = ({
         {exportOpts.saveFileToDisk && (
           <Card color="lime">
             <div className="Card-icon">{exportToFileIcon}</div>
-            <h2>{t("exportDialog.disk_title")}</h2>
+            <h2>{"Save to disk"}</h2>
             <div className="Card-details">
-              {t("exportDialog.disk_details")}
+              {
+                "Export the scene data to a file from which you can import later."
+              }
               {!nativeFileSystemSupported &&
                 actionManager.renderAction("changeProjectName")}
             </div>
             <IconButton
               className="Card-button"
               type="button"
-              title={t("exportDialog.disk_button")}
-              aria-label={t("exportDialog.disk_button")}
+              title={"Save to file"}
+              aria-label={"Save to file"}
               showAriaLabel={true}
               onClick={() => {
                 actionManager.executeAction(actionSaveFileToDisk, "ui");
@@ -73,13 +74,13 @@ const JSONExportModal = ({
         {onExportToBackend && (
           <Card color="pink">
             <div className="Card-icon">{LinkIcon}</div>
-            <h2>{t("exportDialog.link_title")}</h2>
-            <div className="Card-details">{t("exportDialog.link_details")}</div>
+            <h2>{"Shareable link"}</h2>
+            <div className="Card-details">{"Export as a read-only link."}</div>
             <IconButton
               className="Card-button"
               type="button"
-              title={t("exportDialog.link_button")}
-              aria-label={t("exportDialog.link_button")}
+              title={"Export to Link"}
+              aria-label={"Export to Link"}
               showAriaLabel={true}
               onClick={async () => {
                 try {
@@ -124,7 +125,7 @@ export const JSONExportDialog = ({
   return (
     <>
       {appState.openDialog?.name === "jsonExport" && (
-        <Dialog onCloseRequest={handleClose} title={t("buttons.export")}>
+        <Dialog onCloseRequest={handleClose} title={"Save to..."}>
           <JSONExportModal
             elements={elements}
             appState={appState}

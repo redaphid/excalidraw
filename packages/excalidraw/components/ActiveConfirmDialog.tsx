@@ -1,6 +1,5 @@
 import { actionClearCanvas } from "../actions";
 import { atom, useAtom } from "../editor-jotai";
-import { t } from "../i18n";
 
 import { useExcalidrawActionManager } from "./App";
 import ConfirmDialog from "./ConfirmDialog";
@@ -25,9 +24,12 @@ export const ActiveConfirmDialog = () => {
           setActiveConfirmDialog(null);
         }}
         onCancel={() => setActiveConfirmDialog(null)}
-        title={t("clearCanvasDialog.title")}
+        title={"Clear canvas"}
       >
-        <p className="clear-canvas__content"> {t("alerts.clearReset")}</p>
+        <p className="clear-canvas__content">
+          {" "}
+          {"This will clear the whole canvas. Are you sure?"}
+        </p>
       </ConfirmDialog>
     );
   }

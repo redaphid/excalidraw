@@ -213,7 +213,7 @@ export class RadialPaletteController {
             id: `host-${id}`,
             label,
           })),
-          { id: "eraser", label: t("toolBar.eraser") },
+          { id: "eraser", label: "Eraser" },
         ];
       case "colors":
         return [
@@ -221,9 +221,9 @@ export class RadialPaletteController {
           ...this.colorSlots().map((color) =>
             color
               ? { id: color, label: color }
-              : { id: "", label: t("radialPalette.emptyRecent") },
+              : { id: "", label: "Recent color" },
           ),
-          { id: "fill", label: t("radialPalette.fill") },
+          { id: "fill", label: "Fill" },
         ];
       case "style": {
         const style = this.current?.style;

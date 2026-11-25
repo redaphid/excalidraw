@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 
 import { copyTextToSystemClipboard } from "../clipboard";
 import { useCopyStatus } from "../hooks/useCopiedIndicator";
-import { useI18n } from "../i18n";
 
 import { Dialog } from "./Dialog";
 import { FilledButton } from "./FilledButton";
@@ -23,7 +22,6 @@ export const ShareableLinkDialog = ({
   onCloseRequest,
   setErrorMessage,
 }: ShareableLinkDialogProps) => {
-  const { t } = useI18n();
   const [, setJustCopied] = useState(false);
   const timerRef = useRef<number>(0);
   const ref = useRef<HTMLInputElement>(null);
@@ -32,7 +30,7 @@ export const ShareableLinkDialog = ({
     try {
       await copyTextToSystemClipboard(link);
     } catch (e) {
-      setErrorMessage(t("errors.copyToSystemClipboardFailed"));
+      setErrorMessage("Couldn't copy to clipboard.");
     }
     setJustCopied(true);
 
@@ -62,7 +60,7 @@ export const ShareableLinkDialog = ({
           />
           <FilledButton
             size="large"
-            label={t("buttons.copyLink")}
+            label={"Copy link"}
             icon={copyIcon}
             status={copyStatus}
             onClick={() => {
@@ -72,7 +70,10 @@ export const ShareableLinkDialog = ({
           />
         </div>
         <div className="ShareableLinkDialog__description">
-          🔒 {t("alerts.uploadedSecurly")}
+          🔒{" "}
+          {
+            "The upload has been secured with end-to-end encryption, which means that Excalidraw server and third parties can't read the content."
+          }
         </div>
       </div>
     </Dialog>

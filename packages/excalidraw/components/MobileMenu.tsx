@@ -3,7 +3,6 @@ import React from "react";
 import type { NonDeletedExcalidrawElement } from "@excalidraw/element/types";
 
 import { useTunnels } from "../context/tunnels";
-import { t } from "../i18n";
 import { getScrollToContentState } from "../scene";
 
 import { ExitViewModeButton } from "./Actions";
@@ -106,7 +105,7 @@ export const MobileMenu = ({
           }));
         }}
       >
-        {t("buttons.scrollBackToContent")}
+        {"Scroll back to content"}
       </button>
     ) : null;
 

@@ -2,7 +2,6 @@ import { Fragment } from "react";
 
 import { framePath } from "../frameNavigation";
 import { useCurrentFrameId, useFrameModel } from "../hooks/useFrameModel";
-import { t } from "../i18n";
 
 import { useApp } from "./App";
 
@@ -19,10 +18,7 @@ export const FrameBreadcrumb = () => {
   }
   const path = framePath(model, current);
   return (
-    <nav
-      className="frame-breadcrumb"
-      aria-label={t("frameNavigation.breadcrumb")}
-    >
+    <nav className="frame-breadcrumb" aria-label={"Current frame"}>
       {path.map((frame, i) => (
         <Fragment key={frame.id}>
           {i > 0 && <span aria-hidden> › </span>}

@@ -19,7 +19,6 @@ import { TunnelsContext, useInitializeTunnels } from "../context/tunnels";
 import { UIAppStateContext } from "../context/ui-appState";
 import { useAtom, useAtomValue } from "../editor-jotai";
 
-import { t } from "../i18n";
 import { getScrollToContentState, getSelectedElements } from "../scene";
 import {
   getColorTargetAppStateUpdates,
@@ -509,7 +508,7 @@ const LayerUI = ({
                       }));
                     }}
                   >
-                    {t("buttons.scrollBackToContent")}
+                    {"Scroll back to content"}
                   </button>
                 )}
               {appProps.viewportStatusFrame?.label && (

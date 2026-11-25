@@ -39,8 +39,6 @@ import type {
 import { trackEvent } from "../../analytics";
 import { getTooltipDiv, updateTooltipPosition } from "../../components/Tooltip";
 
-import { t } from "../../i18n";
-
 import { useAppProps, useEditorInterface, useExcalidrawAppState } from "../App";
 import { IconButton } from "../IconButton";
 import { FreedrawIcon, TrashIcon, elementLinkIcon } from "../icons";
@@ -121,7 +119,11 @@ export const Hyperlink = ({
 
       if (!embeddableURLValidator(link, appProps.validateEmbeddable)) {
         if (link) {
-          setToast({ message: t("toast.unableToEmbed"), closable: true });
+          setToast({
+            message:
+              "Embedding this url is currently not allowed. Raise an issue on GitHub to request the url whitelisted",
+            closable: true,
+          });
         }
         element.link && embeddableLinkCache.set(element.id, element.link);
         scene.mutateElement(element, {
@@ -133,7 +135,8 @@ export const Hyperlink = ({
         const embedLink = getEmbedLink(link);
         if (embedLink?.error instanceof URIError) {
           setToast({
-            message: t("toast.unrecognizedLinkFormat"),
+            message:
+              "The link you embedded does not match the expected format. Please try to paste the 'embed' string provided by the source site",
             closable: true,
           });
         }
@@ -261,7 +264,7 @@ export const Hyperlink = ({
       {isEditing ? (
         <input
           className={clsx("excalidraw-hyperlinkContainer-input")}
-          placeholder={t("labels.link.hint")}
+          placeholder={"Type or paste your link here"}
           ref={inputRef}
           value={inputVal}
           onChange={(event) => setInputVal(event.target.value)}
@@ -307,16 +310,16 @@ export const Hyperlink = ({
         </a>
       ) : (
         <div className="excalidraw-hyperlinkContainer-link">
-          {t("labels.link.empty")}
+          {"No link is set"}
         </div>
       )}
       <div className="excalidraw-hyperlinkContainer__buttons">
         {!isEditing && (
           <IconButton
             type="button"
-            title={t("buttons.edit")}
-            aria-label={t("buttons.edit")}
-            label={t("buttons.edit")}
+            title={"Edit"}
+            aria-label={"Edit"}
+            label={"Edit"}
             onClick={onEdit}
             className="excalidraw-hyperlinkContainer--edit"
             icon={FreedrawIcon}
@@ -324,9 +327,9 @@ export const Hyperlink = ({
         )}
         <IconButton
           type="button"
-          title={t("labels.linkToElement")}
-          aria-label={t("labels.linkToElement")}
-          label={t("labels.linkToElement")}
+          title={"Link to object"}
+          aria-label={"Link to object"}
+          label={"Link to object"}
           onClick={() => {
             setAppState({
               openDialog: {
@@ -340,9 +343,9 @@ export const Hyperlink = ({
         {linkVal && !isEmbeddableElement(element) && (
           <IconButton
             type="button"
-            title={t("buttons.remove")}
-            aria-label={t("buttons.remove")}
-            label={t("buttons.remove")}
+            title={"Remove"}
+            aria-label={"Remove"}
+            label={"Remove"}
             onClick={handleRemove}
             className="excalidraw-hyperlinkContainer--remove"
             icon={TrashIcon}
@@ -410,7 +413,7 @@ const renderTooltip = (
   tooltipDiv.classList.add("excalidraw-tooltip--visible");
   tooltipDiv.style.maxWidth = "20rem";
   tooltipDiv.textContent = isElementLink(element.link)
-    ? t("labels.link.goToElement")
+    ? "Go to target element"
     : element.link;
 
   const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);

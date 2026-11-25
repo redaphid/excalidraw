@@ -47,7 +47,7 @@ export const actionAddToLibrary = register({
           captureUpdate: CaptureUpdateAction.EVENTUALLY,
           appState: {
             ...appState,
-            toast: { message: t("toast.addedToLibrary") },
+            toast: { message: "Added to library" },
           },
         };
       })

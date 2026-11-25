@@ -185,7 +185,7 @@ export const getToolShortcut = (type: ToolbarToolType) => {
   const letter = getToolLetter(type);
   const { numericKey } = TOOLS[type];
   return letter && numericKey != null
-    ? `${letter} ${t("helpDialog.or")} ${numericKey}`
+    ? `${letter} ${"or"} ${numericKey}`
     : `${letter || numericKey}`;
 };
 
@@ -385,13 +385,13 @@ export const SelectionToolPopover = ({
       type: "selection",
       icon: TOOLS.selection.icon,
       fillable: TOOLS.selection.fillable,
-      title: capitalizeString(t("toolBar.selection")),
+      title: capitalizeString("Selection"),
     },
     {
       type: "lasso",
       icon: TOOLS.lasso.icon,
       fillable: TOOLS.lasso.fillable,
-      title: capitalizeString(t("toolBar.lasso")),
+      title: capitalizeString("Lasso selection"),
     },
   ] as const;
 
@@ -438,13 +438,13 @@ export const FreedrawToolPopover = ({
       type: "freedraw",
       icon: TOOLS.freedraw.icon,
       fillable: TOOLS.freedraw.fillable,
-      title: capitalizeString(t("toolBar.freedraw")),
+      title: capitalizeString("Draw"),
     },
     {
       type: "autoshape",
       icon: TOOLS.autoshape.icon,
       fillable: TOOLS.autoshape.fillable,
-      title: capitalizeString(t("toolBar.autoshape")),
+      title: capitalizeString("Draw to shape"),
     },
   ] as const;
 

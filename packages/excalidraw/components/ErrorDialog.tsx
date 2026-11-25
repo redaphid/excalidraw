@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 
-import { t } from "../i18n";
-
 import { useExcalidrawContainer } from "./App";
 import { Dialog } from "./Dialog";
 
@@ -28,11 +26,7 @@ export const ErrorDialog = ({
   return (
     <>
       {modalIsShown && (
-        <Dialog
-          size="small"
-          onCloseRequest={handleClose}
-          title={t("errorDialog.title")}
-        >
+        <Dialog size="small" onCloseRequest={handleClose} title={"Error"}>
           <div style={{ whiteSpace: "pre-wrap" }}>{children}</div>
         </Dialog>
       )}

@@ -27,7 +27,6 @@ import { getShortcutFromShortcutName } from "../../actions/shortcuts";
 import { trackEvent } from "../../analytics";
 import { useUIAppState } from "../../context/ui-appState";
 import { useSetAtom } from "../../editor-jotai";
-import { useI18n } from "../../i18n";
 import { activeConfirmDialogAtom } from "../ActiveConfirmDialog";
 import {
   useExcalidrawSetAppState,
@@ -70,7 +69,6 @@ import "./DefaultItems.scss";
 import type { InputDevice } from "../../types";
 
 export const LoadScene = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const elements = useExcalidrawElements();
 
@@ -82,8 +80,8 @@ export const LoadScene = () => {
     if (
       !elements.length ||
       (await openConfirmModal({
-        title: t("overwriteConfirm.modal.loadFromFile.title"),
-        actionLabel: t("overwriteConfirm.modal.loadFromFile.button"),
+        title: "Load from file",
+        actionLabel: "Load from file",
         color: "warning",
         description: (
           <Trans
@@ -104,16 +102,15 @@ export const LoadScene = () => {
       onSelect={handleSelect}
       data-testid="load-button"
       shortcut={getShortcutFromShortcutName("loadScene")}
-      aria-label={t("buttons.load")}
+      aria-label={"Open"}
     >
-      {t("buttons.load")}
+      {"Open"}
     </DropdownMenuItem>
   );
 };
 LoadScene.displayName = "LoadScene";
 
 export const SaveToActiveFile = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
 
   if (!actionManager.isActionEnabled(actionSaveToActiveFile)) {
@@ -126,24 +123,23 @@ export const SaveToActiveFile = () => {
       data-testid="save-button"
       onSelect={() => actionManager.executeAction(actionSaveToActiveFile)}
       icon={save}
-      aria-label={`${t("buttons.save")}`}
-    >{`${t("buttons.save")}`}</DropdownMenuItem>
+      aria-label={`${"Save to current file"}`}
+    >{`${"Save to current file"}`}</DropdownMenuItem>
   );
 };
 SaveToActiveFile.displayName = "SaveToActiveFile";
 
 export const SaveAsImage = () => {
   const setAppState = useExcalidrawSetAppState();
-  const { t } = useI18n();
   return (
     <DropdownMenuItem
       icon={ExportImageIcon}
       data-testid="image-export-button"
       onSelect={() => setAppState({ openDialog: { name: "imageExport" } })}
       shortcut={getShortcutFromShortcutName("imageExport")}
-      aria-label={t("buttons.exportImage")}
+      aria-label={"Export image..."}
     >
-      {t("buttons.exportImage")}
+      {"Export image..."}
     </DropdownMenuItem>
   );
 };
@@ -151,7 +147,6 @@ SaveAsImage.displayName = "SaveAsImage";
 
 export const CommandPalette = (opts?: { className?: string }) => {
   const setAppState = useExcalidrawSetAppState();
-  const { t } = useI18n();
 
   return (
     <DropdownMenuItem
@@ -162,17 +157,16 @@ export const CommandPalette = (opts?: { className?: string }) => {
         setAppState({ openDialog: { name: "commandPalette" } });
       }}
       shortcut={getShortcutFromShortcutName("commandPalette")}
-      aria-label={t("commandPalette.title")}
+      aria-label={"Command palette"}
       className={opts?.className}
     >
-      {t("commandPalette.title")}
+      {"Command palette"}
     </DropdownMenuItem>
   );
 };
 CommandPalette.displayName = "CommandPalette";
 
 export const SearchMenu = (opts?: { className?: string }) => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
 
   return (
@@ -183,18 +177,16 @@ export const SearchMenu = (opts?: { className?: string }) => {
         actionManager.executeAction(actionToggleSearchMenu);
       }}
       shortcut={getShortcutFromShortcutName("searchMenu")}
-      aria-label={t("search.title")}
+      aria-label={"Find on canvas"}
       className={opts?.className}
     >
-      {t("search.title")}
+      {"Find on canvas"}
     </DropdownMenuItem>
   );
 };
 SearchMenu.displayName = "SearchMenu";
 
 export const Help = () => {
-  const { t } = useI18n();
-
   const actionManager = useExcalidrawActionManager();
 
   return (
@@ -203,17 +195,15 @@ export const Help = () => {
       icon={HelpIcon}
       onSelect={() => actionManager.executeAction(actionShortcuts)}
       shortcut="?"
-      aria-label={t("helpDialog.title")}
+      aria-label={"Help"}
     >
-      {t("helpDialog.title")}
+      {"Help"}
     </DropdownMenuItem>
   );
 };
 Help.displayName = "Help";
 
 export const ClearCanvas = () => {
-  const { t } = useI18n();
-
   const setActiveConfirmDialog = useSetAtom(activeConfirmDialogAtom);
   const actionManager = useExcalidrawActionManager();
 
@@ -226,9 +216,9 @@ export const ClearCanvas = () => {
       icon={TrashIcon}
       onSelect={() => setActiveConfirmDialog("clearCanvas")}
       data-testid="clear-canvas-button"
-      aria-label={t("buttons.clearReset")}
+      aria-label={"Reset the canvas"}
     >
-      {t("buttons.clearReset")}
+      {"Reset the canvas"}
     </DropdownMenuItem>
   );
 };
@@ -249,7 +239,6 @@ export const ToggleTheme = (
         allowSystemTheme: false;
       },
 ) => {
-  const { t } = useI18n();
   const appState = useUIAppState();
   const actionManager = useExcalidrawActionManager();
   const shortcut = getShortcutFromShortcutName("toggleTheme");
@@ -278,21 +267,21 @@ export const ToggleTheme = (
           {
             value: THEME.LIGHT,
             label: SunIcon,
-            ariaLabel: `${t("buttons.lightMode")} - ${shortcut}`,
+            ariaLabel: `${"Light mode"} - ${shortcut}`,
           },
           {
             value: THEME.DARK,
             label: MoonIcon,
-            ariaLabel: `${t("buttons.darkMode")} - ${shortcut}`,
+            ariaLabel: `${"Dark mode"} - ${shortcut}`,
           },
           {
             value: "system",
             label: DeviceDesktopIcon,
-            ariaLabel: t("buttons.systemMode"),
+            ariaLabel: "System mode",
           },
         ]}
       >
-        {t("labels.theme")}
+        {"Theme"}
       </DropdownMenuItemContentRadio>
     );
   }
@@ -308,22 +297,15 @@ export const ToggleTheme = (
       icon={appState.theme === THEME.DARK ? SunIcon : MoonIcon}
       data-testid="toggle-dark-mode"
       shortcut={shortcut}
-      aria-label={
-        appState.theme === THEME.DARK
-          ? t("buttons.lightMode")
-          : t("buttons.darkMode")
-      }
+      aria-label={appState.theme === THEME.DARK ? "Light mode" : "Dark mode"}
     >
-      {appState.theme === THEME.DARK
-        ? t("buttons.lightMode")
-        : t("buttons.darkMode")}
+      {appState.theme === THEME.DARK ? "Light mode" : "Dark mode"}
     </DropdownMenuItem>
   );
 };
 ToggleTheme.displayName = "ToggleTheme";
 
 export const ChangeCanvasBackground = () => {
-  const { t } = useI18n();
   const appState = useUIAppState();
   const actionManager = useExcalidrawActionManager();
   const appProps = useAppProps();
@@ -344,7 +326,7 @@ export const ChangeCanvasBackground = () => {
           marginLeft: "0.5rem",
         }}
       >
-        {t("labels.canvasBackground")}
+        {"Canvas background"}
       </div>
       <div style={{ padding: "0 0.625rem" }}>
         {actionManager.renderAction("changeViewBackgroundColor")}
@@ -355,7 +337,6 @@ export const ChangeCanvasBackground = () => {
 ChangeCanvasBackground.displayName = "ChangeCanvasBackground";
 
 export const Export = () => {
-  const { t } = useI18n();
   const setAppState = useExcalidrawSetAppState();
   return (
     <DropdownMenuItem
@@ -364,17 +345,15 @@ export const Export = () => {
         setAppState({ openDialog: { name: "jsonExport" } });
       }}
       data-testid="json-export-button"
-      aria-label={t("buttons.export")}
+      aria-label={"Save to..."}
     >
-      {t("buttons.export")}
+      {"Save to..."}
     </DropdownMenuItem>
   );
 };
 Export.displayName = "Export";
 
 export const Socials = () => {
-  const { t } = useI18n();
-
   return (
     <>
       <DropdownMenuItemLink
@@ -389,14 +368,14 @@ export const Socials = () => {
         href="https://x.com/excalidraw"
         aria-label="X"
       >
-        {t("labels.followUs")}
+        {"Follow us"}
       </DropdownMenuItemLink>
       <DropdownMenuItemLink
         icon={DiscordIcon}
         href="https://discord.gg/UexuTaE"
         aria-label="Discord"
       >
-        {t("labels.discordChat")}
+        {"Discord chat"}
       </DropdownMenuItemLink>
     </>
   );
@@ -410,7 +389,6 @@ export const LiveCollaborationTrigger = ({
   onSelect: () => void;
   isCollaborating: boolean;
 }) => {
-  const { t } = useI18n();
   return (
     <DropdownMenuItem
       data-testid="collab-button"
@@ -420,7 +398,7 @@ export const LiveCollaborationTrigger = ({
       })}
       onSelect={onSelect}
     >
-      {t("labels.liveCollaboration")}
+      {"Live collaboration..."}
     </DropdownMenuItem>
   );
 };
@@ -428,7 +406,6 @@ export const LiveCollaborationTrigger = ({
 LiveCollaborationTrigger.displayName = "LiveCollaborationTrigger";
 
 const PreferencesToggleToolLockItem = () => {
-  const { t } = useI18n();
   const app = useApp();
   const appState = useUIAppState();
 
@@ -441,13 +418,12 @@ const PreferencesToggleToolLockItem = () => {
         event.preventDefault();
       }}
     >
-      {t("labels.preferences_toolLock")}
+      {"Tool lock"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 const PreferencesBoxSelectionModeItem = () => {
-  const { t } = useI18n();
   const appState = useUIAppState();
   const setAppState = useExcalidrawSetAppState();
 
@@ -464,23 +440,22 @@ const PreferencesBoxSelectionModeItem = () => {
       choices={[
         {
           value: "contain",
-          label: t("labels.boxSelectionContain"),
-          ariaLabel: t("labels.boxSelectionContain"),
+          label: "Wrap",
+          ariaLabel: "Wrap",
         },
         {
           value: "overlap",
-          label: t("labels.boxSelectionOverlap"),
-          ariaLabel: t("labels.boxSelectionOverlap"),
+          label: "Overlap",
+          ariaLabel: "Overlap",
         },
       ]}
     >
-      {t("labels.boxSelectionMode")}
+      {"Select on"}
     </DropdownMenuItemContentRadio>
   );
 };
 
 const PreferencesInputDeviceItem = () => {
-  const { t } = useI18n();
   const appState = useUIAppState();
   const setAppState = useExcalidrawSetAppState();
 
@@ -498,23 +473,22 @@ const PreferencesInputDeviceItem = () => {
       choices={[
         {
           value: "trackpad",
-          label: t("labels.inputDeviceTrackpad"),
-          ariaLabel: t("labels.inputDeviceTrackpad"),
+          label: "Trackpad",
+          ariaLabel: "Trackpad",
         },
         {
           value: "mouse",
-          label: t("labels.inputDeviceMouse"),
-          ariaLabel: t("labels.inputDeviceMouse"),
+          label: "Mouse",
+          ariaLabel: "Mouse",
         },
       ]}
     >
-      {t("labels.inputDevice")}
+      {"Input"}
     </DropdownMenuItemContentRadio>
   );
 };
 
 const PreferencesToggleSnapModeItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
   return (
@@ -526,13 +500,12 @@ const PreferencesToggleSnapModeItem = () => {
         event.preventDefault();
       }}
     >
-      {t("buttons.objectsSnapMode")}
+      {"Snap to objects"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 const PreferencesToggleArrowBindingItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
   return (
@@ -543,13 +516,12 @@ const PreferencesToggleArrowBindingItem = () => {
         event.preventDefault();
       }}
     >
-      {t("labels.arrowBinding")}
+      {"Arrow binding"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 const PreferencesToggleMidpointSnappingItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
   return (
@@ -560,13 +532,12 @@ const PreferencesToggleMidpointSnappingItem = () => {
         event.preventDefault();
       }}
     >
-      {t("labels.midpointSnapping")}
+      {"Snap to midpoints"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 const PreferencesToggleShowHintsItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
   return (
@@ -577,13 +548,12 @@ const PreferencesToggleShowHintsItem = () => {
         event.preventDefault();
       }}
     >
-      {t("labels.showHints")}
+      {"Show hints"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 export const PreferencesToggleGridModeItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
 
@@ -596,13 +566,12 @@ export const PreferencesToggleGridModeItem = () => {
         event.preventDefault();
       }}
     >
-      {t("labels.toggleGrid")}
+      {"Snap to grid"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 export const PreferencesToggleFramesItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
 
@@ -615,13 +584,12 @@ export const PreferencesToggleFramesItem = () => {
         event.preventDefault();
       }}
     >
-      {t("labels.showFrames")}
+      {"Show frames"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 export const PreferencesToggleZenModeItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
   return (
@@ -633,13 +601,12 @@ export const PreferencesToggleZenModeItem = () => {
         event.preventDefault();
       }}
     >
-      {t("buttons.zenMode")}
+      {"Zen mode"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 const PreferencesToggleViewModeItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
   if (!actionManager.isActionEnabled(actionToggleViewMode)) {
@@ -654,13 +621,12 @@ const PreferencesToggleViewModeItem = () => {
         event.preventDefault();
       }}
     >
-      {t("labels.viewMode")}
+      {"View mode"}
     </DropdownMenuItemCheckbox>
   );
 };
 
 const PreferencesToggleElementPropertiesItem = () => {
-  const { t } = useI18n();
   const actionManager = useExcalidrawActionManager();
   const appState = useUIAppState();
   return (
@@ -672,7 +638,7 @@ const PreferencesToggleElementPropertiesItem = () => {
         event.preventDefault();
       }}
     >
-      {t("stats.fullTitle")}
+      {"Canvas & Shape properties"}
     </DropdownMenuItemCheckbox>
   );
 };
@@ -684,11 +650,10 @@ export const Preferences = ({
   children?: React.ReactNode;
   additionalItems?: React.ReactNode;
 }) => {
-  const { t } = useI18n();
   return (
     <DropdownMenuSub>
       <DropdownMenuSub.Trigger icon={settingsIcon}>
-        {t("labels.preferences")}
+        {"Preferences"}
       </DropdownMenuSub.Trigger>
       <DropdownMenuSub.Content className="excalidraw-main-menu-preferences-submenu">
         {children || (

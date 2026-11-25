@@ -18,7 +18,6 @@ import type { ColorTuple, ColorPaletteCustom } from "@excalidraw/common";
 import type { ExcalidrawElement, Theme } from "@excalidraw/element/types";
 
 import { useAtom } from "../../editor-jotai";
-import { t } from "../../i18n";
 import { useApp, useExcalidrawContainer, useStylesPanelMode } from "../App";
 import { ButtonSeparator } from "../ButtonSeparator";
 import { activeEyeDropperAtom } from "../EyeDropper";
@@ -111,7 +110,7 @@ const ColorPickerPopupContent = ({
 
   const colorInputJSX = (
     <div>
-      <PickerHeading>{t("colorPicker.hexCode")}</PickerHeading>
+      <PickerHeading>{"Hex code"}</PickerHeading>
       <ColorInput
         color={color || ""}
         label={label}
@@ -119,7 +118,7 @@ const ColorPickerPopupContent = ({
           onChange(color);
         }}
         colorPickerType={type}
-        placeholder={t("colorPicker.color")}
+        placeholder={"Color"}
       />
     </div>
   );
@@ -319,8 +318,8 @@ const ColorPickerTrigger = ({
       style={displayColor ? { "--swatch-color": displayColor } : undefined}
       title={
         type === "elementStroke"
-          ? t("labels.showStroke")
-          : t("labels.showBackground")
+          ? "Show stroke color picker"
+          : "Show background color picker"
       }
       data-openpopup={type}
       onClick={handleClick}

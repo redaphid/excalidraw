@@ -12,7 +12,6 @@ import {
 
 import { EditorLocalStorage } from "../data/EditorLocalStorage";
 import { canvasToBlob, resizeImageFile } from "../data/blob";
-import { t } from "../i18n";
 
 import { Dialog } from "./Dialog";
 import DialogActionButton from "./DialogActionButton";
@@ -143,18 +142,16 @@ const SingleLibraryItem = ({
   return (
     <div className="single-library-item">
       {libItem.status === "published" && (
-        <span className="single-library-item-status">
-          {t("labels.statusPublished")}
-        </span>
+        <span className="single-library-item-status">{"Published"}</span>
       )}
       <div ref={svgRef} className="single-library-item__svg" />
       <IconButton
-        aria-label={t("buttons.remove")}
+        aria-label={"Remove"}
         type="button"
         icon={CloseIcon}
         className="single-library-item--remove"
         onClick={onRemove.bind(null, libItem.id)}
-        title={t("buttons.remove")}
+        title={"Remove"}
       />
       <div
         style={{
@@ -175,7 +172,7 @@ const SingleLibraryItem = ({
         >
           <div style={{ padding: "0.5em 0" }}>
             <span style={{ fontWeight: 500, color: "#868e96" }}>
-              {t("publishDialog.itemName")}
+              {"Item name"}
             </span>
             <span aria-hidden="true" className="required">
               *
@@ -263,7 +260,7 @@ const PublishLibrary = ({
     clonedLibItems.forEach((libItem) => {
       let error = "";
       if (!libItem.name) {
-        error = t("publishDialog.errors.required");
+        error = "Required";
         isError = true;
       }
       erroredLibItems.push({ ...libItem, error });
@@ -376,7 +373,7 @@ const PublishLibrary = ({
   return (
     <Dialog
       onCloseRequest={onDialogClose}
-      title={t("publishDialog.title")}
+      title={"Publish library"}
       className="publish-library"
     >
       {shouldRenderForm ? (
@@ -411,18 +408,22 @@ const PublishLibrary = ({
           </span>
 
           <div className="publish-library-note">
-            {t("publishDialog.noteItems")}
+            {
+              "Each library item must have its own name so it's filterable. The following library items will be included:"
+            }
           </div>
           {containsPublishedItems && (
             <span className="publish-library-note publish-library-warning">
-              {t("publishDialog.republishWarning")}
+              {
+                "Note: some of the selected items are marked as already published/submitted. You should only resubmit items when updating an existing library or submission."
+              }
             </span>
           )}
           {renderLibraryItems()}
           <div className="publish-library__fields">
             <label>
               <div>
-                <span>{t("publishDialog.libraryName")}</span>
+                <span>{"Library name"}</span>
                 <span aria-hidden="true" className="required">
                   *
                 </span>
@@ -433,12 +434,12 @@ const PublishLibrary = ({
                 required
                 value={libraryData.name}
                 onChange={onInputChange}
-                placeholder={t("publishDialog.placeholder.libraryName")}
+                placeholder={"Name of your library"}
               />
             </label>
             <label style={{ alignItems: "flex-start" }}>
               <div>
-                <span>{t("publishDialog.libraryDesc")}</span>
+                <span>{"Library description"}</span>
                 <span aria-hidden="true" className="required">
                   *
                 </span>
@@ -449,12 +450,14 @@ const PublishLibrary = ({
                 required
                 value={libraryData.description}
                 onChange={onInputChange}
-                placeholder={t("publishDialog.placeholder.libraryDesc")}
+                placeholder={
+                  "Description of your library to help people understand its usage"
+                }
               />
             </label>
             <label>
               <div>
-                <span>{t("publishDialog.authorName")}</span>
+                <span>{"Author name"}</span>
                 <span aria-hidden="true" className="required">
                   *
                 </span>
@@ -465,39 +468,45 @@ const PublishLibrary = ({
                 required
                 value={libraryData.authorName}
                 onChange={onInputChange}
-                placeholder={t("publishDialog.placeholder.authorName")}
+                placeholder={"Your name or username"}
               />
             </label>
             <label>
-              <span>{t("publishDialog.githubUsername")}</span>
+              <span>{"GitHub username"}</span>
               <input
                 type="text"
                 name="githubHandle"
                 value={libraryData.githubHandle}
                 onChange={onInputChange}
-                placeholder={t("publishDialog.placeholder.githubHandle")}
+                placeholder={
+                  "GitHub handle (optional), so you can edit the library once submitted for review"
+                }
               />
             </label>
             <label>
-              <span>{t("publishDialog.twitterUsername")}</span>
+              <span>{"Twitter username"}</span>
               <input
                 type="text"
                 name="twitterHandle"
                 value={libraryData.twitterHandle}
                 onChange={onInputChange}
-                placeholder={t("publishDialog.placeholder.twitterHandle")}
+                placeholder={
+                  "Twitter username (optional), so we know who to credit when promoting over Twitter"
+                }
               />
             </label>
             <label>
-              <span>{t("publishDialog.website")}</span>
+              <span>{"Website"}</span>
               <input
                 type="text"
                 name="website"
                 pattern="https?://.+"
-                title={t("publishDialog.errors.website")}
+                title={"Enter a valid URL"}
                 value={libraryData.website}
                 onChange={onInputChange}
-                placeholder={t("publishDialog.placeholder.website")}
+                placeholder={
+                  "Link to your personal website or elsewhere (optional)"
+                }
               />
             </label>
             <span className="publish-library-note">
@@ -517,13 +526,13 @@ const PublishLibrary = ({
           </div>
           <div className="publish-library__buttons">
             <DialogActionButton
-              label={t("buttons.saveLibNames")}
+              label={"Save name(s) and exit"}
               onClick={onDialogClose}
               data-testid="cancel-clear-canvas-button"
             />
             <DialogActionButton
               type="submit"
-              label={t("buttons.submit")}
+              label={"Submit"}
               actionType="primary"
               isLoading={isSubmitting}
             />
@@ -531,7 +540,7 @@ const PublishLibrary = ({
         </form>
       ) : (
         <p style={{ padding: "1em", textAlign: "center", fontWeight: 500 }}>
-          {t("publishDialog.atleastOneLibItem")}
+          {"Please select at least one library item to get started"}
         </p>
       )}
     </Dialog>

@@ -24,7 +24,6 @@ import { canvasToBlob } from "../data/blob";
 import { nativeFileSystemSupported } from "../data/filesystem";
 import { useCopyStatus } from "../hooks/useCopiedIndicator";
 
-import { t } from "../i18n";
 import { isSomeElementSelected } from "../scene";
 
 import { useApp } from "./App";
@@ -44,11 +43,13 @@ import type { AppClassProperties, BinaryFiles, UIAppState } from "../types";
 export const ErrorCanvasPreview = () => {
   return (
     <div>
-      <h3>{t("canvasError.cannotShowPreview")}</h3>
+      <h3>{"Cannot show preview"}</h3>
       <p>
-        <span>{t("canvasError.canvasTooBig")}</span>
+        <span>{"The canvas may be too big."}</span>
       </p>
-      <em>({t("canvasError.canvasTooBigTip")})</em>
+      <em>
+        ({"Tip: try moving the farthest elements a bit closer together."})
+      </em>
     </div>
   );
 };
@@ -156,7 +157,7 @@ const ImageExportModal = ({
           await canvasToBlob(canvas);
         } catch (error: any) {
           if (error.name === "CANVAS_POSSIBLY_TOO_BIG") {
-            throw new Error(t("canvasError.canvasTooBig"));
+            throw new Error("The canvas may be too big.");
           }
           throw error;
         }
@@ -195,7 +196,7 @@ const ImageExportModal = ({
 
   return (
     <div className="ImageExportModal">
-      <h3>{t("imageExportDialog.header")}</h3>
+      <h3>{"Export image"}</h3>
       <div className="ImageExportModal__preview">
         <div className="ImageExportModal__preview__canvas" ref={previewRef}>
           {renderError && <ErrorCanvasPreview />}
@@ -220,12 +221,9 @@ const ImageExportModal = ({
         </div>
       </div>
       <div className="ImageExportModal__settings">
-        <h3>{t("imageExportDialog.header")}</h3>
+        <h3>{"Export image"}</h3>
         {hasSelection && (
-          <ExportSetting
-            label={t("imageExportDialog.label.onlySelected")}
-            name="exportOnlySelected"
-          >
+          <ExportSetting label={"Only selected"} name="exportOnlySelected">
             <Switch
               name="exportOnlySelected"
               checked={exportSelectionOnly}
@@ -235,10 +233,7 @@ const ImageExportModal = ({
             />
           </ExportSetting>
         )}
-        <ExportSetting
-          label={t("imageExportDialog.label.withBackground")}
-          name="exportBackgroundSwitch"
-        >
+        <ExportSetting label={"Background"} name="exportBackgroundSwitch">
           <Switch
             name="exportBackgroundSwitch"
             checked={exportWithBackground}
@@ -252,10 +247,7 @@ const ImageExportModal = ({
             }}
           />
         </ExportSetting>
-        <ExportSetting
-          label={t("imageExportDialog.label.darkMode")}
-          name="exportDarkModeSwitch"
-        >
+        <ExportSetting label={"Dark mode"} name="exportDarkModeSwitch">
           <Switch
             name="exportDarkModeSwitch"
             checked={exportWithDarkMode}
@@ -269,8 +261,10 @@ const ImageExportModal = ({
           />
         </ExportSetting>
         <ExportSetting
-          label={t("imageExportDialog.label.embedScene")}
-          tooltip={t("imageExportDialog.tooltip.embedScene")}
+          label={"Embed scene"}
+          tooltip={
+            "Scene data will be saved into the exported PNG/SVG file so that the scene can be restored from it.\nWill increase exported file size."
+          }
           name="exportEmbedSwitch"
         >
           <Switch
@@ -286,10 +280,7 @@ const ImageExportModal = ({
             }}
           />
         </ExportSetting>
-        <ExportSetting
-          label={t("imageExportDialog.label.scale")}
-          name="exportScale"
-        >
+        <ExportSetting label={"Scale"} name="exportScale">
           <RadioGroup
             name="exportScale"
             value={exportScale}
@@ -307,7 +298,7 @@ const ImageExportModal = ({
         <div className="ImageExportModal__settings__buttons">
           <FilledButton
             className="ImageExportModal__settings__buttons__button"
-            label={t("imageExportDialog.title.exportToPng")}
+            label={"Export to PNG"}
             onClick={() =>
               onExportImage(EXPORT_IMAGE_TYPES.png, exportedElements, {
                 exportingFrame,
@@ -315,11 +306,11 @@ const ImageExportModal = ({
             }
             icon={downloadIcon}
           >
-            {t("imageExportDialog.button.exportToPng")}
+            {"PNG"}
           </FilledButton>
           <FilledButton
             className="ImageExportModal__settings__buttons__button"
-            label={t("imageExportDialog.title.exportToSvg")}
+            label={"Export to SVG"}
             onClick={() =>
               onExportImage(EXPORT_IMAGE_TYPES.svg, exportedElements, {
                 exportingFrame,
@@ -327,12 +318,12 @@ const ImageExportModal = ({
             }
             icon={downloadIcon}
           >
-            {t("imageExportDialog.button.exportToSvg")}
+            {"SVG"}
           </FilledButton>
           {(probablySupportsClipboardBlob || isFirefox) && (
             <FilledButton
               className="ImageExportModal__settings__buttons__button"
-              label={t("imageExportDialog.title.copyPngToClipboard")}
+              label={"Copy PNG to clipboard"}
               status={copyStatus}
               onClick={async () => {
                 await onExportImage(
@@ -346,7 +337,7 @@ const ImageExportModal = ({
               }}
               icon={copyIcon}
             >
-              {t("imageExportDialog.button.copyPngToClipboard")}
+              {"Copy to clipboard"}
             </FilledButton>
           )}
         </div>

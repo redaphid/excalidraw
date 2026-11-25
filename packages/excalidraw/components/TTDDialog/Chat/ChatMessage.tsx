@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import React, { useState, useEffect } from "react";
 
-import { t } from "../../../i18n";
 import { FilledButton } from "../../FilledButton";
 import { TrashIcon, codeIcon, stackPushIcon, RetryIcon } from "../../icons";
 
@@ -68,7 +67,7 @@ export const ChatMessage: React.FC<{
       <div className="chat-message chat-message--system">
         <div className="chat-message__content">
           <div className="chat-message__header">
-            <span className="chat-message__role">{t("chat.role.system")}</span>
+            <span className="chat-message__role">{"System"}</span>
             <span className="chat-message__timestamp">
               {formatTime(message.timestamp)}
             </span>
@@ -79,7 +78,9 @@ export const ChatMessage: React.FC<{
                 customOverride
               ) : message.warningType === "messageLimitExceeded" ? (
                 <>
-                  {t("chat.rateLimit.messageLimit")}
+                  {
+                    "You've hit your AI limit on the free plan. Try out Excalidraw+ for more or come back tomorrow."
+                  }
                   <div style={{ marginTop: "10px" }}>
                     <FilledButton
                       onClick={() => {
@@ -92,12 +93,12 @@ export const ChatMessage: React.FC<{
                         );
                       }}
                     >
-                      {t("chat.upsellBtnLabel")}
+                      {"Upgrade to Plus"}
                     </FilledButton>
                   </div>
                 </>
               ) : (
-                t("chat.rateLimit.generalRateLimit")
+                "Hold your horses, you're too fast for us! Please wait a moment before trying again."
               )}
             </div>
           </div>
@@ -111,9 +112,7 @@ export const ChatMessage: React.FC<{
       <div className="chat-message__content">
         <div className="chat-message__header">
           <span className="chat-message__role">
-            {message.type === "user"
-              ? t("chat.role.user")
-              : t("chat.role.assistant")}
+            {message.type === "user" ? "You" : "AI Assistant"}
           </span>
           <span className="chat-message__timestamp">
             {formatTime(message.timestamp)}
@@ -125,12 +124,16 @@ export const ChatMessage: React.FC<{
               <div className="chat-message__error">{message.content}</div>
               {message.errorType !== "parse" && (
                 <div className="chat-message__error_message">
-                  Error: {message.error || t("chat.errors.generationFailed")}
+                  Error: {message.error || "Generation failed"}
                 </div>
               )}
               {message.errorType === "parse" && allowFixingParseError && (
                 <div className="chat-message__error_message">
-                  <p>{t("chat.errors.invalidDiagram")}</p>
+                  <p>
+                    {
+                      "Generated an invalid diagram :(. You may edit manually, retry with auto-fix, or try a different prompt."
+                    }
+                  </p>
                   <div className="chat-message__error-actions">
                     {onMermaidTabClick && (
                       <button
@@ -138,7 +141,7 @@ export const ChatMessage: React.FC<{
                         onClick={() => onMermaidTabClick(message)}
                         type="button"
                       >
-                        {t("chat.errors.fixInMermaid")}
+                        {"Edit Mermaid manually →"}
                       </button>
                     )}
                     {onAiRepairClick && (
@@ -148,7 +151,7 @@ export const ChatMessage: React.FC<{
                         disabled={rateLimitRemaining === 0}
                         type="button"
                       >
-                        {t("chat.errors.aiRepair")}
+                        {"Regenerate (auto-fix) →"}
                       </button>
                     )}
                   </div>
@@ -172,8 +175,8 @@ export const ChatMessage: React.FC<{
               className="chat-message__action"
               onClick={() => onInsertMessage(message)}
               type="button"
-              aria-label={t("chat.insert")}
-              title={t("chat.insert")}
+              aria-label={"Insert"}
+              title={"Insert"}
             >
               {stackPushIcon}
             </button>
@@ -183,8 +186,8 @@ export const ChatMessage: React.FC<{
               className="chat-message__action"
               onClick={() => onMermaidTabClick(message)}
               type="button"
-              aria-label={t("chat.viewAsMermaid")}
-              title={t("chat.viewAsMermaid")}
+              aria-label={"View as Mermaid"}
+              title={"View as Mermaid"}
             >
               {codeIcon}
             </button>
@@ -194,8 +197,8 @@ export const ChatMessage: React.FC<{
               className="chat-message__action chat-message__action--danger"
               onClick={() => onDeleteMessage(message.id)}
               type="button"
-              aria-label={t("chat.deleteMessage")}
-              title={t("chat.deleteMessage")}
+              aria-label={"Delete message"}
+              title={"Delete message"}
             >
               {TrashIcon}
             </button>
@@ -205,8 +208,8 @@ export const ChatMessage: React.FC<{
               className={clsx("chat-message__action", { invisible: !canRetry })}
               onClick={() => onRetry(message)}
               type="button"
-              aria-label={t("chat.retry")}
-              title={t("chat.retry")}
+              aria-label={"Retry"}
+              title={"Retry"}
             >
               {RetryIcon}
             </button>

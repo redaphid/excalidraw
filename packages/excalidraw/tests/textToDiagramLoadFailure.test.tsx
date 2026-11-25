@@ -1,7 +1,5 @@
 import { vi } from "vitest";
 
-import { t } from "../i18n";
-
 import { Excalidraw, TTDDialog } from "../index";
 
 import { fireEvent, render, waitFor } from "./test-utils";
@@ -61,9 +59,7 @@ describe("when text to diagram cannot load Mermaid", () => {
 
   it("offers a retry", () => {
     expect(
-      document.querySelector(
-        `.chat-message__action[title="${t("chat.retry")}"]`,
-      ),
+      document.querySelector(`.chat-message__action[title="${"Retry"}"]`),
     ).not.toBeNull();
   });
 

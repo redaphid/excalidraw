@@ -2,8 +2,6 @@ import clsx from "clsx";
 
 import { actionToggleZenMode } from "../actions";
 
-import { t } from "../i18n";
-
 import { actionToggleViewMode } from "../actions/actionToggleViewMode";
 
 import "./Actions.scss";
@@ -32,7 +30,7 @@ export const ExitZenModeButton = ({
     })}
     onClick={() => actionManager.executeAction(actionToggleZenMode)}
   >
-    {t("buttons.exitZenMode")}
+    {"Exit zen mode"}
   </button>
 );
 

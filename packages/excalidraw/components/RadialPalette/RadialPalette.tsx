@@ -467,14 +467,8 @@ export const RadialPalette = React.memo(
                 } as React.CSSProperties)
               : undefined
           }
-          aria-label={t(
-            collapsed ? "radialPalette.expand" : "radialPalette.open",
-          )}
-          title={
-            collapsed
-              ? t("radialPalette.expand")
-              : `${t("radialPalette.open")} — ,`
-          }
+          aria-label={collapsed ? "Show the palette" : "Palette"}
+          title={collapsed ? "Show the palette" : `${"Palette"} — ,`}
           aria-expanded={!!session}
           data-testid="radial-palette-puck"
           onContextMenu={preventMenu}
@@ -1241,7 +1235,7 @@ const Ring = ({
           "RadialPalette--moving": moving,
         })}
         role="dialog"
-        aria-label={t("radialPalette.open")}
+        aria-label={"Palette"}
         data-testid="radial-palette"
         data-ring={session.ring}
         onContextMenu={preventMenu}
@@ -1265,7 +1259,7 @@ const Ring = ({
         <div
           role="button"
           tabIndex={0}
-          aria-label={t("radialPalette.scale")}
+          aria-label={"Resize the palette"}
           data-testid="radial-palette-scale"
           className={clsx("RadialPalette__scale", {
             "RadialPalette__scale--left": corner.x < 0,
@@ -1378,7 +1372,7 @@ const Ring = ({
             if (!preset) {
               return button(
                 "eraser",
-                t("toolBar.eraser"),
+                "Eraser",
                 "radial-tool-eraser",
                 "pens",
                 index,
@@ -1421,7 +1415,7 @@ const Ring = ({
             );
             return button(
               `color-${index}`,
-              color ?? t("radialPalette.emptyRecent"),
+              color ?? "Recent color",
               `radial-color-${index}`,
               "colors",
               index,
@@ -1448,14 +1442,14 @@ const Ring = ({
             );
             return button(
               "color-fill",
-              t("radialPalette.fill"),
+              "Fill",
               "radial-color-fill",
               "colors",
               controller.items("colors").length - 1,
               controller.colorsFill,
               sectorPath(OUTER_BAND, sector),
               <text x={x} y={y} className="RadialPalette__label">
-                {t("radialPalette.fill")}
+                {"Fill"}
               </text>,
             );
           })()}
@@ -1464,21 +1458,21 @@ const Ring = ({
             "size",
             SIZE_SLIDER,
             sizeValue,
-            t("labels.penSize"),
+            "Pen size",
             penSize.toFixed(2),
           )}
           {slider(
             "opacity",
             OPACITY_SLIDER,
             opacityValue,
-            t("labels.opacity"),
+            "Opacity",
             `${appState.currentItemOpacity}%`,
           )}
 
           <g
             role="button"
             tabIndex={0}
-            aria-label={t("radialPalette.menu")}
+            aria-label={"Menu"}
             data-testid="radial-palette-menu"
             className="RadialPalette__hub"
             onPointerDown={trackHubPress}
@@ -1496,7 +1490,7 @@ const Ring = ({
               }
             }}
           >
-            <title>{t("radialPalette.menu")}</title>
+            <title>{"Menu"}</title>
             <circle r={HUB_RADIUS} className="RadialPalette__hub-bg" />
             {placeIcon(DotsHorizontalIcon, 0, -5)}
             <circle

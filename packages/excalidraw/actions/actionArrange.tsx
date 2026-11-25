@@ -18,7 +18,6 @@ import type {
 
 import { elkLayout } from "../arrange/elkLayout";
 import { ArrangeIcon } from "../components/icons";
-import { t } from "../i18n";
 
 import { register } from "./register";
 
@@ -85,7 +84,7 @@ export const actionArrangeElements = register({
   perform: async (elements, appState, _, app) => {
     const selected = app.scene.getSelectedElements(appState);
     if (!selected.length) {
-      return toast(t("toast.selectToArrange"));
+      return toast("Select shapes to arrange");
     }
     const outcome = await arrangeScene(app.scene, appState, {
       elementIds: selected.map((element) => element.id),
@@ -94,13 +93,13 @@ export const actionArrangeElements = register({
       case "nothing-to-arrange":
         return toast(
           outcome.skipped.length
-            ? t("toast.nothingToArrangeSkipped", {
-                types: outcome.skipped.join(", "),
-              })
-            : t("toast.nothingToArrange"),
+            ? `Nothing to arrange: only shapes are arranged, so ${outcome.skipped.join(
+                ", ",
+              )} stayed where they were. Select two or more shapes, or a frame with shapes`
+            : "Nothing to arrange: select two or more shapes, or a frame with shapes",
         );
       case "stale":
-        return toast(t("toast.arrangeStale"));
+        return toast("The board changed while arranging. Try again.");
       case "arranged": {
         const elementsMap = app.scene.getNonDeletedElementsMap();
         const overlapped = outcome.overlappedFrameIds.flatMap((id) => {
@@ -114,9 +113,9 @@ export const actionArrangeElements = register({
           appState: overlapped.length
             ? {
                 toast: {
-                  message: t("toast.arrangedIntoFrame", {
-                    frames: overlapped.join(", "),
-                  }),
+                  message: `Arranged. The frame grew and now overlaps ${overlapped.join(
+                    ", ",
+                  )}; move it if needed`,
                 },
               }
             : null,

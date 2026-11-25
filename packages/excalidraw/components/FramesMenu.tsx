@@ -18,7 +18,6 @@ import { exportToCanvas } from "@excalidraw/utils/export";
 import { useCurrentFrameId, useFrameModel } from "../hooks/useFrameModel";
 import { getShortcutKey } from "../shortcut";
 import { useUIAppState } from "../context/ui-appState";
-import { t } from "../i18n";
 
 import { liveBookmarks, slideOrder } from "../frameNavigation";
 
@@ -187,12 +186,9 @@ const Row = ({
           type="button"
           className={clsx("frames-menu__star", { "is-on": starred })}
           aria-pressed={starred}
-          aria-label={t(
-            starred
-              ? "frameNavigation.removeBookmark"
-              : "frameNavigation.bookmark",
-            { name: frame.name },
-          )}
+          aria-label={
+            starred ? `Remove bookmark ${frame.name}` : `Bookmark ${frame.name}`
+          }
           onClick={() => onStar(frame.id, !starred)}
         >
           {starred ? "★" : "☆"}
@@ -396,7 +392,9 @@ const Slides = ({
 
   if (!order.length) {
     return (
-      <p className="frames-menu__empty">{t("frameNavigation.noSlides")}</p>
+      <p className="frames-menu__empty">
+        {"Draw a frame (F) to make your first slide."}
+      </p>
     );
   }
 
@@ -408,7 +406,7 @@ const Slides = ({
         size="large"
         fullWidth
         icon={playerPlayIcon}
-        label={t("frameNavigation.present")}
+        label={"Present"}
         disabled={!order.some((slide) => slide.included)}
         onClick={() => slides.onPresent()}
       />
@@ -435,9 +433,7 @@ const Slides = ({
               <button
                 type="button"
                 className="frames-menu__grip"
-                aria-label={t("frameNavigation.moveSlide", {
-                  name: frame.name,
-                })}
+                aria-label={`Move ${frame.name}`}
                 onPointerDown={(event) => {
                   if (drag.current || event.button !== 0) {
                     return;
@@ -526,12 +522,11 @@ const Slides = ({
                 type="button"
                 className="frames-menu__skip"
                 aria-pressed={!slide.included}
-                aria-label={t(
+                aria-label={
                   slide.included
-                    ? "frameNavigation.skipSlide"
-                    : "frameNavigation.includeSlide",
-                  { name: frame.name },
-                )}
+                    ? `Skip ${frame.name}`
+                    : `Include ${frame.name}`
+                }
                 onClick={() =>
                   slides.onChange(
                     order.map((s) =>
@@ -547,7 +542,7 @@ const Slides = ({
         })}
       </ol>
       <footer className="frames-menu__hint">
-        {t("frameNavigation.slidesHint")}
+        {"Drag ⋮⋮ to reorder · tap the eye to skip"}
       </footer>
     </>
   );
@@ -618,14 +613,14 @@ export const FramesMenu = () => {
         aria-pressed={view === "slides"}
         onClick={() => setView("slides")}
       >
-        {t("frameNavigation.slides")}
+        {"Slides"}
       </button>
       <button
         type="button"
         aria-pressed={view === "frames"}
         onClick={() => setView("frames")}
       >
-        {t("frameNavigation.title")}
+        {"Frames"}
       </button>
     </div>
   );
@@ -650,11 +645,8 @@ export const FramesMenu = () => {
     <div className="frames-menu">
       {views}
       {bookmarks.length > 0 && (
-        <section
-          className="frames-menu__bookmarks"
-          aria-label={t("frameNavigation.bookmarks")}
-        >
-          <h3>{t("frameNavigation.bookmarks")}</h3>
+        <section className="frames-menu__bookmarks" aria-label={"Bookmarks"}>
+          <h3>{"Bookmarks"}</h3>
           {bookmarks.map((frame, i) => (
             <Row
               key={frame.id}
@@ -665,10 +657,7 @@ export const FramesMenu = () => {
           ))}
         </section>
       )}
-      <section
-        className="frames-menu__tree"
-        aria-label={t("frameNavigation.allFrames")}
-      >
+      <section className="frames-menu__tree" aria-label={"All frames"}>
         <Tree
           nodes={model.tree}
           parent={null}
@@ -686,9 +675,7 @@ export const FramesMenu = () => {
         />
       </section>
       <footer className="frames-menu__hint">
-        {t("frameNavigation.hint", {
-          bookmarks: getShortcutKey("Alt+1…9"),
-        })}
+        {`↵ into · Esc out · ${getShortcutKey("Alt+1…9")} bookmarks · M close`}
       </footer>
     </div>
   );

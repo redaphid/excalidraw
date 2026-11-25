@@ -2,7 +2,6 @@ import { CaptureUpdateAction } from "@excalidraw/excalidraw";
 import { compressData } from "@excalidraw/excalidraw/data/encode";
 import { newElementWith } from "@excalidraw/element";
 import { isInitializedImageElement } from "@excalidraw/element";
-import { t } from "@excalidraw/excalidraw/i18n";
 
 import type {
   ExcalidrawElement,
@@ -254,9 +253,9 @@ export const encodeFilesForUpload = async ({
 
     if (buffer.byteLength > maxBytes) {
       throw new Error(
-        t("errors.fileTooBig", {
-          maxSize: `${Math.trunc(maxBytes / 1024 / 1024)}MB`,
-        }),
+        `File is too big. Maximum allowed size is ${`${Math.trunc(
+          maxBytes / 1024 / 1024,
+        )}MB`}.`,
       );
     }
 

@@ -39,7 +39,6 @@ import { actionCopy, actionCut } from "../actions";
 import { tryParseSpreadsheet } from "../charts";
 import { parseClipboard, parseDataTransferEvent } from "../clipboard";
 import { ImageURLToFile, SVGStringToFile } from "../data/blob";
-import { t } from "../i18n";
 import { isMaybeMermaidDefinition } from "../mermaid";
 import { withBatchedUpdates } from "../reactUtils";
 import { getShortcutKey } from "../shortcut";
@@ -171,7 +170,7 @@ export class AppClipboard {
       if (this.app.isToolSupported("image")) {
         await this.app.insertImages(imageFiles, sceneX, sceneY);
       } else {
-        this.app.setState({ errorMessage: t("errors.imageToolNotSupported") });
+        this.app.setState({ errorMessage: "Images are disabled." });
       }
       return;
     }
@@ -389,9 +388,9 @@ export class AppClipboard {
           } catch (error: any) {
             let errorMessage = error.message;
             if (error.cause === "FETCH_ERROR") {
-              errorMessage = t("errors.failedToFetchImage");
+              errorMessage = "Failed to fetch image.";
             } else if (error.cause === "UNSUPPORTED") {
-              errorMessage = t("errors.unsupportedFileType");
+              errorMessage = "Unsupported file type.";
             }
             return { errorMessage };
           }
@@ -604,9 +603,10 @@ export class AppClipboard {
       this.app.editorInterface.formFactor !== "phone"
     ) {
       this.app.setToast({
-        message: t("toast.pasteAsSingleElement", {
-          shortcut: getShortcutKey("CtrlOrCmd+Shift+V"),
-        }),
+        message: `Use ${getShortcutKey(
+          "CtrlOrCmd+Shift+V",
+        )} to paste as a single element,
+or paste into an existing text editor`,
         duration: 5000,
       });
       PLAIN_PASTE_TOAST_SHOWN = true;
