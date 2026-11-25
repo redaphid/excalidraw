@@ -488,7 +488,7 @@ import { isSidebarDockedAtom } from "./Sidebar/Sidebar";
 import { hideTooltip } from "./Tooltip";
 import { StaticCanvas, InteractiveCanvas } from "./canvases";
 import NewElementCanvas from "./canvases/NewElementCanvas";
-import { isPointHittingLink } from "./hyperlink/helpers";
+import { isPointHittingLink, linkBadgeDistance } from "./hyperlink/helpers";
 import { CursorHint, CursorHints } from "./CursorHint";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
@@ -6969,30 +6969,42 @@ ${css}
     }
 
     const elements = this.scene.getNonDeletedElements();
-    let hitElementIndex = -1;
+    const elementsMap = this.scene.getNonDeletedElementsMap();
+    const point = pointFrom<GlobalPoint>(scenePointer.x, scenePointer.y);
+    // Badges of neighbouring elements can overlap: the nearest one wins, so a
+    // finger a little off one badge never lands on the next one's link.
+    let nearest: NonDeletedExcalidrawElement | undefined;
+    let nearestDistance = Infinity;
 
     for (let index = elements.length - 1; index >= 0; index--) {
       const element = elements[index];
       if (
-        hitElementMightBeLocked &&
-        element.id === hitElementMightBeLocked.id
-      ) {
-        hitElementIndex = index;
-      }
-      if (
         element.link &&
-        index >= hitElementIndex &&
         isPointHittingLink(
           element,
-          this.scene.getNonDeletedElementsMap(),
+          elementsMap,
           this.state,
-          pointFrom(scenePointer.x, scenePointer.y),
+          point,
           this.editorInterface.formFactor === "phone",
         )
       ) {
-        return element;
+        const distance = linkBadgeDistance(
+          element,
+          elementsMap,
+          this.state,
+          point,
+        );
+        if (!nearest || distance < nearestDistance) {
+          nearest = element;
+          nearestDistance = distance;
+        }
+      }
+      // Nothing under the element the pointer is on can take its tap.
+      if (hitElementMightBeLocked?.id === element.id) {
+        break;
       }
     }
+    return nearest;
   };
 
   private handleElementLinkClick = (

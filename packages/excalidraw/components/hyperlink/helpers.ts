@@ -65,20 +65,30 @@ export const getLinkHandleFromCoords = (
   return [x - size / 2, y - size / 2, size, size];
 };
 
-export const isPointHittingLinkIcon = (
+/** How far a point is from the element's link badge, in scene units; Infinity when it wears only a pip. */
+export const linkBadgeDistance = (
   element: NonDeletedExcalidrawElement,
   elementsMap: ElementsMap,
-  appState: AppState,
+  appState: Pick<AppState, "zoom">,
   [x, y]: GlobalPoint,
 ) => {
   const zoom = appState.zoom.value;
   const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
   if (!showsLinkBadge([x1, y1, x2, y2], zoom)) {
-    return false;
+    return Infinity;
   }
   const [cx, cy] = linkBadgeCentre([x1, y1, x2, y2], element.angle, zoom);
-  return Math.hypot(x - cx, y - cy) <= LINK_BADGE.HIT / 2 / zoom;
+  return Math.hypot(x - cx, y - cy);
 };
+
+export const isPointHittingLinkIcon = (
+  element: NonDeletedExcalidrawElement,
+  elementsMap: ElementsMap,
+  appState: AppState,
+  point: GlobalPoint,
+) =>
+  linkBadgeDistance(element, elementsMap, appState, point) <=
+  LINK_BADGE.HIT / 2 / appState.zoom.value;
 
 export const isPointHittingLink = (
   element: NonDeletedExcalidrawElement,
