@@ -6999,8 +6999,12 @@ ${css}
           nearestDistance = distance;
         }
       }
-      // Nothing under the element the pointer is on can take its tap.
-      if (hitElementMightBeLocked?.id === element.id) {
+      // Nothing under the element the pointer is on can take its tap, but a
+      // frame is see-through: a badge on its border is still its child's.
+      if (
+        hitElementMightBeLocked?.id === element.id &&
+        !isFrameLikeElement(element)
+      ) {
         break;
       }
     }
