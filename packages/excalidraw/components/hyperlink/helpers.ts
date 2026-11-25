@@ -133,5 +133,4 @@ export const isPointHittingLink = (
   point: GlobalPoint,
   isMobile: boolean,
 ) =>
-  linkHitDistance(element, elementsMap, appState, point, isMobile) !==
-  Infinity;
+  linkHitDistance(element, elementsMap, appState, point, isMobile) !== Infinity;

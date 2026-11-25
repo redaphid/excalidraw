@@ -138,7 +138,7 @@ describe("the link badge", () => {
       vi.useFakeTimers();
 
       showHyperlinkTooltip(
-        h.elements.find((e) => e.id === card.id)!,
+        h.app.scene.getNonDeletedElements().find((e) => e.id === card.id)!,
         h.state,
         h.app.scene.getNonDeletedElementsMap(),
       );
