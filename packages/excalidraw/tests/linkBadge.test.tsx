@@ -10,7 +10,7 @@ import { showHyperlinkTooltip } from "../components/hyperlink/Hyperlink";
 
 import { API } from "./helpers/api";
 import { Pointer } from "./helpers/ui";
-import { act, render } from "./test-utils";
+import { act, fireEvent, render, waitFor } from "./test-utils";
 
 import type { NormalizedZoomValue } from "../types";
 import type { ExcalidrawProps } from "../types";
@@ -231,10 +231,153 @@ describe("the link badge", () => {
     atZoom(1);
     const centre = badgeCentre();
 
-    tapAt(centre.x + 15, centre.y);
+    tapAt(centre.x, centre.y);
 
     expect(opened).not.toHaveBeenCalled();
     expect(h.state.selectedElementIds[cover.id]).toBe(true);
+  });
+
+  describe("on a card just above a linked card, near its badge", () => {
+    const neighbours = async () => {
+      const opened = await renderWithLinkSpy();
+      const above = API.createElement({
+        type: "rectangle",
+        backgroundColor: "#e7f5ff",
+        fillStyle: "solid",
+        ...CARD,
+        y: CARD.y - 160,
+      });
+      const linked = API.createElement({
+        type: "rectangle",
+        backgroundColor: "#e7f5ff",
+        fillStyle: "solid",
+        ...CARD,
+      });
+      API.setElements([above, linked]);
+      API.updateElement(linked, { link: "https://example.com" });
+      atZoom(1);
+      // 8 px inside the card above's bottom-right corner, 17 px from the badge
+      const press = onScreen(CARD.x + CARD.width - 8, CARD.y - 10 - 8);
+      return { opened, above, press };
+    };
+
+    it("should move that card from a drag", async () => {
+      const { opened, above, press } = await neighbours();
+
+      mouse.reset();
+      mouse.downAt(press.x, press.y);
+      mouse.moveTo(press.x - 100, press.y + 100);
+      mouse.upAt(press.x - 100, press.y + 100);
+
+      expect(opened).not.toHaveBeenCalled();
+      expect(h.elements.find((e) => e.id === above.id)!.x).toBe(CARD.x - 100);
+    });
+
+    it("should select that card from a tap", async () => {
+      const { opened, above, press } = await neighbours();
+
+      tapAt(press.x, press.y);
+
+      expect(opened).not.toHaveBeenCalled();
+      expect(h.state.selectedElementIds[above.id]).toBe(true);
+    });
+  });
+
+  it("should open an ellipse's link from a tap 16 CSS px from its badge, on the canvas beside the ellipse", async () => {
+    const opened = await renderWithLinkSpy();
+    const ellipse = API.createElement({
+      type: "ellipse",
+      backgroundColor: "#e7f5ff",
+      fillStyle: "solid",
+      ...CARD,
+    });
+    API.setElements([ellipse]);
+    API.updateElement(ellipse, { link: "https://example.com" });
+    atZoom(1);
+    const corner = onScreen(CARD.x + CARD.width, CARD.y);
+
+    tapAt(corner.x - 8, corner.y + 8);
+
+    expect(opened).toHaveBeenCalledWith(ellipse.id);
+  });
+
+  it("should open the link from a tap on the card 20 CSS px from the badge, in view mode on a phone", async () => {
+    const opened = vi.fn();
+    await render(
+      <Excalidraw
+        UIOptions={{ getFormFactor: () => "phone" }}
+        onLinkOpen={(element, event) => {
+          opened(element.id);
+          event.preventDefault();
+        }}
+      />,
+    );
+    fireEvent.resize(window);
+    await waitFor(() => expect(h.app.editorInterface.formFactor).toBe("phone"));
+    const card = linkedCard();
+    API.setAppState({ viewModeEnabled: true });
+    atZoom(1);
+    const corner = onScreen(CARD.x + CARD.width, CARD.y);
+
+    tapAt(corner.x - 10, corner.y + 10);
+
+    expect(opened).toHaveBeenCalledWith(card.id);
+  });
+
+  describe("on a card turned an eighth of a turn", () => {
+    const eighth = (Math.PI / 4) as Radians;
+    const centre = pointFrom<GlobalPoint>(
+      CARD.x + CARD.width / 2,
+      CARD.y + CARD.height / 2,
+    );
+    /** A point given in the card's own unturned frame, on screen. */
+    const turnedOnScreen = (x: number, y: number) => {
+      const [sx, sy] = pointRotateRads(
+        pointFrom<GlobalPoint>(x, y),
+        centre,
+        eighth,
+      );
+      return onScreen(sx, sy);
+    };
+    const turned = async () => {
+      const opened = await renderWithLinkSpy();
+      const card = API.createElement({
+        type: "rectangle",
+        backgroundColor: "#e7f5ff",
+        fillStyle: "solid",
+        angle: eighth,
+        ...CARD,
+      });
+      API.setElements([card]);
+      API.updateElement(card, { link: "https://example.com" });
+      atZoom(1);
+      return { opened, card };
+    };
+
+    it("should select the card from a tap 11 CSS px inside its turned corner", async () => {
+      const { opened, card } = await turned();
+      const inside = turnedOnScreen(
+        CARD.x + CARD.width - 11,
+        CARD.y + 11,
+      );
+
+      tapAt(inside.x, inside.y);
+
+      expect(opened).not.toHaveBeenCalled();
+      expect(h.state.selectedElementIds[card.id]).toBe(true);
+    });
+
+    it("should open the link from a tap 20 CSS px out from its turned badge", async () => {
+      const { opened, card } = await turned();
+      const outside = turnedOnScreen(
+        CARD.x + CARD.width + 4 + 20,
+        CARD.y - 4,
+      );
+
+      tapAt(outside.x, outside.y);
+
+      expect(opened).toHaveBeenCalledWith(card.id);
+    });
   });
 
   describe("on a card turned a quarter turn", () => {
