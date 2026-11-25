@@ -37,7 +37,7 @@ yarn fix             # Auto-fix formatting and linting issues
 
 Draw is this fork's only consumer. Path C cuts what only upstream needed, in stages, on `hardfork/*` branches and prereleases, never on `master`.
 
-- **Semver strictly.** A hard-fork build removes API and props, so it is a **major**: `2.x`. Its prereleases are `2.0.0-hardfork.N` (stage 1 is `.1`, stage 2 `.2`). Master's compatible releases stay `1.x`. Aaron, 2026-11-24: "Obey semver. A hard fork should be at least v2".
+- **Semver strictly.** A hard-fork build removes API and props, so it is a **major** over master's `2.x`: `3.x`. Its prereleases are `3.0.0-hardfork.N` (stage 1 is `.1`, stage 2 `.2`). Master's compatible releases are `2.x` (`v2.0.0` re-released `v1.22.0`: #247 broke compatibility in `1.17.0`, so `v1.17.0`..`v1.22.0` were deleted). Aaron, 2026-11-24: "Obey semver. A hard fork should be at least v2".
 - A prerelease is never Latest (`gh release create … --prerelease --latest=false`), and its tag must not match the release workflow's `vX.Y.Z` pattern.
 - `scripts/i18n-to-literals.cjs` turns `t("key")` into English literals. Draw is English only. Rerun it after merging `master`.
 - What `t()` still costs: the 17 calls the script leaves read an action's `label` (stored as a key) or build a key from a template, so removing `t` means converting every action label. The prize is only `locales/en.json` (35 KB, about 0.4% of draw's 9.26 MB of JS), so the next real cut is the scene package (renderer, export, restore, fonts), not more i18n.
