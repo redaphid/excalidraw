@@ -1,8 +1,12 @@
 import { vi } from "vitest";
 
 import { sceneCoordsToViewportCoords } from "@excalidraw/common";
+import { pointFrom, pointRotateRads } from "@excalidraw/math";
+
+import type { GlobalPoint, Radians } from "@excalidraw/math";
 
 import { Excalidraw } from "../index";
+import { showHyperlinkTooltip } from "../components/hyperlink/Hyperlink";
 
 import { API } from "./helpers/api";
 import { Pointer } from "./helpers/ui";
@@ -96,6 +100,58 @@ describe("the link badge", () => {
       expect(opened).not.toHaveBeenCalled();
     });
 
+    it("should move the card, not open its link, from a drag that starts 10 CSS px inside its top-right corner", async () => {
+      const opened = await renderWithLinkSpy();
+      const card = linkedCard();
+      atZoom(zoom);
+      const corner = onScreen(CARD.x + CARD.width, CARD.y);
+      const from = { x: corner.x - 10, y: corner.y + 10 };
+
+      mouse.reset();
+      mouse.downAt(from.x, from.y);
+      mouse.moveTo(from.x - 100, from.y + 100);
+      mouse.upAt(from.x - 100, from.y + 100);
+
+      expect(opened).not.toHaveBeenCalled();
+      expect(h.elements.find((e) => e.id === card.id)!.x).toBeCloseTo(
+        CARD.x - 100 / zoom,
+        0,
+      );
+    });
+
+    it("should select the card, not open its link, from a tap 10 CSS px inside its top-right corner", async () => {
+      const opened = await renderWithLinkSpy();
+      const card = linkedCard();
+      atZoom(zoom);
+      const corner = onScreen(CARD.x + CARD.width, CARD.y);
+
+      tapAt(corner.x - 10, corner.y + 10);
+
+      expect(opened).not.toHaveBeenCalled();
+      expect(h.state.selectedElementIds[card.id]).toBe(true);
+    });
+
+    it("should aim the link tooltip at the badge", async () => {
+      await renderWithLinkSpy();
+      const card = linkedCard();
+      atZoom(zoom);
+      vi.useFakeTimers();
+
+      showHyperlinkTooltip(
+        h.elements.find((e) => e.id === card.id)!,
+        h.state,
+        h.app.scene.getNonDeletedElementsMap(),
+      );
+      vi.runAllTimers();
+      vi.useRealTimers();
+
+      // jsdom gives the tooltip no width, so its left edge is where it aims
+      const tooltip = document.querySelector<HTMLDivElement>(
+        ".excalidraw-tooltip",
+      )!;
+      expect(parseFloat(tooltip.style.left)).toBeCloseTo(badgeCentre().x, 0);
+    });
+
     it("should select the card, not open its link, from a tap on its body", async () => {
       const opened = await renderWithLinkSpy();
       const card = linkedCard();
@@ -151,6 +207,78 @@ describe("the link badge", () => {
 
     expect(opened).not.toHaveBeenCalled();
     expect(h.state.selectedElementIds[card.id]).toBe(true);
+  });
+
+  it("should not open a badge that an element drawn over it covers", async () => {
+    const opened = await renderWithLinkSpy();
+    const lower = API.createElement({
+      type: "rectangle",
+      backgroundColor: "#e7f5ff",
+      fillStyle: "solid",
+      ...CARD,
+    });
+    const cover = API.createElement({
+      type: "rectangle",
+      backgroundColor: "#e7f5ff",
+      fillStyle: "solid",
+      x: 300,
+      y: 50,
+      width: 200,
+      height: 200,
+    });
+    API.setElements([lower, cover]);
+    API.updateElement(lower, { link: "https://example.com/lower" });
+    atZoom(1);
+    const centre = badgeCentre();
+
+    tapAt(centre.x + 15, centre.y);
+
+    expect(opened).not.toHaveBeenCalled();
+    expect(h.state.selectedElementIds[cover.id]).toBe(true);
+  });
+
+  describe("on a card turned a quarter turn", () => {
+    const quarter = (Math.PI / 2) as Radians;
+    const turned = async () => {
+      const opened = await renderWithLinkSpy();
+      const card = API.createElement({
+        type: "rectangle",
+        backgroundColor: "#e7f5ff",
+        fillStyle: "solid",
+        angle: quarter,
+        ...CARD,
+      });
+      API.setElements([card]);
+      API.updateElement(card, { link: "https://example.com" });
+      atZoom(1);
+      return { opened, card };
+    };
+
+    it("should open the link from a tap on the badge, which turns with the card", async () => {
+      const { opened, card } = await turned();
+      const [x, y] = pointRotateRads(
+        pointFrom<GlobalPoint>(CARD.x + CARD.width + 4, CARD.y - 4),
+        pointFrom<GlobalPoint>(
+          CARD.x + CARD.width / 2,
+          CARD.y + CARD.height / 2,
+        ),
+        quarter,
+      );
+      const badge = onScreen(x, y);
+
+      tapAt(badge.x, badge.y);
+
+      expect(opened).toHaveBeenCalledWith(card.id);
+    });
+
+    it("should not open the link from a tap where the badge would be if the card were not turned", async () => {
+      const { opened } = await turned();
+      const unturned = badgeCentre();
+
+      tapAt(unturned.x, unturned.y);
+
+      expect(opened).not.toHaveBeenCalled();
+    });
   });
 
   it("should open a badge that sits on its frame's border", async () => {
