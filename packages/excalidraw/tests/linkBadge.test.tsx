@@ -357,10 +357,7 @@ describe("the link badge", () => {
 
     it("should select the card from a tap 11 CSS px inside its turned corner", async () => {
       const { opened, card } = await turned();
-      const inside = turnedOnScreen(
-        CARD.x + CARD.width - 11,
-        CARD.y + 11,
-      );
+      const inside = turnedOnScreen(CARD.x + CARD.width - 11, CARD.y + 11);
 
       tapAt(inside.x, inside.y);
 
@@ -370,10 +367,7 @@ describe("the link badge", () => {
 
     it("should open the link from a tap 20 CSS px out from its turned badge", async () => {
       const { opened, card } = await turned();
-      const outside = turnedOnScreen(
-        CARD.x + CARD.width + 4 + 20,
-        CARD.y - 4,
-      );
+      const outside = turnedOnScreen(CARD.x + CARD.width + 4 + 20, CARD.y - 4);
 
       tapAt(outside.x, outside.y);
 
