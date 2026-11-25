@@ -254,6 +254,12 @@ const linkIconCanvasCache: {
   elementLink: null,
 };
 
+/** for after a lost context, which blanks the cached icons too */
+export const forgetLinkIconCanvases = () => {
+  linkIconCanvasCache.regularLink = null;
+  linkIconCanvasCache.elementLink = null;
+};
+
 const renderLinkIcon = (
   element: NonDeletedExcalidrawElement,
   context: CanvasRenderingContext2D,

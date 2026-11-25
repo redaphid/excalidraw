@@ -96,6 +96,14 @@ const tilesOf = (url: string) => {
 
 const ready = ({ image }: Tiles) => image.complete && image.naturalWidth > 0;
 
+/** for after a lost context, which blanks the rasters too; the decoded
+ * images survive it */
+export const forgetBackdropRasters = () => {
+  for (const entry of tiles.values()) {
+    entry.rasters.forEach((raster, edge) => dropRaster(entry, edge, raster));
+  }
+};
+
 /** settles once the image has decoded (or failed); callers repaint then */
 export const loadBackdrop = (url: string) => tilesOf(url).loaded;
 

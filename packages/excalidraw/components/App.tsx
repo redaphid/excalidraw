@@ -172,6 +172,7 @@ import {
   getContainerElement,
   getSettledBitmapCount,
   cancelSettledBitmaps,
+  elementWithCanvasCache,
   getColorUpdate,
   getStickyNoteMinSize,
   isValidTextContainer,
@@ -373,7 +374,8 @@ import { exportCanvas, loadFromBlob } from "../data";
 import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
 import { EMPTY_CSS_THEME, readCssTheme, themeDrawsGrid } from "../cssTheme";
-import { loadBackdrop } from "../renderer/backdrop";
+import { forgetBackdropRasters, loadBackdrop } from "../renderer/backdrop";
+import { forgetLinkIconCanvases } from "../renderer/staticScene";
 import { getFrameStyle } from "../frameStyle";
 import { getCenter, getDistance } from "../gesture";
 import {
@@ -4318,19 +4320,23 @@ class App extends React.Component<AppProps, AppState> {
         },
         { passive: false },
       ),
-      // browsers may free a hidden page's canvas memory, clearing it (#8035),
-      // so repaint when the page is shown again, not on every focus: a car's
-      // or kiosk's shell can move focus in and out of a visible page often,
-      // and each forced repaint redraws the whole static scene
+      // a hidden page's canvases may be cleared (#8035); focus alone moves
+      // often in some shells, and each forced repaint redraws everything
       addEventListener(this.ownerDocument, EVENT.VISIBILITY_CHANGE, () => {
         if (this.ownerDocument.visibilityState === "visible") {
           this.triggerRender(true);
         }
       }),
-      // a lost 2D context comes back blank
-      addEventListener(this.canvas, "contextrestored", () => {
-        this.triggerRender(true);
-      }),
+      addEventListener(
+        this.canvas,
+        "contextrestored",
+        this.onCanvasContextRestored,
+      ),
+      addEventListener(
+        this.separateBackgroundCanvas,
+        "contextrestored",
+        this.onCanvasContextRestored,
+      ),
     );
 
     if (!this.isInteractionEnabled()) {
@@ -12648,6 +12654,10 @@ ${css}
       );
       this.interactiveCanvas.addEventListener(EVENT.TOUCH_END, this.onTouchEnd);
       // -----------------------------------------------------------------------
+      this.interactiveCanvas.addEventListener(
+        "contextrestored",
+        this.onCanvasContextRestored,
+      );
     } else {
       this.interactiveCanvas?.removeEventListener(
         EVENT.TOUCH_START,
@@ -12657,7 +12667,25 @@ ${css}
         EVENT.TOUCH_END,
         this.onTouchEnd,
       );
+      this.interactiveCanvas?.removeEventListener(
+        "contextrestored",
+        this.onCanvasContextRestored,
+      );
     }
+  };
+
+  /**
+   * A lost 2D context (a GPU process crash, say) comes back blank, and so do
+   * the bitmaps cached from it, which a repaint would otherwise draw as they
+   * are: drop them all and repaint every canvas.
+   */
+  private onCanvasContextRestored = () => {
+    for (const element of this.scene.getElementsIncludingDeleted()) {
+      elementWithCanvasCache.delete(element);
+    }
+    forgetLinkIconCanvases();
+    forgetBackdropRasters();
+    this.triggerRender(true);
   };
 
   public insertImages = async (
