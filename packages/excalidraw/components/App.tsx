@@ -4315,12 +4315,22 @@ class App extends React.Component<AppProps, AppState> {
         EVENT.FOCUS,
         () => {
           this.maybeCleanupAfterMissingPointerUp(null);
-          // browsers (chrome?) tend to free up memory a lot, which results
-          // in canvas context being cleared. Thus re-render on focus.
-          this.triggerRender(true);
         },
         { passive: false },
       ),
+      // browsers may free a hidden page's canvas memory, clearing it (#8035),
+      // so repaint when the page is shown again, not on every focus: a car's
+      // or kiosk's shell can move focus in and out of a visible page often,
+      // and each forced repaint redraws the whole static scene
+      addEventListener(this.ownerDocument, EVENT.VISIBILITY_CHANGE, () => {
+        if (this.ownerDocument.visibilityState === "visible") {
+          this.triggerRender(true);
+        }
+      }),
+      // a lost 2D context comes back blank
+      addEventListener(this.canvas, "contextrestored", () => {
+        this.triggerRender(true);
+      }),
     );
 
     if (!this.isInteractionEnabled()) {
