@@ -374,6 +374,7 @@ import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
 import { EMPTY_CSS_THEME, readCssTheme, themeDrawsGrid } from "../cssTheme";
 import { loadBackdrop } from "../renderer/backdrop";
+import { forgetContextCaches } from "../renderer/contextCaches";
 import { getFrameStyle } from "../frameStyle";
 import { getCenter, getDistance } from "../gesture";
 import {
@@ -4315,11 +4316,25 @@ class App extends React.Component<AppProps, AppState> {
         EVENT.FOCUS,
         () => {
           this.maybeCleanupAfterMissingPointerUp(null);
-          // browsers (chrome?) tend to free up memory a lot, which results
-          // in canvas context being cleared. Thus re-render on focus.
-          this.triggerRender(true);
         },
         { passive: false },
+      ),
+      // a hidden page's canvases may be cleared (#8035); focus alone moves
+      // often in some shells, and each forced repaint redraws everything
+      addEventListener(this.ownerDocument, EVENT.VISIBILITY_CHANGE, () => {
+        if (this.ownerDocument.visibilityState === "visible") {
+          this.triggerRender(true);
+        }
+      }),
+      addEventListener(
+        this.canvas,
+        "contextrestored",
+        this.onCanvasContextRestored,
+      ),
+      addEventListener(
+        this.separateBackgroundCanvas,
+        "contextrestored",
+        this.onCanvasContextRestored,
       ),
     );
 
@@ -12637,6 +12652,10 @@ ${css}
       );
       this.interactiveCanvas.addEventListener(EVENT.TOUCH_END, this.onTouchEnd);
       // -----------------------------------------------------------------------
+      this.interactiveCanvas.addEventListener(
+        "contextrestored",
+        this.onCanvasContextRestored,
+      );
     } else {
       this.interactiveCanvas?.removeEventListener(
         EVENT.TOUCH_START,
@@ -12646,7 +12665,17 @@ ${css}
         EVENT.TOUCH_END,
         this.onTouchEnd,
       );
+      this.interactiveCanvas?.removeEventListener(
+        "contextrestored",
+        this.onCanvasContextRestored,
+      );
     }
+  };
+
+  /** a lost context comes back blank, and so do the canvases cached from it */
+  private onCanvasContextRestored = () => {
+    forgetContextCaches(this.scene.getElementsIncludingDeleted());
+    this.triggerRender(true);
   };
 
   public insertImages = async (
