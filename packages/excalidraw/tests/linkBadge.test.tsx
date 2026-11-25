@@ -152,4 +152,31 @@ describe("the link badge", () => {
     expect(opened).not.toHaveBeenCalled();
     expect(h.state.selectedElementIds[card.id]).toBe(true);
   });
+
+  it("should open a badge that sits on its frame's border", async () => {
+    const opened = await renderWithLinkSpy();
+    const frame = API.createElement({
+      type: "frame",
+      x: 0,
+      y: 0,
+      width: 600,
+      height: 400,
+    });
+    const box = { x: 100, y: 2, width: 240, height: 150 };
+    const card = API.createElement({
+      type: "rectangle",
+      backgroundColor: "#e7f5ff",
+      fillStyle: "solid",
+      frameId: frame.id,
+      ...box,
+    });
+    API.setElements([card, frame]);
+    API.updateElement(card, { link: "https://example.com" });
+    atZoom(1);
+    const centre = badgeCentre(box);
+
+    tapAt(centre.x, centre.y);
+
+    expect(opened).toHaveBeenCalledWith(card.id);
+  });
 });
