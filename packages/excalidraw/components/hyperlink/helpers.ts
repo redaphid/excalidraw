@@ -1,8 +1,11 @@
 import { pointFrom, pointRotateRads } from "@excalidraw/math";
 
-import { MIME_TYPES } from "@excalidraw/common";
-import { getElementAbsoluteCoords } from "@excalidraw/element";
-import { hitElementBoundingBox } from "@excalidraw/element";
+import { isLocalLink } from "@excalidraw/common";
+import {
+  getElementAbsoluteCoords,
+  hitElementBoundingBox,
+  isElementLink,
+} from "@excalidraw/element";
 
 import type { GlobalPoint, Radians } from "@excalidraw/math";
 
@@ -14,48 +17,52 @@ import type {
 
 import type { AppState } from "../../types";
 
-export const DEFAULT_LINK_SIZE = 12;
+/**
+ * The badge an element with a link wears at its top-right corner, in CSS px,
+ * the same on screen at any zoom: a `MARK` disc that a tap anywhere within
+ * `HIT` across follows, a finger's width. An element whose longest side shows
+ * under `MIN_ELEMENT` wears a `PIP` dot instead and keeps all of its taps.
+ */
+export const LINK_BADGE = {
+  MARK: 24,
+  HIT: 48,
+  PIP: 6,
+  /** how far the badge's centre sits out from the corner, on each axis */
+  OUT: 4,
+  MIN_ELEMENT: 64,
+} as const;
 
-export const EXTERNAL_LINK_IMG = document.createElement("img");
-EXTERNAL_LINK_IMG.src = `data:${MIME_TYPES.svg}, ${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1971c2" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="feather feather-external-link"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
-)}`;
+/** A place on the board or this site (a portal, a frame), or the wider web. */
+export type LinkKind = "place" | "web";
 
-export const ELEMENT_LINK_IMG = document.createElement("img");
-ELEMENT_LINK_IMG.src = `data:${MIME_TYPES.svg}, ${encodeURIComponent(
-  `<svg  xmlns="http://www.w3.org/2000/svg"  width="16"  height="16"  viewBox="0 0 24 24"  fill="none"  stroke="#1971c2"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-arrow-big-right-line"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v-3.586a1 1 0 0 1 1.707 -.707l6.586 6.586a1 1 0 0 1 0 1.414l-6.586 6.586a1 1 0 0 1 -1.707 -.707v-3.586h-6v-6h6z" /><path d="M3 9v6" /></svg>`,
-)}`;
+export const linkKindOf = (link: string): LinkKind =>
+  isElementLink(link) || isLocalLink(link) ? "place" : "web";
 
-export const getLinkHandleFromCoords = (
+export const showsLinkBadge = ([x1, y1, x2, y2]: Bounds, zoom: number) =>
+  Math.max(x2 - x1, y2 - y1) * zoom >= LINK_BADGE.MIN_ELEMENT;
+
+const linkBadgeCentre = (
   [x1, y1, x2, y2]: Bounds,
+  angle: Radians,
+  zoom: number,
+) =>
+  pointRotateRads(
+    pointFrom(x2 + LINK_BADGE.OUT / zoom, y1 - LINK_BADGE.OUT / zoom),
+    pointFrom((x1 + x2) / 2, (y1 + y2) / 2),
+    angle,
+  );
+
+/** The badge's visible mark (or pip) as `[x, y, width, height]` in scene units. */
+export const getLinkHandleFromCoords = (
+  bounds: Bounds,
   angle: Radians,
   appState: Pick<AppState, "zoom">,
 ): Bounds => {
-  const size = DEFAULT_LINK_SIZE;
-  const zoom = appState.zoom.value > 1 ? appState.zoom.value : 1;
-  const linkWidth = size / zoom;
-  const linkHeight = size / zoom;
-  const linkMarginY = size / zoom;
-  const centerX = (x1 + x2) / 2;
-  const centerY = (y1 + y2) / 2;
-  const centeringOffset = (size - 8) / (2 * zoom);
-  const dashedLineMargin = 4 / zoom;
-
-  // Same as `ne` resize handle
-  const x = x2 + dashedLineMargin - centeringOffset;
-  const y = y1 - dashedLineMargin - linkMarginY + centeringOffset;
-
-  const [rotatedX, rotatedY] = pointRotateRads(
-    pointFrom(x + linkWidth / 2, y + linkHeight / 2),
-    pointFrom(centerX, centerY),
-    angle,
-  );
-  return [
-    rotatedX - linkWidth / 2,
-    rotatedY - linkHeight / 2,
-    linkWidth,
-    linkHeight,
-  ];
+  const zoom = appState.zoom.value;
+  const size =
+    (showsLinkBadge(bounds, zoom) ? LINK_BADGE.MARK : LINK_BADGE.PIP) / zoom;
+  const [x, y] = linkBadgeCentre(bounds, angle, zoom);
+  return [x - size / 2, y - size / 2, size, size];
 };
 
 export const isPointHittingLinkIcon = (
@@ -64,19 +71,13 @@ export const isPointHittingLinkIcon = (
   appState: AppState,
   [x, y]: GlobalPoint,
 ) => {
-  const threshold = 4 / appState.zoom.value;
+  const zoom = appState.zoom.value;
   const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
-  const [linkX, linkY, linkWidth, linkHeight] = getLinkHandleFromCoords(
-    [x1, y1, x2, y2],
-    element.angle,
-    appState,
-  );
-  const hitLink =
-    x > linkX - threshold &&
-    x < linkX + threshold + linkWidth &&
-    y > linkY - threshold &&
-    y < linkY + linkHeight + threshold;
-  return hitLink;
+  if (!showsLinkBadge([x1, y1, x2, y2], zoom)) {
+    return false;
+  }
+  const [cx, cy] = linkBadgeCentre([x1, y1, x2, y2], element.angle, zoom);
+  return Math.hypot(x - cx, y - cy) <= LINK_BADGE.HIT / 2 / zoom;
 };
 
 export const isPointHittingLink = (
