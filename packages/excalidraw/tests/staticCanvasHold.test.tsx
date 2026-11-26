@@ -63,6 +63,44 @@ describe("holding the static canvas", () => {
     expect(paintedScrollX()).toEqual([200]);
   });
 
+  describe("when let go outside React, as from a pointer, timer or socket handler", () => {
+    const actEnvironment = (on: boolean) => {
+      (
+        globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+      ).IS_REACT_ACT_ENVIRONMENT = on;
+    };
+
+    afterEach(() => {
+      actEnvironment(true);
+    });
+
+    it("paints before returning, so the host can uncover it at once", () => {
+      hold(true);
+      scrollTo(300);
+      actEnvironment(false);
+
+      h.app.api.holdStaticCanvas(false);
+
+      expect(paintedScrollX()).toEqual([300]);
+    });
+  });
+
+  it("repaints a canvas whose context was restored while held", () => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      "canvas.excalidraw__canvas.static",
+    )!;
+    hold(true);
+    act(() => {
+      canvas.dispatchEvent(new Event("contextrestored"));
+    });
+    expect(renderStaticScene).not.toHaveBeenCalled();
+
+    hold(false);
+
+    expect(renderStaticScene).toHaveBeenCalledTimes(1);
+    expect(renderStaticScene.mock.calls[0][0].canvas).toBe(canvas);
+  });
+
   it("does not repaint when let go with nothing changed", () => {
     hold(true);
     hold(false);

@@ -1594,7 +1594,10 @@ export interface ExcalidrawImperativeAPI {
    * For a host that covers the canvas with a view of its own, e.g. while a
    * gesture moves the camera. While held, the static canvas keeps what it
    * last painted and skips every repaint, so the scene is never painted
-   * unseen; letting go repaints it once if anything changed meanwhile.
+   * unseen; letting go repaints it once if anything changed meanwhile,
+   * before returning, so the host can uncover it at once. Let go from an
+   * event, a timer or a microtask: inside a React render or effect, React
+   * cannot paint until it finishes, and warns.
    * The interactive canvas is unaffected.
    */
   holdStaticCanvas: InstanceType<typeof App>["holdStaticCanvas"];

@@ -5394,7 +5394,8 @@ class App extends React.Component<AppProps, AppState> {
     }
     this.staticCanvasHeld = held;
     if (!held) {
-      this.forceUpdate();
+      // the host uncovers the canvas as soon as this returns
+      flushSync(() => this.forceUpdate());
     }
   };
 
