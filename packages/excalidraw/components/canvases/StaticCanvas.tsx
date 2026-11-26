@@ -33,6 +33,8 @@ type StaticCanvasProps = {
   appState: StaticCanvasAppState;
   renderConfig: StaticCanvasRenderConfig;
   onPainted?: (appState: StaticCanvasAppState) => void;
+  /** skip repaints; see `ExcalidrawImperativeAPI.holdStaticCanvas` */
+  held: boolean;
 };
 
 const StaticCanvas = (props: StaticCanvasProps) => {
@@ -99,6 +101,11 @@ const areEqual = (
   prevProps: StaticCanvasProps,
   nextProps: StaticCanvasProps,
 ) => {
+  // prevProps are the ones last painted, so letting go repaints only if
+  // something changed while held
+  if (nextProps.held) {
+    return true;
+  }
   if (
     prevProps.canvasNonce !== nextProps.canvasNonce ||
     prevProps.backgroundCanvas !== nextProps.backgroundCanvas ||

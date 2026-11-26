@@ -865,6 +865,7 @@ class App extends React.Component<AppProps, AppState> {
   /** offsets of `elementRenderOverrides`; keeps its identity while they don't change */
   private elementRenderOffsets: ElementRenderOffsets = new Map();
   private renderOverridesUpdatePending = false;
+  private staticCanvasHeld = false;
 
   private getRenderOverrideConfig = () => ({
     elementRenderOverrides: this.elementRenderOverrides,
@@ -900,6 +901,7 @@ class App extends React.Component<AppProps, AppState> {
       setViewport: this.viewport.setViewport,
       getViewportOffsets: this.viewport.getOffsets,
       setElementRenderOverrides: this.setElementRenderOverrides,
+      holdStaticCanvas: this.holdStaticCanvas,
       getSceneElements: this.getSceneElements,
       getAppState: () => this.state,
       getFiles: () => this.files,
@@ -2846,6 +2848,7 @@ class App extends React.Component<AppProps, AppState> {
                             }
                             scale={this.ownerWindow.devicePixelRatio}
                             appState={this.state}
+                            held={this.staticCanvasHeld}
                             renderConfig={{
                               imageCache: this.imageCache,
                               isExporting: false,
@@ -5380,6 +5383,20 @@ class App extends React.Component<AppProps, AppState> {
     this.renderOverridesUpdatePending = true;
     // Preserve AppState identity and explicitly request a visual-only commit.
     this.forceUpdate();
+  };
+
+  /**
+   * see {@link ExcalidrawImperativeAPI.holdStaticCanvas} for details
+   */
+  public holdStaticCanvas = (held: boolean) => {
+    if (this.unmounted || held === this.staticCanvasHeld) {
+      return;
+    }
+    this.staticCanvasHeld = held;
+    if (!held) {
+      // the host uncovers the canvas as soon as this returns
+      flushSync(() => this.forceUpdate());
+    }
   };
 
   public applyDeltas = (
