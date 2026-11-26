@@ -1590,6 +1590,14 @@ export interface ExcalidrawImperativeAPI {
   setElementRenderOverrides: InstanceType<
     typeof App
   >["setElementRenderOverrides"];
+  /**
+   * For a host that covers the canvas with a view of its own, e.g. while a
+   * gesture moves the camera. While held, the static canvas keeps what it
+   * last painted and skips every repaint, so the scene is never painted
+   * unseen; letting go repaints it once if anything changed meanwhile.
+   * The interactive canvas is unaffected.
+   */
+  holdStaticCanvas: InstanceType<typeof App>["holdStaticCanvas"];
   registerAction: (action: Action) => void;
   /**
    * Lays out the given elements (the whole scene when none are given) with
