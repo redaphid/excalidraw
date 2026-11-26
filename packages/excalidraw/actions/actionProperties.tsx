@@ -7,6 +7,7 @@ import {
   COLOR_PALETTE,
   DEFAULT_ELEMENT_BACKGROUND_COLOR_PALETTE,
   ARROW_TYPE,
+  DEFAULT_FILL_GRADIENT,
   DEFAULT_FONT_FAMILY,
   DEFAULT_FONT_SIZE,
   FONT_FAMILY,
@@ -703,6 +704,38 @@ export const actionChangeFillStyle = register<ExcalidrawElement["fillStyle"]>({
         </div>
       </fieldset>
     );
+  },
+});
+
+export const actionChangeFillGradient = register<
+  Partial<NonNullable<ExcalidrawElement["fillGradient"]>>
+>({
+  name: "changeFillGradient",
+  label: "labels.gradient",
+  trackEvent: false,
+  perform: (elements, appState, value) => {
+    invariant(value, "actionChangeFillGradient: value must be defined");
+
+    return {
+      elements: changeProperty(elements, appState, (el) =>
+        hasFillStyle(el.type) && el.fillStyle === "gradient"
+          ? newElementWith(el, {
+              fillGradient: {
+                ...(el.fillGradient ?? DEFAULT_FILL_GRADIENT),
+                ...value,
+              },
+            })
+          : el,
+      ),
+      appState: {
+        ...appState,
+        currentItemFillGradient: {
+          ...appState.currentItemFillGradient,
+          ...value,
+        },
+      },
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    };
   },
 });
 

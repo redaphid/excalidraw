@@ -76,6 +76,7 @@ export * from "./elbowArrow";
 export * from "./elementLink";
 export * from "./elementsRTree";
 export * from "./embeddable";
+export * from "./fillGradient";
 export * from "./flowchart";
 export * from "./arrows/focus";
 export * from "./fractionalIndex";

@@ -16,6 +16,7 @@ import {
   isRestylableFill,
   newLinearElement,
   ShapeCache,
+  getCurrentItemFill,
 } from "@excalidraw/element";
 
 import type {
@@ -142,7 +143,7 @@ export class AppBucketFill {
     }
     this.app.scene.mutateElement(element, {
       backgroundColor,
-      fillStyle: this.app.state.currentItemFillStyle,
+      ...getCurrentItemFill(this.app.state),
       opacity: this.app.state.currentItemOpacity,
     });
     // the roughjs drawable is cached by element reference; in-place
@@ -252,7 +253,7 @@ export class AppBucketFill {
       polygon: true,
       strokeColor: "transparent",
       backgroundColor,
-      fillStyle: this.app.state.currentItemFillStyle,
+      ...getCurrentItemFill(this.app.state),
       strokeWidth: 1,
       strokeStyle: "solid",
       roughness: 0,

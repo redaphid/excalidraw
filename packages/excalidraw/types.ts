@@ -479,6 +479,7 @@ export interface AppState {
   currentItemStickynoteBackgroundColor: string;
   currentItemBackgroundColor: string;
   currentItemFillStyle: ExcalidrawElement["fillStyle"];
+  currentItemFillGradient: NonNullable<ExcalidrawElement["fillGradient"]>;
   currentItemStrokeWidthKey: StrokeWidthKey;
   /** in `authoringUnits` */
   currentItemFreedrawStrokeWidth: number;

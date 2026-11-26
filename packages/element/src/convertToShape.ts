@@ -45,6 +45,7 @@ import type {
 } from "@excalidraw/element/types";
 
 import { getAuthoringScale, getAuthoringScaleField } from "./authoring";
+import { getCurrentItemFill } from "./fillGradient";
 import { getFrameLikeElements } from "./frame";
 import {
   isLinearElement,
@@ -579,7 +580,7 @@ export const convertToShape = (
         roughness: appState.currentItemRoughness,
         backgroundColor: appState.currentItemBackgroundColor,
         strokeColor: appState.currentItemStrokeColor,
-        fillStyle: appState.currentItemFillStyle,
+        ...getCurrentItemFill(appState),
         opacity: appState.currentItemOpacity,
         strokeStyle: appState.currentItemStrokeStyle,
         strokeWidth:
@@ -626,7 +627,7 @@ export const convertToShape = (
           roughness: appState.currentItemRoughness,
           backgroundColor: appState.currentItemBackgroundColor,
           strokeColor: appState.currentItemStrokeColor,
-          fillStyle: appState.currentItemFillStyle,
+          ...getCurrentItemFill(appState),
           opacity: appState.currentItemOpacity,
           strokeStyle: appState.currentItemStrokeStyle,
           strokeWidth:
@@ -666,7 +667,7 @@ export const convertToShape = (
         roughness: appState.currentItemRoughness,
         backgroundColor: appState.currentItemBackgroundColor,
         strokeColor: appState.currentItemStrokeColor,
-        fillStyle: appState.currentItemFillStyle,
+        ...getCurrentItemFill(appState),
         opacity: appState.currentItemOpacity,
         strokeStyle: appState.currentItemStrokeStyle,
         strokeWidth:
@@ -708,7 +709,7 @@ export const convertToShape = (
         roughness: appState.currentItemRoughness,
         backgroundColor: appState.currentItemBackgroundColor,
         strokeColor: appState.currentItemStrokeColor,
-        fillStyle: appState.currentItemFillStyle,
+        ...getCurrentItemFill(appState),
         opacity: appState.currentItemOpacity,
         strokeStyle: appState.currentItemStrokeStyle,
         strokeWidth:

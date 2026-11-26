@@ -73,6 +73,7 @@ import {
   isStickyNoteElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
+import { createCanvasFillGradient, withFillPaint } from "./fillGradient";
 import { getCornerRadius } from "./utils";
 import { isElementInViewport } from "./sizeHelpers";
 
@@ -685,7 +686,16 @@ const drawElementOnCanvas = (
       context.lineJoin = "round";
       context.lineCap = "round";
 
-      rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      rc.draw(
+        withFillPaint(
+          ShapeCache.generateElementShape(element, renderConfig),
+          createCanvasFillGradient(
+            context,
+            element,
+            renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
+          ),
+        ),
+      );
       if (isButtonElement(element)) {
         drawButtonIcon(element, context, renderConfig);
       }
@@ -696,9 +706,14 @@ const drawElementOnCanvas = (
       context.lineJoin = "round";
       context.lineCap = "round";
 
+      const fillGradient = createCanvasFillGradient(
+        context,
+        element,
+        renderConfig.theme === THEME.DARK && !hasLiteralColor(element),
+      );
       ShapeCache.generateElementShape(element, renderConfig).forEach(
-        (shape) => {
-          rc.draw(shape);
+        (shape, index) => {
+          rc.draw(index === 0 ? withFillPaint(shape, fillGradient) : shape);
         },
       );
       break;
@@ -717,7 +732,17 @@ const drawElementOnCanvas = (
             );
             context.fill(getFreeDrawPath2D(element, shape));
           } else {
-            rc.draw(shape);
+            rc.draw(
+              withFillPaint(
+                shape,
+                createCanvasFillGradient(
+                  context,
+                  element,
+                  renderConfig.theme === THEME.DARK &&
+                    !hasLiteralColor(element),
+                ),
+              ),
+            );
           }
         }
       } finally {

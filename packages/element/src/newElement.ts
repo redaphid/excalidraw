@@ -172,6 +172,9 @@ const _newElementBase = <T extends ExcalidrawElement>(
     ...(rest.authoringScale !== undefined && {
       authoringScale: rest.authoringScale,
     }),
+    ...(rest.fillGradient !== undefined && {
+      fillGradient: rest.fillGradient,
+    }),
   };
   return element;
 };

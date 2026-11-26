@@ -1,6 +1,8 @@
 import React from "react";
 
 import {
+  COLOR_PALETTE,
+  DEFAULT_FILL_GRADIENT,
   FONT_FAMILY,
   FONT_SIZES,
   getStrokeWidthByKey,
@@ -13,6 +15,7 @@ import type { ExcalidrawElement } from "@excalidraw/element/types";
 import {
   actionChangeArrowType,
   actionChangeArrowhead,
+  actionChangeFillGradient,
   actionChangeFillStyle,
   actionChangeFontFamily,
   actionChangeFontSize,
@@ -33,6 +36,8 @@ import {
   EdgeRoundIcon,
   EdgeSharpIcon,
   FillCrossHatchIcon,
+  FillGradientIcon,
+  FillGradientRadialIcon,
   FillHachureIcon,
   FillSolidIcon,
   FillZigZagIcon,
@@ -71,6 +76,9 @@ export type StyleOption = Readonly<{
 
 export const STYLE_PROPERTY_IDS = [
   "fillStyle",
+  "fillGradientType",
+  "fillGradientAngle",
+  "fillGradientColor",
   "strokeWidth",
   "strokeStyle",
   "sloppiness",
@@ -196,6 +204,62 @@ const arrowhead = (position: "start" | "end") =>
 
 const FONTS = ["Excalifont", "Nunito", "Comic Shanns"] as const;
 
+type FillGradient = NonNullable<ExcalidrawElement["fillGradient"]>;
+
+const FILL_GRADIENT_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315] as const;
+
+const FILL_GRADIENT_COLORS = [
+  COLOR_PALETTE.white,
+  COLOR_PALETTE.black,
+  COLOR_PALETTE.red[2],
+  COLOR_PALETTE.violet[2],
+  COLOR_PALETTE.blue[2],
+  COLOR_PALETTE.green[2],
+  COLOR_PALETTE.yellow[2],
+  COLOR_PALETTE.orange[2],
+] as const;
+
+const fillGradientProperty = <K extends keyof FillGradient>(spec: {
+  id: StylePropertyId;
+  label: TranslationKeys;
+  key: K;
+  on?: (fillGradient: FillGradient) => boolean;
+  options: readonly StyleOption[];
+}): StyleProperty => {
+  const gradients = (
+    elements: readonly ExcalidrawElement[],
+    appState: AppState,
+  ) =>
+    (elements.length
+      ? elements
+          .filter(
+            (element) =>
+              hasFillStyle(element.type) && element.fillStyle === "gradient",
+          )
+          .map((element) => element.fillGradient ?? DEFAULT_FILL_GRADIENT)
+      : hasFillStyle(appState.activeTool.type) &&
+        appState.currentItemFillStyle === "gradient"
+      ? [appState.currentItemFillGradient]
+      : []
+    ).filter((fillGradient) => !spec.on || spec.on(fillGradient));
+
+  return {
+    id: spec.id,
+    label: spec.label,
+    action: actionChangeFillGradient,
+    options: spec.options,
+    applies: (elements, appState) => gradients(elements, appState).length > 0,
+    current: (elements, appState) => {
+      const values = new Set(
+        gradients(elements, appState).map(
+          (fillGradient) => fillGradient[spec.key],
+        ),
+      );
+      return values.size === 1 ? [...values][0] : null;
+    },
+  };
+};
+
 export const STYLE_PROPERTIES: readonly StyleProperty[] = [
   property({
     id: "fillStyle",
@@ -207,9 +271,69 @@ export const STYLE_PROPERTIES: readonly StyleProperty[] = [
       ["cross-hatch", "labels.crossHatch", FillCrossHatchIcon],
       ["solid", "labels.solid", FillSolidIcon],
       ["zigzag", "labels.zigzag", FillZigZagIcon],
+      ["gradient", "labels.gradient", FillGradientIcon],
     ]),
     get: (element) => element.fillStyle,
     fallback: (appState) => appState.currentItemFillStyle,
+  }),
+  fillGradientProperty({
+    id: "fillGradientType",
+    label: "labels.gradientType",
+    key: "type",
+    options: [
+      {
+        value: { type: "linear" },
+        label: "labels.gradientType_linear",
+        icon: FillGradientIcon,
+      },
+      {
+        value: { type: "radial" },
+        label: "labels.gradientType_radial",
+        icon: FillGradientRadialIcon,
+      },
+    ],
+  }),
+  fillGradientProperty({
+    id: "fillGradientAngle",
+    label: "labels.gradientAngle",
+    key: "angle",
+    on: ({ type }) => type === "linear",
+    options: FILL_GRADIENT_ANGLES.map((angle) => ({
+      value: { angle },
+      label: { text: `${angle}°` },
+      icon: (
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor">
+          <path
+            d="M10 16V4M6 8l4-4 4 4"
+            strokeWidth={1.25}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            transform={`rotate(${angle} 10 10)`}
+          />
+        </svg>
+      ),
+    })),
+  }),
+  fillGradientProperty({
+    id: "fillGradientColor",
+    label: "labels.gradientColor",
+    key: "color",
+    options: FILL_GRADIENT_COLORS.map((color) => ({
+      value: { color },
+      label: { text: color },
+      icon: (
+        <svg viewBox="0 0 20 20">
+          <circle
+            cx="10"
+            cy="10"
+            r="7"
+            fill={color}
+            stroke="currentColor"
+            strokeWidth={1}
+          />
+        </svg>
+      ),
+    })),
   }),
   property({
     id: "strokeWidth",

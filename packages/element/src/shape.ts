@@ -251,6 +251,9 @@ function adjustRoughness(element: ExcalidrawElement): number {
   return Math.min(roughness / (maxSize < 10 ? 3 : 2), 2.5);
 }
 
+const getRoughFillStyle = (element: ExcalidrawElement) =>
+  element.fillStyle === "gradient" ? "solid" : element.fillStyle;
+
 export const generateRoughOptions = (
   element: ExcalidrawElement,
   continuousPath = false,
@@ -290,7 +293,7 @@ export const generateRoughOptions = (
     case "embeddable":
     case "diamond":
     case "ellipse": {
-      options.fillStyle = element.fillStyle;
+      options.fillStyle = getRoughFillStyle(element);
       options.fill = isTransparent(element.backgroundColor)
         ? undefined
         : applyDarkModeFilter(element.backgroundColor, isDarkMode);
@@ -302,7 +305,7 @@ export const generateRoughOptions = (
     case "line":
     case "freedraw": {
       if (isPathALoop(element.points)) {
-        options.fillStyle = element.fillStyle;
+        options.fillStyle = getRoughFillStyle(element);
         options.fill =
           element.backgroundColor === "transparent"
             ? undefined
