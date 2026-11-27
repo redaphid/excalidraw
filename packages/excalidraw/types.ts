@@ -86,6 +86,18 @@ export type RadialHostPen = {
   onLeave?: () => void;
 };
 
+/** a suggestion of the host's in one of the radial palette's slots, round
+ * the outside of the ring: a widget, a template, a shape it uses often */
+export type RadialHostSlot = {
+  id: string;
+  label: string;
+  icon: JSX.Element;
+  /** called when picked, in client coordinates: with the ring's center for
+   * a tap or a key, or where it was let go when dragged out of its slot. The
+   * ring then closes. */
+  onPick: (at: { x: number; y: number }) => void;
+};
+
 export type { App };
 
 export type SocketId = string & { _brand: "SocketId" };
@@ -961,9 +973,16 @@ export interface ExcalidrawProps {
    * shapes, pens, colors, pen size and opacity. `,`, a finger held still,
    * or a pen's barrel button also open it, at the pointer; the long press
    * replaces the touch context menu, which the palette's hub opens. Off by
-   * default. While closed, only the puck renders.
+   * default. While closed, only the puck renders. `pens` join the pens
+   * ring; `slots` is asked each time the ring opens for the suggestions to
+   * show round it, of which the first `MAX_SLOTS` show.
    */
-  radialPalette?: boolean | { pens?: readonly RadialHostPen[] };
+  radialPalette?:
+    | boolean
+    | {
+        pens?: readonly RadialHostPen[];
+        slots?: () => readonly RadialHostSlot[];
+      };
   /**
    * Paints the canvas background and the grid on a canvas of their own,
    * `canvas.excalidraw__canvas.background`, under the static canvas and in

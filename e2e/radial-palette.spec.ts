@@ -724,6 +724,64 @@ test("its corner scales the ring as a frame's does, and the size stays", async (
   expect(await width()).toBeCloseTo(scaled, 0);
 });
 
+test("on a phone every slot round the ring lands on screen, wherever the ring opens", async ({
+  page,
+}, testInfo) => {
+  const viewport = page.viewportSize()!;
+  test.skip(viewport.width > 500, "a phone-wide screen");
+  await page.goto("/?theme=architect-parchment&slots=6");
+  await expect(page.getByTestId("radial-palette-puck")).toBeVisible();
+  const opens: [string, () => Promise<void>][] = [
+    [
+      "left edge",
+      async () => {
+        await page.mouse.move(40, 422);
+        await page.keyboard.press(",");
+      },
+    ],
+    [
+      "bottom left",
+      async () => {
+        await page.mouse.move(40, 800);
+        await page.keyboard.press(",");
+      },
+    ],
+    ["the puck", () => tap(page, testInfo, "radial-palette-puck")],
+  ];
+  const off: string[] = [];
+  for (const [where, open] of opens) {
+    await open();
+    await expect(page.getByTestId("radial-palette-slots")).toBeVisible();
+    for (let index = 0; index < 6; index++) {
+      const id = `radial-palette-slot-demo-${index}`;
+      const box = (await page.getByTestId(id).boundingBox())!;
+      const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+      const hit = await page.evaluate(
+        ([px, py]) =>
+          document
+            .elementFromPoint(px, py)
+            ?.closest("[data-testid]")
+            ?.getAttribute("data-testid") ?? null,
+        [x, y],
+      );
+      const onScreen =
+        box.x >= 0 &&
+        box.y >= 0 &&
+        box.x + box.width <= viewport.width &&
+        box.y + box.height <= viewport.height;
+      if (!onScreen || hit !== id) {
+        off.push(
+          `${where}: ${id} at ${Math.round(box.x)},${Math.round(
+            box.y,
+          )} hit ${hit}`,
+        );
+      }
+    }
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("radial-palette")).toBeHidden();
+  }
+  expect(off).toEqual([]);
+});
 test("the hub's menu undoes a ring color on the selected shape", async ({
   page,
 }, testInfo) => {

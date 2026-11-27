@@ -222,3 +222,81 @@ export const placeRing = (
     scale,
   };
 };
+
+/** the most suggestions a host can put round the ring */
+export const MAX_SLOTS = 6;
+/** a suggested slot's side, in palette units: a thumb wide at full size */
+export const SLOT_SIZE = 40;
+/** how far a slot's center sits from the ring's: just outside it */
+export const SLOT_RADIUS = RING_RADIUS + SLOT_SIZE / 2 + 8;
+/** the angle between two neighbouring slots' centers */
+const SLOT_STEP = 26;
+
+/**
+ * Where each of `count` suggested slots sits round the outside of the ring,
+ * as a center in palette units: an arc centered on `toward` degrees, the top
+ * by default.
+ */
+export const slotCenters = (count: number, toward = 270) => {
+  const shown = Math.min(count, MAX_SLOTS);
+  return Array.from({ length: shown }, (_, index) =>
+    polar(SLOT_RADIUS, toward + (index - (shown - 1) / 2) * SLOT_STEP),
+  );
+};
+
+/**
+ * Which way the slots fan out from a ring placed at `center` in an editor of
+ * `bounds`: up from a ring near the middle, else toward the middle, where
+ * there is room for them.
+ */
+export const slotsToward = (
+  center: { x: number; y: number },
+  bounds: { width: number; height: number },
+) => {
+  const dx = bounds.width / 2 - center.x;
+  const dy = bounds.height / 2 - center.y;
+  return Math.hypot(dx, dy) < SLOT_RADIUS / 2
+    ? 270
+    : normalizeAngle((Math.atan2(dy, dx) * 180) / Math.PI);
+};
+
+/** what slots keep clear of: the editor's sides, and a host's bars along its
+ * top and bottom (a thumb-high bar each) */
+export const SLOT_INSET = { x: 8, y: 48 };
+
+/**
+ * Where `count` slots sit round a ring placed at `ring` (its center and
+ * scale, in editor terms) inside `bounds`, in palette units: the arc
+ * `slotsToward` picks, else the nearest turn of it whose every slot lies
+ * inside the editor clear of `inset`, else that arc with each slot pulled
+ * inside, so no slot is ever off screen.
+ */
+export const placeSlots = (
+  count: number,
+  ring: { x: number; y: number; scale: number },
+  bounds: { width: number; height: number },
+  inset: { x: number; y: number } = SLOT_INSET,
+) => {
+  const half = (SLOT_SIZE * ring.scale) / 2;
+  const [left, right] = [inset.x + half, bounds.width - inset.x - half];
+  const [top, bottom] = [inset.y + half, bounds.height - inset.y - half];
+  const inside = ({ x, y }: { x: number; y: number }) => {
+    const [ex, ey] = [ring.x + x * ring.scale, ring.y + y * ring.scale];
+    return ex >= left && ex <= right && ey >= top && ey <= bottom;
+  };
+  const toward = slotsToward(ring, bounds);
+  for (let turn = 0; turn <= 180; turn += 10) {
+    for (const way of turn ? [turn, -turn] : [0]) {
+      const centers = slotCenters(count, toward + way);
+      if (centers.every(inside)) {
+        return centers;
+      }
+    }
+  }
+  const pull = (value: number, from: number, to: number) =>
+    from > to ? (from + to) / 2 : Math.min(to, Math.max(from, value));
+  return slotCenters(count, toward).map(({ x, y }) => ({
+    x: (pull(ring.x + x * ring.scale, left, right) - ring.x) / ring.scale,
+    y: (pull(ring.y + y * ring.scale, top, bottom) - ring.y) / ring.scale,
+  }));
+};
