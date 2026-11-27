@@ -78,6 +78,7 @@ jobs:
       - run: node scripts/semver/bump.js "$VERSION"
       - run: node scripts/semver/pack.js --version="$VERSION"
       - run: node scripts/semver/typecheck-consumer.js --version="$VERSION"
+      - run: node scripts/semver/api-surface.js --version="$VERSION"
       - run: node scripts/semver/verify.js --version="$VERSION"
       - run: node scripts/semver/publish.js --version="$VERSION" --dry-run
       - run: echo "Rehearsed $VERSION; publish.js --dry-run passed." >> "$GITHUB_STEP_SUMMARY"

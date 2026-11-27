@@ -19,6 +19,7 @@ import { CODES, KEYS } from "@excalidraw/common";
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 
 import { frameToolIcon } from "../components/icons";
+import { pinFrameAt, withoutPin } from "../pinnedFrames";
 import { getSelectedElements } from "../scene";
 
 import { register } from "./register";
@@ -71,6 +72,64 @@ export const actionSelectAllElementsInFrame = register({
   },
   predicate: (elements, appState, _, app) =>
     isSingleFrameSelected(appState, app),
+});
+
+const selectedFrame = (appState: UIAppState, app: AppClassProperties) => {
+  const selected = app.scene.getSelectedElements(appState);
+  return selected.length === 1 && isFrameLikeElement(selected[0])
+    ? selected[0]
+    : null;
+};
+
+/** pin the selected frame to the screen where it is now (#240) */
+export const actionPinFrame = register({
+  name: "pinFrame",
+  label: "labels.pinFrame",
+  trackEvent: { category: "canvas" },
+  perform: (elements, appState, _, app) => {
+    const frame = selectedFrame(appState, app);
+    if (!frame) {
+      return false;
+    }
+    return {
+      appState: {
+        ...appState,
+        pinnedFrames: {
+          ...appState.pinnedFrames,
+          [frame.id]: pinFrameAt(frame, appState),
+        },
+      },
+      // a view, like scrolling: nothing to undo
+      captureUpdate: CaptureUpdateAction.NEVER,
+    };
+  },
+  predicate: (elements, appState, _, app) => {
+    const frame = selectedFrame(appState, app);
+    return !!frame && !appState.pinnedFrames[frame.id];
+  },
+});
+
+export const actionUnpinFrame = register({
+  name: "unpinFrame",
+  label: "labels.unpinFrame",
+  trackEvent: { category: "canvas" },
+  perform: (elements, appState, _, app) => {
+    const frame = selectedFrame(appState, app);
+    if (!frame) {
+      return false;
+    }
+    return {
+      appState: {
+        ...appState,
+        pinnedFrames: withoutPin(appState.pinnedFrames, frame.id),
+      },
+      captureUpdate: CaptureUpdateAction.NEVER,
+    };
+  },
+  predicate: (elements, appState, _, app) => {
+    const frame = selectedFrame(appState, app);
+    return !!frame && !!appState.pinnedFrames[frame.id];
+  },
 });
 
 export const actionRemoveAllElementsFromFrame = register({

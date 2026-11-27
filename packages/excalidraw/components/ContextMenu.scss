@@ -126,6 +126,47 @@
     }
   }
 
+  // a finger, not a mouse: rows a thumb can hit, and no keys to show
+  @media (pointer: coarse) {
+    .context-menu .context-menu-item {
+      display: flex;
+      align-items: center;
+      min-height: 2.75rem;
+      font-size: 1rem;
+
+      .context-menu-item__shortcut {
+        display: none;
+      }
+    }
+  }
+
+  // a phone: thumb rows a whole menu would stack past the screen, so they
+  // pair up in two columns; a separator and a row of icons span both
+  @media (pointer: coarse) and (max-height: 1000px) {
+    .context-menu {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-width: calc(100vw - 1rem);
+
+      > .context-menu-item-separator,
+      > .context-menu-row {
+        grid-column: 1 / -1;
+      }
+
+      // a hairline between groups, not a row's worth of gap
+      > .context-menu-item-separator {
+        margin: 0.125rem 0.75rem;
+      }
+
+      .context-menu-item {
+        min-width: 0;
+        padding-inline: 0.75rem;
+        white-space: normal;
+        line-height: 1.2;
+      }
+    }
+  }
+
   .context-menu-item-separator {
     border: none;
     border-top: 1px solid $color-gray-5;
