@@ -33,6 +33,16 @@ const save = debounce(saveScene, 300);
 window.addEventListener("pagehide", save.flush);
 
 const params = new URLSearchParams(window.location.search);
+
+/** `?slots=N`: N demo suggestions round the radial palette, for the e2e */
+const DEMO_SLOTS = params.has("slots")
+  ? Array.from({ length: Number(params.get("slots")) || 0 }, (_, index) => ({
+      id: `demo-${index}`,
+      label: `Demo ${index}`,
+      icon: <span>{index}</span>,
+      onPick: () => console.info("slot picked", index),
+    }))
+  : null;
 const showSwitcher = params.get("switcher") !== "0";
 
 const setThemeParam = (id: string | null) => {
@@ -114,7 +124,13 @@ const Playground = () => {
           : undefined
       }
       authoringUnits="screen"
-      radialPalette={params.get("radialPalette") !== "0"}
+      radialPalette={
+        params.get("radialPalette") === "0"
+          ? false
+          : DEMO_SLOTS
+          ? { slots: () => DEMO_SLOTS }
+          : true
+      }
       midi={params.get("midi") !== "0"}
       initialData={initialData}
       frameNavigation={frameNavigation}

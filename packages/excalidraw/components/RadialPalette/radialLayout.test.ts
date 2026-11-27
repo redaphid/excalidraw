@@ -1,18 +1,25 @@
 import {
   HUB_RADIUS,
+  MAX_SLOTS,
   MIDDLE_BAND,
   MIN_RING_SCALE,
   OPACITY_SLIDER,
   OUTER_BAND,
   RING_RADIUS,
   SIZE_SLIDER,
+  SLOT_SIZE,
   TOOLS_BAND,
   getRingLayout,
   hitTest,
   placeRing,
+  placeSlots,
+  SLOT_INSET,
   polar,
   sectorMiddle,
   sliderValue,
+  slotCenters,
+  slotsToward,
+  toPolar,
 } from "./radialLayout";
 
 import type { RingLayout } from "./radialLayout";
@@ -188,6 +195,79 @@ describe("radialLayout", () => {
   });
 });
 
+describe("slotCenters", () => {
+  const angleOf = ({ x, y }: { x: number; y: number }) =>
+    Math.round(toPolar(x, y).angle);
+
+  it("centers the slots on the top of the ring, left to right", () => {
+    const angles = slotCenters(3).map(angleOf);
+    expect(angles[1]).toBe(270);
+    expect(angles[0]).toBeLessThan(angles[1]);
+    expect(angles[2]).toBeGreaterThan(angles[1]);
+  });
+
+  it("puts them just outside the ring, clear of each other", () => {
+    const centers = slotCenters(MAX_SLOTS);
+    for (const { x, y } of centers) {
+      expect(Math.hypot(x, y) - SLOT_SIZE / 2).toBeGreaterThan(RING_RADIUS);
+    }
+    for (let index = 1; index < centers.length; index++) {
+      const a = centers[index - 1];
+      const b = centers[index];
+      expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeGreaterThan(SLOT_SIZE);
+    }
+  });
+
+  it("centers them on the angle they fan out at", () => {
+    expect(slotCenters(1, 90).map(angleOf)).toEqual([90]);
+  });
+});
+
+describe("slotsToward", () => {
+  const bounds = { width: 1200, height: 800 };
+
+  it("fans the slots up from a ring near the middle", () => {
+    expect(slotsToward({ x: 600, y: 420 }, bounds)).toBe(270);
+  });
+
+  it("fans them toward the middle from a ring in a corner", () => {
+    expect(Math.round(slotsToward({ x: 1000, y: 600 }, bounds))).toBe(207);
+  });
+
+  it("fans them down from a ring at the top", () => {
+    expect(slotsToward({ x: 600, y: 160 }, bounds)).toBe(90);
+  });
+
+  it("shows at most MAX_SLOTS", () => {
+    expect(slotCenters(MAX_SLOTS + 3)).toHaveLength(MAX_SLOTS);
+  });
+});
+
+describe("placeSlots", () => {
+  const phone = { width: 390, height: 844 };
+
+  describe.each([
+    ["at the left edge", { x: 40, y: 422 }],
+    ["at the bottom left", { x: 40, y: 800 }],
+    ["from the puck", { x: 350, y: 780 }],
+    ["in the middle", { x: 195, y: 422 }],
+  ])("when six slots go round a ring opened %s on a phone", (_, at) => {
+    it("puts every slot inside the screen, clear of the bars", () => {
+      const ring = placeRing(at, phone, 8);
+      const half = (SLOT_SIZE * ring.scale) / 2;
+      const off = placeSlots(6, ring, phone).filter(({ x, y }) => {
+        const [ex, ey] = [ring.x + x * ring.scale, ring.y + y * ring.scale];
+        return (
+          ex - half < SLOT_INSET.x - 0.01 ||
+          ex + half > phone.width - SLOT_INSET.x + 0.01 ||
+          ey - half < SLOT_INSET.y - 0.01 ||
+          ey + half > phone.height - SLOT_INSET.y + 0.01
+        );
+      });
+      expect(off).toEqual([]);
+    });
+  });
+});
 describe("placeRing with the host's bands", () => {
   const bounds = { width: 390, height: 844 };
   const insets = { top: 60, bottom: 0 };

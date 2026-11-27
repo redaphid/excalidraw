@@ -233,6 +233,56 @@
     }
   }
 
+  // the host's suggestions, outside the ring: a thumb wide at full size
+  .RadialPalette__slots {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .RadialPalette__slot {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    // a percentage padding would be of the ring's width, not the slot's
+    padding: 0;
+    border: var(--control-rule-width) solid var(--control-rule);
+    border-radius: 25%;
+    background: var(--control-surface);
+    box-shadow: var(--control-shadow);
+    color: var(--control-ink);
+    cursor: grab;
+    pointer-events: all;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color var(--control-motion-duration)
+      var(--control-motion-easing);
+
+    svg {
+      width: 70%;
+      height: 70%;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: var(--control-surface-hover);
+      outline: none;
+    }
+
+    &:focus-visible {
+      border-color: var(--control-accent);
+    }
+
+    &--dragged {
+      cursor: grabbing;
+      z-index: 1;
+      background: var(--control-surface-active);
+      transition: none;
+    }
+  }
+
   .RadialPalette__disc {
     position: absolute;
     inset: 0;
