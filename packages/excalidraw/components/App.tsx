@@ -331,8 +331,10 @@ import { actionPaste } from "../actions/actionClipboard";
 import { actionCopyElementLink } from "../actions/actionElementLink";
 import { actionUnlockAllElements } from "../actions/actionElementLock";
 import {
+  actionPinFrame,
   actionRemoveAllElementsFromFrame,
   actionSelectAllElementsInFrame,
+  actionUnpinFrame,
   actionWrapSelectionInFrame,
 } from "../actions/actionFrame";
 import { createRedoAction, createUndoAction } from "../actions/actionHistory";
@@ -372,6 +374,7 @@ import Library, { distributeLibraryItemsOnSquareGrid } from "../data/library";
 import { restoreAppState, restoreElements } from "../data/restore";
 import { EMPTY_CSS_THEME, readCssTheme, themeDrawsGrid } from "../cssTheme";
 import { loadBackdrop } from "../renderer/backdrop";
+import { forgetContextCaches } from "../renderer/contextCaches";
 import { getFrameStyle } from "../frameStyle";
 import { getCenter, getDistance } from "../gesture";
 import {
@@ -451,6 +454,7 @@ import ConvertElementTypePopup, {
 } from "./ConvertElementTypePopup";
 
 import { activeConfirmDialogAtom } from "./ActiveConfirmDialog";
+import { PinnedFrames } from "./PinnedFrames";
 import { AppArrowText } from "./App.arrowText";
 import { AppClipboard } from "./App.clipboard";
 import { AppText } from "./App.text";
@@ -465,6 +469,7 @@ import { AppFlowchart } from "./App.flowchart";
 import { AppFrameNavigation } from "./App.frameNavigation";
 import { AppMidi } from "./App.midi";
 import { AppPan } from "./App.pan";
+import { TwoFingerDoubleTap } from "./App.twoFingerTap";
 import { AppRadialPaletteGestures } from "./App.radialPalette";
 
 import { RadialPaletteController } from "./RadialPalette/radialPaletteController";
@@ -484,12 +489,13 @@ import { isSidebarDockedAtom } from "./Sidebar/Sidebar";
 import { hideTooltip } from "./Tooltip";
 import { StaticCanvas, InteractiveCanvas } from "./canvases";
 import NewElementCanvas from "./canvases/NewElementCanvas";
-import { isPointHittingLink } from "./hyperlink/helpers";
+import { linkHitDistance } from "./hyperlink/helpers";
 import { CursorHint, CursorHints } from "./CursorHint";
 import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 
 import { findShapeByKey, TOGGLE_TOOLS } from "./Tools";
+import { isEquipped } from "./RadialPalette/equipped";
 
 import UnlockPopup from "./UnlockPopup";
 
@@ -786,6 +792,9 @@ class App extends React.Component<AppProps, AppState> {
     isGestureActive: () => gesture.pointers.size >= 2 || this.pan.isActive(),
   });
   public wheel: AppWheel = new AppWheel(this);
+  private twoFingerDoubleTap = new TwoFingerDoubleTap();
+  /** the undo stack's depth when a possible double two-finger tap began */
+  private twoFingerDoubleTapHistoryDepth = 0;
 
   bindModeHandler: ReturnType<typeof setTimeout> | null = null;
 
@@ -856,6 +865,7 @@ class App extends React.Component<AppProps, AppState> {
   /** offsets of `elementRenderOverrides`; keeps its identity while they don't change */
   private elementRenderOffsets: ElementRenderOffsets = new Map();
   private renderOverridesUpdatePending = false;
+  private staticCanvasHeld = false;
 
   private getRenderOverrideConfig = () => ({
     elementRenderOverrides: this.elementRenderOverrides,
@@ -891,6 +901,7 @@ class App extends React.Component<AppProps, AppState> {
       setViewport: this.viewport.setViewport,
       getViewportOffsets: this.viewport.getOffsets,
       setElementRenderOverrides: this.setElementRenderOverrides,
+      holdStaticCanvas: this.holdStaticCanvas,
       getSceneElements: this.getSceneElements,
       getAppState: () => this.state,
       getFiles: () => this.files,
@@ -2837,6 +2848,7 @@ class App extends React.Component<AppProps, AppState> {
                             }
                             scale={this.ownerWindow.devicePixelRatio}
                             appState={this.state}
+                            held={this.staticCanvasHeld}
                             renderConfig={{
                               imageCache: this.imageCache,
                               isExporting: false,
@@ -2939,6 +2951,17 @@ class App extends React.Component<AppProps, AppState> {
                               />
                             )}
                           {this.renderFrameNames()}
+                          <PinnedFrames
+                            pins={this.state.pinnedFrames}
+                            elements={this.scene.getElementsIncludingDeleted()}
+                            files={this.files}
+                            editor={{
+                              width: this.state.width,
+                              height: this.state.height,
+                            }}
+                            viewBackgroundColor={this.state.viewBackgroundColor}
+                            theme={this.state.theme}
+                          />
                           {this.isDefaultUIEnabled() &&
                             this.state.activeLockedId && (
                               <UnlockPopup
@@ -4269,6 +4292,18 @@ class App extends React.Component<AppProps, AppState> {
           passive: false,
         },
       ), // #3553
+      // a touch can lift off the canvas (the frame-name label captures the
+      // touches it receives), so its lift is heard on the whole document,
+      // ahead of every other handler
+      addEventListener(this.ownerDocument, EVENT.POINTER_UP, this.onTouchLift, {
+        capture: true,
+      }),
+      addEventListener(
+        this.ownerDocument,
+        EVENT.POINTER_CANCEL,
+        this.onTouchLift,
+        { capture: true },
+      ),
       // rerender text elements on font load to fix #637 && #1553
       addEventListener(
         this.ownerDocument.fonts,
@@ -4284,11 +4319,25 @@ class App extends React.Component<AppProps, AppState> {
         EVENT.FOCUS,
         () => {
           this.maybeCleanupAfterMissingPointerUp(null);
-          // browsers (chrome?) tend to free up memory a lot, which results
-          // in canvas context being cleared. Thus re-render on focus.
-          this.triggerRender(true);
         },
         { passive: false },
+      ),
+      // a hidden page's canvases may be cleared (#8035); focus alone moves
+      // often in some shells, and each forced repaint redraws everything
+      addEventListener(this.ownerDocument, EVENT.VISIBILITY_CHANGE, () => {
+        if (this.ownerDocument.visibilityState === "visible") {
+          this.triggerRender(true);
+        }
+      }),
+      addEventListener(
+        this.canvas,
+        "contextrestored",
+        this.onCanvasContextRestored,
+      ),
+      addEventListener(
+        this.separateBackgroundCanvas,
+        "contextrestored",
+        this.onCanvasContextRestored,
       ),
     );
 
@@ -5336,6 +5385,20 @@ class App extends React.Component<AppProps, AppState> {
     this.forceUpdate();
   };
 
+  /**
+   * see {@link ExcalidrawImperativeAPI.holdStaticCanvas} for details
+   */
+  public holdStaticCanvas = (held: boolean) => {
+    if (this.unmounted || held === this.staticCanvasHeld) {
+      return;
+    }
+    this.staticCanvasHeld = held;
+    if (!held) {
+      // the host uncovers the canvas as soon as this returns
+      flushSync(() => this.forceUpdate());
+    }
+  };
+
   public applyDeltas = (
     deltas: StoreDelta[],
     options?: ApplyToOptions,
@@ -5714,6 +5777,19 @@ ${css}
         !this.state.selectedElementsAreBeingDragged
       ) {
         const shape = findShapeByKey(event.key, this, event.shiftKey);
+
+        // `x` puts an equipped tool down and picks up the hand (#305); with
+        // nothing equipped it is still freedraw's second key; in view mode too,
+        // where the laser is the one tool to put down
+        if (
+          !event.shiftKey &&
+          event.key === KEYS.X &&
+          isEquipped(this.state.activeTool.type)
+        ) {
+          this.setActiveTool({ type: "hand" });
+          event.stopPropagation();
+          return;
+        }
 
         if (this.state.viewModeEnabled && !oneOf(shape, ["laser", "hand"])) {
           return;
@@ -6925,30 +7001,41 @@ ${css}
     }
 
     const elements = this.scene.getNonDeletedElements();
-    let hitElementIndex = -1;
+    const elementsMap = this.scene.getNonDeletedElementsMap();
+    const point = pointFrom<GlobalPoint>(scenePointer.x, scenePointer.y);
+    // On an element's body only a badge's disc takes the tap; that element
+    // keeps the rest. A frame is see-through.
+    const onABody =
+      !!hitElementMightBeLocked && !isFrameLikeElement(hitElementMightBeLocked);
+    // Badges of neighbouring elements can overlap: the nearest one wins, so a
+    // finger a little off one badge never lands on the next one's link.
+    let nearest: NonDeletedExcalidrawElement | undefined;
+    let nearestDistance = Infinity;
 
     for (let index = elements.length - 1; index >= 0; index--) {
       const element = elements[index];
-      if (
-        hitElementMightBeLocked &&
-        element.id === hitElementMightBeLocked.id
-      ) {
-        hitElementIndex = index;
+      const distance = linkHitDistance(
+        element,
+        elementsMap,
+        this.state,
+        point,
+        this.editorInterface.formFactor === "phone",
+        onABody,
+      );
+      if (distance < nearestDistance) {
+        nearest = element;
+        nearestDistance = distance;
       }
+      // Nothing under the element the pointer is on can take its tap, but a
+      // frame is see-through: a badge on its border is still its child's.
       if (
-        element.link &&
-        index >= hitElementIndex &&
-        isPointHittingLink(
-          element,
-          this.scene.getNonDeletedElementsMap(),
-          this.state,
-          pointFrom(scenePointer.x, scenePointer.y),
-          this.editorInterface.formFactor === "phone",
-        )
+        hitElementMightBeLocked?.id === element.id &&
+        !isFrameLikeElement(element)
       ) {
-        return element;
+        break;
       }
     }
+    return nearest;
   };
 
   private handleElementLinkClick = (
@@ -6967,29 +7054,17 @@ ${css}
     if (!this.hitLinkElement || draggedDistance > DRAGGING_THRESHOLD) {
       return;
     }
-    const lastPointerDownCoords = viewportCoordsToSceneCoords(
-      this.lastPointerDownEvent!,
-      this.state,
-    );
-    const elementsMap = this.scene.getNonDeletedElementsMap();
-    const lastPointerDownHittingLinkIcon = isPointHittingLink(
-      this.hitLinkElement,
-      elementsMap,
-      this.state,
-      pointFrom(lastPointerDownCoords.x, lastPointerDownCoords.y),
-      this.editorInterface.formFactor === "phone",
-    );
-    const lastPointerUpCoords = viewportCoordsToSceneCoords(
-      this.lastPointerUpEvent!,
-      this.state,
-    );
-    const lastPointerUpHittingLinkIcon = isPointHittingLink(
-      this.hitLinkElement,
-      elementsMap,
-      this.state,
-      pointFrom(lastPointerUpCoords.x, lastPointerUpCoords.y),
-      this.editorInterface.formFactor === "phone",
-    );
+    const isLinkAt = (event: { clientX: number; clientY: number }) => {
+      const { x, y } = viewportCoordsToSceneCoords(event, this.state);
+      return (
+        this.getElementLinkAtPosition(
+          { x, y },
+          this.getElementAtPosition(x, y, { includeLockedElements: true }),
+        )?.id === this.hitLinkElement?.id
+      );
+    };
+    const lastPointerDownHittingLinkIcon = isLinkAt(this.lastPointerDownEvent!);
+    const lastPointerUpHittingLinkIcon = isLinkAt(this.lastPointerUpEvent!);
     if (lastPointerDownHittingLinkIcon && lastPointerUpHittingLinkIcon) {
       hideHyperlinkToolip();
       let url = this.hitLinkElement.link;
@@ -7307,6 +7382,13 @@ ${css}
   private handleCanvasPointerMove = (
     event: React.PointerEvent<HTMLCanvasElement>,
   ) => {
+    if (event.pointerType === "touch") {
+      this.twoFingerDoubleTap.move(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+      );
+    }
     this.radialPaletteGestures.onPointerMove(event.nativeEvent);
     if (!this.isInteractionEnabled()) {
       if (this.isToolSupported(this.state.activeTool.type)) {
@@ -8032,6 +8114,17 @@ ${css}
   private handleCanvasPointerDown = (
     event: React.PointerEvent<HTMLElement>,
   ) => {
+    if (
+      event.pointerType === "touch" &&
+      this.twoFingerDoubleTap.down(
+        event.pointerId,
+        event.clientX,
+        event.clientY,
+        event.timeStamp,
+      )
+    ) {
+      this.twoFingerDoubleTapHistoryDepth = this.history.undoStack.length;
+    }
     if (this.button.handlePointerDown(event)) {
       return;
     }
@@ -8548,6 +8641,27 @@ ${css}
       pointerDownState.eventListeners.onUp = onPointerUp;
       pointerDownState.eventListeners.onKeyUp = onKeyUp;
       pointerDownState.eventListeners.onKeyDown = onKeyDown;
+    }
+  };
+
+  private onTouchLift = (event: PointerEvent) => {
+    if (event.pointerType !== "touch") {
+      return;
+    }
+    if (event.type === EVENT.POINTER_CANCEL) {
+      this.twoFingerDoubleTap.cancel(event.pointerId);
+      return;
+    }
+    if (
+      this.twoFingerDoubleTap.up(event.pointerId, event.timeStamp) &&
+      !this.state.viewModeEnabled
+    ) {
+      // the fingers of the taps landed as clicks first, and a click on the
+      // canvas changes the selection: undo what came before the gesture
+      this.history.dropAppStateEntriesSince(
+        this.twoFingerDoubleTapHistoryDepth,
+      );
+      this.actionManager.executeAction(this.actionManager.actions.undo, "ui");
     }
   };
 
@@ -12555,6 +12669,10 @@ ${css}
       );
       this.interactiveCanvas.addEventListener(EVENT.TOUCH_END, this.onTouchEnd);
       // -----------------------------------------------------------------------
+      this.interactiveCanvas.addEventListener(
+        "contextrestored",
+        this.onCanvasContextRestored,
+      );
     } else {
       this.interactiveCanvas?.removeEventListener(
         EVENT.TOUCH_START,
@@ -12564,7 +12682,17 @@ ${css}
         EVENT.TOUCH_END,
         this.onTouchEnd,
       );
+      this.interactiveCanvas?.removeEventListener(
+        "contextrestored",
+        this.onCanvasContextRestored,
+      );
     }
+  };
+
+  /** a lost context comes back blank, and so do the canvases cached from it */
+  private onCanvasContextRestored = () => {
+    forgetContextCaches(this.scene.getElementsIncludingDeleted());
+    this.triggerRender(true);
   };
 
   public insertImages = async (
@@ -13452,6 +13580,8 @@ ${css}
       actionSelectAllElementsInFrame,
       actionRemoveAllElementsFromFrame,
       actionWrapSelectionInFrame,
+      actionPinFrame,
+      actionUnpinFrame,
       CONTEXT_MENU_SEPARATOR,
       actionToggleCropEditor,
       CONTEXT_MENU_SEPARATOR,
