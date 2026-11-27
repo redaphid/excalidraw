@@ -56,11 +56,14 @@ const PROBE_GAP = 24;
 const PROBE_STEP = 6;
 /** the most of the editor's height either edge's controls may take */
 const MOST = 0.3;
+/** how much clear room past the last control ends a probe's walk, in CSS px:
+ * a host's bar may float this far in from the edge, as draw's does (#281) */
+const SLACK = 24;
 
 /**
  * The bands along the editor's top and bottom that the host's controls
- * cover: probes across the editor step in from each edge until they reach
- * the canvas, and the deepest one sets the band.
+ * cover: probes across the editor step in from each edge past its controls
+ * until SLACK px of canvas follow them, and the deepest one sets the band.
  */
 export const measureHostInsets = (
   area: EditorArea,
@@ -74,11 +77,17 @@ export const measureHostInsets = (
       x < area.left + area.width;
       x += PROBE_GAP
     ) {
-      let inset = 0;
-      while (inset < most && !clear({ x, y: edgeY(inset) })) {
-        inset += PROBE_STEP;
+      let band = 0;
+      for (
+        let inset = 0;
+        inset < most && inset < band + SLACK;
+        inset += PROBE_STEP
+      ) {
+        if (!clear({ x, y: edgeY(inset) })) {
+          band = inset + PROBE_STEP;
+        }
       }
-      deepest = Math.max(deepest, inset);
+      deepest = Math.max(deepest, band);
     }
     return deepest;
   };
