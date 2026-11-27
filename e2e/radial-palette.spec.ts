@@ -677,14 +677,20 @@ test("on a phone every slot round the ring lands on screen, wherever the ring op
   await page.goto("/?theme=architect-parchment&slots=6");
   await expect(page.getByTestId("radial-palette-puck")).toBeVisible();
   const opens: [string, () => Promise<void>][] = [
-    ["left edge", async () => {
-      await page.mouse.move(40, 422);
-      await page.keyboard.press(",");
-    }],
-    ["bottom left", async () => {
-      await page.mouse.move(40, 800);
-      await page.keyboard.press(",");
-    }],
+    [
+      "left edge",
+      async () => {
+        await page.mouse.move(40, 422);
+        await page.keyboard.press(",");
+      },
+    ],
+    [
+      "bottom left",
+      async () => {
+        await page.mouse.move(40, 800);
+        await page.keyboard.press(",");
+      },
+    ],
     ["the puck", () => tap(page, testInfo, "radial-palette-puck")],
   ];
   const off: string[] = [];
@@ -709,7 +715,11 @@ test("on a phone every slot round the ring lands on screen, wherever the ring op
         box.x + box.width <= viewport.width &&
         box.y + box.height <= viewport.height;
       if (!onScreen || hit !== id) {
-        off.push(`${where}: ${id} at ${Math.round(box.x)},${Math.round(box.y)} hit ${hit}`);
+        off.push(
+          `${where}: ${id} at ${Math.round(box.x)},${Math.round(
+            box.y,
+          )} hit ${hit}`,
+        );
       }
     }
     await page.keyboard.press("Escape");
