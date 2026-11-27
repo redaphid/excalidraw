@@ -324,9 +324,9 @@ test("Tab walks the ring opened on , and never reaches the shape behind it", asy
   }
   expect(await inRing(), "still in the ring after 40 Tabs").toBe(true);
   await page.keyboard.press("Escape");
-  await expect.poll(async () => (await savedElements(page))[0]?.type).toBe(
-    "rectangle",
-  );
+  await expect
+    .poll(async () => (await savedElements(page))[0]?.type)
+    .toBe("rectangle");
 });
 
 test("a finger held still opens the ring under it, and a flick picks a shape", async ({
