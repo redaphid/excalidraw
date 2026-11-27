@@ -1,5 +1,7 @@
 import { getGridSizeAtScale } from "@excalidraw/common";
 
+import { registerContextCache } from "./contextCaches";
+
 import type { CanvasTheme } from "../cssTheme";
 import type { StaticCanvasAppState } from "../types";
 
@@ -95,6 +97,13 @@ const tilesOf = (url: string) => {
 };
 
 const ready = ({ image }: Tiles) => image.complete && image.naturalWidth > 0;
+
+// the decoded images survive a lost context
+registerContextCache("backdrop rasters", () => {
+  for (const entry of tiles.values()) {
+    entry.rasters.forEach((raster, edge) => dropRaster(entry, edge, raster));
+  }
+});
 
 /** settles once the image has decoded (or failed); callers repaint then */
 export const loadBackdrop = (url: string) => tilesOf(url).loaded;

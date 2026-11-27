@@ -118,6 +118,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # api-surface.js plans the bump from the commits since the last tag.
+          fetch-depth: 0
+          fetch-tags: true
       - uses: ./.github/actions/setup
       - id: version
         run: echo "version=$(node -p "require('./packages/excalidraw/package.json').version")" >> "$GITHUB_OUTPUT"
@@ -128,6 +132,20 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: node scripts/semver/typecheck-consumer.js --version="$VERSION"
+      # Removing or narrowing an export or prop since the last release needs a
+      # major: a ! in this PR's title, or a bump PR to the next major. #247
+      # shipped such a change as the minor 1.17.0.
+      - name: Public API kept, or the release is a major
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ -n "$PR_TITLE" ]; then
+            node scripts/semver/api-surface.js --version="$VERSION" --sha="$SHA" --title="$PR_TITLE"
+          else
+            node scripts/semver/api-surface.js --version="$VERSION" --sha="$SHA"
+          fi
       - name: Install and bundle the tarballs
         env:
           VERSION: ${{ steps.version.outputs.version }}
