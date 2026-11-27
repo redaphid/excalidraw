@@ -1022,6 +1022,46 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when a ring color inks a drawn shape and the hub's menu undoes it", () => {
+      let drawn = "";
+      beforeEach(() => {
+        // drawn, not set, so history holds the shape as it was
+        const rectangle = UI.createElement("rectangle", {
+          x: 400,
+          y: 400,
+          size: 40,
+        });
+        drawn = rectangle.strokeColor;
+        openRing();
+        tap("radial-color-1");
+        // still selected, so the hub opens the shape's menu
+        openRing();
+        tap("radial-palette-menu");
+      });
+
+      const menuItem = (name: string) =>
+        UI.queryContextMenu()?.querySelector<HTMLElement>(
+          `[data-testid="${name}"]`,
+        ) ?? null;
+
+      it("inked the shape", () => {
+        expect(h.elements[0].strokeColor).toBe("#9e3a33");
+        expect(h.state.selectedElementIds[h.elements[0].id]).toBe(true);
+      });
+
+      it("offers Undo and Redo in the shape's menu", () => {
+        expect(menuItem("deleteSelectedElements")).not.toBeNull();
+        expect(menuItem("undo")).not.toBeNull();
+        expect(menuItem("redo")).not.toBeNull();
+      });
+
+      it("puts the shape's color back with one Undo", () => {
+        expect(menuItem("undo")).not.toBeNull();
+        fireEvent.click(menuItem("undo")!);
+        expect(h.elements[0].strokeColor).toBe(drawn);
+      });
+    });
+
     describe("when the colors arc is flipped to fill and a color is picked", () => {
       beforeEach(() => {
         const rectangle = API.createElement({

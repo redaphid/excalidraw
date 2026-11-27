@@ -727,3 +727,35 @@ test("on a phone every slot round the ring lands on screen, wherever the ring op
   }
   expect(off).toEqual([]);
 });
+test("the hub's menu undoes a ring color on the selected shape", async ({
+  page,
+}, testInfo) => {
+  const strokeColor = async () => (await savedElements(page))[0]?.strokeColor;
+  const { x, y } = await canvasCenter(page);
+  await tap(page, testInfo, "radial-palette-puck");
+  await tap(page, testInfo, "radial-tool-rectangle");
+  await page.mouse.move(x - 60, y - 40);
+  await page.mouse.down();
+  await page.mouse.move(x + 60, y + 40, { steps: 4 });
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await savedElements(page)).map(({ type }) => type))
+    .toEqual(["rectangle"]);
+  const drawn = await strokeColor();
+
+  await tap(page, testInfo, "radial-palette-puck");
+  await tap(page, testInfo, "radial-color-1");
+  await expect.poll(strokeColor).toBe("#9e3a33");
+
+  // the shape is still selected, so the hub opens the shape's menu: on a
+  // phone the only way to undo
+  await tap(page, testInfo, "radial-palette-puck");
+  await tap(page, testInfo, "radial-palette-menu");
+  await expect(
+    page.locator('.context-menu li[data-testid="deleteSelectedElements"]'),
+  ).toBeVisible();
+  const undo = page.locator('.context-menu [data-testid="undo"]');
+  await expect(undo, "an Undo in the menu the hub opens").toBeVisible();
+  await undo.click();
+  await expect.poll(strokeColor).toBe(drawn);
+});
