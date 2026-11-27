@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import React, {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -8,7 +9,10 @@ import React, {
 
 import { KEYS, isWritableElement } from "@excalidraw/common";
 
-import { actionChangeOpacity } from "../../actions";
+import {
+  actionChangeFreedrawStrokeWidth,
+  actionChangeOpacity,
+} from "../../actions";
 import { useUIAppState } from "../../context/ui-appState";
 import { t } from "../../i18n";
 import {
@@ -39,8 +43,19 @@ import {
 
 import { LONG_PRESS_DELAY, LONG_PRESS_TOLERANCE } from "../App.radialPalette";
 
+import { EquippedChip } from "./EquippedChip";
+import { chipSpot, isEquipped } from "./equipped";
+import { measureHostInsets, takesNoTaps as reachesCanvas } from "./hostChrome";
 import { getActivePenPreset } from "./penPresets";
-import { dropPuck, loadPuckPlace, savePuckPlace } from "./puckPlace";
+import {
+  dropPuck,
+  forgetPuckPlace,
+  loadPuckPlace,
+  puckCenter as placedPuckCenter,
+  puckIsClear,
+  reachablePuckCenter,
+  savePuckPlace,
+} from "./puckPlace";
 import {
   FLICK_DISTANCE,
   HUB_RADIUS,
@@ -76,6 +91,7 @@ import { getStyleProperty } from "./styleProperties";
 import "./RadialPalette.scss";
 
 import type { ActionManager } from "../../actions/manager";
+import type { AppState } from "../../types";
 import type { RadialHostSlot } from "../../types";
 import type { PuckPlace } from "./puckPlace";
 import type { RingHit, Sector, Slider } from "./radialLayout";
@@ -204,6 +220,10 @@ const holdMenusShut = (win: Window) => {
   };
 };
 
+/** how long after the editor opens to look again for host controls over
+ * the puck, as a host may draw them later */
+const PUCK_RECHECK_MS = 1000;
+
 /** keeps the browser's menu shut over the radial's own parts */
 const preventMenu = (event: React.MouseEvent) => event.preventDefault();
 
@@ -218,11 +238,14 @@ export const RadialPalette = React.memo(
     actionManager,
     phone,
     besideSidebar,
+    tool,
   }: {
     actionManager: ActionManager;
     phone: boolean;
     /** a sidebar is open on the editor's right, where the puck sits */
     besideSidebar: boolean;
+    /** the active tool, shown on the palette's edge while it is equipped */
+    tool: AppState["activeTool"]["type"];
   }) => {
     const app = useApp();
     const { container } = useExcalidrawContainer();
@@ -280,6 +303,50 @@ export const RadialPalette = React.memo(
       setPlace(next);
       savePuckPlace(app.ownerWindow, next);
     };
+
+    /** whether a press at `at` would reach the puck there: nothing above
+     * the canvas that takes taps (the host's top bar, a button) is there */
+    const takesNoTaps = (at: ClientPoint) =>
+      reachesCanvas(app.ownerDocument, container, at);
+
+    /** a placed puck the host's controls cover moves to the nearest spot
+     * that can be pressed, or back to its own corner when there is none */
+    const [checkAgain, setCheckAgain] = useState(0);
+    useEffect(() => {
+      // the host may draw its controls after the editor: look once more
+      const timer = app.ownerWindow.setTimeout(
+        () => setCheckAgain((count) => count + 1),
+        PUCK_RECHECK_MS,
+      );
+      return () => app.ownerWindow.clearTimeout(timer);
+    }, [app]);
+    useLayoutEffect(() => {
+      if (!place || moving || session || !container) {
+        return;
+      }
+      const { offsetLeft, offsetTop, width, height } = app.state;
+      if (!width || !height) {
+        // not laid out yet: the look after it decides
+        return;
+      }
+      const area = { left: offsetLeft, top: offsetTop, width, height };
+      const at = placedPuckCenter(place, area);
+      if (puckIsClear(at, takesNoTaps)) {
+        return;
+      }
+      const free = reachablePuckCenter(at, area, takesNoTaps);
+      if (free) {
+        keep({
+          x: (free.x - offsetLeft) / width,
+          y: (free.y - offsetTop) / height,
+          collapsed: false,
+        });
+      } else {
+        setPlace(null);
+        forgetPuckPlace(app.ownerWindow);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [place, moving, session, container, checkAgain]);
 
     const inEditor = (clientX: number, clientY: number) => {
       const { offsetLeft, offsetTop, width, height } = app.state;
@@ -392,6 +459,64 @@ export const RadialPalette = React.memo(
 
     const shown = moving ?? place;
     const collapsed = !moving && !!place?.collapsed;
+    const puckRef = useRef<HTMLButtonElement>(null);
+    const equipped = isEquipped(tool) ? tool : null;
+    const unequip = () => {
+      app.setActiveTool({ type: "hand" });
+      controller.close();
+    };
+
+    /** where the equipped chip sits beside the closed puck, in the puck's
+     * positioned parent; measured after layout, since CSS places the puck */
+    const [chipAt, setChipAt] = useState<ClientPoint | null>(null);
+    useLayoutEffect(() => {
+      const puck = puckRef.current;
+      const parent = puck && (puck.offsetParent ?? puck.parentElement);
+      if (!equipped || session || moving || !puck || !parent) {
+        setChipAt(null);
+        return;
+      }
+      const measure = () => {
+        const { offsetLeft, offsetTop, width, height } = app.state;
+        const area = { left: offsetLeft, top: offsetTop, width, height };
+        const box = puck.getBoundingClientRect();
+        const frame = parent.getBoundingClientRect();
+        // in the editor's terms, clear of the host's bars, then placed in
+        // the puck's positioned parent
+        const spot = chipSpot(
+          {
+            x: box.left + box.width / 2 - offsetLeft,
+            y: box.top + box.height / 2 - offsetTop,
+          },
+          collapsed ? 10 : box.width / 2,
+          { width, height },
+          measureHostInsets(area, (at) =>
+            reachesCanvas(app.ownerDocument, container, at),
+          ),
+        );
+        const next = {
+          x: spot.x + offsetLeft - frame.left,
+          y: spot.y + offsetTop - frame.top,
+        };
+        setChipAt((was) =>
+          was && was.x === next.x && was.y === next.y ? was : next,
+        );
+      };
+      measure();
+      const win = app.ownerWindow;
+      win.addEventListener("resize", measure);
+      return () => win.removeEventListener("resize", measure);
+    }, [
+      app,
+      container,
+      equipped,
+      session,
+      moving,
+      collapsed,
+      place,
+      phone,
+      besideSidebar,
+    ]);
 
     return (
       <>
@@ -421,6 +546,7 @@ export const RadialPalette = React.memo(
               : `${t("radialPalette.open")} — ,`
           }
           aria-expanded={!!session}
+          ref={puckRef}
           data-testid="radial-palette-puck"
           onContextMenu={preventMenu}
           onPointerDown={(event) => {
@@ -454,9 +580,15 @@ export const RadialPalette = React.memo(
             <circle r="2" className="RadialPalette__puck-dot" />
           </svg>
         </button>
+        {equipped && chipAt && (
+          <EquippedChip tool={equipped} at={chipAt} onUnequip={unequip} />
+        )}
         {session && (
           <Ring
             session={session}
+            puck={puckRef}
+            equipped={equipped}
+            onUnequip={unequip}
             controller={controller}
             actionManager={actionManager}
             onMoved={(at) =>
@@ -472,11 +604,19 @@ RadialPalette.displayName = "RadialPalette";
 
 const Ring = ({
   session,
+  puck,
   controller,
   actionManager,
   onMoved,
+  equipped,
+  onUnequip,
 }: {
   session: RadialSession;
+  /** the puck, which the ring may cover where it is clamped in from an edge */
+  puck: React.RefObject<HTMLButtonElement | null>;
+  /** the equipped tool, shown on the ring's outer edge, if any */
+  equipped: AppState["activeTool"]["type"] | null;
+  onUnequip: () => void;
   controller: RadialPaletteController;
   actionManager: ActionManager;
   /** the ring was dragged by its hub and dropped, centered at `at` */
@@ -487,6 +627,15 @@ const Ring = ({
   const setAppState = useExcalidrawSetAppState();
 
   const { offsetLeft, offsetTop, width, height } = appState;
+  const { container } = useExcalidrawContainer();
+  /** the bands the host's controls take along the editor's top and bottom,
+   * measured as the ring opens, before it is drawn over them */
+  const [insets] = useState(() =>
+    measureHostInsets(
+      { left: offsetLeft, top: offsetTop, width, height },
+      (at) => reachesCanvas(app.ownerDocument, container, at),
+    ),
+  );
   const [ringScale, setRingScale] = useState(() =>
     loadRingScale(app.ownerWindow),
   );
@@ -497,6 +646,7 @@ const Ring = ({
       { width, height },
       RING_MARGIN,
       ringScale,
+      insets,
     );
     return { x: placed.x + offsetLeft, y: placed.y + offsetTop };
   };
@@ -505,6 +655,7 @@ const Ring = ({
     { width, height },
     RING_MARGIN,
     ringScale,
+    insets,
   );
 
   /** which way the corner handle points: towards the most room, or, while
@@ -728,9 +879,27 @@ const Ring = ({
     );
   };
 
+  const commitSize = () => {
+    // as opacity: one history entry, and the selected strokes take the width
+    actionManager.executeAction(
+      actionChangeFreedrawStrokeWidth,
+      "ui",
+      app.state.currentItemFreedrawStrokeWidth,
+    );
+  };
+
+  /** a slider drag ended: what it previewed becomes the selection's too */
+  const commitSlider = (kind: RingHit["kind"] | null | undefined) => {
+    if (kind === "opacity") {
+      commitOpacity();
+    } else if (kind === "size") {
+      commitSize();
+    }
+  };
+
   // the handlers a flick calls, current as of the last render
-  const latest = useRef({ hitAt, follow, previewSlider, commitOpacity });
-  latest.current = { hitAt, follow, previewSlider, commitOpacity };
+  const latest = useRef({ hitAt, follow, previewSlider, commitSlider });
+  latest.current = { hitAt, follow, previewSlider, commitSlider };
 
   // a flick: press, drag to a segment, lift to pick it
   const { flick } = session;
@@ -778,9 +947,7 @@ const Ring = ({
         return;
       }
       const hit: RingHit | null = last;
-      if (hit?.kind === "opacity") {
-        latest.current.commitOpacity();
-      }
+      latest.current.commitSlider(hit?.kind);
       const picked =
         (hit?.kind === "tool" ||
           hit?.kind === "pen" ||
@@ -810,6 +977,21 @@ const Ring = ({
   }, [app, controller, flick, toolsRing]);
 
   const ringRef = useRef<HTMLDivElement>(null);
+
+  // a press on a slice focuses it; when the ring goes, that slice goes with
+  // it and focus would fall to the page, where the editor takes no Ctrl+Z.
+  // Focus goes back to the editor instead, unless it has moved elsewhere
+  // (redaphid/excalidraw#283)
+  useLayoutEffect(() => {
+    const ring = ringRef.current;
+    return () => {
+      const doc = app.ownerDocument;
+      const active = doc.activeElement;
+      if (!active || active === doc.body || ring?.contains(active)) {
+        app.focusContainer();
+      }
+    };
+  }, [app]);
   // a long press opens the ring under the finger, and the browser's click
   // on release lands on the hub or a slice; only a press made on the ring
   // counts
@@ -984,7 +1166,10 @@ const Ring = ({
         "RadialPalette__segment--disabled": disabled,
       })}
       onPointerDown={(event) =>
+        // only the main button picks: a right-click, a pen's barrel button
+        // or a middle-click held on a slice is not a hold
         !disabled &&
+        event.button === 0 &&
         controller.hold(ring, index, LONG_PRESS_DELAY, {
           x: event.clientX,
           y: event.clientY,
@@ -1032,11 +1217,11 @@ const Ring = ({
     );
     const step = (delta: number) =>
       kind === "size"
-        ? setAppState({
-            currentItemFreedrawStrokeWidth: toPenSize(
-              Math.min(1, Math.max(0, value + delta)),
-            ),
-          })
+        ? actionManager.executeAction(
+            actionChangeFreedrawStrokeWidth,
+            "ui",
+            toPenSize(Math.min(1, Math.max(0, value + delta))),
+          )
         : actionManager.executeAction(
             actionChangeOpacity,
             "ui",
@@ -1129,7 +1314,14 @@ const Ring = ({
       <div
         className="RadialPalette__backdrop"
         data-testid="radial-palette-backdrop"
-        onContextMenu={preventMenu}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          // the menu event of a press that left the ring with a held hub
+          if (endHubPress.current) {
+            return;
+          }
+          controller.close();
+        }}
         onPointerDown={(event) => {
           event.preventDefault();
           // a second finger while the hub is pressed, as when the other
@@ -1137,7 +1329,12 @@ const Ring = ({
           if (endHubPress.current) {
             return;
           }
-          controller.close();
+          // a right-click (or a pen's barrel button) closes on its menu
+          // event, which must land here: with the backdrop gone it reaches
+          // the canvas and opens the editor's menu on the same click
+          if (event.button !== 2) {
+            controller.close();
+          }
         }}
       />
       <div
@@ -1151,7 +1348,26 @@ const Ring = ({
         data-testid="radial-palette"
         data-ring={session.ring}
         onContextMenu={preventMenu}
-        onPointerDownCapture={() => {
+        onPointerDownCapture={(event) => {
+          // clamped in from an edge, the ring can cover the puck: a press
+          // where the puck is closes it, as a press on the puck does, and
+          // sets nothing; the hub, over the puck when the ring is not
+          // clamped, keeps its own press (redaphid/excalidraw#284)
+          const rect = puck.current?.getBoundingClientRect();
+          if (
+            rect &&
+            rect.width > 0 &&
+            event.clientX >= rect.left &&
+            event.clientX <= rect.right &&
+            event.clientY >= rect.top &&
+            event.clientY <= rect.bottom &&
+            hitAt(event.clientX, event.clientY)?.kind !== "hub"
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            controller.close();
+            return;
+          }
           pressedOnRing.current = true;
         }}
         onClickCapture={(event) => {
@@ -1209,9 +1425,7 @@ const Ring = ({
             );
           }}
           onPointerUp={() => {
-            if (dragging === "opacity") {
-              commitOpacity();
-            }
+            commitSlider(dragging);
             setDragging(null);
           }}
         >
@@ -1421,6 +1635,21 @@ const Ring = ({
           bounds={{ width, height }}
           ring={place}
         />
+        {equipped &&
+          (() => {
+            // on the ring's rim, in the ring's own box
+            const spot = chipSpot(place, size / 2, { width, height }, insets);
+            return (
+              <EquippedChip
+                tool={equipped}
+                at={{
+                  x: spot.x - place.x + size / 2,
+                  y: spot.y - place.y + size / 2,
+                }}
+                onUnequip={onUnequip}
+              />
+            );
+          })()}
       </div>
     </>
   );

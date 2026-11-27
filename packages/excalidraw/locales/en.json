@@ -177,6 +177,8 @@
     "sidebarLock": "Keep sidebar open",
     "selectAllElementsInFrame": "Select all elements in frame",
     "removeAllElementsFromFrame": "Remove all elements from frame",
+    "pinFrame": "Pin to screen",
+    "unpinFrame": "Unpin from screen",
     "eyeDropper": "Pick color from canvas",
     "textToDiagram": "Text to diagram",
     "prompt": "Prompt",
@@ -773,7 +775,8 @@
     "verticalAlign": "Vertical align",
     "distribute": "Distribute",
     "mainMenu": "Menu…",
-    "textToDiagram": "Text to diagram"
+    "textToDiagram": "Text to diagram",
+    "unequip": "Put the tool down — x"
   },
   "fontList": {
     "badge": {

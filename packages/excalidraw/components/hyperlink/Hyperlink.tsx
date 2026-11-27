@@ -431,8 +431,8 @@ const renderTooltip = (
     {
       left: linkViewportCoords.x,
       top: linkViewportCoords.y,
-      width: linkWidth,
-      height: linkHeight,
+      width: linkWidth * appState.zoom.value,
+      height: linkHeight * appState.zoom.value,
     },
     "top",
   );

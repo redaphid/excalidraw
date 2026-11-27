@@ -3,6 +3,7 @@ import {
   MAX_RASTER_EDGE,
   strokeBackdrop,
 } from "../renderer/backdrop";
+import { forgetContextCaches } from "../renderer/contextCaches";
 
 const appState = (zoom: number) => ({
   scrollX: 0,
@@ -86,5 +87,20 @@ describe("the backdrop raster", () => {
 
     expect(rasters.filter(({ width }) => width > 0).length).toBe(4);
     expect(rasters.at(-1)!.width).toBe(500);
+  });
+
+  // a lost context (a GPU process crash, say) blanks the rasters too
+  describe("when the context caches are dropped after a stroke", () => {
+    const backdrop = { image: "data:image/svg+xml,crash", size: 300 };
+
+    beforeEach(() => {
+      strokeBackdrop(context, backdrop, appState(1), 1);
+      forgetContextCaches([]);
+      strokeBackdrop(context, backdrop, appState(1), 1);
+    });
+
+    it("rasterizes the tile anew for the next stroke", () => {
+      expect(rasters.map(({ width }) => width)).toEqual([0, 300]);
+    });
   });
 });
