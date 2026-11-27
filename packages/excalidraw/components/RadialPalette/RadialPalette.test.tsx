@@ -425,6 +425,20 @@ describe("RadialPalette", () => {
       expect(ring()).toBeNull();
     });
 
+    describe("when , is pressed in the focused editor, a host that takes no keys from the page", () => {
+      beforeEach(() => {
+        const editor = document.querySelector<HTMLElement>(
+          ".excalidraw-container",
+        )!;
+        editor.focus();
+        fireEvent.keyDown(editor, { key: KEYS.COMMA });
+      });
+
+      it("opens the ring", () => {
+        expect(ring()).not.toBeNull();
+      });
+    });
+
     describe("when the canvas menu is open and , opens the ring", () => {
       beforeEach(() => {
         act(() => h.app.openContextMenu({ clientX: 300, clientY: 300 }));
@@ -1305,6 +1319,51 @@ describe("RadialPalette", () => {
 
       it("closes the ring", () => {
         expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when , opens it from the editor with a rectangle selected, and Tab is pressed twice", () => {
+      const editor = () =>
+        document.querySelector<HTMLElement>("[data-excalidraw-id]")!;
+      const tab = (shiftKey = false) =>
+        fireEvent.keyDown(document.activeElement ?? document.body, {
+          key: KEYS.TAB,
+          shiftKey,
+        });
+      const items = () =>
+        Array.from(ring()!.querySelectorAll('[tabindex="0"]'));
+
+      beforeEach(() => {
+        const rectangle = API.createElement({ type: "rectangle" });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        editor().focus();
+        Keyboard.keyPress(KEYS.COMMA);
+        tab();
+        tab();
+      });
+
+      it("puts focus on the ring's second item", () => {
+        expect(document.activeElement).toBe(items()[1]);
+      });
+
+      it("leaves the rectangle a rectangle", () => {
+        expect(h.elements[0].type).toBe("rectangle");
+      });
+
+      it("keeps the ring open", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      describe("when Shift+Tab goes back past the first item", () => {
+        beforeEach(() => {
+          tab(true);
+          tab(true);
+        });
+
+        it("wraps to the last item, not the editor", () => {
+          expect(document.activeElement).toBe(items().at(-1));
+        });
       });
     });
 

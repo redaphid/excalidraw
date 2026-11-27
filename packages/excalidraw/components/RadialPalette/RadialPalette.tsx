@@ -259,6 +259,9 @@ export const RadialPalette = React.memo(
       const onKeyDown = (event: KeyboardEvent) => {
         const { target } = event;
         const doc = app.ownerDocument;
+        // the editor's element as it is now: the context's value is filled
+        // in after this effect first runs, and is the same object after
+        const editor = app.excalidrawContainerValue.container;
         // like the editor's own shortcuts: from inside the editor, or from
         // anywhere with `handleKeyboardGlobally`, but never from a host's
         // focused control while nothing in the editor has focus
@@ -266,7 +269,7 @@ export const RadialPalette = React.memo(
           target instanceof Element &&
           target !== doc.body &&
           target !== doc.documentElement &&
-          !container?.contains(target);
+          !editor?.contains(target);
         if (
           !isPaletteKey(event) ||
           isTypingTarget(target) ||
@@ -283,7 +286,7 @@ export const RadialPalette = React.memo(
       const doc = app.ownerDocument;
       doc.addEventListener("keydown", onKeyDown);
       return () => doc.removeEventListener("keydown", onKeyDown);
-    }, [app, controller, container]);
+    }, [app, controller]);
 
     const puckCenter = (target: HTMLElement) => {
       const rect = target.getBoundingClientRect();
@@ -1013,6 +1016,30 @@ const Ring = ({
         event.preventDefault();
         event.stopPropagation();
         controller.close();
+        return;
+      }
+      // Tab walks the ring's items and wraps, from wherever focus was when
+      // it opened (the editor, after ","), so it never reaches the editor
+      // behind the ring, whose Tab would switch the selected shape
+      if (event.key === KEYS.TAB) {
+        const items = Array.from(
+          ringRef.current?.querySelectorAll<HTMLElement | SVGElement>(
+            '[tabindex="0"]',
+          ) ?? [],
+        );
+        if (items.length) {
+          event.preventDefault();
+          event.stopPropagation();
+          const at = items.findIndex((item) => item === event.target);
+          const step = event.shiftKey ? -1 : 1;
+          const next =
+            at < 0
+              ? event.shiftKey
+                ? items.length - 1
+                : 0
+              : (at + step + items.length) % items.length;
+          items[next].focus();
+        }
         return;
       }
       // a focused segment or slider handles its own keys
