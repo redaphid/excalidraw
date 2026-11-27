@@ -69,6 +69,7 @@ import {
   getRingLayout,
   hitTest,
   placeRing,
+  swatchBand,
   polar,
   sectorMiddle,
   sectorPath,
@@ -1147,6 +1148,8 @@ const Ring = ({
     path: string,
     children: React.ReactNode,
     disabled = false,
+    /** the larger area that takes a tap, when it is more than `path` */
+    hitPath?: string,
   ) => (
     <g
       key={key}
@@ -1188,6 +1191,7 @@ const Ring = ({
     >
       <title>{label}</title>
       <path d={path} className="RadialPalette__segment-bg" />
+      {hitPath && <path d={hitPath} className="RadialPalette__hit" />}
       <g className="RadialPalette__segment-content">{children}</g>
     </g>
   );
@@ -1554,6 +1558,7 @@ const Ring = ({
                 fill={color ?? "none"}
               />,
               !color,
+              color ? sectorPath(swatchBand(layout.colors), sector) : undefined,
             );
           })}
 
@@ -1574,6 +1579,8 @@ const Ring = ({
               <text x={x} y={y} className="RadialPalette__label">
                 {t("radialPalette.fill")}
               </text>,
+              false,
+              sectorPath(swatchBand(layout.colors), sector),
             );
           })()}
 

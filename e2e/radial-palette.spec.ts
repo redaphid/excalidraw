@@ -434,6 +434,105 @@ test("a held puck moves, tucks against a side, comes back, and stays put", async
   await page.screenshot({ path: testInfo.outputPath("puck-back.png") });
 });
 
+test("a finger a little past a colour still picks it", async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, "a touch target");
+  await tap(page, testInfo, "radial-palette-puck");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  const ring = await ringCenter(page);
+  const swatch = await center(page, "radial-color-1");
+  const color = await page
+    .getByTestId("radial-color-1")
+    .getAttribute("aria-label");
+  const away = Math.hypot(swatch.x - ring.x, swatch.y - ring.y);
+
+  await page.touchscreen.tap(
+    swatch.x + ((swatch.x - ring.x) / away) * 20,
+    swatch.y + ((swatch.y - ring.y) / away) * 20,
+  );
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              excalidrawAPI: {
+                getAppState: () => { currentItemStrokeColor: string };
+              };
+            }
+          ).excalidrawAPI.getAppState().currentItemStrokeColor,
+      ),
+    )
+    .toBe(color);
+});
+
+test("every colour a finger can pick owns a 44px run each way, and nothing else's", async ({
+  page,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, "a touch target");
+  // opened mid-screen, so every target's outer reach lies on the screen (from
+  // the puck the ring sits at the edge and the fill chip's reach runs off it)
+  const viewport = page.viewportSize()!;
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  await page.keyboard.press(",");
+  await expect(page.getByTestId("radial-palette")).toBeVisible();
+  const ring = await ringCenter(page);
+  const scale =
+    (await page.getByTestId("radial-palette").boundingBox())!.width / 316;
+  const ids = await page
+    .locator('[data-testid^="radial-color-"]:not([aria-disabled="true"])')
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute("data-testid")!),
+    );
+  expect(ids.length).toBeGreaterThan(1);
+  // the colours, the empty recent slots and the fill chip share the top half;
+  // 44px across holds from where the sector is that wide; measured 6px past
+  // that, so its corners keep clear of the sector's edges in every browser
+  const sectors = await page.locator('[data-testid^="radial-color-"]').count();
+  const wide = Math.ceil(22 / Math.sin(Math.PI / 2 / sectors)) + 6;
+
+  for (const id of ids) {
+    const swatch = await center(page, id);
+    const angle = Math.atan2(swatch.y - ring.y, swatch.x - ring.x);
+    /** the test id of what owns the point `radius` out and `across` along */
+    const owner = (radius: number, across: number) =>
+      page.evaluate(
+        ([x, y]) =>
+          document
+            .elementFromPoint(x, y)
+            ?.closest("[data-testid]")
+            ?.getAttribute("data-testid") ?? null,
+        [
+          ring.x +
+            (Math.cos(angle) * radius - Math.sin(angle) * across) * scale,
+          ring.y +
+            (Math.sin(angle) * radius + Math.cos(angle) * across) * scale,
+        ],
+      );
+
+    // out through the swatch: 44px of it, from the ring's colour band out
+    for (let radius = 126; radius <= 170; radius += 4) {
+      expect(`${id} at ${radius}: ${await owner(radius, 0)}`).toBe(
+        `${id} at ${radius}: ${id}`,
+      );
+    }
+    // across its outer part: 44px of it
+    for (let across = -22; across <= 22; across += 4) {
+      expect(`${id} across ${across}: ${await owner(wide, across)}`).toBe(
+        `${id} across ${across}: ${id}`,
+      );
+    }
+    // a finger nearer this swatch than its neighbours never picks one of them
+    const step = await owner(141, 14);
+    const back = await owner(141, -14);
+    expect([step, back]).toEqual([id, id]);
+    // and the pen band just inside keeps its own pixels
+    expect(await owner(118, 0)).not.toMatch(/^radial-color-/);
+  }
+});
+
 test("a held hub carries the open ring, which stays open where it lands", async ({
   page,
   browserName,

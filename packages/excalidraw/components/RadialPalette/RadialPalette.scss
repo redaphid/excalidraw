@@ -378,6 +378,10 @@
     stroke-linejoin: round;
   }
 
+  .RadialPalette__hit {
+    fill: transparent;
+  }
+
   .RadialPalette__swatch {
     stroke: var(--control-rule);
     stroke-width: var(--control-rule-width);

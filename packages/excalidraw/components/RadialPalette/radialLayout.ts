@@ -27,6 +27,30 @@ export const OPACITY_SLIDER: Slider = { from: 84, to: 6 };
 /** below this the ring would be too small to hit; it overflows instead */
 export const MIN_RING_SCALE = 0.6;
 
+/** how far a colour's target reaches at most, past the ring's edge at 158 */
+export const SWATCH_REACH = 210;
+
+/**
+ * Where a colour takes a tap: its own sector, run on past the ring's edge.
+ * The colours (a theme's, the recent ones and the fill chip) share the top
+ * half, so a sector is often under 14 degrees, only about 35px wide at the
+ * swatch; it grows outward only, never into a neighbour or another band,
+ * out to where the sector is 44px across plus 10 to spare (a finger near a
+ * corner of that run still lands inside) (176 at the least,
+ * `SWATCH_REACH` at most).
+ */
+export const swatchBand = (sectors: readonly Sector[]): Band => {
+  const span = Math.min(
+    ...sectors.map(({ start, end }) => end - start),
+    TOP.end - TOP.start,
+  );
+  const across = 22 / Math.sin(((span / 2) * Math.PI) / 180);
+  return {
+    inner: OUTER_BAND.inner,
+    outer: Math.min(SWATCH_REACH, Math.max(176, Math.ceil(across + 10))),
+  };
+};
+
 /** a pointer this far from where it went down is a flick, not a tap */
 export const FLICK_DISTANCE = 10;
 
@@ -177,6 +201,11 @@ export const hitTest = (
     if (onSlider(OPACITY_SLIDER, angle)) {
       return { kind: "opacity", value: sliderValue(OPACITY_SLIDER, angle) };
     }
+    return find("color", layout.colors);
+  }
+  if (inBand(radius, swatchBand(layout.colors))) {
+    // past the ring's edge only the colours reach, so a drag released just
+    // outside a swatch picks what a tap there would
     return find("color", layout.colors);
   }
   return null;

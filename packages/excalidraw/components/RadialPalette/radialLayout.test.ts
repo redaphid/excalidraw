@@ -6,6 +6,8 @@ import {
   OUTER_BAND,
   RING_RADIUS,
   SIZE_SLIDER,
+  SWATCH_REACH,
+  swatchBand,
   TOOLS_BAND,
   getRingLayout,
   hitTest,
@@ -72,6 +74,61 @@ describe("radialLayout", () => {
   describe("when a pointer lands past the ring", () => {
     it("hits nothing", () => {
       expect(hitTest(layout, RING_RADIUS + 5, 0)).toBeNull();
+    });
+
+    describe("just outside a colour", () => {
+      it("hits that colour, as a tap there does", () => {
+        layout.colors.forEach((sector, index) => {
+          const { x, y } = polar(RING_RADIUS + 12, sectorMiddle(sector));
+          expect(hitTest(layout, x, y)).toEqual({ kind: "color", index });
+        });
+      });
+    });
+
+    describe("just outside the size arc", () => {
+      it("hits nothing", () => {
+        const { x, y } = polar(RING_RADIUS + 12, 135);
+        expect(hitTest(layout, x, y)).toBeNull();
+      });
+    });
+
+    describe("past a colour's whole target", () => {
+      it("hits nothing", () => {
+        const { x, y } = polar(swatchBand(layout.colors).outer + 1, 270);
+        expect(hitTest(layout, x, y)).toBeNull();
+      });
+    });
+  });
+
+  describe("a colour's target", () => {
+    /** `count` colours sharing the top half evenly, as the ring lays them */
+    const top = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        start: 180 + (180 / count) * index,
+        end: 180 + (180 / count) * (index + 1),
+      }));
+
+    it.each([12, 13, 14])(
+      "holds a 44px run both ways with %i colours, and never reaches another band",
+      (count) => {
+        const sectors = top(count);
+        const band = swatchBand(sectors);
+        const span = (Math.PI / 180) * (180 / count);
+        expect(band.outer - band.inner).toBeGreaterThanOrEqual(44);
+        // the chord across the sector, 6px in from the target's outer edge
+        expect(
+          2 * (band.outer - 6) * Math.sin(span / 2),
+        ).toBeGreaterThanOrEqual(44);
+        expect(band.inner).toBeGreaterThan(MIDDLE_BAND.outer);
+      },
+    );
+
+    it("never reaches past SWATCH_REACH, however many colours share the top", () => {
+      expect(swatchBand(top(40)).outer).toBe(SWATCH_REACH);
+    });
+
+    it("keeps a target as deep as before when few colours share the top", () => {
+      expect(swatchBand(top(6)).outer).toBe(176);
     });
   });
 
