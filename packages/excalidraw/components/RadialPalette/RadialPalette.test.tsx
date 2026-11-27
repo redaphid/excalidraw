@@ -5,12 +5,15 @@ import { fireEvent, queryByTestId } from "@testing-library/react";
 
 import { KEYS } from "@excalidraw/common";
 
-import type { ExcalidrawFreeDrawElement } from "@excalidraw/element/types";
+import type {
+  ExcalidrawFreeDrawElement,
+  NonDeleted,
+} from "@excalidraw/element/types";
 
 import { Excalidraw } from "../../index";
 import { API } from "../../tests/helpers/api";
 import { Keyboard, Pointer, UI } from "../../tests/helpers/ui";
-import { act, render } from "../../tests/test-utils";
+import { GlobalTestState, act, render } from "../../tests/test-utils";
 
 import { LONG_PRESS_DELAY } from "../App.radialPalette";
 
@@ -18,6 +21,7 @@ import { getPenPresets } from "./penPresets";
 import { RADIAL_TOOLS } from "./radialPaletteController";
 import {
   TOOLS_BAND,
+  RING_RADIUS,
   getRingLayout,
   placeRing,
   polar,
@@ -51,6 +55,53 @@ const tap = (testId: string) => {
     throw new Error(`no ${testId} on the ring`);
   }
   fireEvent.click(target);
+};
+
+/** the ring's size against its own, from its box */
+const ringScale = () => parseFloat(ring()!.style.width) / (RING_RADIUS * 2);
+
+const ringBox = () => {
+  const { left, top, width } = ring()!.style;
+  return {
+    left: parseFloat(left),
+    top: parseFloat(top),
+    size: parseFloat(width),
+  };
+};
+
+/** the corner handle's centre: it sits 22px inside the ring's box corner */
+const scaleHandleCenter = () => {
+  const { left, top, size } = ringBox();
+  const handle = byTestId("radial-palette-scale")!;
+  const onLeft = handle.classList.contains("RadialPalette__scale--left");
+  const onTop = handle.classList.contains("RadialPalette__scale--top");
+  return {
+    x: onLeft ? left + 22 : left + size - 22,
+    y: onTop ? top + 22 : top + size - 22,
+    anchor: { x: onLeft ? left + size : left, y: onTop ? top + size : top },
+  };
+};
+
+/** presses the corner handle at its centre and moves it as far as the
+ * ring's corner moves when it is `scale` big, its opposite corner held;
+ * lifts it unless told not to */
+const dragScaleHandle = (scale: number, { lift = true } = {}) => {
+  const from = scaleHandleCenter();
+  const way = {
+    x: Math.sign(from.x - from.anchor.x),
+    y: Math.sign(from.y - from.anchor.y),
+  };
+  const by = RING_RADIUS * 2 * (scale - ringScale());
+  const to = { clientX: from.x + way.x * by, clientY: from.y + way.y * by };
+  fireEvent.pointerDown(byTestId("radial-palette-scale")!, {
+    pointerId: 7,
+    clientX: from.x,
+    clientY: from.y,
+  });
+  fireEvent.pointerMove(window, { pointerId: 7, ...to });
+  if (lift) {
+    fireEvent.pointerUp(window, { pointerId: 7, ...to });
+  }
 };
 
 const drawStroke = () => {
@@ -209,6 +260,22 @@ describe("RadialPalette", () => {
       expect(ring()).toBeNull();
     });
 
+    describe("when the canvas menu is open and , opens the ring", () => {
+      beforeEach(() => {
+        act(() => h.app.openContextMenu({ clientX: 300, clientY: 300 }));
+        expect(h.state.contextMenu).not.toBeNull();
+        Keyboard.keyPress(",", document.body);
+      });
+
+      it("opens the ring", () => {
+        expect(ring()).not.toBeNull();
+      });
+
+      it("closes the menu: one menu at a time", () => {
+        expect(h.state.contextMenu).toBeNull();
+      });
+    });
+
     describe("when the puck is pressed", () => {
       beforeEach(() => {
         openRing();
@@ -241,6 +308,50 @@ describe("RadialPalette", () => {
 
       it("keeps it open after a tap, for the next tap", () => {
         expect(puck().getAttribute("aria-expanded")).toBe("true");
+      });
+
+      describe.each([
+        [KEYS.R, "rectangle"],
+        [KEYS.O, "ellipse"],
+        [KEYS.A, "arrow"],
+        [KEYS.P, "freedraw"],
+        [KEYS.E, "eraser"],
+        [KEYS.H, "hand"],
+        ["5", "arrow"],
+      ])("when the %s key picks a tool", (key, type) => {
+        beforeEach(() => {
+          // as on the board: nothing in the editor has focus
+          Keyboard.keyPress(key, document.body);
+        });
+
+        it("picks it and closes, as a tap on the ring does", () => {
+          expect(h.state.activeTool.type).toBe(type);
+          expect(ring()).toBeNull();
+        });
+      });
+
+      describe("when a key that is not a tool's is pressed", () => {
+        beforeEach(() => {
+          Keyboard.keyPress(KEYS.W, document.body);
+        });
+
+        it("stays open", () => {
+          expect(ring()).not.toBeNull();
+        });
+      });
+
+      describe("when a context menu opens while the ring is open", () => {
+        beforeEach(() => {
+          act(() => h.app.openContextMenu({ clientX: 300, clientY: 300 }));
+        });
+
+        it("opens the menu", () => {
+          expect(h.state.contextMenu).not.toBeNull();
+        });
+
+        it("closes the ring: one menu at a time", () => {
+          expect(ring()).toBeNull();
+        });
       });
 
       it("opens the context menu from the hub, in place of itself", () => {
@@ -297,6 +408,160 @@ describe("RadialPalette", () => {
         expect(ring()).toBeNull();
       });
 
+      describe("when its corner is dragged outward, as a frame's is", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(1.3);
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("draws the ring bigger", () => {
+          expect(ringScale()).toBeCloseTo(1.3);
+        });
+
+        describe("when it is opened again", () => {
+          beforeEach(() => {
+            Keyboard.keyPress(KEYS.ESCAPE);
+            openRing();
+          });
+
+          it("keeps the size", () => {
+            expect(ringScale()).toBeCloseTo(1.3);
+          });
+        });
+      });
+
+      describe("when its corner is dragged into the middle", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(0.2);
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("folds the ring back into the puck", () => {
+          expect(ring()).toBeNull();
+        });
+      });
+
+      describe("when it is opened in the middle and its corner dragged outward", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          Keyboard.keyPress(KEYS.ESCAPE);
+          act(() => h.app.radialPalette.api.open({ at: { x: 400, y: 300 } }));
+          dragScaleHandle(1.3);
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("holds the opposite corner where it was, as a frame does", () => {
+          const { left, top } = ringBox();
+          expect({ left: Math.round(left), top: Math.round(top) }).toEqual({
+            left: 242,
+            top: 142,
+          });
+        });
+      });
+
+      describe("when it is opened against the lower right", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          Keyboard.keyPress(KEYS.ESCAPE);
+          act(() => h.app.radialPalette.api.open({ at: { x: 900, y: 700 } }));
+        });
+
+        it("puts its corner on the top left, where there is room", () => {
+          const { classList } = byTestId("radial-palette-scale")!;
+          expect([
+            classList.contains("RadialPalette__scale--left"),
+            classList.contains("RadialPalette__scale--top"),
+          ]).toEqual([true, true]);
+        });
+      });
+
+      describe("when its corner is pressed and moved by a pixel", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          const from = scaleHandleCenter();
+          fireEvent.pointerDown(byTestId("radial-palette-scale")!, {
+            pointerId: 7,
+            clientX: from.x,
+            clientY: from.y,
+          });
+          fireEvent.pointerMove(window, {
+            pointerId: 7,
+            clientX: from.x + 1,
+            clientY: from.y,
+          });
+        });
+
+        afterEach(() => {
+          fireEvent.pointerUp(window, { pointerId: 7 });
+          localStorage.clear();
+        });
+
+        it("keeps the ring its size, as a grab is no resize", () => {
+          expect(ringScale()).toBeCloseTo(1, 2);
+        });
+      });
+
+      describe("when its corner is held in far enough to fold it", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(0.2, { lift: false });
+        });
+
+        afterEach(() => {
+          fireEvent.pointerUp(window, { pointerId: 7 });
+          localStorage.clear();
+        });
+
+        it("shows it will fold before it is let go", () => {
+          expect(ring()!.classList).toContain("RadialPalette--folding");
+        });
+      });
+
+      describe("when Escape closes it while its corner is held", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          dragScaleHandle(1.3, { lift: false });
+          Keyboard.keyPress(KEYS.ESCAPE);
+          fireEvent.pointerUp(window, { pointerId: 7 });
+          openRing();
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("keeps the size it had, not the one held", () => {
+          expect(ringScale()).toBeCloseTo(1);
+        });
+      });
+
+      describe("when its corner is focused and + is pressed", () => {
+        beforeEach(() => {
+          API.setAppState({ width: 1000, height: 800 });
+          byTestId("radial-palette-scale")!.focus();
+          fireEvent.keyDown(byTestId("radial-palette-scale")!, { key: "+" });
+        });
+
+        afterEach(() => {
+          localStorage.clear();
+        });
+
+        it("draws the ring a step bigger", () => {
+          expect(ringScale()).toBeCloseTo(1.1);
+        });
+      });
+
       it("closes on Escape", () => {
         Keyboard.keyPress(KEYS.ESCAPE);
         expect(ring()).toBeNull();
@@ -321,7 +586,9 @@ describe("RadialPalette", () => {
 
       describe("when a tool is locked and another is tapped", () => {
         beforeEach(() => {
+          // a tool picked elsewhere closes the ring: open it again on it
           act(() => h.app.setActiveTool({ type: "ellipse", locked: true }));
+          openRing();
           tap("radial-tool-rectangle");
         });
 
@@ -350,6 +617,107 @@ describe("RadialPalette", () => {
             type: "rectangle",
             locked: true,
           });
+        });
+      });
+
+      describe.each([
+        ["the right button", { button: 2, buttons: 2 }],
+        [
+          "a pen's barrel button",
+          { button: 2, buttons: 2, pointerType: "pen" },
+        ],
+        ["the middle button", { button: 1, buttons: 4 }],
+      ])("when a tool is held with %s", (_, init) => {
+        let before: typeof h.state.activeTool;
+
+        beforeEach(() => {
+          vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+          before = h.state.activeTool;
+          fireEvent.pointerDown(byTestId("radial-tool-rectangle")!, init);
+          act(() => {
+            vi.advanceTimersByTime(LONG_PRESS_DELAY * 2);
+          });
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it("picks nothing: only the main button picks", () => {
+          expect(h.state.activeTool).toEqual(before);
+          expect(ring()).not.toBeNull();
+        });
+      });
+
+      describe.each([
+        ["the right button", { button: 2, buttons: 2 }],
+        [
+          "a pen's barrel button",
+          { button: 2, buttons: 2, pointerType: "pen" },
+        ],
+      ])("when the canvas off the ring is clicked with %s", (_, init) => {
+        beforeEach(() => {
+          const at = { ...init, clientX: 5, clientY: 5 };
+          fireEvent.pointerDown(byTestId("radial-palette-backdrop")!, at);
+          // the browser's menu event goes to whatever is under the pointer
+          // by then: the canvas, once the backdrop is gone
+          fireEvent.contextMenu(
+            byTestId("radial-palette-backdrop") ??
+              GlobalTestState.interactiveCanvas,
+            at,
+          );
+          fireEvent.pointerUp(window, { ...at, buttons: 0 });
+        });
+
+        it("closes the ring", () => {
+          expect(ring()).toBeNull();
+        });
+
+        it("opens no context menu: one click, one menu closed", () => {
+          expect(h.state.contextMenu).toBeNull();
+        });
+      });
+
+      describe("when the rings are stepped down from the keyboard with nothing selected", () => {
+        beforeEach(() => {
+          // from the tools ring, down wraps to the style ring, which holds
+          // nothing while nothing is selected
+          Keyboard.keyPress(KEYS.ARROW_DOWN);
+        });
+
+        it("passes over the empty style ring", () => {
+          expect(ring()!.getAttribute("data-ring")).toBe("colors");
+        });
+
+        it("steps along the ring it lands on", () => {
+          const before = h.app.radialPalette.api.state().index;
+          Keyboard.keyPress(KEYS.ARROW_RIGHT);
+          const { index } = h.app.radialPalette.api.state();
+          expect(Number.isInteger(index)).toBe(true);
+          expect(index).not.toBe(before);
+        });
+      });
+
+      describe("when the rings are stepped up past the colors with nothing selected", () => {
+        beforeEach(() => {
+          // tools, pens, colors, then the empty style ring
+          Keyboard.keyPress(KEYS.ARROW_UP);
+          Keyboard.keyPress(KEYS.ARROW_UP);
+          Keyboard.keyPress(KEYS.ARROW_UP);
+        });
+
+        it("passes over the empty style ring to the tools", () => {
+          expect(ring()!.getAttribute("data-ring")).toBe("tools");
+        });
+      });
+
+      describe("when a knob steps the empty style ring", () => {
+        it("does nothing, and does not throw", () => {
+          act(() => h.app.radialPalette.api.open({ ring: "style" }));
+          expect(() =>
+            act(() => h.app.radialPalette.api.step(1)),
+          ).not.toThrow();
+          expect(h.app.radialPalette.api.state().open).toBe(true);
         });
       });
 
@@ -536,6 +904,64 @@ describe("RadialPalette", () => {
       });
     });
 
+    describe("when a pressed colour slice is picked", () => {
+      beforeEach(() => {
+        const rectangle = API.createElement({ type: "rectangle" });
+        API.setElements([rectangle]);
+        API.setSelectedElements([rectangle]);
+        openRing();
+        // a press on a slice focuses it, as a browser does
+        (byTestId("radial-color-1") as unknown as HTMLElement).focus();
+        tap("radial-color-1");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+
+      it("gives focus back to the editor, so Ctrl+Z works at once", () => {
+        expect(document.activeElement).toBe(
+          document.querySelector("[data-excalidraw-id]"),
+        );
+      });
+    });
+
+    describe("when a pressed tool slice is picked", () => {
+      beforeEach(() => {
+        openRing();
+        (byTestId("radial-tool-rectangle") as unknown as HTMLElement).focus();
+        tap("radial-tool-rectangle");
+      });
+
+      it("gives focus back to the editor", () => {
+        expect(document.activeElement).toBe(
+          document.querySelector("[data-excalidraw-id]"),
+        );
+      });
+    });
+
+    describe("when the ring closes while a host's field has focus", () => {
+      let field: HTMLInputElement;
+
+      beforeEach(() => {
+        field = document.createElement("input");
+        document.body.append(field);
+        openRing();
+        field.focus();
+        act(() => {
+          h.app.radialPalette.api.close();
+        });
+      });
+
+      afterEach(() => {
+        field.remove();
+      });
+
+      it("leaves focus in the field", () => {
+        expect(document.activeElement).toBe(field);
+      });
+    });
+
     describe("when the ring opens on a color the theme lacks", () => {
       beforeEach(() => {
         API.setAppState({ currentItemStrokeColor: "#123456" });
@@ -559,6 +985,75 @@ describe("RadialPalette", () => {
 
       it("lowers the opacity of new elements", () => {
         expect(h.state.currentItemOpacity).toBe(95);
+      });
+    });
+
+    describe("when a stroke is selected", () => {
+      let drawn = 0;
+      beforeEach(() => {
+        // drawn, not set, so history holds the stroke as it was
+        API.setAppState({ currentItemFreedrawStrokeWidth: 0.2 });
+        const stroke = drawStroke();
+        API.setSelectedElements([stroke as NonDeleted<typeof stroke>]);
+        drawn = stroke.strokeWidth;
+        openRing();
+      });
+
+      const width = () => h.elements[0].strokeWidth;
+
+      describe("when the size arc is dragged", () => {
+        beforeEach(() => {
+          const svg = ring()!.querySelector("svg")!;
+          // the test DOM knows no pointer 1 to capture
+          Object.defineProperty(svg, "setPointerCapture", { value: () => {} });
+          const { left, top, width, height } = ring()!.style;
+          const center = {
+            x: parseFloat(left) + parseFloat(width) / 2,
+            y: parseFloat(top) + parseFloat(height) / 2,
+          };
+          // straight left of the center: past the arc's thick end, so the
+          // size clamps to its largest
+          const thick = { clientX: center.x - 300, clientY: center.y };
+          fireEvent.pointerDown(byTestId("radial-size")!, {
+            pointerId: 1,
+            ...thick,
+          });
+          fireEvent.pointerMove(svg, { pointerId: 1, ...thick });
+          fireEvent.pointerUp(svg, { pointerId: 1, ...thick });
+        });
+
+        it("moves the pen size", () => {
+          expect(h.state.currentItemFreedrawStrokeWidth).toBeGreaterThan(0.2);
+        });
+
+        it("gives the selected stroke the new width", () => {
+          expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
+        });
+
+        it("is one undo step", () => {
+          expect(width()).not.toBe(drawn);
+          // in the editor, as this host takes no keys from the page
+          Keyboard.withModifierKeys({ ctrl: true }, () => {
+            Keyboard.keyPress(
+              KEYS.Z,
+              document.querySelector<HTMLElement>(".excalidraw-container")!,
+            );
+          });
+          expect(width()).toBe(drawn);
+        });
+      });
+
+      describe("when the size arc is stepped up from the keyboard", () => {
+        beforeEach(() => {
+          fireEvent.keyDown(byTestId("radial-size")!, {
+            key: KEYS.ARROW_UP,
+          });
+        });
+
+        it("widens the selected stroke", () => {
+          expect(width()).not.toBe(drawn);
+          expect(width()).toBe(h.state.currentItemFreedrawStrokeWidth);
+        });
       });
     });
 
@@ -605,6 +1100,67 @@ describe("RadialPalette", () => {
 
       it("closes the ring", () => {
         expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when a host opens it for a pointer still down, which slides to the rectangle and lifts", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        const tip = { x: 500, y: 400 };
+        act(() => {
+          h.app.radialPalette.api.open({ at: tip, pointerId: 7 });
+        });
+        const layout = getRingLayout({
+          tools: RADIAL_TOOLS.length,
+          pens: getPenPresets(h.app.cssTheme).length + 1,
+          colors: 12,
+        });
+        const center = placeRing(tip, {
+          width: h.state.width,
+          height: h.state.height,
+        });
+        const target = polar(
+          (TOOLS_BAND.inner + TOOLS_BAND.outer) / 2,
+          sectorMiddle(layout.tools[RADIAL_TOOLS.indexOf("rectangle")]),
+        );
+        const at = {
+          pointerId: 7,
+          clientX: center.x + target.x * center.scale,
+          clientY: center.y + target.y * center.scale,
+        };
+        fireEvent.pointerMove(window, at);
+        fireEvent.pointerUp(window, at);
+      });
+
+      it("picks the rectangle", () => {
+        expect(h.state.activeTool.type).toBe("rectangle");
+      });
+
+      it("closes the ring", () => {
+        expect(ring()).toBeNull();
+      });
+    });
+
+    describe("when a host opens it with no pointer down and a pointer lifts over the rectangle", () => {
+      beforeEach(() => {
+        API.setAppState({ width: 1000, height: 800 });
+        act(() => {
+          h.app.radialPalette.api.open({ at: { x: 500, y: 400 } });
+        });
+        fireEvent.pointerMove(window, {
+          pointerId: 7,
+          clientX: 560,
+          clientY: 300,
+        });
+        fireEvent.pointerUp(window, {
+          pointerId: 7,
+          clientX: 560,
+          clientY: 300,
+        });
+      });
+
+      it("stays open", () => {
+        expect(ring()).not.toBeNull();
       });
     });
 

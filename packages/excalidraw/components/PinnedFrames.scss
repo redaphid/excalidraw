@@ -1,0 +1,45 @@
+.excalidraw {
+  .PinnedFrame {
+    position: absolute;
+    // over the board, under the editor's own controls
+    z-index: var(--zIndex-canvasButtons);
+    box-sizing: border-box;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    cursor: grab;
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
+    outline: 2px solid var(--color-primary);
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &__drawing {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: inherit;
+      pointer-events: none;
+
+      svg {
+        display: block;
+      }
+    }
+
+    // the pin: a dot on the top-right corner, as the storyboard draws it
+    &__pin {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      box-shadow: 0 0 0 2px var(--island-bg-color, #fff);
+      pointer-events: none;
+    }
+  }
+}

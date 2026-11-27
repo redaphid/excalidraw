@@ -93,6 +93,7 @@ exports[`exportToSvg > with default arguments 1`] = `
   },
   "penDetected": false,
   "penMode": false,
+  "pinnedFrames": {},
   "preferredSelectionTool": {
     "initialized": false,
     "type": "selection",

@@ -75,6 +75,10 @@ export type RadialPaletteOpenOptions = Readonly<{
   /** the ring's center, in client coordinates; the last pointer position,
    * else the middle of the editor, by default */
   at?: ClientPoint;
+  /** a pointer that is down as the ring opens, as when a host opens it on
+   * a pen's held side button: sliding it to an item and lifting picks
+   * that item, as a long press's flick does */
+  pointerId?: number;
 }>;
 
 /**
@@ -296,6 +300,10 @@ export class RadialPaletteController {
       }
       return;
     }
+    // one menu at a time: the ring takes the place of an open context menu
+    if (this.app.state.contextMenu) {
+      this.app.setAppState({ contextMenu: null });
+    }
     // the color in use joins the recent colors when the ring opens
     this.recent = rememberColor(
       this.recent,
@@ -371,6 +379,11 @@ export class RadialPaletteController {
     // whole steps over the items that can be picked: empty recent color
     // slots are drawn but hold nothing
     const items = this.items(current.ring);
+    // a ring with nothing in it (the style ring with nothing selected), as
+    // a knob may open it: nothing to step to
+    if (!items.length) {
+      return;
+    }
     const direction = Math.sign(Math.trunc(delta));
     let index = current.index;
     for (let left = Math.abs(Math.trunc(delta)); left > 0; ) {
@@ -390,10 +403,19 @@ export class RadialPaletteController {
     if (!current) {
       return;
     }
-    const ring =
-      RADIAL_RINGS[
-        wrap(RADIAL_RINGS.indexOf(current.ring) + delta, RADIAL_RINGS.length)
-      ];
+    // a ring with nothing in it (the style ring with nothing selected) is
+    // passed over, on in the same direction
+    const direction = Math.sign(delta) || 1;
+    let at = RADIAL_RINGS.indexOf(current.ring) + delta;
+    for (
+      let tries = 1;
+      tries < RADIAL_RINGS.length &&
+      !this.items(RADIAL_RINGS[wrap(at, RADIAL_RINGS.length)]).length;
+      tries++
+    ) {
+      at += direction;
+    }
+    const ring = RADIAL_RINGS[wrap(at, RADIAL_RINGS.length)];
     this.update({
       ...current,
       ring,
@@ -517,9 +539,11 @@ export class RadialPaletteController {
     }
   }
 
-  /** the active tool changed, from the ring or anywhere else: a pen
+  /** the active tool changed, from the ring or anywhere else (a tool's key,
+   * the host): the tool is picked, so the ring has done its job, and a pen
    * preset's see-through ink does not carry over to shapes */
   toolChanged() {
+    this.close();
     const { app, presetOpacity } = this;
     const { type } = app.state.activeTool;
     if (presetOpacity === null || type === "freedraw" || type === "eraser") {
@@ -561,7 +585,14 @@ export class RadialPaletteController {
   };
 
   readonly api: RadialPaletteAPI = {
-    open: ({ ring, at } = {}) => this.open({ ring, at }),
+    open: ({ ring, at, pointerId } = {}) => {
+      const point = at ?? this.defaultPoint();
+      this.open({
+        ring,
+        at: point,
+        flick: pointerId === undefined ? null : { pointerId, start: point },
+      });
+    },
     step: (delta) => this.step(delta),
     choose: () => this.choose(),
     close: () => this.close(),
